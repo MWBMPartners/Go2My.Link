@@ -1,0 +1,45 @@
+# =============================================================================
+# GoToMyLink — PHP Lint Workflow
+# =============================================================================
+#
+# Runs PHP syntax validation on all .php files when code is pushed or a
+# pull request is opened. Catches syntax errors before they reach production.
+#
+# @package    GoToMyLink
+# @author     MWBM Partners Ltd (MWservices)
+# @since      Phase 0
+# =============================================================================
+
+name: PHP Lint
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**.php'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '**.php'
+
+jobs:
+  php-lint:
+    name: PHP Syntax Check
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php-version: ['8.4']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP ${{ matrix.php-version }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          tools: php-parallel-lint/php-parallel-lint
+
+      - name: Run PHP Lint
+        run: |
+          php-parallel-lint --exclude vendor --exclude _libraries --exclude .git web/

@@ -1,0 +1,25 @@
+# =============================================================================
+# GoToMyLink — Dependabot Configuration
+# =============================================================================
+#
+# Monitors GitHub Actions for dependency updates.
+# No Composer/npm dependencies to monitor (Dreamhost has no CLI).
+#
+# @package    GoToMyLink
+# @author     MWBM Partners Ltd (MWservices)
+# @since      Phase 0
+# =============================================================================
+
+version: 2
+
+updates:
+  # Monitor GitHub Actions versions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "infrastructure"
+    commit-message:
+      prefix: "ci"

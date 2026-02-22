@@ -1,0 +1,79 @@
+# =============================================================================
+# GoToMyLink — SFTP Deploy Workflow
+# =============================================================================
+#
+# Deploys files to Dreamhost via SFTP. Manual trigger only.
+# Currently DISABLED — will be enabled when deployment targets are configured.
+#
+# Required secrets:
+#   SFTP_HOST     — Dreamhost server hostname
+#   SFTP_USERNAME — SFTP username
+#   SFTP_PASSWORD — SFTP password (or use SSH key)
+#   SFTP_SSH_KEY  — SSH private key (alternative to password)
+#
+# @package    GoToMyLink
+# @author     MWBM Partners Ltd (MWservices)
+# @since      Phase 0
+# =============================================================================
+
+name: SFTP Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: 'Component to deploy'
+        required: true
+        type: choice
+        options:
+          - GoToMy.link
+          - G2My.Link
+          - Lnks.page
+          - all
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - alpha
+          - beta
+          - production
+      dry_run:
+        description: 'Dry run (preview only, no upload)'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  deploy:
+    name: Deploy via SFTP
+    runs-on: ubuntu-latest
+    if: false  # ⚠️ DISABLED — remove this line when ready to enable
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine paths
+        id: paths
+        run: |
+          COMPONENT="${{ github.event.inputs.component }}"
+          ENV="${{ github.event.inputs.environment }}"
+
+          case "$ENV" in
+            alpha) WEB_ROOT="public_html_dev_alpha" ;;
+            beta) WEB_ROOT="public_html_dev_beta" ;;
+            production) WEB_ROOT="public_html" ;;
+          esac
+
+          echo "web_root=$WEB_ROOT" >> "$GITHUB_OUTPUT"
+          echo "component=$COMPONENT" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy ${{ steps.paths.outputs.component }}
+        run: |
+          echo "🚀 Deploying ${{ steps.paths.outputs.component }} to ${{ github.event.inputs.environment }}"
+          echo "📂 Target web root: ${{ steps.paths.outputs.web_root }}"
+          echo "🔍 Dry run: ${{ github.event.inputs.dry_run }}"
+          echo ""
+          echo "⚠️  SFTP deployment not yet configured."
+          echo "    Configure SFTP secrets and remove the 'if: false' guard to enable."

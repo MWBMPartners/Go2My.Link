@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en-GB" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>G2My.link — Coming Soon</title>
+    <meta name="description" content="G2My.link — The shortlink redirect domain for Go2My.link. Coming soon.">
+    <meta name="robots" content="noindex, nofollow">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+    <style>
+        /* =================================================================
+           G2My.Link — Coming Soon Landing Page
+           Minimal branding — redirect domain
+           ================================================================= */
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --brand-blue: #1E88E5;
+            --brand-blue-dark: #1565C0;
+            --brand-blue-light: #4FC3F7;
+            --brand-green: #43A047;
+            --brand-green-dark: #2E7D32;
+            --brand-grey: #555555;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --bg-primary: #ffffff;
+            --bg-gradient-start: #f8f9fa;
+            --bg-gradient-end: #e8f4fd;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --text-primary: #e0e0e0;
+                --text-secondary: #b0b0b0;
+                --bg-primary: #1a1a2e;
+                --bg-gradient-start: #16213e;
+                --bg-gradient-end: #0f3460;
+            }
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: var(--text-primary);
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+
+        .skip-link {
+            position: absolute;
+            top: -100%;
+            left: 0;
+            background: var(--brand-blue);
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            z-index: 1000;
+            text-decoration: none;
+        }
+
+        .skip-link:focus {
+            top: 0;
+        }
+
+        .container {
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* Minimal logo — icon only for redirect domain */
+        .logo {
+            margin-bottom: 2rem;
+        }
+
+        .logo svg {
+            width: 120px;
+            height: auto;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--brand-blue);
+        }
+
+        .tagline {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        .info {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(30, 136, 229, 0.15);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .info {
+                background: rgba(255, 255, 255, 0.08);
+                border-color: rgba(79, 195, 247, 0.2);
+            }
+        }
+
+        .info p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .info a {
+            color: var(--brand-blue);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .info a:hover {
+            text-decoration: underline;
+        }
+
+        .info a:focus-visible {
+            outline: 2px solid var(--brand-blue);
+            outline-offset: 2px;
+        }
+
+        footer {
+            margin-top: 3rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        footer a {
+            color: var(--brand-blue);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="#main" class="skip-link">Skip to main content</a>
+
+    <main id="main" class="container" role="main">
+        <!-- Icon-only logo for redirect domain -->
+        <div class="logo" aria-label="G2My.link logo">
+            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
+                <defs>
+                    <linearGradient id="blue-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#4FC3F7"/>
+                        <stop offset="100%" stop-color="#1565C0"/>
+                    </linearGradient>
+                    <linearGradient id="green-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#81C784"/>
+                        <stop offset="100%" stop-color="#2E7D32"/>
+                    </linearGradient>
+                </defs>
+                <g transform="translate(30,40) rotate(-25)">
+                    <rect x="0" y="0" width="140" height="70" rx="35" fill="url(#blue-grad)"/>
+                    <rect x="80" y="50" width="140" height="70" rx="35" fill="url(#green-grad)"/>
+                </g>
+                <polygon points="105,115 155,135 105,155 118,135" fill="white"/>
+            </svg>
+        </div>
+
+        <h1>G2My.link</h1>
+        <p class="tagline">Shortlink Redirect Domain</p>
+
+        <div class="info">
+            <p>This domain serves as the redirect engine for <a href="https://go2my.link">Go2My.link</a> shortened URLs.</p>
+            <p style="margin-top: 0.75rem;">The full service is coming soon. Visit <a href="https://go2my.link">go2my.link</a> for more information.</p>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 <a href="https://github.com/MWBMPartners">MWBM Partners Ltd</a> (MWservices)</p>
+    </footer>
+</body>
+</html>

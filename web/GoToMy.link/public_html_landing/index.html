@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en-GB" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Go2My.link — Coming Soon</title>
+    <meta name="description" content="Go2My.link — A powerful URL shortening service by MWservices. Coming soon.">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Go2My.link — Coming Soon">
+    <meta property="og:description" content="A powerful URL shortening service. Shorten, track, and manage your links.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://go2my.link">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+    <style>
+        /* =================================================================
+           GoToMyLink — Coming Soon Landing Page Styles
+           Brand colours: Blue #1E88E5, Green #43A047, Grey #555555
+           ================================================================= */
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --brand-blue: #1E88E5;
+            --brand-blue-dark: #1565C0;
+            --brand-blue-light: #4FC3F7;
+            --brand-green: #43A047;
+            --brand-green-dark: #2E7D32;
+            --brand-green-light: #66BB6A;
+            --brand-grey: #555555;
+            --brand-grey-light: #5A5F6A;
+            --text-primary: #333333;
+            --text-secondary: #666666;
+            --bg-primary: #ffffff;
+            --bg-gradient-start: #f8f9fa;
+            --bg-gradient-end: #e8f4fd;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --text-primary: #e0e0e0;
+                --text-secondary: #b0b0b0;
+                --bg-primary: #1a1a2e;
+                --bg-gradient-start: #16213e;
+                --bg-gradient-end: #0f3460;
+            }
+        }
+
+        html {
+            font-size: 16px;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            color: var(--text-primary);
+            background: linear-gradient(135deg, var(--bg-gradient-start) 0%, var(--bg-gradient-end) 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+
+        /* Skip to content link for accessibility */
+        .skip-link {
+            position: absolute;
+            top: -100%;
+            left: 0;
+            background: var(--brand-blue);
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            z-index: 1000;
+            font-size: 0.875rem;
+            text-decoration: none;
+            border-radius: 0 0 4px 0;
+        }
+
+        .skip-link:focus {
+            top: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* Logo */
+        .logo {
+            margin-bottom: 2rem;
+        }
+
+        .logo svg {
+            width: 100%;
+            max-width: 400px;
+            height: auto;
+        }
+
+        /* Heading */
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--brand-blue) 0%, var(--brand-green) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tagline {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        /* Features */
+        .features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .feature {
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            padding: 0.75rem 1.25rem;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            border: 1px solid rgba(30, 136, 229, 0.15);
+            flex: 0 1 auto;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .feature {
+                background: rgba(255, 255, 255, 0.08);
+                border-color: rgba(79, 195, 247, 0.2);
+            }
+        }
+
+        /* Email form */
+        .notify-section {
+            margin-bottom: 2rem;
+        }
+
+        .notify-section p {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .email-form {
+            display: flex;
+            gap: 0.5rem;
+            max-width: 420px;
+            margin: 0 auto;
+        }
+
+        .email-form input[type="email"] {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.2s;
+            font-family: inherit;
+        }
+
+        .email-form input[type="email"]:focus {
+            border-color: var(--brand-blue);
+            box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.15);
+        }
+
+        .email-form button {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #ffffff;
+            background: linear-gradient(135deg, var(--brand-blue) 0%, var(--brand-blue-dark) 100%);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+
+        .email-form button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(30, 136, 229, 0.3);
+        }
+
+        .email-form button:focus-visible {
+            outline: 3px solid var(--brand-blue-light);
+            outline-offset: 2px;
+        }
+
+        .email-form button:active {
+            transform: translateY(0);
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 3rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        footer a {
+            color: var(--brand-blue);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        footer a:focus-visible {
+            outline: 2px solid var(--brand-blue);
+            outline-offset: 2px;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .tagline {
+                font-size: 1rem;
+            }
+
+            .email-form {
+                flex-direction: column;
+            }
+
+            .email-form button {
+                width: 100%;
+            }
+        }
+
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition: none !important;
+                animation: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="#main" class="skip-link">Skip to main content</a>
+
+    <main id="main" class="container" role="main">
+        <!-- Logo -->
+        <div class="logo" aria-label="Go2My.link logo">
+            <svg viewBox="0 0 1200 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
+                <defs>
+                    <linearGradient id="blue-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#4FC3F7"/>
+                        <stop offset="100%" stop-color="#1565C0"/>
+                    </linearGradient>
+                    <linearGradient id="green-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#81C784"/>
+                        <stop offset="100%" stop-color="#2E7D32"/>
+                    </linearGradient>
+                </defs>
+                <g transform="translate(80,90) rotate(-25)">
+                    <rect x="0" y="0" width="180" height="90" rx="45" fill="url(#blue-grad)"/>
+                    <rect x="110" y="60" width="180" height="90" rx="45" fill="url(#green-grad)"/>
+                </g>
+                <polygon points="180,170 260,200 180,230 200,200" fill="white"/>
+                <text x="350" y="230" font-family="Arial, Helvetica, sans-serif" font-size="110" font-weight="bold" fill="url(#blue-grad)">Go</text>
+                <text x="500" y="230" font-family="Arial, Helvetica, sans-serif" font-size="110" font-weight="bold" fill="url(#green-grad)">2My</text>
+                <text x="760" y="230" font-family="Arial, Helvetica, sans-serif" font-size="110" font-weight="bold" fill="#555555">.link</text>
+            </svg>
+        </div>
+
+        <!-- Heading -->
+        <h1>Coming Soon</h1>
+        <p class="tagline">A powerful URL shortening platform by MWservices</p>
+
+        <!-- Features preview -->
+        <div class="features" aria-label="Upcoming features">
+            <span class="feature">URL Shortening</span>
+            <span class="feature">Custom Domains</span>
+            <span class="feature">Click Analytics</span>
+            <span class="feature">QR Codes</span>
+            <span class="feature">API Access</span>
+            <span class="feature">LinksPage</span>
+        </div>
+
+        <!-- Email capture -->
+        <section class="notify-section" aria-label="Email notification signup">
+            <p>Be the first to know when we launch.</p>
+            <form class="email-form" action="#" method="post" aria-label="Notification signup form">
+                <label for="email" class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);">Email address</label>
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    placeholder="you@example.com"
+                    required
+                    autocomplete="email"
+                    aria-label="Your email address"
+                >
+                <button type="submit">Notify Me</button>
+            </form>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 <a href="https://github.com/MWBMPartners">MWBM Partners Ltd</a> (trading as MWservices). All rights reserved.</p>
+    </footer>
+</body>
+</html>

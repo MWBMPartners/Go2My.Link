@@ -1,0 +1,112 @@
+# =============================================================================
+# GoToMyLink — .htaccess for G2My.Link (Component B — Shortlink Redirect)
+# =============================================================================
+#
+# Handles: HTTPS enforcement, security headers, short code routing.
+# All non-file requests are treated as short codes and routed to index.php.
+#
+# This is the PERFORMANCE-CRITICAL component — every short URL redirect
+# passes through this .htaccess. Keep rules minimal.
+#
+# @package    GoToMyLink
+# @subpackage Configuration
+# @author     MWBM Partners Ltd (MWservices)
+# @version    0.1.0
+# @since      Phase 0
+# =============================================================================
+
+# =============================================================================
+# Enable Rewrite Engine
+# =============================================================================
+RewriteEngine On
+
+# =============================================================================
+# HTTPS Enforcement
+# =============================================================================
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# =============================================================================
+# Security Headers
+# =============================================================================
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "DENY"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
+
+    # HSTS (enable after confirming HTTPS works)
+    # Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# =============================================================================
+# Block Private Directories
+# =============================================================================
+RewriteRule ^_auth_keys(/|$) - [F,L]
+RewriteRule ^_includes(/|$) - [F,L]
+RewriteRule ^_functions(/|$) - [F,L]
+RewriteRule ^_libraries(/|$) - [F,L]
+RewriteRule ^_uploads(/|$) - [F,L]
+RewriteRule ^_backups(/|$) - [F,L]
+
+# =============================================================================
+# Block Sensitive Files
+# =============================================================================
+<FilesMatch "\.(env|log|sql|bak|old|ini|sh|conf|dist)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>
+
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>
+
+# =============================================================================
+# Directory Listing Protection
+# =============================================================================
+Options -Indexes
+
+# =============================================================================
+# Short Code Routing
+# Every request that is NOT an existing file/directory is a short code.
+# Routes to index.php?code={shortcode}
+#
+# Examples:
+#   g2my.link/abc123     → index.php?code=abc123
+#   g2my.link/my-link    → index.php?code=my-link
+# =============================================================================
+
+# Allow direct access to robots.txt and favicon.ico
+RewriteRule ^(robots\.txt|favicon\.ico)$ - [L]
+
+# Route everything else as a short code
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.+)$ index.php?code=$1 [QSA,L]
+
+# =============================================================================
+# Character Encoding
+# =============================================================================
+AddDefaultCharset UTF-8
+
+# =============================================================================
+# PHP Configuration
+# =============================================================================
+<IfModule mod_php.c>
+    php_flag display_errors Off
+    php_flag log_errors On
+    php_value session.cookie_httponly 1
+    php_value session.cookie_secure 1
+    php_value session.cookie_samesite "Lax"
+</IfModule>
+
+# =============================================================================
+# Compression
+# =============================================================================
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css application/json
+</IfModule>
