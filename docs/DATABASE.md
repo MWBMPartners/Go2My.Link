@@ -22,7 +22,7 @@ The existing `mwtools_mwlink` database (MyISAM, utf8mb4) contains data to be mig
 | --- | --- | --- |
 | `tblShortURLs` | 480 | Yes — core short URL records |
 | `tblActivityLog` | 429,611 | Optional — large volume, batched |
-| `tblQRCodes` | 55 | Yes — QR code data |
+| `tblQRCodes` | 55 | **NO** — QR codes handled by separate first-party service |
 | `tblSettingsDictionary` | 23 | Yes — expanded with new settings |
 | `tblCustomerOrg` | 5 | Yes — mapped to tblOrganisations |
 | `tblCustomers` | 7 | Yes — passwords force-reset |
@@ -61,12 +61,6 @@ Schema files are located in `web/_sql/schema/`.
 | `tblShortURLDeviceRedirects` | Device-based redirect rules |
 | `tblShortURLGeoRedirects` | Geo-based redirect rules |
 | `tblShortURLAgeGates` | Age verification gate configuration |
-
-#### QR Codes
-
-| Table | Purpose |
-| --- | --- |
-| `tblQRCodes` | QR codes linked to short URLs via FK |
 
 #### Analytics
 
@@ -157,9 +151,9 @@ Migration scripts are located in `web/_sql/migrations/`.
 2. **Users** (7 records) — invalidate all passwords, map roles
 3. **Categories** (4 records) — add organisation FK
 4. **Short URLs** (480 records) — preserve `urlUID`, set `isActive=1`, map org FK
-5. **QR Codes** (55 records) — map to new short URL FKs
-6. **Settings** (23 definitions + 1 value) — expand with new settings
-7. **Activity Log** (429K records) — optional batch import
+5. **Settings** (23 definitions + 1 value) — expand with new settings
+6. **Activity Log** (429K records) — optional batch import
+7. **Skip** `tblQRCodes` (handled by separate first-party QR service)
 8. **Skip** `tblLicenses` (legacy NetPLAYER)
 
 ### Zero-Downtime Cutover

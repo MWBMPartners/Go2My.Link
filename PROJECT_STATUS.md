@@ -4,14 +4,14 @@
 
 ## Current Phase
 
-**Phase 0: Project Scaffolding** — Complete
+**Phase 1: Database Schema Design & Migration** — Complete
 
 ## Build Progress
 
 | Phase | Milestone | Status | Issues |
 | --- | --- | --- | --- |
 | Phase 0 | v0.1.0 — Scaffolding | **Complete** | 7 issues |
-| Phase 1 | v0.2.0 — Database | Not Started | 5 issues |
+| Phase 1 | v0.2.0 — Database | **Complete** | 5 issues |
 | Phase 2 | v0.3.0 — PHP Framework | Not Started | 11 issues |
 | Phase 3 | v0.4.0 — Redirect Engine | Not Started | 4 issues |
 | Phase 4 | v0.5.0 — Main Website | Not Started | 5 issues |
@@ -23,6 +23,15 @@
 | Phase 10 | v1.0.0 — Legal & Launch | Not Started | 8 issues |
 
 ## Completed Milestones
+
+### v0.2.0 — Database (Phase 1)
+
+- [x] 1.1 — Core tables: tblSettings, tblSubscriptionTiers, tblOrganisations, tblOrgDomains, tblOrgShortDomains, tblUsers, tblUserSocialLogins, tblUserPassKeys, tblUserSessions
+- [x] 1.2 — Short URL tables: tblShortURLs, tblCategories, tblTags, tblShortURLTags, tblShortURLSchedules, tblShortURLDeviceRedirects, tblShortURLGeoRedirects, tblShortURLAgeGates
+- [x] 1.3 — Extended tables: tblActivityLog, tblErrorLog, tblAPIKeys, tblAPIRequestLog, tblLinksPageTemplates, tblLinksPages, tblLinksPageItems, tblSubscriptions, tblPayments, tblPaymentDiscounts, tblConsentRecords, tblDataDeletionRequests, tblLanguages, tblTranslations
+- [x] 1.4 — Stored procedures: sp_lookupShortURL, sp_logActivity, sp_generateShortCode
+- [x] 1.5 — Migration scripts (6 scripts for orgs, users, categories, URLs, settings, activity log)
+- [x] 1.6 — Seed data (subscription tiers, default org, settings, LinksPage templates, languages)
 
 ### v0.1.0 — Scaffolding (Phase 0)
 
@@ -51,11 +60,17 @@ None.
 - Branding/logo design included in Phase 0
 - All passwords from existing database will be force-reset during migration (currently plaintext)
 - `tblLicenses` (legacy NetPLAYER data) will NOT be migrated
-- Branding directory is `.BrandKit/` (not `_branding/` as originally planned)
+- Branding directory is `assets/BrandKit/` (moved from `.BrandKit/`)
+- New database uses InnoDB (replacing MyISAM) with proper FK constraints
+- Settings merged into single table with scope hierarchy (Default > System > Organisation > User)
+- Activity log migrated with batch approach (10K rows per batch) due to volume
+- QR codes excluded from project — will be a separate first-party service with future integration
+- Component A directory renamed from `GoToMy.Link` to `Go2My.Link` (domain name match)
+- Admin dashboard separated to `admin.go2my.link` subdomain (`_admin/public_html/`)
 
 ## Next Up
 
-**Phase 1: Database Schema Design & Migration** — Design new `mwtools_Go2MyLink` database (InnoDB, utf8mb4) with migration scripts for the existing 480 short URLs, 5 organisations, and 7 user accounts.
+**Phase 2: Core PHP Framework & Shared Infrastructure** — Build foundational PHP classes/functions shared by all 3 web properties: DB connection, settings, error handling, security, routing, accessibility helpers, and i18n infrastructure.
 
 ## Links
 

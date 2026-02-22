@@ -26,7 +26,7 @@ on:
         required: true
         type: choice
         options:
-          - GoToMy.link
+          - Go2My.Link
           - G2My.Link
           - Lnks.page
           - all

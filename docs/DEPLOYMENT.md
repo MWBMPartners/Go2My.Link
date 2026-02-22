@@ -20,6 +20,7 @@
 | Domain | Type | Points to | Purpose |
 | --- | --- | --- | --- |
 | `go2my.link` | A | Dreamhost IP | Main website (Component A) |
+| `admin.go2my.link` | CNAME | go2my.link | Admin dashboard (Component A) |
 | `g2my.link` | A | Dreamhost IP | Shortlink redirect engine (Component B) |
 | `lnks.page` | A | Dreamhost IP | LinksPage service (Component C) |
 
@@ -38,9 +39,10 @@ Each domain maps to a specific `public_html` directory:
 
 | Domain | Document Root |
 | --- | --- |
-| `go2my.link` | `web/GoToMy.link/public_html/` |
-| `alpha.go2my.link` | `web/GoToMy.link/public_html_dev_alpha/` |
-| `beta.go2my.link` | `web/GoToMy.link/public_html_dev_beta/` |
+| `go2my.link` | `web/Go2My.Link/public_html/` |
+| `admin.go2my.link` | `web/Go2My.Link/_admin/public_html/` |
+| `alpha.go2my.link` | `web/Go2My.Link/public_html_dev_alpha/` |
+| `beta.go2my.link` | `web/Go2My.Link/public_html_dev_beta/` |
 | `g2my.link` | `web/G2My.Link/public_html/` |
 | `lnks.page` | `web/Lnks.page/public_html/` |
 
@@ -48,7 +50,8 @@ Each domain maps to a specific `public_html` directory:
 
 ```
 ~/                              ← Dreamhost home directory
-├── go2my.link/                 ← Mapped from web/GoToMy.link/public_html/
+├── go2my.link/                 ← Mapped from web/Go2My.Link/public_html/
+├── admin.go2my.link/           ← Mapped from web/Go2My.Link/_admin/public_html/
 ├── g2my.link/                  ← Mapped from web/G2My.Link/public_html/
 ├── lnks.page/                  ← Mapped from web/Lnks.page/public_html/
 └── _shared/                    ← Mapped from web/ (shared includes, outside web root)
@@ -110,7 +113,7 @@ The application detects its environment from the hostname:
 
 1. Create new database alongside existing `mwtools_mwlink`
 2. Import new schema
-3. Run migration scripts from `web/_sql/migrations/` in order (1-7)
+3. Run migration scripts from `web/_sql/migrations/` in order (1-6)
 4. Verify all 480 URLs resolve correctly
 5. Verify organisation domain mappings
 6. Switch application to new database

@@ -10,7 +10,8 @@ GoToMyLink is a URL shortening platform comprising three interconnected web prop
 
 | Component | Domain | Role |
 | --- | --- | --- |
-| **A — Main Website** | [go2my.link](https://go2my.link) | Public face, user dashboard, short link creation, API |
+| **A — Main Website** | [go2my.link](https://go2my.link) | Public face, short link creation, API |
+| **A — Admin Dashboard** | [admin.go2my.link](https://admin.go2my.link) | User/org dashboard, link management, settings |
 | **B — Shortlink Domain** | [g2my.link](https://g2my.link) | Redirect engine for shortened URLs |
 | **C — LinksPage** | [lnks.page](https://lnks.page) | Customisable LinkTree-like link listing pages |
 
@@ -66,12 +67,14 @@ web/
 │   ├── migrations/      ← Data migration scripts
 │   ├── seeds/           ← Default/sample data
 │   └── procedures/      ← Stored procedures
-├── GoToMy.link/         ← Component A
+├── Go2My.Link/          ← Component A
+│   ├── _admin/          ← Admin/Dashboard application
+│   │   └── public_html/ ← Admin web root (admin.go2my.link)
 │   ├── _auth_keys/      ← Component-specific credential overrides
 │   ├── _includes/       ← Component-specific includes
 │   ├── _functions/      ← Component-specific functions
 │   ├── _libraries/      ← Component-specific libraries
-│   ├── public_html/     ← Production web root
+│   ├── public_html/     ← Production web root (go2my.link)
 │   └── ...              ← Other web roots
 ├── G2My.Link/           ← Component B (same sub-structure)
 └── Lnks.page/           ← Component C (same sub-structure)

@@ -10,7 +10,8 @@ GoToMyLink is a URL shortening platform comprising three interconnected web prop
 
 | Domain | Component | Purpose |
 | --- | --- | --- |
-| [go2my.link](https://go2my.link) | Main Website (A) | Public face, sign-up, dashboard, short link creation |
+| [go2my.link](https://go2my.link) | Main Website (A) | Public face, sign-up, short link creation |
+| [admin.go2my.link](https://admin.go2my.link) | Admin Dashboard (A) | User/org dashboard, link management, settings |
 | [g2my.link](https://g2my.link) | Shortlink Domain (B) | Default domain for shortened URLs (redirect engine) |
 | [lnks.page](https://lnks.page) | Links Page (C) | LinkTree-like customisable link listing pages |
 
@@ -38,7 +39,8 @@ GoToMyLink is a URL shortening platform comprising three interconnected web prop
 
 ```
 GoToMyLink/
-├── .BrandKit/               ← Logo and branding assets (see BRAND_GUIDELINES.md)
+├── assets/
+│   └── BrandKit/            ← Logo and branding assets (see BRAND_GUIDELINES.md)
 ├── .claude/                 ← Claude AI context (project brief, plans, memory)
 ├── .openai/                 ← OpenAI context
 ├── .sql/                    ← Database dumps (archived)
@@ -55,7 +57,7 @@ GoToMyLink/
 │   ├── _uploads/            ← Server-wide uploads (not web-accessible)
 │   ├── _backups/            ← Server-wide backups (not web-accessible)
 │   ├── _sql/                ← Database schema, migrations, seeds, procedures
-│   ├── GoToMy.link/         ← Main Website (Component A)
+│   ├── Go2My.Link/          ← Main Website (Component A)
 │   ├── G2My.Link/           ← Shortlink Domain (Component B)
 │   └── Lnks.page/           ← Links Page (Component C)
 ├── CHANGELOG.md

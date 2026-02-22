@@ -42,6 +42,18 @@ No `.php` extensions visible to users. Achieved via:
 - Debug mode → `?debug=true` URL parameter (restricted to admin/allowed IPs)
 - User-facing errors → Graceful branded error pages
 
+### QR Codes — External Service
+
+QR code functionality is NOT part of this project. It will be a separate first-party service.
+The `hasQRCodes` column in `tblSubscriptionTiers` is retained as a feature flag for future
+integration with that external service.
+
+### Admin Dashboard Subdomain
+
+The admin dashboard (user dashboard, link management, settings) is served from
+`web/Go2My.Link/_admin/public_html/` at `admin.go2my.link`. This is part of Component A
+but separated from the public-facing website.
+
 ## Gotchas & Tips
 
 ### PHP 8.5 vs 8.4

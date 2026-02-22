@@ -180,7 +180,7 @@ error_log
 # web/_libraries/*
 # !web/_libraries/.gitkeep
 # !web/_libraries/README.md
-# **/web/GoToMy.link/_libraries/*
+# **/web/Go2My.Link/_libraries/*
 # **/web/G2My.Link/_libraries/*
 # **/web/Lnks.page/_libraries/*
 
