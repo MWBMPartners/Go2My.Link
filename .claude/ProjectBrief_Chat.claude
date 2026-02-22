@@ -1,0 +1,407 @@
+We have created a "bare-bones" URL shortening web-based service which has served well as a early sample project.
+
+We now would like to expand this with additional, more advanced, functionality.
+
+This enhanced version is being fleshed out into a whole new product (it was previously only internal, and had no official name, but rather a kind of 'codename' of "MWlink". The new name will be "GoToMy.Link" (or with a GitHub Repo name of "GoToMyLink"). This is a product of MWBM Partners Ltd (under the trading name of MWservices), and will thus be under our organisation GitHub account GitHub.com/MWBMPartners)
+
+The Key of the basis/idea behind the new expanded webservice is a URL shortening service/website where a user can enter a URL, and have a short-url (short link) produced, in a similar way to Bit.ly.
+
+The app is to consist of the following:
+
+A) Main website/domain (using Bitly as an example, Bitly.com) for promotion/sign-up and quickly generating shortlink URLs. The "Face" of the new web service.
+B) Second website/domain name  (using Bitly as an example, Bit.ly) as the default domain for short links
+C) Third domain/website to provide a service similar to LinkTree, where a list of SOME defined links are listed on a single page. Useful for linking to across social media (we'll refer to this element of the service as LinksPage)
+C) API for generation of shortlinks using API Keys
+	Generation of Short link URLs in item A (whether by a logged in user or 'anonymous'/guest should use the same API in the background for generating shortlink URLS).
+
+As noted above, we alreay have a somewhat basic implementation of this. This early version uses a MySQL backend database (i can attach a databse copy), but i want to expand and enhanced this as detailed below:
+
+========================
+*TECH STACK and specific instructions*
+========================
+Please use the following technologies for development of the entire 'Portal' project
+* PHP (minimum PHP 8.5 for longevity - current as of November 2025 - but with backward compatibility for PHP 8.4 as well (via conditional statements etc) where necessary.
+	* PHP code should
+		* Use PHP Predefined Constants wherever possible to aid with host platform neutrality (ie, use DIRECTORY_SEPARATOR instead of '/' in paths, PHP_EOL etc)
+		* Full notation for code blocks such as (but not limited to) IF statements, no shortened notation
+		* source code should be indented appropriately (upon deployment, code CAN be minified to conserve bandiwidth, but from a dev point everything MUST be easy to read and follow, so indentation is extremely important) with detailed inline comments/annotations to assith with code readibility, understanding, debugging and future learning/maintenance of code
+			* Comments can/should provide links to external (preferrably official) documentation for further guidance. 
+		* A modular development structure
+		* Minimise code duplication but grouping shared code and reusing/reaccessing them via PHP REQUIRE, REQUIRE_ONCE, INCLUDE & INCLUDE_ONCE
+		
+		  appropriate checks and error handling for REQUIRED and INCLUDED components should be done to avoid errors should files not exist/not be retrievable
+		* Provide "switches" (perhaps via URL Parameters or other means) to enable detailed PHP error visiblity by use of a URL Param such as &debug=true (for dev purposes only)
+		* log PHP errors/notifictions/warnings (including severity, PHP error code, PHP Error title, error detail, backtrace) to a table in the backend database along with any other errors from components and requested page URL and request headers to assist with debugging/trouble shooting.
+		* Log general application activity (not just errors/notifications/warnings/problems) to assist with future development and prooduct support
+
+* MySQL Backend Database (connectin
+	* Interactions between PHP & MySQL via MySQLi only
+	* Use Prepared Statements for all SQL run in PHP - this is to help manage often re-used types of queries and also help with embedded code/query security mechanism to minimise SQL code enjection exploits(?) 
+	* Backend database to be used for ALL settings and config as well as records pertaining the Short Links (and integration with a separate QRCode generator app)
+	* Settings should also be stored in the database, including credentials (keys, secrets etc) for third-party services/libraries (like MS365 etc)
+	* any confidential secrets/keys (labelled as "isSensitive") must be SALTed and cryptographically encrypted using the latest industry standards for such functionality and sensitive information, before entry into the database to ensure data security. Encryption of these confidential info should also use SALT for added security. When retrieving these fields, they should also be decrypted for use.
+	* Pre-existing database structure (with some data) is included further down this outline
+
+    NOTE While the pre-existing database structure has ben provided, we'll be creating a new database (named mwtools_Go2MyLink) for this project, so as to not impact the existing live service during the development of this enhanced service, as such we are happy to totally redo the database structure as as it a "fresh look" for the newly enhanced (and significantly expandedd) service. We would however like to retain the existing shortlinks data as the intention is to replace the existing service with this newly enhanced one, and would like to migrate existing Short Links to the new service once launched. As such, this also needs to be taken into consideration. Please also include appropriate comments/descriptions for each table and column wherever possible.
+
+* HTML5
+	* Must be fully HTML5 compliant, and using modern HTML5 elements, standards and methodologies
+    * generated web pages (both for the 'public face of the service' website, the Short Link admin panels etc) should ALL be fully responsive, and dynamically adjust to the device it is being used on (large screen monitor/smart tv, tabel, phone etc) and at various DPI resolutions and orientations.
+    * Happy to use third-party libraries to facilitate this, including bootstrap, and graphics/icons tools like FontAwesome
+        For third-party libraries, please use the latest versions and refer to them via their official CDN repositories in the first instance. We're however also happy to have some local copies but these shouold be a contingency more than anything else.
+
+* For bot protection of shortlink creation (main website A) form submission (support for both, in order of preference, but the service used depends on provision of required API Keys/secrets)
+	* CloudFlare Turnstile
+	* ReCapture
+
+* Payments (includidng subscriptions) using PayPal, but support should also be offered including Apple Pay, Google Pay etc. Payments in Crypto Currencies should also be supported, and include the ability to discount payments made via configurable payment platforms.
+
+------------------------
+ *Used Domain Names*
+------------------------
+
+The following Domain names will be used for the various 'sections' of the websites (with the exception of organisation specific custom domains for short links):
+
+* Main Website (A): go2my.link
+* Default Shortlink Domain (B): g2my.link
+* Links Page (C): Lnks.page
+	
+
+========================	
+*SPECIFIC REQUIREMENTS*
+========================
+
+------------------------	
+*Overall*
+------------------------
+* While this will be hosted on Dreamhost shared hosting initially, please include flexibility for hosting on other PHP/MySQL supporting platforms, as such please use PHP constants and predefined constants wherever possible for platform neutrality/flexibility.
+* Given the project will (at least) initially be hosted on Dreamhost's Shared Hosting platform, access to CLI is not possible, as such access to tools like Composer cannot be relied upon. This means any third-party libraries that need to be installed/self-hosted (and cant just be used via referencing CDNs) need to be specifically called out and hosted on local server.
+
+------------------------	
+*Short URL Features/Functionality*
+------------------------
+* By default short urls will be created using our own standard 'short url domain name' (B)
+* Short link URLS will have the following format:
+	<linkdomain>/<linksuffix>
+
+	Where:
+		<linkdomaian> is either the services default domain used for short links or one defined by a registered organisation for use
+		<linksuffix> is a randomly generated alphanumeric code of betweeen 4-8 characters (character lengths limits can be configured by the service developer, or customised by the admin or a registered organisation). 
+						In the case of use by a registered user (indidividual user or under an organisation) the user is offered the opportunity to customise the <linksuffix> with no limitations to length. The only limitation being that the <linksuffix> must be unique to the <linkdomain> to be used.
+* Configured shortlinks should be able to have categories/tags assigned to them to assist with group/identification for analytics purposes.
+* Registered users (individuals or as part of another registered organisation) can customise the shortlink suffix
+* Registered organisations can 'link' their own custom short URL domain name, where all links generated by a registered user of that organisation will produce links under their own custom shortened domain name.
+	* Registered organisations can also configure their own website root domaian names (google.com). When doing so any 'long link' which they wish to shorten, from one of their predefined domains (including multi-level subdomains) are created under their own customer short domain
+		* A Mechanism to verify ownership of any owned root website domains should also be possible.
+
+	Example:
+		1) Org 'Google' is a registered user of the service.
+		2) An admin of the 'Google' registered organisation registers (and verifies) the following domain names as owned by them:
+			* Google.com
+			* Google.co.uk
+			* Google.co.za
+		3) An admin of the 'Google' Registered organisation also owns goog.link and registers this to be used for all their generated short domains.
+		4A) A registered user of the service, under the 'Google' registered dorganisation wants to create short links for the following URLs
+			* google.com/somespecialsearchurlwillgohere
+			* maps.google.com/somelongurltoagooglemapsspecialcontentpage
+			* google.co.uk/someukspecificlongurlheretoaukspecificpage?refID=q87db92wdsa
+		4B) the following (automated, ie no customised <linksuffix>) shortURLs are generated:
+			* goog.link/ahsywwd0
+			* goog.link/ox8wh20x
+			* goog.link/ao92uz0c
+
+	This also ensures/allows that if a anonymous/regular user were to use this service to shorten a Google link (based on this example) a Goog.link shortlink will always be generated, thus keeping Googles print always at the centre! In such cases, analytics for this shortlink will also be visible to the Google Org user account(s).
+* As target redirections can differ/change (see definition further down), redirections should be done as transparent 302 redirections.
+* Redirections should be done transparently (header) in all cases, except when a brief page is to be displayed (see further specification below), in which case Javascript redirect (with fallback manual link) is acceptible, for obvious technical reasons.
+* It must be possible to define a description for a short link (see column urlDescription in the existing Database Structure). This will be used as the 'label'/button for this link if displayed in a LinksPage. Short Link/<linksuffix> created by unregistered/anonymous user will not have this functionality available to them
+* It must be possible to define a validity date range for a created short link. ie link will only work/redirect between 1 Jan 2025-3 Jan 2025. (see columns urlStartDate and urlEndDate in the existing database structure) Short Link/<linksuffix> created by unregistered/anonymous user will not have this functionality available to them
+* It must be possible to explicitly disable a short link without defined validity dates. Short Link/<linksuffix> created by unregistered/anonymous user will not have this functionality available to them.
+
+  Deletion of short codes shold never be deleted, but instead deactivated within the database
+* It must be possible for a user (individual or as an organisation) to define which ShortURLs/links are displayed on the LinksPage (see column allowLinksPage in the existing Database structure) Short Link/<linksuffix> created by unregistered/anonymous user will not have this functionality available to them
+* If (using the Google examples above) a user visits goog.link without proviing a <linksuffix>, the "LinksPage' for this 'Google' Organisation should be shown. Short Link/<linksuffix> created by unregistered/anonymous user will not have this functionality available to them. Possible PREMIUM Paid feature
+* It must be possible to configure a short link URL to redirect to the final destination of another pre-exxisting short link URL (see column urlID in the existsing database structure) effectively acts as an alias to the other (see column urlRedirAlias in the existsing database structure).  Short Link/<linksuffix> created by unregistered/anonymous user will not have this functionality available to them.
+    If we could merge ethe urlRedirAlis and urlRedirLong into one field, and have the system intelligently detect if its a alias or 'proper' destination redirect, that may also be better.
+
+* It must be possible for the destination URL to be validated (if supported) by the 'redirector' before redirection takes place. (see column urlValidateRedirURL in the existing database structure, were we also can explicitly disable destination URL checking both for supported or unsupported destination URLs)
+	* Redirection is only supported in some destination contexts. ie HTTP or HTTPS urls for example. This should only be possible for scenarios where the destination URI is verifiable from within PHP.
+	* In this case, a verified URI is one returning a 200 OK. A URL returning other codes (especially 404 NOt Found) would fail.
+	* Destination URLs that fail validation should present users with a user friendly error message and (configurably) redirect the user to another page (maybe the users/orgnations main websiet) after a (again, configurable) delay.  Short Link/<linksuffix> created by unregistered/anonymous user will not have the functionality to optionally redirect  a failed <linksuffix> to a alternative URL after a short delay.
+* It must be posssible to define comments/notes assigned to short link. (see column urlNotes in the existsing database structure). THis can be used by the user remind them what/why the redirect was configured. This can use useful later for audit purposes. This should allow a long string of text.
+* A registered Short link <linksuffix> 'owner' must be able to change the destination of a short link <linksuffix> at any time from within the User/Admin Control Panel. Short Link/<linksuffix> created by unregistered/anonymous user will not have this functionality available to them
+* Support for entering a Zoom Meeting Code and (if applicable) should be able to identify the full Zoom Meeting URL and create a shortlink/<linksuffix> to that Zoom Meeting (possibly as a PREMIUM PAID feature, still to be decided if paid or free)
+* There should also be support for some special, conditional redirections of short links <linksuffix>. Any combination of the allow should be able to be configured by a registered user (individual or organisation). Some of these features and examples listed below may also be restrictured as a PREMIUM PAID feature.
+	* It should be possible to define a short link/<linksuffix> as unsuitable for a specific age (ie minimum age). In such cases, the user MUST first be presented with a method by which they can enter their date of birth (with a message saying access to the content is restricted to certain ages, but do not disclose the age). Preferrably use a date picker to ensure we have consistency with date entry formats. On submisssion of visitor DOB, the script should then determine the visitors age on that date/moment in the background, and if the age meets the minimum defined age, redirect as normal. If not of appropriate age, a user friendly message should be displayed stating that access is not permitted.  Short Link/<linksuffix> created by unregistered/anonymous user will not have this functionality available to them. it may also be a premium PAID feature.
+	* It should also be possible to have a particular <linksuffix> assigned to a schedule, where depending on the schedule it will redirect to different destination URLs. Example
+		* goog.link/magic short link is created, but it this <linksuffix> (magic) redirects to different destinations depending on when it is used/accessed/visited. This sould also support recurring schedules. See an example below:
+			* Redirect to images.google.com/abclink on every wednesday between 01:00-07:45
+			* Redirect to maps.google.com/abclink2 every Saturday between 10:00-12:00
+			* Redirect to news.google.com/abcnewslink on the first Saturday of the month, between 10:00-12:00
+			* redirectc to google.com/holidays every year between (25 Dec - 01 Jan, inclusive)
+			* Redirect to Sheets.Google.com/somesheetsurl at any other time
+	* It must be possible for a short link (<linksuffix> to have multiple destination URLs based on.
+		* Device (eg. Windows Laptop/PC, Mac Laptop/PC, Android Phone, Android Tablet, Apple Phone, Aapple Tablet/iPad etc)
+
+	 	Short Link/<linksuffix> created by unregistered/anonymous user will not have this functionality available to them. This will also be a PREMIUM Paid feature
+
+        An example of what this could do....
+            * User on iphone visits goog.link/letsgo, is redirected to google.co.uk/letsgo/iphone
+            * User on android phone visits goog.link/letsgo, is redirected to google.co.uk/letsgo/android/phone
+            * User on android tablet visits goog.link/letsgo, is redirected to google.co.uk/letsgo/android/tablet
+            * User on Mac visits goog.link/letsgo, is redirected to google.co.uk/letsgo/Mac
+            etc
+	* It must also be possible to whitelist/blacklist locations from being able to access a short link, where the defined locataions are stored in the database by ISO 3166-1 and/or ISO 3166-2 codes (as/where applicable.) Whilst the data is stored in the database using ISO Codes, form a user implementation perspective, this must be searchable using a live search.
+		* It must also be possible for a single <linksuffix> to redirect to different destination URLs based on the visitor location
+* short link acitivty should be logged to allow the 'owner' of the short link to view detailed analytics data from an analytics dashboard within the User/Admin Control Panel. Analytics data should be detailed, but at least provide the following for each shortlink within their account (individual or organisation):
+	* URL
+	* IP Address (also flag if access was via a VPN/Proxy)
+	* Geographic Locataion accessed from. Granularity will vary depending on if GPS info is available or if IP geolocation is used. to protect visitors though, we will never use street level location info. Supported 'levels' include:
+		* suburb (PRemium paid feature)
+		* City/Town
+		* Province/County
+		* State (if applicable)
+		* Country
+		* Content (with disclaimer as to why such a wide area  used)
+	* User Agent, including breaking down the following:
+		* Browser and Browser version
+		* Device
+		* Device Model
+		* Device Screen Resolution
+		* Device Screen Orientation
+
+		Note, not all device level info will always be obtainable.
+	* Referring URL
+
+	  Short Link owners should be able to dynamically list the above by hour, day, week, month, year etc. With diagrams (graphs, pie charts etc) being generated to help visualise the data, and place pins on a map for location related info. It should also be possibe to export this info a Excel or similar spreadsheet.
+	* Destination Redirect URL
+	* Redirect Success/Failure rates
+
+ 
+
+* A Modern Web-based UI should be created for the creation of new short links. Management of existing Short Links should be done via the User Control Panel, or Admin Control Panel which can be accessed by logging on on the main homepage of the main website.
+
+------------------------	
+*User Accounts*
+------------------------
+* A user can register an Organisation. This would create the Organisation and their individual user account under that organisation. As the persson creating the organisation, they will also be made Global Admin of that organisation.
+	* Organisation Global Admins can also setup new users within the Organisation with either Admin privileges (admin, but with fewer 'powers' than Global Admin.) or Regular USer access.
+	* Organisation Regular Users can only create new short links. Modifying of existing short links will be a defineable permission.
+	* Organisation Global Admins will also be the only account able to manage which domain names are assoicated with the organisation, manager all users, manage subscription/payments etc.
+	* Global Admins will also be able to setup Single Sign On using corporate providers such as (but not necessarily limited to):
+		* Microsoft 365
+		* Google Workspace
+		* self-hosted wordpress.
+		
+		Any SSO account MUST also be linked to a local/internal account within the application.
+		Support for linking multiple accounts from these corporate account providers (MS365, Google Workspace etc) should also be possible, but can be fully configured what limitations there are by the Organisational Global Admin
+	* Organisational Admins can 'invite' other members to create an account. this should send an email with a tokanised link which would create the user within the organisation
+* A user can register an individual user account. This creates a local/internal user account within the application, as a "User" type.
+	* Local 'application' user accounts will also be used as 'universal' accounts for other apps provided by us, so the account setup should also tae this into consideration.
+	* A User can also create an account/link their internal 'local'/universal account to one or more from social media provideers (including linking to multiple accounts from the same social media provider, with a limit of up to 3 per social media provider - though this upper limit should be configurable). Supported providers should be:
+		* Microsoft Account
+		* apple ID
+		* Google Account
+		* Meta/Facebook logging
+		* Yahoo!
+		* Amazon Account
+
+		It should also be possible to link any number of these login providers to a local/internal user account
+* 2FA and PassKey should also be supported for extra security (with PassKey offering convenience and security)
+* Local accounts will be used first, but we plan on rolling out integration with our SIGNula, our other first-party service, via API integration when it is ready for release. Once ready, provide a mechanism to link local account(s) to SIGNula (either via linking to existing SIGNula accounts or creating new ones)
+
+------------------------	
+*API*
+------------------------
+Secure API (utilising API Keys/CSRF and other security standard mechanisms) must also be supported, with the following functionality
+
+* Create Short URL
+* Modify Short URL
+* Disable Existing Short URL
+* Access Analytics info
+
+API should have the capability to return data in the following formats:
+* JSON (default)
+* XML (very structured with embedded XSLT for easier view in browser)
+
+API can also be used to create a companion mobile app or managing your short URLs and user acounts.
+
+As with the main components of the app, we do not want to expose that we use PHP for the backend workings of the API, as such API endpoints should not be link create.php. Instead maybe have the actual API endpoint processing in a index.php within a create subdirectory (for example).
+
+------------------------
+	*Directory/File Structure*
+------------------------
+As this "overarching" project comprises of 3 components/elements...file structure is important, as we'll need to separate the web file for each of the 3 (for DNS purposes), whilst still hosting them on the same host server/account.
+
+Within this repository, ALL components that need to be uploaded to the web must be within web/, with its own sub-directories structured as below (where <server> is the aformentioned web/):
+
+
+
+* Main Website (A): go2my.link
+* Default Shortlink Domain (B): g2my.link
+* Links Page (C): Lnks.page
+
+
+<server>
+├── _auth_keys/                 	← Site/Server-Wide 🔐 MS365 / DB creds / reCapture / Cloudflare Turnstile & other API Keys (outside web root)
+│   ├── auth_creds.php				← Stored securely (not accessible via web)
+├── _includes/                  	← Stores Site/Server-wide shared 'includes' that are not directly publically accessible
+├── _functions/                		← Stores Site/Server-wide shared 'functions' (PHP or other) that used via php include/require and are not directly publically accessible
+├── _libraries/                 	← Stores Site/Server-wide shared 'libraries' (dompdf, Parsedown etc)
+├── _uploads/                 		← Stores Site/Server-wide 'uploads' that are not directly publically accessible
+├── _backups/                 		← Stores Site/Server-wide 'backups' that are not directly publically accessible
+├── GoToMy.link/			← Main Website (A): public/PR/"face of the service" website
+│   ├── _auth_keys/                 ← Website specific DB creds (outside web root) IF different from side/server wide wide
+│   │   ├── auth_creds.php          ← Stored securely (not accessible via web)
+│   ├── _includes/                  ← Website specific shared 'includes' that are not directly publically accessible
+│   ├── _functions/                 ← Website specific shared 'functions' (PHP or other) that used via php include/require and are not directly publically accessible
+│   ├── _libraries/                 ← Website specific shared 'libraries' (dompdf, Parsedown etc)
+│   ├── _uploads/                 	← Website specific 'uploads' that are not directly publically accessible
+│   ├── _backups/                 	← Website specific 'backups' that are not directly publically accessible
+│   ├── private_html/               ← Website Private HTML (placeholder structure element, may never be used)
+│   ├── public_html/                ← Website public web root (publicly accessible via web)
+│   ├── public_html_dev_alpha/		← Website Beta Development web root (publicly accessible via web, but may have auth restrictions via either .htaccess or other mechanisms)
+│   ├── public_html_dev_beta/		← Website Beta Development web root (publicly accessible via web, but may have auth restrictions via either .htaccess or other mechanisms)
+│   ├── public_html_landing/		← Website Public Landing Web Root (publicly accessible via web, but only used in pre-launch to show landing/coming soon page)
+│   ├── public_html_redir/			← Website Redirection Web Root (publicly accessible via web, but only used in limited cases where a redirection is needed.)
+│   ├── README.md                   ← Website notes/Readme
+│   └── CHANGE.log              	← Website changelog
+│
+├── G2My.Link/	← Default Shortlink Domain (B): Short Link web files (used for resolving/redirecting short links)
+│   ├── _auth_keys/                 ← Website specific DB creds (outside web root) IF different from side/server wide wide
+│   │   ├── auth_creds.php          ← Stored securely (not accessible via web)
+│   ├── _includes/                  ← Website specific shared 'includes' that are not directly publically accessible
+│   ├── _functions/                 ← Website specific shared 'functions' (PHP or other) that used via php include/require and are not directly publically accessible
+│   ├── _libraries/                 ← Website specific shared 'libraries' (dompdf, Parsedown etc)
+│   ├── _uploads/                 	← Website specific 'uploads' that are not directly publically accessible
+│   ├── _backups/                 	← Website specific 'backups' that are not directly publically accessible
+│   ├── private_html/               ← Website Private HTML (placeholder structure element, may never be used)
+│   ├── public_html/                ← Website public web root (publicly accessible via web)
+│   ├── public_html_dev_alpha/		← Website Beta Development web root (publicly accessible via web, but may have auth restrictions via either .htaccess or other mechanisms)
+│   ├── public_html_dev_beta/		← Website Beta Development web root (publicly accessible via web, but may have auth restrictions via either .htaccess or other mechanisms)
+│   ├── public_html_landing/		← Website Public Landing Web Root (publicly accessible via web, but only used in pre-launch to show landing/coming soon page)
+│   ├── public_html_redir/			← Website Redirection Web Root (publicly accessible via web, but only used in limited cases where a redirection is needed.)
+│   ├── README.md                   ← Website notes/Readme
+│   └── CHANGE.log              	← Website changelog
+│
+├── Lnks.page/	← Links Page (C): Short Link web files (used for resolving/redirecting short links)
+│   ├── _auth_keys/                 ← Website specific DB creds (outside web root) IF different from side/server wide wide
+│   │   ├── auth_creds.php          ← Stored securely (not accessible via web)
+│   ├── _includes/                  ← Website specific shared 'includes' that are not directly publically accessible
+│   ├── _functions/                 ← Website specific shared 'functions' (PHP or other) that used via php include/require and are not directly publically accessible
+│   ├── _libraries/                 ← Website specific shared 'libraries' (dompdf, Parsedown etc)
+│   ├── _uploads/                 	← Website specific 'uploads' that are not directly publically accessible
+│   ├── _backups/                 	← Website specific 'backups' that are not directly publically accessible
+│   ├── private_html/               ← Website Private HTML (placeholder structure element, may never be used)
+│   ├── public_html/                ← Website public web root (publicly accessible via web)
+│   ├── public_html_dev_alpha/		← Website Beta Development web root (publicly accessible via web, but may have auth restrictions via either .htaccess or other mechanisms)
+│   ├── public_html_dev_beta/		← Website Beta Development web root (publicly accessible via web, but may have auth restrictions via either .htaccess or other mechanisms)
+│   ├── public_html_landing/		← Website Public Landing Web Root (publicly accessible via web, but only used in pre-launch to show landing/coming soon page)
+│   ├── public_html_redir/			← Website Redirection Web Root (publicly accessible via web, but only used in limited cases where a redirection is needed.)
+│   ├── README.md                   ← Website notes/Readme
+│   └── CHANGE.log              	← Website changelog
+├── README.md                       ← Internal notes
+└── CHANGE.log              		← Internal changelog
+            
+
+
+------------------------
+	*Web Page Design*
+------------------------
+* In addition to having pre-supplied templates for the LinksPage page designs, It would also be useful, and user-friendly to have the ability for a user/admin to design their own LinksPage page templates using either a blocks-based WYSIWYG editor (where various 'sections' are represented by blocks than can be added/moved/resized into place) or the ability to upload the template as an HTML file. In both cases (WYSIWYG and html upload), their should be the ability to use 'placeholder text markers' that will be replaced by the relevant data (text or images) when the page is displayed
+* The LinksPage should also support displaying manually defined links, that do not originate/come from this link shortening service.
+* The LinksPage should also have the ability to 'intelligently' detect the favicon of the destination site, and use that within the listing of the relevant link for further user-friendly identification.
+* LinksPage should also have the ability to ask for a visitors Date of Birth for age verification purposes. This should be able to be enabled for any link, but should also have a mechanism for them to be automatically added for some adult only websites (OnlyFans etc). As with shortlinks, the age for these should also be definable for all destination links, apart from those with build in configuration of being identified as for 'adults only'
+
+------------------------
+	*Web Page Design*
+------------------------
+* Web pages should be fully responsive, and accommodate all screen sizes & orientations
+* Should also be compliant with all current standards
+* Should take accessibilty into WCAG compliant to support users with impairements, including a toggle for colour blind users and screenreader support.
+* Fully HTML5 compliant and use the latest and greatest HTML5 features, whilst also "gracefully" falling back for browsers that do not support them.
+* Styling of the UI should use modern CSS including CSS 3+ and can make use of modern/advanced switches and even animations.
+* Pages should indicate to the user that they're logged in, by showing something in the top-right corner (as is commonly the norm in the industry).
+  This should display
+	* User avatar (in this priority order: Locally stored Bespoke/User Specified/Defined Avatar/Profile Picture from tblUSers in database > MS365/Google Workspace etc > Gravatar > default/placeholder avatar)
+	* Name of user
+	* A means to change user profile settings (possible via drop-down menu when clicking on Name and Avatar)
+* ALL config (with the exception of database connection credentials) should be stored in the Backend MySQL Database (tblSettings table).
+    * Database connection credentials to be stored outside of web accessible web paths in relevant _auth_keys/auth_creds.php, which will stored the info, but if ever tried to be accessed directly would not return/echo any info, but should perhaps redirect to the main website (Go2My.Link)
+* Some settings, like MS365/Google Workspace etc credentials should also be able to be stored in a private location on the server as a fallback (perhaps also within the relevant _auth_keys/auth_creds.php file as stated above?).
+* It should also be possible for new settings to be added at any time by a Global Admin using the Web UI, to minimise requirement to have to manually update PHP Code too much to take these new settings to account.
+* Values for settings marked as 'isSensitive' (as well as fields storing ANY user passwords/keys/certs) should be appropriately cryptographically encrypted/hashed to current industry high security/crypographic standards, also using a strong SALT for increased security, to ensure these are safe/secure - but also allow them to be internally decrypted for use as/when required.
+* Whilst PHP will be used, the end user should not see this even in places like webpage/form/processor URLs. Not only is this unprofessional but it could also be a security risk as it exposes to potential attackers that PHP is used. Therefore all URLs should be visible as /something/somepage. This can perhaps be achieved by either a router (managed/stored in SQL database), or by simply ensuring the content is in a a location like /something/somepage/index.php (as in the case of the above example)
+* Appropriate user-facing error handling should also be implemented, as well as backend error handling for server-side PHP scripts and log these into the Activity Log for later development and fixing by the development and Global Admin teams.
+* Form fields (for ALL apps) should
+	* Have dynamic field validation wherever possible
+	* Use datepickers to ensure consistent format for entered dates.
+	* Use ReCaptcha or CloudFlare Turnstile, provided the relevant API Keys are provided (preferred backend database, but fallback in auth.php). If no API Keys provided dont use these technologies for form submission.
+* Web pages should also be designed to support use as a WebApp across all supported platforms and browsers, including but not limited to use as a PWA. This can be used for an initial web app until native apps are developed.
+
+Beta & alpha versions for each app will be placed in public_html_dev_beta & public_html_dev_alpha folders (as opposed to public_html for "fully released versions")
+Can we also consider implementing access control for alpha and beta versions of app to limit who's can access.
+
+For further flexibility, some future features may only be accessible via a payment (one-off or subscription). Therefore a mechanism for managing multi-tier payment/subscription levels shoold also be included, with payment accepted via PayPal (also via Apple Pay or Google Pay on supported platforms/devices), and payment records, status and access availability needs to also all be stored in the backend database. Payment for such services could be accomodated by service specific setup or via future integration with our own first party SIGNula service.
+
+All code (including Javascript, CSS, PHP & SQL) should be fully/completely commented/annotated in detail, to assist with understanding of code and functionality, make code readable and also assist with future learning and debugging. Code should also be properly indented for improved human readability. Happy to use emojis in comments to help "call-out" sections of comments. 
+
+We would also like to use AJAX where possible to dynamically load/change content to avoid entire page refreshes. However use of AJAX should not be a blocker if a browser doesnt support/have javascript/AJAX enabled. it should still be possible to use everything in the portal/sub-apps without AJAX
+Please use Bootstrap, and other technologies/libraries (FontAwesome, JQuery etc) to achieve the required functionality, but please note the project will be hosted on Dreamhost Shared Hosting, so any libraries will need to be manually downloaded and uploaded as Compile and similar functionality is not available. Happy to use libraries from CDNs as a priority, but would be good to have a fallback to selfhosted should CDNs be down.
+
+Any graphics/icons should be in SVG (Vector) to improve scalability and should offer a Base64 encoded fallback for browsers/clients that do not support SVG. (SVG support should be detected dynamically wherever possible). Animated SVG (vector) are also acceptible for icons
+
+We're trying to achieve wide compatibility and a user friendly feel, especially some users may not be computer savvy.
+
+With this in mind, we're looking for a modular design/development structure with a focus on functionality, security, data integrity as well as flexibility/scalability
+
+Primary development environment will be on Mac OS (Windows occassionally) with Visual Studio Code as our IDE where we also intend to use the ftp-sync extension. We would like to have a GitHub repo to manage the development and staging of the project. please also suggest the best way to setup and manage this project within a GitHub repo
+
+For security reasons, can includes, require etc be placed outside of web accessible directories. We want to ensure only the necessarily files for public access in web-accesssible folders. Any directories used for private (not web accessible files) should have a underscore '_' prefix.
+
+------------------------
+	*Terms of Use & Data Policy*
+------------------------
+As we use and collect (limited data), please also generate the following:
+
+* Terms of Use Policy
+* Copyright Notice(s)
+* Data Protection & Cookies Policy
+  including for compliance with
+	* GDPR
+	UK GDPR + DPA 2018
+	* CCPA / CPRA / VCDPA / CPA / CTDPA / UCPA
+	* HIPAA
+	* COPPA
+	* PIPEDA (Canada)
+	* LGPD (Brazil)
+	* Privacy Act 1988 (Australia) + Notifiable Data Breaches scheme
+	* Privacy Act 2000 (New Zealand)
+	* DPDP Act (India)
+	* PIPL (China)
+	* CSL & DSL (China)
+	* APPI (Japan)
+	* PIPA (South Korea)
+	* POPIA (South Africa)
+
+	Please also build in functionality to manage any data to comply with the above data protection laws.
+
+A future (first-party) QRCode generator website/service will also use the URL shortener to generate URL based QRCodes, via this API. Perhaps consider that as well when building database sstricture to provide mechanism for linking the two together?
+
+Throughout the project, create and maintain README.md files as well as CHANGELOG.md, PROJECT_STATUS.md, DEV_NOTES.md to help track key notes/readmes, project status, developer notes and changelogs.
+
+Please also log Claude prompts, memory and context in .claude/ throughout to help with future development
+
+OpenAI/ChatGPT/Codex prompts, memory and contact info should be saved/stored/kept current and saved in .openai
+
+Please also dynamically maintain .gitignore, for development on Windows or MacOS via Visual Studio Code or Xcode, for the entire project as we progress, includig exclusion of ftp-sync.json files created by the FTP Sync Visual Studio Code extension.
+
+As this project will be hosted on a GitHub Repo (https://github.com/MWBMPartners/GoToMyLink), please also Setup, and constantly maintain use of the following GitHub functionality:
+ * GitHub Issues - For Issue and Feature Request tracking
+ * GitHub Project - for managing the overall project
+ * GitHub Wiki - for GitHub hosted wiki docs
+ * GitHub Security - setup with appropriate suggested settings
+ * GitHub Actions - as appropriate for code checking and potentially also for auto-upload (via SFTP) of some repo directories to web hosts
+
+ Any other suggested GitHub features
+
+Before we start, can you summarise the current platform and a summary/build plan ahead of starting dev. I'd like to keep a track of build progress at each stage, therefore can we also run through the progress/checklist after each "stage"/step.

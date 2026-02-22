@@ -416,3 +416,9 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Local History for Visual Studio Code
+.sql/.archive/
+
+# MacOS Finder metadata files
+.DS_Store
