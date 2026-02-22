@@ -1,0 +1,14 @@
+<svg viewBox="0 0 1200 400" xmlns="http://www.w3.org/2000/svg">
+<g transform="translate(80,90) rotate(-25)">
+<rect x="0" y="0" width="180" height="90" rx="45" fill="#1E88E5"/>
+<rect x="110" y="60" width="180" height="90" rx="45" fill="#43A047"/>
+</g>
+
+<polygon points="180,170 260,200 180,230 200,200" fill="white">
+<animate attributeName="opacity" values="1;0.4;1" dur="1.5s" repeatCount="indefinite"/>
+</polygon>
+
+<text x="350" y="230" font-family="Arial" font-size="110" font-weight="bold" fill="#1E88E5">Go</text>
+<text x="500" y="230" font-family="Arial" font-size="110" font-weight="bold" fill="#43A047">2My</text>
+<text x="760" y="230" font-family="Arial" font-size="110" font-weight="bold" fill="#555555">.link</text>
+</svg>
