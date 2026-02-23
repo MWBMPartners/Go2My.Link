@@ -36,10 +36,10 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 - 📝 **Static Pages** — About, Features, Pricing, Contact (with email), Legal (Terms, Privacy, Cookies)
 - 🔍 **URL Info** — Public short code lookup with masked destination, status badges
 - 📐 **JSON Schema Validation** — Schema definitions (draft 2020-12) with pure-PHP validator for API responses and database JSON
+- 🏢 **Organisations** — Create/manage organisations, member invitations (email with tokenised accept), role enforcement, custom domain DNS verification, short domain management
 
 ### 🔜 Planned
 
-- 🏢 **Organisations** — Multi-org accounts, team management, custom short domains
 - 🔐 **Advanced Auth** — Social login (Google/GitHub), 2FA (TOTP), passkeys (WebAuthn), SSO
 - 📡 **REST API** — JSON/XML endpoints, API key auth, OpenAPI/Swagger docs (#75)
 - 📊 **Analytics** — Click tracking, geographic maps, device breakdown, data export
@@ -72,7 +72,7 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 | ✅ | 2 | v0.3.0 | PHP Framework | 11 | **Complete** |
 | ✅ | 3 | v0.4.0 | Core Product | 10 | **Complete** |
 | ✅ | 4 | v0.5.0 | User System: Auth & Dashboard | 4 | **Complete** |
-| 🔜 | 5 | v0.6.0 | Organisation Management | 1 | Next Up |
+| ✅ | 5 | v0.6.0 | Organisation Management | 1 | **Complete** |
 | 📋 | 6 | v0.7.0 | Compliance, Legal & Pre-Launch | 8 | Planned |
 | 🏁 | — | v1.0.0-rc | **PRE-RELEASE CANDIDATE** | — | — |
 | 📋 | 7 | v1.1.0 | Advanced Authentication | 4 | Post-Launch |
@@ -81,7 +81,7 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 | 📋 | 10 | v1.4.0 | Advanced Redirects | 6 | Post-Launch |
 | 📋 | 11 | v1.5.0 | Payments & Subscriptions | 4 | Post-Launch |
 
-> **42 of 78 issues complete (54%)** — tracked on the [GitHub Project Board](https://github.com/orgs/MWBMPartners/projects/4)
+> **43 of 78 issues complete (55%)** — tracked on the [GitHub Project Board](https://github.com/orgs/MWBMPartners/projects/4)
 
 ### ✅ Phase 0 — Scaffolding (v0.1.0)
 
@@ -129,9 +129,14 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 - 🖥️ Admin dashboard: stats overview, link CRUD, profile + password change, session management
 - 🌱 14 database settings for auth, security, email, and password policy
 
-### 🔜 Phase 5 — Organisation Management (v0.6.0)
+### ✅ Phase 5 — Organisation Management (v0.6.0)
 
-- 🏢 Organisation management, team accounts, custom short domains (#32)
+- 🏢 Organisation CRUD: create, edit settings, overview dashboard with stats
+- 👥 Member management: invite (email with tokenised accept), role change (User ↔ Admin), remove
+- 🌐 Custom domain management: add, DNS TXT verification, remove
+- 🔗 Short domain management: add, set default, remove
+- 🛡️ Role enforcement: GlobalAdmin > Admin > User with `canManageOrg()` permission check
+- 🗄️ tblOrgInvitations schema + 12 org settings + JSON Schema
 
 ### 📋 Phase 6 — Compliance, Legal & Pre-Launch (v0.7.0)
 
@@ -166,7 +171,7 @@ Go2My.Link/
 ├── ⚙️ .github/workflows/        ← CI/CD (PHP lint, release, SFTP deploy)
 ├── 📚 docs/                     ← ARCHITECTURE, DATABASE, API, DEPLOYMENT
 ├── 🌐 web/
-│   ├── ⚙️ _functions/           ← Shared PHP functions (10 files)
+│   ├── ⚙️ _functions/           ← Shared PHP functions (11 files)
 │   ├── 📦 _includes/            ← Shared templates + email templates
 │   ├── 📦 _libraries/           ← Local fallback libraries (Bootstrap, jQuery, FA, Chart.js)
 │   ├── 📐 _schemas/             ← JSON Schema definitions (api, database, external)

@@ -4,7 +4,7 @@
 
 ## 🏗️ Current Phase
 
-**Phase 5: Organisation Management** — 🔜 Next — preparing to start
+**Phase 5: Organisation Management** — ✅ Complete
 
 ## 📋 Build Progress
 
@@ -15,7 +15,7 @@
 | Phase 2 | v0.3.0 — PHP Framework | ✅ **Complete** | 11 issues | — |
 | Phase 3 | v0.4.0 — Core Product | ✅ **Complete** | 10 issues | — |
 | Phase 4 | v0.5.0 — User System: Auth & Dashboard | ✅ **Complete** | 4 issues | — |
-| **Phase 5** | **v0.6.0 — Organisation Management** | 🔜 **Next** | **1 issue** | **20h** |
+| **Phase 5** | **v0.6.0 — Organisation Management** | ✅ **Complete** | **1 issue** | **20h** |
 | **Phase 6** | **v0.7.0 — Compliance, Legal & Pre-Launch** | 🔜 Not Started | **8 issues** | **99h** |
 | — | **v1.0.0-rc — PRE-RELEASE CANDIDATE** | — | — | — |
 | Phase 7 | v1.1.0 — Advanced Authentication | 🔜 Not Started | 4 issues | 68h |
@@ -25,6 +25,10 @@
 | Phase 11 | v1.5.0 — Payments & Subscriptions | 🔜 Not Started | 4 issues | 60h |
 
 ## ✅ Completed Milestones
+
+### v0.6.0 — 🏢 Organisation Management (Phase 5)
+
+- [x] 5.1 — 🏢 Organisation management: create org, edit settings, overview dashboard, member management, email invitations with tokenised accept flow, custom domain DNS verification, short domain management, role enforcement (GlobalAdmin > Admin > User) (#32)
 
 ### v0.5.0 — 🔑 User System: Auth & Dashboard (Phase 4)
 
@@ -119,8 +123,6 @@ None.
 - 📋 **Issue templates** — Added Bug Report, Feature Request, Phase Task forms + PR template
 
 ## 🔜 Next Up
-
-**Phase 5: Organisation Management** — Create/edit organisations, member roles, domain management, invitation system. 1 issue (#32). Target: 2026-03-07.
 
 **Phase 6: Compliance, Legal & Pre-Launch** — GDPR/CCPA legal documents, cookie consent, data subject rights, DNT support, PWA, WCAG audit, migration plan, translations. 8 issues. Target: 2026-04-04.
 

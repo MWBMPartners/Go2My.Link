@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ✨ Added (Phase 5 — Organisation Management)
+
+- 🏢 **Organisation management functions** — 18+ functions in `web/_functions/org.php`: `createOrganisation()`, `getOrganisation()`, `updateOrganisation()`, `canManageOrg()`, member/invitation/domain management (#32)
+- 👥 **Member management** — `inviteMember()`, `acceptInvitation()`, `removeMember()`, `changeMemberRole()`, `getPendingInvitations()` with email invitation flow (#32)
+- 🌐 **Custom domain management** — `addOrgDomain()`, `verifyDomain()` (DNS TXT lookup), `removeOrgDomain()` with verification token system (#32)
+- 🔗 **Short domain management** — `addOrgShortDomain()`, `removeOrgShortDomain()`, `setDefaultShortDomain()` (#32)
+- 🗄️ **tblOrgInvitations schema** — New table for email-based org invitations with SHA-256 hashed tokens, status tracking, and 7-day expiry (#32)
+- 🌱 **Phase 5 settings seed** — 12 new settings: invitation expiry, max invitations, DNS verify prefix, max domains/short domains per tier, reserved handles, handle validation, org creation control (#32)
+- 🖥️ **Admin dashboard — Org pages** — 7 new pages at admin.go2my.link/org/ (#32):
+  - Organisation overview with stats cards and quick links
+  - Create Organisation form with handle validation
+  - Organisation settings (basic info for Admin, admin controls for GlobalAdmin)
+  - Member management with role change, remove, and pending invitations table
+  - Invite Member form with role assignment
+  - Custom domain management with DNS verification instructions
+  - Short domain management with default selection
+- 📧 **Invitation email template** — Branded HTML email with accept button, org name, inviter details, and 7-day expiry notice (#32)
+- 🌐 **Public invitation accept page** — Token validation, login redirect for unauthenticated users, org membership check, acceptance flow (#32)
+- 📐 **JSON Schema** — `org-invitation.schema.json` for tblOrgInvitations records (#32)
+
+### 🔄 Changed (Phase 5)
+
+- 🔀 **page_init.php** — Added `org.php` to Layer 3 function loading (after auth.php)
+- 🔀 **nav.php** — Added "Organisation" link to logged-in user dropdown (between "My Links" and "Profile")
+- 📋 Version bumped to 0.6.0 across modified files
+
 ### 🏗️ Infrastructure
 
 - 🏷️ **Product rename** — Corrected product name from "GoToMyLink" to "Go2My.Link" across all ~116 files (PHP, SQL, MD, YAML, JS, CSS, HTML, htaccess)

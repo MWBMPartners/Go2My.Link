@@ -74,6 +74,20 @@ Cross-subdomain session sharing uses cookie domain `.go2my.link` in production (
 
 Emails are sent via PHP `mail()` using `g2ml_sendEmail()` with HTML templates in `web/_includes/email_templates/`. Template rendering uses output buffering with `extract($data)` for variable injection. Settings for From/Reply-To are in `tblSettings` (`email.from_address`, `email.from_name`, `email.reply_to`).
 
+### 🏢 Organisation Management (Phase 5)
+
+Organisations are the multi-tenancy layer. Each user belongs to ONE org via `tblUsers.orgHandle`. New users default to the `[default]` org. Creating an org moves the user out of `[default]` and promotes them to Admin.
+
+**Core function file:** `web/_functions/org.php` (18+ functions). Key permission check is `canManageOrg($orgHandle)` — returns true if the user is Admin of that specific org OR a GlobalAdmin.
+
+**Invitation flow:** Admin sends invite → `inviteMember()` generates a 32-byte token (SHA-256 hash stored in `tblOrgInvitations`, plaintext in email link) → invitee clicks accept link → `/invite?token=...` validates token, checks user is in `[default]` org → `acceptInvitation()` moves user to org with assigned role. Invitations expire after 7 days (configurable via `org.invitation_expiry` setting).
+
+**Custom domains:** Orgs can add custom domains verified via DNS TXT records. `verifyDomain()` uses PHP's `dns_get_record()` to look up `_g2ml-verify.{domain}` for the verification token. No external dependencies.
+
+**Short domains:** Orgs can configure multiple short URL domains. One is marked as default (`isDefault`). The default cannot be removed without first designating another.
+
+**Dashboard pages:** All under `web/Go2My.Link/_admin/public_html/pages/org/` — overview, create, settings, members, members/invite, domains, short-domains.
+
 ## 🚀 Release Process
 
 Releases are managed via the **"🚀 Create Release"** GitHub Actions workflow (`.github/workflows/release.yml`). Each component can be released independently, allowing separate deployment cycles.
@@ -144,6 +158,7 @@ All JSON structures in the project have corresponding JSON Schema files (draft 2
 | Error Log Headers | `database/error-log-headers.schema.json` | tblErrorLog.requestHeaders column |
 | Settings Value | `database/settings-value.schema.json` | tblSettings JSON values |
 | CAPTCHA Response | `external/captcha-response.schema.json` | Turnstile/reCAPTCHA siteverify response |
+| Org Invitation | `database/org-invitation.schema.json` | tblOrgInvitations record structure |
 
 **Validator:** `web/_functions/json_validator.php` provides `g2ml_validateJSON($data, $schemaPath)` — pure PHP, no Composer.
 

@@ -156,6 +156,7 @@ require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'router.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'email.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'session.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'auth.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'org.php';
 
 // ============================================================================
 // ⚠️ Step 6: Register Error/Exception/Shutdown Handlers

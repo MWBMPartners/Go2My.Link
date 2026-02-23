@@ -12,8 +12,8 @@
  * @package    Go2My.Link
  * @subpackage Includes
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.5.0
- * @since      Phase 2 (theme toggle Phase 3, auth dropdown Phase 4)
+ * @version    0.6.0
+ * @since      Phase 2 (theme toggle Phase 3, auth dropdown Phase 4, org link Phase 5)
  *
  * 📖 References:
  *     - Bootstrap Navbar: https://getbootstrap.com/docs/5.3/components/navbar/
@@ -169,6 +169,12 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
                         <li><a class="dropdown-item" href="https://admin.go2my.link/links">
                             <i class="fas fa-link fa-fw" aria-hidden="true"></i>
                             <?php echo function_exists('__') ? __('nav.my_links') : 'My Links'; ?>
+                        </a></li>
+
+                        <!-- Organisation -->
+                        <li><a class="dropdown-item" href="https://admin.go2my.link/org">
+                            <i class="fas fa-building fa-fw" aria-hidden="true"></i>
+                            <?php echo function_exists('__') ? __('nav.organisation') : 'Organisation'; ?>
                         </a></li>
 
                         <!-- Profile -->

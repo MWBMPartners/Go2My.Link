@@ -1,0 +1,76 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://go2my.link/schemas/database/org-invitation.schema.json",
+    "title": "Organisation Invitation",
+    "description": "Schema for tblOrgInvitations records. Tracks email-based invitations to join an organisation.",
+    "type": "object",
+    "required": [
+        "invitationUID",
+        "orgHandle",
+        "email",
+        "role",
+        "invitationToken",
+        "invitedByUserUID",
+        "status",
+        "expiresAt",
+        "createdAt"
+    ],
+    "properties": {
+        "invitationUID": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Auto-increment primary key"
+        },
+        "orgHandle": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 50,
+            "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+            "description": "FK to tblOrganisations.orgHandle"
+        },
+        "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 255,
+            "description": "Email address of the invited person"
+        },
+        "role": {
+            "type": "string",
+            "enum": ["User", "Admin"],
+            "description": "Role assigned upon acceptance"
+        },
+        "invitationToken": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64,
+            "description": "SHA-256 hash of the invitation token (hex-encoded, 64 chars)"
+        },
+        "invitedByUserUID": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "FK to tblUsers.userUID — the user who sent the invitation"
+        },
+        "status": {
+            "type": "string",
+            "enum": ["pending", "accepted", "expired", "cancelled"],
+            "default": "pending",
+            "description": "Current invitation status"
+        },
+        "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Expiration timestamp (typically 7 days after creation)"
+        },
+        "acceptedAt": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Timestamp when invitation was accepted (null if not accepted)"
+        },
+        "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record creation timestamp"
+        }
+    },
+    "additionalProperties": false
+}
