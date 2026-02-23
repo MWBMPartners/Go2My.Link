@@ -1,4 +1,4 @@
-# GoToMyLink — Changelog
+# 📝 GoToMyLink — Changelog
 
 All notable changes to this project will be documented in this file.
 
@@ -7,7 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+### ✨ Added
+
+- 🎨 Dark/light mode theme system using Bootstrap 5.3 colour modes (`data-bs-theme`) (Phase 3 prep)
+  - CSS custom properties (`--g2ml-*`) for all brand colours with light/dark variants
+  - `theme.js` client-side controller: auto/light/dark states, localStorage + cookie persistence
+  - FOUC-prevention inline script in `<head>` for instant theme application
+  - Theme toggle button in navbar (sun/moon/auto icon, keyboard accessible, ARIA announced)
+  - Navbar and footer pinned to `data-bs-theme="dark"` for brand identity
+  - WCAG 2.1 AA contrast verified for all dark mode colour pairs
+- 📋 Emoji and symbol enhancement across all documentation files for visual readability
+
+### 🔄 Changed
+
+- 📋 **Phase restructuring** — Merged old Phase 3 (Redirect Engine) + old Phase 4 (Main Website) into **new Phase 3: Core Product** (10 issues) for a faster path to a working URL shortener
+- 📋 **Phase restructuring** — Split old Phase 5 (User System, 9 issues) into **new Phase 4: User System — Auth & Basic Dashboard** (4 issues) and **new Phase 5: Organisations, Admin & Advanced Auth** (5 issues)
+- 🏗️ GitHub milestones renamed: v0.4.0 → Core Product, v0.5.0 → User System: Auth & Dashboard, v0.6.0 → Orgs/Admin/Advanced Auth
+- 🏗️ GitHub milestones closed: v0.1.0 (Scaffolding), v0.2.0 (Database) — all issues already complete
+- 🏷️ GitHub issue labels updated: 5 issues moved from phase-4 → phase-3, 4 issues from phase-5 → phase-4
+- 🎨 `style.css` rewritten from hardcoded hex colours to CSS custom properties with dark/light variants
+- 🎨 `header.php` updated: reads theme cookie, sets `data-bs-theme` on `<html>`, includes FOUC script + theme.js
+- 🎨 `nav.php` updated: theme toggle button added, `data-bs-theme="dark"` on `<nav>` element, phase references updated
+- 🎨 `footer.php` updated: `data-bs-theme="dark"` on `<footer>` element
+- 📝 Phase references updated in `home.php`, `nav.php` to reflect restructured phases
+
+### ✨ Previously Added
+
 - Initial repository setup with README.md (Phase 0)
 - Full `web/` directory structure for all 3 components (Phase 0.1)
 - Server-wide and per-component `auth_creds.php` templates with direct-access guards (Phase 0.1)

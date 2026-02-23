@@ -2,20 +2,20 @@
 
 > RESTful API reference for the GoToMyLink platform.
 
-## Overview
+## 📋 Overview
 
 The GoToMyLink API provides programmatic access to URL shortening, link management, and analytics.
 
 | Property | Value |
 | --- | --- |
-| **Base URL** | `https://go2my.link/api/v1/` |
-| **Authentication** | API key via `X-API-Key` header |
-| **Response formats** | JSON (default), XML (with embedded XSLT) |
-| **Rate limiting** | Per subscription tier |
+| **🌐 Base URL** | `https://go2my.link/api/v1/` |
+| **🔑 Authentication** | API key via `X-API-Key` header |
+| **📄 Response formats** | JSON (default), XML (with embedded XSLT) |
+| **⏱️ Rate limiting** | Per subscription tier |
 
-> **Note:** The API is implemented in Phase 6. This document serves as the design reference.
+> 📝 **Note:** The API is implemented in Phase 6. This document serves as the design reference.
 
-## Authentication
+## 🔑 Authentication
 
 All API requests require an API key passed via the `X-API-Key` HTTP header:
 
@@ -23,20 +23,20 @@ All API requests require an API key passed via the `X-API-Key` HTTP header:
 X-API-Key: your-api-key-here
 ```
 
-API keys are managed through the user dashboard under **Settings > API Keys**.
+API keys are managed through the user dashboard under **⚙️ Settings > 🔑 API Keys**.
 
-### Rate Limits
+### ⏱️ Rate Limits
 
 | Tier | Requests/minute | Requests/day |
 | --- | --- | --- |
-| Free | 10 | 100 |
-| Basic | 60 | 5,000 |
-| Premium | 300 | 50,000 |
-| Enterprise | 1,000 | Unlimited |
+| 🆓 Free | 10 | 100 |
+| 📦 Basic | 60 | 5,000 |
+| ⭐ Premium | 300 | 50,000 |
+| 🏢 Enterprise | 1,000 | Unlimited |
 
-## Response Format
+## 📄 Response Format
 
-### JSON (Default)
+### 📦 JSON (Default)
 
 ```json
 {
@@ -49,7 +49,7 @@ API keys are managed through the user dashboard under **Settings > API Keys**.
 }
 ```
 
-### XML
+### 📄 XML
 
 Request XML by setting `Accept: application/xml` header or appending `?format=xml` to the URL.
 
@@ -62,7 +62,7 @@ Request XML by setting `Accept: application/xml` header or appending `?format=xm
 </response>
 ```
 
-### Error Response
+### ❌ Error Response
 
 ```json
 {
@@ -75,24 +75,24 @@ Request XML by setting `Accept: application/xml` header or appending `?format=xm
 }
 ```
 
-## Endpoints
+## 📡 Endpoints
 
-### URLs
+### 🔗 URLs
 
-#### Create Short URL
+#### ✨ Create Short URL
 
 ```
-POST /api/v1/urls/
+🟢 POST /api/v1/urls/
 ```
 
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
-| `destination_url` | string | Yes | The long URL to shorten |
-| `custom_code` | string | No | Custom short code (if available) |
-| `title` | string | No | Descriptive title for the link |
-| `category_id` | int | No | Category to assign |
-| `tags` | array | No | Tags to assign |
-| `expires_at` | datetime | No | Expiration date (ISO 8601) |
+| `destination_url` | string | ✅ Yes | The long URL to shorten |
+| `custom_code` | string | ❌ No | Custom short code (if available) |
+| `title` | string | ❌ No | Descriptive title for the link |
+| `category_id` | int | ❌ No | Category to assign |
+| `tags` | array | ❌ No | Tags to assign |
+| `expires_at` | datetime | ❌ No | Expiration date (ISO 8601) |
 
 **Response:**
 
@@ -108,38 +108,38 @@ POST /api/v1/urls/
 }
 ```
 
-#### Get Short URL Details
+#### 🔍 Get Short URL Details
 
 ```
-GET /api/v1/urls/{code}
+🔵 GET /api/v1/urls/{code}
 ```
 
-#### Update Short URL
+#### 🔄 Update Short URL
 
 ```
-PUT /api/v1/urls/update/{code}
+🟡 PUT /api/v1/urls/update/{code}
 ```
 
-#### Disable Short URL
+#### 🗑️ Disable Short URL
 
 ```
-DELETE /api/v1/urls/disable/{code}
+🔴 DELETE /api/v1/urls/disable/{code}
 ```
 
-> **Note:** DELETE does not permanently remove the URL. It sets `isActive = 0`.
+> 📝 **Note:** DELETE does not permanently remove the URL. It sets `isActive = 0`.
 
-### Analytics
+### 📊 Analytics
 
-#### Get Link Analytics
+#### 📊 Get Link Analytics
 
 ```
-GET /api/v1/analytics/{code}
+🔵 GET /api/v1/analytics/{code}
 ```
 
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
-| `period` | string | No | Time period: `7d`, `30d`, `90d`, `1y`, `all` (default: `30d`) |
-| `group_by` | string | No | Grouping: `day`, `week`, `month` (default: `day`) |
+| `period` | string | ❌ No | Time period: `7d`, `30d`, `90d`, `1y`, `all` (default: `30d`) |
+| `group_by` | string | ❌ No | Grouping: `day`, `week`, `month` (default: `day`) |
 
 **Response:**
 
@@ -158,23 +158,23 @@ GET /api/v1/analytics/{code}
 }
 ```
 
-#### Export Analytics
+#### 📤 Export Analytics
 
 ```
-GET /api/v1/analytics/export/{code}
+🔵 GET /api/v1/analytics/export/{code}
 ```
 
 | Parameter | Type | Required | Description |
 | --- | --- | --- | --- |
-| `format` | string | No | Export format: `csv`, `xlsx` (default: `csv`) |
-| `period` | string | No | Time period (same as above) |
+| `format` | string | ❌ No | Export format: `csv`, `xlsx` (default: `csv`) |
+| `period` | string | ❌ No | Time period (same as above) |
 
-### Account
+### 👤 Account
 
-#### Get Account Details
+#### 👤 Get Account Details
 
 ```
-GET /api/v1/account/
+🔵 GET /api/v1/account/
 ```
 
 **Response:**
@@ -194,22 +194,22 @@ GET /api/v1/account/
 }
 ```
 
-## Error Codes
+## ⚠️ Error Codes
 
 | HTTP Status | Meaning |
 | --- | --- |
-| 200 | Success |
-| 201 | Created (new short URL) |
-| 400 | Bad request (invalid parameters) |
-| 401 | Unauthorised (invalid/missing API key) |
-| 403 | Forbidden (insufficient permissions or tier) |
-| 404 | Not found (short code doesn't exist) |
-| 409 | Conflict (custom code already taken) |
-| 429 | Too many requests (rate limit exceeded) |
-| 500 | Internal server error |
+| ✅ 200 | Success |
+| ✨ 201 | Created (new short URL) |
+| ⚠️ 400 | Bad request (invalid parameters) |
+| 🔒 401 | Unauthorised (invalid/missing API key) |
+| 🚫 403 | Forbidden (insufficient permissions or tier) |
+| 🔍 404 | Not found (short code doesn't exist) |
+| ⚔️ 409 | Conflict (custom code already taken) |
+| ⏱️ 429 | Too many requests (rate limit exceeded) |
+| 💥 500 | Internal server error |
 
-## Related Documentation
+## 📚 Related Documentation
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) — System architecture overview
-- [DATABASE.md](DATABASE.md) — Database schema reference
-- [DEPLOYMENT.md](DEPLOYMENT.md) — Deployment and hosting guide
+- 📋 [ARCHITECTURE.md](ARCHITECTURE.md) — System architecture overview
+- 🗄️ [DATABASE.md](DATABASE.md) — Database schema reference
+- 🚢 [DEPLOYMENT.md](DEPLOYMENT.md) — Deployment and hosting guide

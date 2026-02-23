@@ -13,8 +13,8 @@
  * @package    GoToMyLink
  * @subpackage Includes
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.3.0
- * @since      Phase 2
+ * @version    0.4.0
+ * @since      Phase 2 (theme support added Phase 3)
  * ============================================================================
  */
 
@@ -36,7 +36,7 @@ $siteName    = function_exists('getSetting') ? getSetting('site.name', 'GoToMyLi
 <!-- ====================================================================== -->
 <!-- Footer                                                                 -->
 <!-- ====================================================================== -->
-<footer class="bg-dark text-light py-4 mt-auto" role="contentinfo">
+<footer class="bg-dark text-light py-4 mt-auto" data-bs-theme="dark" role="contentinfo">
     <div class="container">
         <div class="row">
 

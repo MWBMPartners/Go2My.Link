@@ -5,7 +5,7 @@
  * ============================================================================
  *
  * Public homepage for go2my.link. This is a temporary page for Phase 2
- * framework verification. Will be replaced with the full homepage in Phase 4.
+ * framework verification. Will be replaced with the full homepage in Phase 3.
  *
  * @package    GoToMyLink
  * @subpackage ComponentA
@@ -29,7 +29,7 @@ $pageDesc  = getSetting('site.tagline', 'Shorten. Track. Manage.');
         </p>
     </div>
 
-    <!-- URL Shortening Form (placeholder — Phase 4 implements AJAX submission) -->
+    <!-- URL Shortening Form (placeholder — Phase 3 implements AJAX submission) -->
     <div class="row justify-content-center mb-5">
         <div class="col-lg-8">
             <div class="card shadow-sm">
@@ -58,7 +58,7 @@ $pageDesc  = getSetting('site.tagline', 'Shorten. Track. Manage.');
                                 <?php echo function_exists('__') ? __('home.shorten_button') : 'Shorten URL'; ?>
                             </button>
                             <small class="text-muted text-center mt-2">
-                                (URL creation will be enabled in Phase 4)
+                                (URL creation will be enabled in Phase 3)
                             </small>
                         </div>
                     </form>

@@ -17,8 +17,8 @@
  * @package    GoToMyLink
  * @subpackage Includes
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.3.0
- * @since      Phase 2
+ * @version    0.4.0
+ * @since      Phase 2 (dark mode added Phase 3)
  * ============================================================================
  */
 
@@ -41,9 +41,31 @@ $bodyClass = $bodyClass ?? '';
 $locale    = function_exists('getLocale') ? getLocale() : 'en-GB';
 $textDir   = function_exists('getTextDirection') ? getTextDirection() : 'ltr';
 $componentDomain = defined('G2ML_COMPONENT_DOMAIN') ? G2ML_COMPONENT_DOMAIN : 'go2my.link';
+
+// ============================================================================
+// 🎨 Theme Preference (Dark/Light Mode)
+// ============================================================================
+// Read the theme cookie set by theme.js to prevent Flash of Unstyled Content.
+// Valid values: 'auto', 'light', 'dark'. For 'auto', default to 'light' —
+// the FOUC-prevention inline script corrects this before paint if system is dark.
+//
+// 📖 Reference: https://getbootstrap.com/docs/5.3/customize/color-modes/
+// ============================================================================
+$themePref    = $_COOKIE['g2ml_theme'] ?? 'auto';
+$validThemes  = ['auto', 'light', 'dark'];
+
+if (!in_array($themePref, $validThemes, true))
+{
+    $themePref = 'auto';
+}
+
+$initialTheme = ($themePref === 'auto') ? 'light' : $themePref;
 ?>
 <!DOCTYPE html>
-<html lang="<?php echo htmlspecialchars($locale, ENT_QUOTES, 'UTF-8'); ?>" dir="<?php echo $textDir; ?>">
+<html lang="<?php echo htmlspecialchars($locale, ENT_QUOTES, 'UTF-8'); ?>"
+      dir="<?php echo $textDir; ?>"
+      data-bs-theme="<?php echo $initialTheme; ?>"
+      data-g2ml-theme-pref="<?php echo $themePref; ?>">
 <head>
     <!-- ================================================================== -->
     <!-- Meta Tags                                                          -->
@@ -115,6 +137,26 @@ $componentDomain = defined('G2ML_COMPONENT_DOMAIN') ? G2ML_COMPONENT_DOMAIN : 'g
         echo '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" crossorigin="anonymous">';
     }
     ?>
+
+    <!-- ================================================================== -->
+    <!-- 🎨 Theme: FOUC Prevention (runs before first paint)                -->
+    <!-- Reads localStorage and corrects data-bs-theme immediately.         -->
+    <!-- 📖 Reference: https://getbootstrap.com/docs/5.3/customize/color-modes/ -->
+    <!-- ================================================================== -->
+    <script>
+        (function(){
+            var t = null;
+            try { t = localStorage.getItem('g2ml-theme'); } catch(e) {}
+            t = t || 'auto';
+            if (t === 'auto') {
+                t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+            }
+            document.documentElement.setAttribute('data-bs-theme', t);
+        })();
+    </script>
+
+    <!-- Theme Controller (loaded deferred — full toggle/persistence logic) -->
+    <script src="/js/theme.js" defer></script>
 </head>
 <body class="<?php echo htmlspecialchars(trim('g2ml-' . (defined('G2ML_COMPONENT') ? G2ML_COMPONENT : 'unknown') . ' ' . $bodyClass), ENT_QUOTES, 'UTF-8'); ?>">
 

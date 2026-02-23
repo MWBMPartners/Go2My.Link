@@ -2,20 +2,20 @@
 
 > Technical architecture overview for the GoToMyLink platform.
 
-## System Overview
+## 📋 System Overview
 
 GoToMyLink is a URL shortening platform comprising three interconnected web properties, sharing a common PHP backend and MySQL database.
 
-### Components
+### 🧩 Components
 
 | Component | Domain | Role |
 | --- | --- | --- |
-| **A — Main Website** | [go2my.link](https://go2my.link) | Public face, short link creation, API |
-| **A — Admin Dashboard** | [admin.go2my.link](https://admin.go2my.link) | User/org dashboard, link management, settings |
-| **B — Shortlink Domain** | [g2my.link](https://g2my.link) | Redirect engine for shortened URLs |
-| **C — LinksPage** | [lnks.page](https://lnks.page) | Customisable LinkTree-like link listing pages |
+| **A — 🌐 Main Website** | [go2my.link](https://go2my.link) | Public face, short link creation, API |
+| **A — ⚙️ Admin Dashboard** | [admin.go2my.link](https://admin.go2my.link) | User/org dashboard, link management, settings |
+| **B — 🔗 Shortlink Domain** | [g2my.link](https://g2my.link) | Redirect engine for shortened URLs |
+| **C — 📄 LinksPage** | [lnks.page](https://lnks.page) | Customisable LinkTree-like link listing pages |
 
-### Component Dependency Graph
+### 🗺️ Component Dependency Graph
 
 ```
            ┌──────────────────────┐
@@ -37,22 +37,22 @@ GoToMyLink is a URL shortening platform comprising three interconnected web prop
 
 All three components include the shared layer via PHP `require_once` with portable paths using `dirname(__DIR__)` and `DIRECTORY_SEPARATOR`.
 
-## Hosting Environment
+## 🚢 Hosting Environment
 
 - **Provider:** Dreamhost Shared Hosting
 - **Constraints:**
-  - No CLI access (no Composer, no npm, no artisan)
-  - Libraries must be manually uploaded
-  - CDN-first with local fallback for all third-party assets
-  - `.htaccess` with `AllowOverride All` supported
+  - ❌ No CLI access (no Composer, no npm, no artisan)
+  - 📦 Libraries must be manually uploaded
+  - 🌐 CDN-first with local fallback for all third-party assets
+  - ⚙️ `.htaccess` with `AllowOverride All` supported
 - **Document roots:** Each component has multiple web roots for staging:
-  - `public_html/` — Production
-  - `public_html_dev_alpha/` — Alpha development
-  - `public_html_dev_beta/` — Beta development
-  - `public_html_landing/` — Pre-launch landing page
-  - `public_html_redir/` — Redirection (limited use)
+  - 🟢 `public_html/` — Production
+  - 🟡 `public_html_dev_alpha/` — Alpha development
+  - 🟠 `public_html_dev_beta/` — Beta development
+  - 📄 `public_html_landing/` — Pre-launch landing page
+  - 🔀 `public_html_redir/` — Redirection (limited use)
 
-## Directory Structure
+## 📁 Directory Structure
 
 ```
 web/
@@ -80,7 +80,7 @@ web/
 └── Lnks.page/           ← Component C (same sub-structure)
 ```
 
-### Private Directories (Underscore Prefix)
+### 🔒 Private Directories (Underscore Prefix)
 
 Directories prefixed with `_` are not web-accessible. They are blocked via `.htaccess` rules:
 
@@ -91,20 +91,20 @@ RewriteRule ^_functions/ - [F,L]
 RewriteRule ^_libraries/ - [F,L]
 ```
 
-## Tech Stack
+## 🛠️ Tech Stack
 
 | Layer | Technology | Notes |
 | --- | --- | --- |
-| Backend | PHP 8.4+ / 8.5+ | No framework; custom modular architecture |
-| Database | MySQL 8.0+ (InnoDB, utf8mb4) | MySQLi only (no PDO) |
-| Frontend | HTML5, CSS3, Bootstrap 5.3 | Responsive, WCAG 2.1 AA compliant |
-| JavaScript | jQuery 3.7, Chart.js, Leaflet.js | AJAX with graceful no-JS fallback |
-| Icons | Font Awesome 6 | CDN with local fallback |
-| Hosting | Dreamhost Shared Hosting | No CLI/Composer |
+| 🖥️ Backend | PHP 8.4+ / 8.5+ | No framework; custom modular architecture |
+| 🗄️ Database | MySQL 8.0+ (InnoDB, utf8mb4) | MySQLi only (no PDO) |
+| 🎨 Frontend | HTML5, CSS3, Bootstrap 5.3 | Responsive, WCAG 2.1 AA compliant |
+| 📜 JavaScript | jQuery 3.7, Chart.js, Leaflet.js | AJAX with graceful no-JS fallback |
+| 🎭 Icons | Font Awesome 6 | CDN with local fallback |
+| 🚢 Hosting | Dreamhost Shared Hosting | No CLI/Composer |
 
-## Request Flow
+## 🔀 Request Flow
 
-### URL Shortening (Component A)
+### 🔗 URL Shortening (Component A)
 
 ```
 User → go2my.link → page_init.php → router.php → controller → response
@@ -116,7 +116,7 @@ User → go2my.link → page_init.php → router.php → controller → response
                         └── Environment detection
 ```
 
-### Short URL Redirect (Component B)
+### ↪️ Short URL Redirect (Component B)
 
 ```
 User → g2my.link/{code} → .htaccess → index.php?code={code}
@@ -130,7 +130,7 @@ User → g2my.link/{code} → .htaccess → index.php?code={code}
                                           └── 302 Redirect (or error page)
 ```
 
-### LinksPage (Component C)
+### 📄 LinksPage (Component C)
 
 ```
 User → lnks.page/{slug} → .htaccess → index.php?slug={slug}
@@ -141,9 +141,9 @@ User → lnks.page/{slug} → .htaccess → index.php?slug={slug}
                                           └── Log activity
 ```
 
-## Security Architecture
+## 🔒 Security Architecture
 
-### Authentication
+### 🔑 Authentication
 
 - **Password hashing:** Argon2id (bcrypt fallback for PHP 8.4)
 - **Session management:** PHP native sessions with secure configuration
@@ -152,21 +152,23 @@ User → lnks.page/{slug} → .htaccess → index.php?slug={slug}
 - **Social login:** OAuth 2.0 (Microsoft, Apple, Google, Facebook, Yahoo, Amazon)
 - **SSO:** MS365 (Azure AD), Google Workspace, WordPress
 
-### Encryption
+> 📝 **Note:** Authentication is implemented in Phase 4: User System — Auth & Dashboard.
+
+### 🔐 Encryption
 
 - **Algorithm:** AES-256-GCM
 - **Key management:** ENCRYPTION_SALT in `auth_creds.php` (outside web root)
 - **Usage:** Sensitive database values (`isSensitive` flag in settings dictionary)
 
-### Input Security
+### 🛡️ Input Security
 
-- CSRF tokens on all forms
-- Prepared statements for all SQL queries (MySQLi)
-- Input sanitisation functions
-- Content Security Policy (CSP) headers
-- HTTPS enforcement via `.htaccess`
+- ✅ CSRF tokens on all forms
+- ✅ Prepared statements for all SQL queries (MySQLi)
+- ✅ Input sanitisation functions
+- ✅ Content Security Policy (CSP) headers
+- ✅ HTTPS enforcement via `.htaccess`
 
-### Credential Override Pattern
+### 🔧 Credential Override Pattern
 
 ```php
 // Per-component auth_creds.php can override server-wide values:
@@ -178,38 +180,38 @@ if (!defined('DB_NAME')) {
 }
 ```
 
-## Accessibility (Cross-Cutting)
+## ♿ Accessibility (Cross-Cutting)
 
 WCAG 2.1 AA compliance is a foundational requirement from Phase 2 onwards:
 
-- Semantic HTML5 elements
-- ARIA landmarks on all layout sections
-- Skip-to-content link on every page
-- Keyboard navigation with visible focus indicators
-- Colour contrast: 4.5:1 (normal text), 3:1 (large text)
-- Colour-blind mode toggle
-- `prefers-reduced-motion` and `prefers-color-scheme` support
-- Screen reader compatible (ARIA live regions for dynamic content)
+- ✅ Semantic HTML5 elements
+- ✅ ARIA landmarks on all layout sections
+- ✅ Skip-to-content link on every page
+- ✅ Keyboard navigation with visible focus indicators
+- ✅ Colour contrast: 4.5:1 (normal text), 3:1 (large text)
+- ✅ Colour-blind mode toggle
+- ✅ `prefers-reduced-motion` and `prefers-color-scheme` support
+- ✅ Screen reader compatible (ARIA live regions for dynamic content)
 
-## i18n / Translation (Cross-Cutting)
+## 🌍 i18n / Translation (Cross-Cutting)
 
-- All UI strings use `__('key')` translation function
-- English (en-GB) as base language
-- RTL language support
-- Interim: Google/Bing/AI translation widget
-- Formal translations in Phase 10
+- ✅ All UI strings use `__('key')` translation function
+- ✅ English (en-GB) as base language
+- ✅ RTL language support
+- ⏳ Interim: Google/Bing/AI translation widget
+- 🔜 Formal translations in Phase 10
 
-## Error Handling
+## 🐛 Error Handling
 
 | Error Type | Destination | Method |
 | --- | --- | --- |
-| PHP errors/exceptions | `tblErrorLog` | Custom error handler |
-| Activity/requests | `tblActivityLog` | Activity logger |
-| Debug info | Browser (admin only) | `?debug=true` parameter |
-| User-facing errors | Branded error pages | Graceful fallback |
+| 🔴 PHP errors/exceptions | `tblErrorLog` | Custom error handler |
+| 📊 Activity/requests | `tblActivityLog` | Activity logger |
+| 🐛 Debug info | Browser (admin only) | `?debug=true` parameter |
+| 👤 User-facing errors | Branded error pages | Graceful fallback |
 
-## Related Documentation
+## 📚 Related Documentation
 
-- [DATABASE.md](DATABASE.md) — Database schema and migration details
-- [API.md](API.md) — API endpoint reference
-- [DEPLOYMENT.md](DEPLOYMENT.md) — Deployment and hosting guide
+- 🗄️ [DATABASE.md](DATABASE.md) — Database schema and migration details
+- 📡 [API.md](API.md) — API endpoint reference
+- 🚢 [DEPLOYMENT.md](DEPLOYMENT.md) — Deployment and hosting guide

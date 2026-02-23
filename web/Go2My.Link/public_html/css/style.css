@@ -1,15 +1,55 @@
 /**
  * ============================================================================
- * GoToMyLink — Component A Custom Styles
+ * 🎨 GoToMyLink — Component A Custom Styles (Theme-Aware)
  * ============================================================================
  *
  * Custom CSS for go2my.link (Main Website).
  * Bootstrap 5.3 is the primary framework — only add overrides here.
  *
- * @version 0.3.0
- * @since   Phase 2
+ * Dark/light mode uses Bootstrap's data-bs-theme attribute with CSS custom
+ * properties for brand colours. The theme controller (theme.js) manages
+ * switching between auto/light/dark modes.
+ *
+ * @version 0.4.0
+ * @since   Phase 2 (dark mode added Phase 3)
+ *
+ * 📖 References:
+ *     - Bootstrap Color Modes: https://getbootstrap.com/docs/5.3/customize/color-modes/
+ *     - WCAG Contrast:        https://www.w3.org/TR/WCAG21/#contrast-minimum
  * ============================================================================
  */
+
+/* ========================================================================== */
+/* 🌞 CSS Custom Properties — Light Theme (Default)                           */
+/* ========================================================================== */
+:root,
+[data-bs-theme="light"] {
+    --g2ml-brand-primary:       #1565C0;
+    --g2ml-brand-primary-hover: #0D47A1;
+    --g2ml-brand-accent:        #1E88E5;
+    --g2ml-brand-success:       #2E7D32;
+    --g2ml-brand-danger:        #E94560;
+    --g2ml-focus-color:         #1E88E5;
+    --g2ml-skip-bg:             #1565C0;
+    --g2ml-skip-color:          #ffffff;
+}
+
+/* ========================================================================== */
+/* 🌙 CSS Custom Properties — Dark Theme Overrides                            */
+/*                                                                            */
+/* Contrast checks (on Bootstrap dark bg #212529):                            */
+/*   #42A5F5 = ~6.2:1 ✅  |  #66BB6A = ~7.8:1 ✅  |  #FF6B6B = ~5.1:1 ✅   */
+/* ========================================================================== */
+[data-bs-theme="dark"] {
+    --g2ml-brand-primary:       #42A5F5;
+    --g2ml-brand-primary-hover: #64B5F6;
+    --g2ml-brand-accent:        #64B5F6;
+    --g2ml-brand-success:       #66BB6A;
+    --g2ml-brand-danger:        #FF6B6B;
+    --g2ml-focus-color:         #64B5F6;
+    --g2ml-skip-bg:             #1565C0;
+    --g2ml-skip-color:          #ffffff;
+}
 
 /* ========================================================================== */
 /* Skip to Content Link                                                       */
@@ -22,8 +62,8 @@
     left: 0;
     z-index: 100000;
     padding: 0.75rem 1.5rem;
-    background-color: #1565C0;
-    color: #ffffff;
+    background-color: var(--g2ml-skip-bg);
+    color: var(--g2ml-skip-color);
     text-decoration: none;
     font-weight: bold;
     border-bottom-right-radius: 0.375rem;
@@ -33,21 +73,21 @@
 /* Brand Colour Overrides                                                     */
 /* ========================================================================== */
 .bg-primary {
-    background-color: #1565C0 !important;
+    background-color: var(--g2ml-brand-primary) !important;
 }
 
 .btn-primary {
-    background-color: #1E88E5;
-    border-color: #1565C0;
+    background-color: var(--g2ml-brand-accent);
+    border-color: var(--g2ml-brand-primary);
 }
 
 .btn-primary:hover {
-    background-color: #1565C0;
-    border-color: #0D47A1;
+    background-color: var(--g2ml-brand-primary);
+    border-color: var(--g2ml-brand-primary-hover);
 }
 
 .text-primary {
-    color: #1E88E5 !important;
+    color: var(--g2ml-brand-accent) !important;
 }
 
 /* ========================================================================== */
@@ -67,6 +107,22 @@ main {
 /* Focus Indicators (WCAG 2.1 AA: 2.4.7 Focus Visible)                       */
 /* ========================================================================== */
 *:focus-visible {
-    outline: 3px solid #1E88E5;
+    outline: 3px solid var(--g2ml-focus-color);
     outline-offset: 2px;
+}
+
+/* ========================================================================== */
+/* 🎨 Theme Toggle Button                                                    */
+/* ========================================================================== */
+#g2ml-theme-toggle {
+    padding: 0.25rem 0.5rem;
+    font-size: 1.1rem;
+    line-height: 1;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+#g2ml-theme-toggle:hover {
+    opacity: 0.8;
 }

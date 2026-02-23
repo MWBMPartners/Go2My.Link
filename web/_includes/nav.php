@@ -12,8 +12,8 @@
  * @package    GoToMyLink
  * @subpackage Includes
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.3.0
- * @since      Phase 2
+ * @version    0.4.0
+ * @since      Phase 2 (theme toggle added Phase 3)
  *
  * 📖 References:
  *     - Bootstrap Navbar: https://getbootstrap.com/docs/5.3/components/navbar/
@@ -43,7 +43,7 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
 <!-- Navigation                                                             -->
 <!-- 📖 Reference: https://getbootstrap.com/docs/5.3/components/navbar/     -->
 <!-- ====================================================================== -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary" aria-label="<?php echo function_exists('__') ? __('nav.aria_label') : 'Main navigation'; ?>">
+<nav class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark" aria-label="<?php echo function_exists('__') ? __('nav.aria_label') : 'Main navigation'; ?>">
     <div class="container">
 
         <!-- Brand -->
@@ -104,6 +104,22 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
 
             <!-- Right-aligned items -->
             <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+
+                <!-- ====================================================== -->
+                <!-- 🎨 Theme Toggle (auto / light / dark)                  -->
+                <!-- 📖 Reference: https://getbootstrap.com/docs/5.3/customize/color-modes/ -->
+                <!-- ====================================================== -->
+                <li class="nav-item">
+                    <button type="button"
+                            class="btn btn-link nav-link border-0"
+                            id="g2ml-theme-toggle"
+                            aria-label="<?php echo function_exists('__') ? __('nav.theme_toggle') : 'Toggle theme (light/dark/auto)'; ?>"
+                            title="<?php echo function_exists('__') ? __('nav.theme_toggle') : 'Toggle theme'; ?>">
+                        <i id="g2ml-theme-icon" class="fas fa-circle-half-stroke" aria-hidden="true"></i>
+                        <span class="visually-hidden" id="g2ml-theme-label"><?php echo function_exists('__') ? __('theme.auto') : 'Auto (system)'; ?></span>
+                    </button>
+                </li>
+
                 <?php
                 // Language switcher (included inline)
                 if (file_exists(G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'language_switcher.php'))
@@ -113,7 +129,7 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
                 ?>
 
                 <?php if ($isLoggedIn): ?>
-                <!-- Logged-in user menu (placeholder — implemented in Phase 5) -->
+                <!-- Logged-in user menu (placeholder — implemented in Phase 4) -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" id="userMenuDropdown"
                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -133,7 +149,7 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
                     </ul>
                 </li>
                 <?php else: ?>
-                <!-- Login/Register links (placeholder — implemented in Phase 5) -->
+                <!-- Login/Register links (placeholder — implemented in Phase 4) -->
                 <li class="nav-item">
                     <a class="nav-link" href="/login">
                         <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
