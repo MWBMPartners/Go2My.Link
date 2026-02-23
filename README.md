@@ -37,6 +37,12 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 - 🔍 **URL Info** — Public short code lookup with masked destination, status badges
 - 📐 **JSON Schema Validation** — Schema definitions (draft 2020-12) with pure-PHP validator for API responses and database JSON
 - 🏢 **Organisations** — Create/manage organisations, member invitations (email with tokenised accept), role enforcement, custom domain DNS verification, short domain management
+- 🛡️ **DNT/GPC** — Do Not Track & Global Privacy Control detection, CSP headers, HSTS, custom error pages
+- 🍪 **Cookie Consent** — GDPR opt-in/opt-out jurisdiction detection, consent banner, preferences modal, consent API
+- 🔐 **Data Rights** — GDPR Article 15-22 compliance: data export, deletion requests, anonymisation, privacy dashboard
+- 📜 **Legal Documents** — Terms of Use, Privacy Policy, Cookie Policy, Copyright Notice, Acceptable Use Policy
+- 📱 **PWA** — Progressive Web App manifests and service workers for all 3 web properties
+- ♿ **WCAG 2.1 AA** — Full accessibility audit with 23+ files fixed: landmarks, ARIA, contrast, headings, forms
 
 ### 🔜 Planned
 
@@ -46,7 +52,6 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 - 📑 **LinksPage** — Template system, WYSIWYG editor, custom domains, age verification
 - 🔀 **Advanced Redirects** — Scheduled, device-based, geo-based routing, age gates
 - 💰 **Payments** — Subscription tiers, PayPal, Apple Pay, Google Pay, crypto
-- ⚖️ **Legal & Launch** — Cookie consent, GDPR, DNT hardening, PWA, WCAG audit
 
 ---
 
@@ -73,7 +78,7 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 | ✅ | 3 | v0.4.0 | Core Product | 10 | **Complete** |
 | ✅ | 4 | v0.5.0 | User System: Auth & Dashboard | 4 | **Complete** |
 | ✅ | 5 | v0.6.0 | Organisation Management | 1 | **Complete** |
-| 📋 | 6 | v0.7.0 | Compliance, Legal & Pre-Launch | 8 | Planned |
+| 🔄 | 6 | v0.7.0 | Compliance, Legal & Pre-Launch | 7/8 | **Near Complete** |
 | 🏁 | — | v1.0.0-rc | **PRE-RELEASE CANDIDATE** | — | — |
 | 📋 | 7 | v1.1.0 | Advanced Authentication | 4 | Post-Launch |
 | 📋 | 8 | v1.2.0 | API & Analytics | 8 | Post-Launch |
@@ -81,7 +86,7 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 | 📋 | 10 | v1.4.0 | Advanced Redirects | 6 | Post-Launch |
 | 📋 | 11 | v1.5.0 | Payments & Subscriptions | 4 | Post-Launch |
 
-> **43 of 78 issues complete (55%)** — tracked on the [GitHub Project Board](https://github.com/orgs/MWBMPartners/projects/4)
+> **50 of 78 issues complete (64%)** — tracked on the [GitHub Project Board](https://github.com/orgs/MWBMPartners/projects/4)
 
 ### ✅ Phase 0 — Scaffolding (v0.1.0)
 
@@ -138,16 +143,16 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 - 🛡️ Role enforcement: GlobalAdmin > Admin > User with `canManageOrg()` permission check
 - 🗄️ tblOrgInvitations schema + 12 org settings + JSON Schema
 
-### 📋 Phase 6 — Compliance, Legal & Pre-Launch (v0.7.0)
+### 🔄 Phase 6 — Compliance, Legal & Pre-Launch (v0.7.0) — 7/8 Done
 
-- ⚖️ Cookie consent banner (#61)
-- 🔒 GDPR compliance tools (#62)
-- 🕵️ DNT/GPC hardening (#63)
-- 📱 Progressive Web App (#64)
-- ♿ WCAG audit (#65)
-- 🌍 User-facing translations (#66)
-- 🔧 Production hardening (#67)
-- 📋 Pre-launch checklist (#71)
+- ✅ 📜 Legal document templates — Terms, Privacy, Cookies, Copyright, AUP (#61)
+- ✅ 🍪 Cookie consent system — jurisdiction-aware banner, preferences modal, consent API (#62)
+- ✅ 🔐 Data subject rights — GDPR export, deletion, anonymisation, privacy dashboard (#63)
+- ✅ 🛡️ DNT/GPC support & production hardening — CSP headers, HSTS, error pages (#64)
+- ✅ 📱 PWA manifest & service worker — offline fallback, app icons for all 3 properties (#65)
+- ✅ ♿ WCAG 2.1 AA audit — 23 files fixed: landmarks, ARIA, contrast, headings, forms (#66)
+- ✅ 🗄️ Migration plan & dry-run SQL — 7-step process, rollback safeguards (#67)
+- 🔄 🌍 Translation seed — en-GB baseline (~1,075 keys) done; 9 locales deferred post-launch (#71)
 
 > 🏁 **v1.0.0-rc — Pre-Release Candidate** after Phase 6
 

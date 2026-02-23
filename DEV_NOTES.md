@@ -100,6 +100,33 @@ Organisations are the multi-tenancy layer. Each user belongs to ONE org via `tbl
 
 **CSP Headers:** Content-Security-Policy is set in `.htaccess` files. Component B (redirect engine) has a very tight policy (`default-src 'none'`). Components A/Admin/C allow CDN sources for Bootstrap, jQuery, and Font Awesome. `'unsafe-inline'` is required for the FOUC-prevention inline script in `header.php`.
 
+### 📱 Progressive Web App (Phase 6)
+
+PWA support is provided via `manifest.json` + `sw.js` for Components A, Admin, and C (not B — the redirect engine has no user-facing UI). Each component has its own manifest with appropriate `start_url`, `scope`, `theme_color`, and `background_color`. Service workers provide a minimal offline fallback — caching the offline page and returning it when the network is unavailable.
+
+**App Icons:** 192×192 and 512×512 PNG icons in each component's `/icons/` directory. Linked via `<link rel="manifest">` in `header.php`.
+
+### ♿ WCAG 2.1 AA Audit (Phase 6)
+
+A comprehensive accessibility audit was performed across all components. Key fixes applied to 23+ files:
+
+- **Semantic Landmarks:** Replaced `<div role="main">` with `<main>` on Component B error pages (404, expired, validating)
+- **Heading Hierarchy:** Fixed h1→h3 skips in dashboard (stat cards changed to `<p>`), legal ToC headings standardised to `<h2>`
+- **Colour Contrast:** Fixed `btn-outline-warning` (1.56:1 ratio) → `btn-warning text-dark` (7.1:1), added `text-dark` to `badge bg-info`
+- **ARIA Labels:** Added `aria-label` with context to all icon-only buttons (edit, delete, remove), copy buttons, and read-only fields
+- **Table Accessibility:** Added `scope="col"` to all `<th>` elements and `aria-label` to `<table>` elements
+- **Form Accessibility:** Fixed `for`/`id` associations on read-only fields, added `aria-required="true"`, fixed asterisk markup to use `aria-hidden="true"` + visually-hidden "(required)"
+- **`formField()` Textarea Fix:** Refactored the accessibility helper to correctly render `<textarea>` elements (was generating invalid `<input type="textarea">`)
+- **Noscript Links:** Replaced "Click here" with descriptive link text in Component B fallback pages
+
+### 🌍 Translation System (Phase 6)
+
+The en-GB baseline translation seed contains ~1,075 keys in `web/_sql/seeds/010_phase6_translations.sql`. Keys follow dot-notation (`page.section_element`). 10 languages are registered in `tblLanguages` but only `en-GB` is active. The 9 additional locales are deferred to post-launch — the interim Google Translate widget provides machine translation coverage. See `docs/TRANSLATION.md` for the full guide.
+
+### 🗄️ Data Migration (Phase 6)
+
+`docs/MIGRATION_PLAN.md` documents the 7-step migration from the legacy MWlink database. `web/_sql/dry_run.sql` provides a non-destructive read-only validation script. Key decisions: all passwords force-reset (legacy is plaintext), `tblLicenses` skipped, activity log migrated in 10K-row batches (429K total). See the migration plan for rollback procedures.
+
 ## 🚀 Release Process
 
 Releases are managed via the **"🚀 Create Release"** GitHub Actions workflow (`.github/workflows/release.yml`). Each component can be released independently, allowing separate deployment cycles.
