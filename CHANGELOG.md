@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ✨ Added (Phase 6 — Compliance, Legal & Pre-Launch — Batch 2)
+
+- 📱 **Progressive Web App (PWA)** — Manifests, service workers, and icon sets for all 3 domains: go2my.link, admin.go2my.link, and lnks.page; offline fallback pages, install prompts (#65)
+- 🌍 **en-GB translation seed** — Complete baseline of ~1,075 translation keys in `010_phase6_translations.sql` covering all UI strings across all pages; `docs/TRANSLATION.md` with contribution guidelines, key naming conventions, and language status table (#71)
+- 🗄️ **Migration plan** — `docs/MIGRATION_PLAN.md` documenting strategy for migrating 480 short URLs, 7 users, 5 orgs from legacy database; includes dry-run SQL script (#67)
+
+### ♿ Fixed (Phase 6 — WCAG 2.1 AA Accessibility Audit, #66)
+
+- 🎨 **Colour contrast** — Fixed brand accent (`#1E88E5` → `#1976D2`, 4.60:1), `.btn-primary` background (5.46:1), navbar inactive links (0.90 opacity), footer link hover underline, `badge bg-info` text contrast, `btn-outline-warning` → `btn-warning text-dark` on validating page
+- 🏗️ **Landmarks & semantics** — Added `<header>` wrapper around `<nav>`, replaced `<div role="main">` with `<main>` on Component B error pages, fixed ToC heading levels on legal pages
+- 🎯 **Focus management** — Added focus to copy button after AJAX URL creation, focus to error div on failures, focus return to main content on cookie banner dismiss
+- ♿ **ARIA & screen readers** — Fixed duplicate announcements on homepage, cookie banner role (`alertdialog` → `region`), homepage title duplication, `aria-label` on all icon-only buttons (edit/deactivate/remove), `aria-label` on copy buttons and result inputs
+- 📝 **Form accessibility** — Fixed `for`/`id` associations on read-only fields (profile email, edit link short URL, org handle), required field markers (`aria-hidden` + visually-hidden), `aria-required="true"` on password fields, `aria-hidden` on decorative verification icons
+- 🏗️ **Heading hierarchy** — Fixed dashboard stat card `<h3>` → `<p>` (heading level skip), legal page ToC `<h3>` → `<h2>`
+- 📋 **Tables** — Added `scope="col"` to all table headers across admin pages, `aria-label` on data tables
+- 🔧 **`formField()` textarea support** — Fixed `formField()` generating invalid `<input type="textarea">` — now renders proper `<textarea>` element with `rows` attribute
+- 🔗 **Link text** — Replaced "Click here" noscript links in Component B with descriptive text
+
 ### ✨ Added (Phase 6 — Compliance, Legal & Pre-Launch — Batch 1)
 
 - 🛡️ **DNT/GPC privacy support** — `web/_functions/dnt.php` with 3 functions: `g2ml_detectDNT()`, `g2ml_shouldTrack()`, `g2ml_isCookieAllowed()` — respects Do Not Track and Global Privacy Control browser signals (#64)
