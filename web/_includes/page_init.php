@@ -1,0 +1,253 @@
+<?php
+/**
+ * ============================================================================
+ * 🚀 GoToMyLink — Page Initialisation (Master Bootstrap)
+ * ============================================================================
+ *
+ * This file is included by every entry point (index.php) AFTER the component's
+ * auth_creds.php has been loaded. It bootstraps the entire application:
+ *
+ *   1. Direct access guard
+ *   2. Define path constants
+ *   3. Environment detection (alpha/beta/local/production)
+ *   4. Debug mode detection
+ *   5. Load all _functions/*.php in dependency order
+ *   6. Register error/exception/shutdown handlers
+ *   7. Start session (secure config)
+ *   8. Load settings cache (Default + System)
+ *   9. Detect and set locale
+ *  10. Record start time/memory for debug panel
+ *
+ * Dependencies: auth_creds.php constants must be defined before including this file.
+ *               Component constants (G2ML_COMPONENT, etc.) must be defined before including.
+ *
+ * @package    GoToMyLink
+ * @subpackage Includes
+ * @author     MWBM Partners Ltd (MWservices)
+ * @version    0.3.0
+ * @since      Phase 2
+ * ============================================================================
+ */
+
+// ============================================================================
+// 🛡️ Direct Access Guard
+// ============================================================================
+if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
+{
+    header('Location: https://go2my.link');
+    exit;
+}
+
+// ============================================================================
+// ⏱️ Step 10 (early): Record start time and memory for debug panel
+// ============================================================================
+// We record these at the very top so the debug panel shows accurate totals.
+// ============================================================================
+define('G2ML_START_TIME', microtime(true));
+define('G2ML_START_MEMORY', memory_get_usage());
+
+// ============================================================================
+// 📁 Step 2: Define Path Constants
+// ============================================================================
+// All paths are derived from the web/ directory structure.
+// These constants are used throughout the application for includes and file access.
+//
+// 📖 Reference: https://www.php.net/manual/en/function.dirname.php
+// ============================================================================
+
+// G2ML_ROOT is the web/ directory (parent of _functions, _includes, _auth_keys, etc.)
+// The entry points are at web/{Component}/public_html/index.php
+// So web/ is 3 levels up from public_html: public_html → Component → web
+if (!defined('G2ML_ROOT'))
+{
+    // Component index.php should define this, but calculate as fallback
+    define('G2ML_ROOT', dirname(__DIR__));
+}
+
+// Shared directories
+define('G2ML_FUNCTIONS', G2ML_ROOT . DIRECTORY_SEPARATOR . '_functions');
+define('G2ML_INCLUDES',  G2ML_ROOT . DIRECTORY_SEPARATOR . '_includes');
+define('G2ML_LIBRARIES', G2ML_ROOT . DIRECTORY_SEPARATOR . '_libraries');
+define('G2ML_AUTH_KEYS', G2ML_ROOT . DIRECTORY_SEPARATOR . '_auth_keys');
+define('G2ML_UPLOADS',   G2ML_ROOT . DIRECTORY_SEPARATOR . '_uploads');
+define('G2ML_SQL',       G2ML_ROOT . DIRECTORY_SEPARATOR . '_sql');
+
+// ============================================================================
+// 🌍 Step 3: Environment Detection
+// ============================================================================
+// Determines the running environment from the hostname.
+// This affects debug mode, error display, and feature availability.
+//
+// 📖 Reference: https://www.php.net/manual/en/reserved.variables.server.php
+// ============================================================================
+
+$hostname = $_SERVER['HTTP_HOST'] ?? 'localhost';
+
+if (preg_match('/^alpha\./i', $hostname))
+{
+    define('G2ML_ENVIRONMENT', 'alpha');
+}
+elseif (preg_match('/^beta\./i', $hostname))
+{
+    define('G2ML_ENVIRONMENT', 'beta');
+}
+elseif (in_array($hostname, ['localhost', '127.0.0.1', '::1'], true) || preg_match('/\.local$/', $hostname))
+{
+    define('G2ML_ENVIRONMENT', 'local');
+}
+else
+{
+    define('G2ML_ENVIRONMENT', 'production');
+}
+
+// ============================================================================
+// 🐛 Step 4: Debug Mode Detection
+// ============================================================================
+// Debug mode is enabled if:
+//   - Environment is alpha, beta, or local (always enabled)
+//   - ?debug=true in URL AND environment is production AND user is admin (later)
+//
+// In production, debug mode requires authentication (Phase 5).
+// For now, only alpha/beta/local get debug mode.
+// ============================================================================
+
+$isDebugEnvironment = in_array(G2ML_ENVIRONMENT, ['alpha', 'beta', 'local'], true);
+$isDebugRequested   = isset($_GET['debug']) && $_GET['debug'] === 'true';
+
+define('G2ML_DEBUG', $isDebugEnvironment || $isDebugRequested);
+
+// Configure PHP error display based on environment
+if (G2ML_DEBUG)
+{
+    // 📖 Reference: https://www.php.net/manual/en/function.ini-set.php
+    ini_set('display_errors', '1');
+    ini_set('display_startup_errors', '1');
+    error_reporting(E_ALL);
+}
+else
+{
+    ini_set('display_errors', '0');
+    ini_set('display_startup_errors', '0');
+    error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED);
+}
+
+// ============================================================================
+// 📦 Step 5: Load Function Files (Dependency Order)
+// ============================================================================
+// Layer 1 (zero dependencies) → Layer 2 (depends on Layer 1)
+//
+// 📖 Reference: https://www.php.net/manual/en/function.require-once.php
+// ============================================================================
+
+// Layer 1 — Zero dependencies (depend only on auth_creds.php constants)
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'security.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'db_connect.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'db_query.php';
+
+// Layer 2 — Core services (depend on Layer 1)
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'error_handler.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'settings.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'activity_logger.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'i18n.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'router.php';
+
+// ============================================================================
+// ⚠️ Step 6: Register Error/Exception/Shutdown Handlers
+// ============================================================================
+// Must be registered AFTER loading error_handler.php but BEFORE any application
+// code runs, so all errors are caught.
+//
+// 📖 Reference: https://www.php.net/manual/en/function.set-error-handler.php
+// ============================================================================
+
+set_error_handler('g2ml_errorHandler');
+set_exception_handler('g2ml_exceptionHandler');
+register_shutdown_function('g2ml_shutdownHandler');
+
+// ============================================================================
+// 🔒 Step 7: Start Session
+// ============================================================================
+// Secure session configuration for all components.
+//
+// 📖 Reference: https://www.php.net/manual/en/session.configuration.php
+// ============================================================================
+
+if (session_status() === PHP_SESSION_NONE)
+{
+    // Session name unique to the application (prevents conflicts on shared hosts)
+    session_name('G2ML_SESSION');
+
+    // Configure session security
+    // 📖 Reference: https://www.php.net/manual/en/function.session-set-cookie-params.php
+    session_set_cookie_params([
+        'lifetime' => 0,        // Session cookie (expires when browser closes)
+        'path'     => '/',
+        'domain'   => '',       // Let the browser determine the domain
+        'secure'   => (G2ML_ENVIRONMENT === 'production'), // HTTPS only in production
+        'httponly'  => true,     // Not accessible via JavaScript
+        'samesite' => 'Lax',    // CSRF protection
+    ]);
+
+    session_start();
+
+    // Regenerate session ID periodically to prevent session fixation
+    // 📖 Reference: https://www.php.net/manual/en/function.session-regenerate-id.php
+    if (!isset($_SESSION['_g2ml_session_created']))
+    {
+        $_SESSION['_g2ml_session_created'] = time();
+    }
+    elseif (time() - $_SESSION['_g2ml_session_created'] > 1800) // 30 minutes
+    {
+        session_regenerate_id(true);
+        $_SESSION['_g2ml_session_created'] = time();
+    }
+}
+
+// ============================================================================
+// ⚙️ Step 8: Load Settings Cache
+// ============================================================================
+// Loads Default and System scope settings into memory.
+// Org/User settings are loaded lazily on first getSetting() call.
+// ============================================================================
+
+loadSettingsCache();
+
+// ============================================================================
+// 🌍 Step 9: Detect and Set Locale
+// ============================================================================
+// Resolves the user's preferred locale from URL, session, cookie,
+// Accept-Language header, or default setting.
+// ============================================================================
+
+detectLocale();
+
+// ============================================================================
+// 📋 Step 10 (continued): Debug Info Collection
+// ============================================================================
+// Provide a function that the debug panel (in footer.php) can call to get
+// debug information gathered during the request.
+// ============================================================================
+
+/**
+ * Get debug information for the current request.
+ *
+ * @return array  Debug data including timing, memory, queries, settings, etc.
+ */
+function g2ml_getDebugInfo(): array
+{
+    return [
+        'environment'    => G2ML_ENVIRONMENT,
+        'component'      => defined('G2ML_COMPONENT') ? G2ML_COMPONENT : 'unknown',
+        'componentName'  => defined('G2ML_COMPONENT_NAME') ? G2ML_COMPONENT_NAME : 'unknown',
+        'locale'         => getLocale(),
+        'textDirection'  => getTextDirection(),
+        'phpVersion'     => PHP_VERSION,
+        'executionTime'  => round((microtime(true) - G2ML_START_TIME) * 1000, 2) . ' ms',
+        'peakMemory'     => round(memory_get_peak_usage() / 1024 / 1024, 2) . ' MB',
+        'queryCount'     => count($GLOBALS['_g2ml_query_log'] ?? []),
+        'queries'        => $GLOBALS['_g2ml_query_log'] ?? [],
+        'sessionID'      => session_id(),
+        'requestURI'     => $_SERVER['REQUEST_URI'] ?? '',
+        'requestMethod'  => $_SERVER['REQUEST_METHOD'] ?? '',
+    ];
+}

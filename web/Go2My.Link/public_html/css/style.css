@@ -1,0 +1,72 @@
+/**
+ * ============================================================================
+ * GoToMyLink — Component A Custom Styles
+ * ============================================================================
+ *
+ * Custom CSS for go2my.link (Main Website).
+ * Bootstrap 5.3 is the primary framework — only add overrides here.
+ *
+ * @version 0.3.0
+ * @since   Phase 2
+ * ============================================================================
+ */
+
+/* ========================================================================== */
+/* Skip to Content Link                                                       */
+/* Visible only when focused (keyboard navigation)                            */
+/* 📖 Reference: https://www.w3.org/TR/WCAG21/#bypass-blocks                 */
+/* ========================================================================== */
+.skip-to-content:focus {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100000;
+    padding: 0.75rem 1.5rem;
+    background-color: #1565C0;
+    color: #ffffff;
+    text-decoration: none;
+    font-weight: bold;
+    border-bottom-right-radius: 0.375rem;
+}
+
+/* ========================================================================== */
+/* Brand Colour Overrides                                                     */
+/* ========================================================================== */
+.bg-primary {
+    background-color: #1565C0 !important;
+}
+
+.btn-primary {
+    background-color: #1E88E5;
+    border-color: #1565C0;
+}
+
+.btn-primary:hover {
+    background-color: #1565C0;
+    border-color: #0D47A1;
+}
+
+.text-primary {
+    color: #1E88E5 !important;
+}
+
+/* ========================================================================== */
+/* Body & Layout                                                              */
+/* ========================================================================== */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+/* ========================================================================== */
+/* Focus Indicators (WCAG 2.1 AA: 2.4.7 Focus Visible)                       */
+/* ========================================================================== */
+*:focus-visible {
+    outline: 3px solid #1E88E5;
+    outline-offset: 2px;
+}

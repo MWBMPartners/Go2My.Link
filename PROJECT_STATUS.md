@@ -1,10 +1,10 @@
 # GoToMyLink — Project Status
 
-> Last updated: 2026-02-22
+> Last updated: 2026-02-23
 
 ## Current Phase
 
-**Phase 1: Database Schema Design & Migration** — Complete
+**Phase 2: Core PHP Framework & Shared Infrastructure** — Complete
 
 ## Build Progress
 
@@ -12,7 +12,7 @@
 | --- | --- | --- | --- |
 | Phase 0 | v0.1.0 — Scaffolding | **Complete** | 7 issues |
 | Phase 1 | v0.2.0 — Database | **Complete** | 5 issues |
-| Phase 2 | v0.3.0 — PHP Framework | Not Started | 11 issues |
+| Phase 2 | v0.3.0 — PHP Framework | **Complete** | 11 issues |
 | Phase 3 | v0.4.0 — Redirect Engine | Not Started | 4 issues |
 | Phase 4 | v0.5.0 — Main Website | Not Started | 5 issues |
 | Phase 5 | v0.6.0 — User System | Not Started | 9 issues |
@@ -23,6 +23,20 @@
 | Phase 10 | v1.0.0 — Legal & Launch | Not Started | 8 issues |
 
 ## Completed Milestones
+
+### v0.3.0 — PHP Framework (Phase 2)
+
+- [x] 2.1 — Database connection layer: MySQLi singleton via `getDB()`, utf8mb4, UTC timezone (#19)
+- [x] 2.2 — Prepared statement query wrappers: `dbSelect()`, `dbInsert()`, `dbUpdate()`, `dbDelete()`, `dbCallProcedure()` (#21)
+- [x] 2.3 — Settings manager: `getSetting()`/`setSetting()` with scope cascade + encryption (#22)
+- [x] 2.4 — Error and activity logging: custom error/exception handlers → tblErrorLog, `logActivity()` with basic UA parsing → tblActivityLog (#24)
+- [x] 2.5 — Security utilities: AES-256-GCM encrypt/decrypt, Argon2id hashing, CSRF tokens, input sanitisation (#27)
+- [x] 2.6 — Template/layout engine: header.php (Bootstrap 5 + FA6 CDN + fallback), nav.php, footer.php with debug panel (#29)
+- [x] 2.7 — Router and entry points: file-based `resolveRoute()` for Components A/Admin, direct routing for B/C, all 4 index.php files (#31)
+- [x] 2.8 — Third-party libraries: Bootstrap 5.3.3, jQuery 3.7.1, Font Awesome 6.5.1, Chart.js 4.4.7 (local fallback copies) (#33)
+- [x] 2.9 — Accessibility foundation: WCAG 2.1 AA helpers (`srOnly()`, `ariaLiveRegion()`, `formField()`, `skipToContent()`), docs/ACCESSIBILITY.md (#68)
+- [x] 2.10 — i18n/translation infrastructure: `__()`, `_n()`, `_e()`, locale detection, language switcher dropdown (#69)
+- [x] 2.11 — Interim Google Translate widget for non-translated locales (#70)
 
 ### v0.2.0 — Database (Phase 1)
 
@@ -70,7 +84,7 @@ None.
 
 ## Next Up
 
-**Phase 2: Core PHP Framework & Shared Infrastructure** — Build foundational PHP classes/functions shared by all 3 web properties: DB connection, settings, error handling, security, routing, accessibility helpers, and i18n infrastructure.
+**Phase 3: Redirect Engine (g2my.link)** — Build the core redirect resolution for short codes. Performance-critical component that immediately serves all 480 migrated URLs.
 
 ## Links
 
