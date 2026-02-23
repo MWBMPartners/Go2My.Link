@@ -74,6 +74,45 @@ Cross-subdomain session sharing uses cookie domain `.go2my.link` in production (
 
 Emails are sent via PHP `mail()` using `g2ml_sendEmail()` with HTML templates in `web/_includes/email_templates/`. Template rendering uses output buffering with `extract($data)` for variable injection. Settings for From/Reply-To are in `tblSettings` (`email.from_address`, `email.from_name`, `email.reply_to`).
 
+## 🚀 Release Process
+
+Releases are managed via the **"🚀 Create Release"** GitHub Actions workflow (`.github/workflows/release.yml`). Each component can be released independently, allowing separate deployment cycles.
+
+### 📋 How to Create a Release
+
+1. Go to **Actions** → **"🚀 Create Release"** → **"Run workflow"**
+2. Select the **component** to release:
+   - `all — Full Platform` → tags as `v0.5.0`
+   - `component-a — Main Website (go2my.link)` → tags as `component-a/v0.5.0`
+   - `component-a-admin — Admin Dashboard (admin.go2my.link)` → tags as `component-a-admin/v0.5.0`
+   - `component-b — Redirect Engine (g2my.link)` → tags as `component-b/v0.5.0`
+   - `component-c — LinksPage (lnks.page)` → tags as `component-c/v0.5.0`
+3. Enter the **version number** (e.g., `0.5.0` — no `v` prefix)
+4. Optionally mark as **pre-release** and add **release notes**
+5. Click **"Run workflow"**
+
+### ⚙️ What the Workflow Does
+
+1. **📥 Checkout** — Full git history for changelog generation
+2. **🔍 Parse inputs** — Determines tag format, release name, and component path
+3. **🔎 Tag check** — Verifies the tag doesn't already exist
+4. **🔍 PHP Lint** — Validates PHP syntax in the component's directory before release
+5. **📝 Release notes** — Auto-generates changelog from commits since last tag for that component
+6. **🏷️ Create tag** — Creates annotated Git tag and pushes to origin
+7. **📦 GitHub Release** — Creates a GitHub Release with the generated notes
+
+### 🏷️ Tag Format Summary
+
+| Scope | Tag Example | Component Path |
+| --- | --- | --- |
+| Full platform | `v0.5.0` | `web/` |
+| Main Website | `component-a/v0.5.0` | `web/Go2My.Link/public_html/` |
+| Admin Dashboard | `component-a-admin/v0.5.0` | `web/Go2My.Link/_admin/public_html/` |
+| Redirect Engine | `component-b/v0.5.0` | `web/G2My.Link/public_html/` |
+| LinksPage | `component-c/v0.5.0` | `web/Lnks.page/public_html/` |
+
+> 💡 **Tip:** Concurrent releases are prevented — only one release can run at a time. The workflow uses `actions/checkout@v6` and runs PHP lint with `php-parallel-lint` on PHP 8.4.
+
 ## 💡 Gotchas & Tips
 
 ### ⚠️ PHP 8.5 vs 8.4

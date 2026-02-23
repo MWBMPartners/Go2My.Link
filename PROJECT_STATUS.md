@@ -4,7 +4,7 @@
 
 ## 🏗️ Current Phase
 
-**Phase 4: User System — Auth & Dashboard** — ✅ Complete
+**Phase 4: User System — Auth & Dashboard** — ✅ Complete — preparing for Phase 5
 
 ## 📋 Build Progress
 
@@ -16,7 +16,7 @@
 | Phase 3 | v0.4.0 — Core Product | ✅ **Complete** | 10 issues |
 | Phase 4 | v0.5.0 — User System: Auth & Dashboard | ✅ **Complete** | 4 issues |
 | Phase 5 | v0.6.0 — Orgs, Admin & Advanced Auth | 🔜 Not Started | 5 issues |
-| Phase 6 | v0.7.0 — API & Analytics | 🔜 Not Started | 7 issues |
+| Phase 6 | v0.7.0 — API & Analytics | 🔜 Not Started | 8 issues |
 | Phase 7 | v0.8.0 — LinksPage | 🔜 Not Started | 6 issues |
 | Phase 8 | v0.9.0 — Advanced Redirects | 🔜 Not Started | 6 issues |
 | Phase 9 | v0.10.0 — Payments | 🔜 Not Started | 4 issues |
@@ -107,10 +107,14 @@ None.
 - 🔗 QR codes excluded from project — will be a separate first-party service with future integration
 - 📁 Component A directory renamed from `GoToMy.Link` to `Go2My.Link` (domain name match)
 - 🏢 Admin dashboard separated to `admin.go2my.link` subdomain (`_admin/public_html/`)
+- 🚀 **Release workflow** — GitHub Actions `release.yml` supports per-component releases (A, B, C, Admin, All) with PHP lint, tagging, and auto-generated release notes
+- 📡 **OpenAPI/Swagger docs** — Issue #75 added to Phase 6 for interactive API documentation at `/api/docs`
 
 ## 🔜 Next Up
 
 **Phase 5: Organisations, Admin & Advanced Auth** — Organisation management, admin panel, social login (Google/GitHub), 2FA (TOTP), passkeys, and advanced user management. 5 issues.
+
+**Also planned for Phase 6:** OpenAPI/Swagger interactive API documentation (#75).
 
 ## 🔗 Links
 

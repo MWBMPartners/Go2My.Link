@@ -1,0 +1,255 @@
+# =============================================================================
+# GoToMyLink — Release Workflow
+# =============================================================================
+#
+# Creates a tagged GitHub Release for individual components or the full
+# platform. Each component can be released independently, allowing separate
+# deployment cycles for the main website, redirect engine, and LinksPage.
+#
+# Usage:
+#   1. Go to Actions → "Create Release" → "Run workflow"
+#   2. Select the component to release
+#   3. Enter the version (e.g., 0.5.0)
+#   4. Add optional release notes
+#   5. Click "Run workflow"
+#
+# Tag format:
+#   - Full platform:  v0.5.0
+#   - Component A:    component-a/v0.5.0
+#   - Component B:    component-b/v0.5.0
+#   - Component C:    component-c/v0.5.0
+#
+# @package    GoToMyLink
+# @author     MWBM Partners Ltd (MWservices)
+# @since      Phase 4
+# =============================================================================
+
+name: "🚀 Create Release"
+
+on:
+  workflow_dispatch:
+    inputs:
+      component:
+        description: "Component to release"
+        required: true
+        type: choice
+        options:
+          - "all — Full Platform"
+          - "component-a — Main Website (go2my.link)"
+          - "component-a-admin — Admin Dashboard (admin.go2my.link)"
+          - "component-b — Redirect Engine (g2my.link)"
+          - "component-c — LinksPage (lnks.page)"
+      version:
+        description: "Version number (e.g., 0.5.0)"
+        required: true
+        type: string
+      prerelease:
+        description: "Mark as pre-release?"
+        required: false
+        type: boolean
+        default: false
+      notes:
+        description: "Additional release notes (optional)"
+        required: false
+        type: string
+        default: ""
+
+# Prevent concurrent releases
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: "Create Release"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      # =====================================================================
+      # Checkout
+      # =====================================================================
+      - name: "📥 Checkout code"
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Full history for changelog generation
+
+      # =====================================================================
+      # Parse component selection
+      # =====================================================================
+      - name: "🔍 Parse inputs"
+        id: parse
+        run: |
+          COMPONENT_INPUT="${{ github.event.inputs.component }}"
+          VERSION="${{ github.event.inputs.version }}"
+
+          # Extract component key (everything before " — ")
+          COMPONENT_KEY=$(echo "$COMPONENT_INPUT" | cut -d' ' -f1)
+
+          case "$COMPONENT_KEY" in
+            all)
+              TAG="v${VERSION}"
+              RELEASE_NAME="GoToMyLink v${VERSION}"
+              COMPONENT_PATH="web/"
+              COMPONENT_LABEL="Full Platform"
+              ;;
+            component-a)
+              TAG="component-a/v${VERSION}"
+              RELEASE_NAME="Component A (Main Website) v${VERSION}"
+              COMPONENT_PATH="web/Go2My.Link/public_html/"
+              COMPONENT_LABEL="Main Website (go2my.link)"
+              ;;
+            component-a-admin)
+              TAG="component-a-admin/v${VERSION}"
+              RELEASE_NAME="Component A Admin (Dashboard) v${VERSION}"
+              COMPONENT_PATH="web/Go2My.Link/_admin/public_html/"
+              COMPONENT_LABEL="Admin Dashboard (admin.go2my.link)"
+              ;;
+            component-b)
+              TAG="component-b/v${VERSION}"
+              RELEASE_NAME="Component B (Redirect Engine) v${VERSION}"
+              COMPONENT_PATH="web/G2My.Link/public_html/"
+              COMPONENT_LABEL="Redirect Engine (g2my.link)"
+              ;;
+            component-c)
+              TAG="component-c/v${VERSION}"
+              RELEASE_NAME="Component C (LinksPage) v${VERSION}"
+              COMPONENT_PATH="web/Lnks.page/public_html/"
+              COMPONENT_LABEL="LinksPage (lnks.page)"
+              ;;
+            *)
+              echo "❌ Unknown component: $COMPONENT_KEY"
+              exit 1
+              ;;
+          esac
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "release_name=$RELEASE_NAME" >> "$GITHUB_OUTPUT"
+          echo "component_path=$COMPONENT_PATH" >> "$GITHUB_OUTPUT"
+          echo "component_key=$COMPONENT_KEY" >> "$GITHUB_OUTPUT"
+          echo "component_label=$COMPONENT_LABEL" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          echo "📋 Component: $COMPONENT_LABEL"
+          echo "🏷️  Tag: $TAG"
+          echo "📦 Path: $COMPONENT_PATH"
+
+      # =====================================================================
+      # Verify tag doesn't already exist
+      # =====================================================================
+      - name: "🔎 Check tag availability"
+        run: |
+          TAG="${{ steps.parse.outputs.tag }}"
+          if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "❌ Tag '$TAG' already exists. Use a different version number."
+            exit 1
+          fi
+          echo "✅ Tag '$TAG' is available."
+
+      # =====================================================================
+      # PHP Lint (validate syntax before release)
+      # =====================================================================
+      - name: "🔧 Setup PHP"
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          tools: php-parallel-lint/php-parallel-lint
+
+      - name: "🔍 PHP Lint check"
+        run: |
+          COMPONENT_PATH="${{ steps.parse.outputs.component_path }}"
+          echo "🔍 Linting PHP files in $COMPONENT_PATH ..."
+          php-parallel-lint --exclude vendor --exclude _libraries "$COMPONENT_PATH" || {
+            echo "❌ PHP syntax errors found. Fix before releasing."
+            exit 1
+          }
+          echo "✅ PHP lint passed."
+
+      # =====================================================================
+      # Generate release notes
+      # =====================================================================
+      - name: "📝 Generate release notes"
+        id: notes
+        run: |
+          VERSION="${{ steps.parse.outputs.version }}"
+          COMPONENT="${{ steps.parse.outputs.component_label }}"
+          EXTRA_NOTES="${{ github.event.inputs.notes }}"
+
+          # Get the latest tag for this component (if any)
+          TAG_PREFIX="${{ steps.parse.outputs.component_key }}"
+          if [ "$TAG_PREFIX" = "all" ]; then
+            LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -1)
+          else
+            LATEST_TAG=$(git tag -l "${TAG_PREFIX}/v*" --sort=-v:refname | head -1)
+          fi
+
+          # Build release body
+          BODY="## 🚀 ${COMPONENT} — v${VERSION}"
+          BODY="${BODY}\n\n**Released:** $(date -u +'%Y-%m-%d %H:%M UTC')"
+          BODY="${BODY}\n**Released by:** @${{ github.actor }}"
+
+          if [ -n "$EXTRA_NOTES" ]; then
+            BODY="${BODY}\n\n### 📝 Notes\n\n${EXTRA_NOTES}"
+          fi
+
+          # Generate commit log since last tag
+          if [ -n "$LATEST_TAG" ]; then
+            BODY="${BODY}\n\n### 📋 Changes since ${LATEST_TAG}\n"
+            COMMITS=$(git log "${LATEST_TAG}..HEAD" --oneline --no-merges -- "${{ steps.parse.outputs.component_path }}" 2>/dev/null | head -30)
+            if [ -n "$COMMITS" ]; then
+              BODY="${BODY}\n\`\`\`"
+              BODY="${BODY}\n${COMMITS}"
+              BODY="${BODY}\n\`\`\`"
+            else
+              BODY="${BODY}\nNo component-specific changes since last release."
+            fi
+          else
+            BODY="${BODY}\n\n> 🎉 This is the first release for this component."
+          fi
+
+          BODY="${BODY}\n\n---\n*Released via [GitHub Actions](https://github.com/${{ github.repository }}/actions)*"
+
+          # Write to file (avoids escaping issues)
+          echo -e "$BODY" > /tmp/release-notes.md
+
+      # =====================================================================
+      # Create the release
+      # =====================================================================
+      - name: "🏷️ Create Git tag"
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.parse.outputs.tag }}" -m "${{ steps.parse.outputs.release_name }}"
+          git push origin "${{ steps.parse.outputs.tag }}"
+
+      - name: "📦 Create GitHub Release"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PRERELEASE_FLAG=""
+          if [ "${{ github.event.inputs.prerelease }}" = "true" ]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+
+          gh release create "${{ steps.parse.outputs.tag }}" \
+            --title "${{ steps.parse.outputs.release_name }}" \
+            --notes-file /tmp/release-notes.md \
+            $PRERELEASE_FLAG
+
+          echo "✅ Release created: ${{ steps.parse.outputs.release_name }}"
+
+      # =====================================================================
+      # Summary
+      # =====================================================================
+      - name: "📋 Release summary"
+        run: |
+          echo "## ✅ Release Complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 📦 Component | ${{ steps.parse.outputs.component_label }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 🏷️ Tag | \`${{ steps.parse.outputs.tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 📋 Version | ${{ steps.parse.outputs.version }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 🔄 Pre-release | ${{ github.event.inputs.prerelease }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 👤 Released by | @${{ github.actor }} |" >> "$GITHUB_STEP_SUMMARY"
