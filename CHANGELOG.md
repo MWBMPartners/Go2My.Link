@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Added
 
+- 🔑 **Authentication functions** — `registerUser()`, `loginUser()`, `logoutUser()`, `isAuthenticated()`, `getCurrentUser()`, `requireAuth()`, role-based access, account lockout, email verification, password reset (#25)
+- 🔐 **Session management** — Database-backed sessions with `createUserSession()`, `validateUserSession()`, `listUserSessions()`, `revokeSession()`, `revokeAllOtherSessions()`, device parsing, IP masking (#26)
+- 📧 **Email system** — `g2ml_sendEmail()` with templated HTML emails: verification, password reset, password changed notification, new login alert (#25)
+- 📝 **Auth pages** — Register, Login (with CAPTCHA after N failures), Logout, Forgot Password (rate-limited, enumeration-safe), Reset Password, Verify Email — all with CSRF, i18n, and formField() (#28)
+- 🖥️ **Admin dashboard** — auth-gated at admin.go2my.link with file-based routing (#30)
+  - Dashboard home: link count, click stats, active links, recent links table
+  - Link management: paginated list with search/filter, create with full options, edit with ownership check, delete with confirmation
+  - Profile: personal info editing, password change, account info
+  - Session management: view all active sessions, revoke individual or all others
+- 🔒 **Security features** — SHA-256 hashed token storage, timing-safe email enumeration prevention, Argon2id password rehash on login, session regeneration, cross-subdomain session sharing (#25, #26)
+- 🌱 **Phase 4 settings seed** — 14 new settings: password policy (4), security/lockout (4), email config (3), auth behaviour (3) (#30)
+
+### 🔄 Changed
+
+- 🔀 **page_init.php** — Added Layer 3 function loading (email, session, auth); cross-subdomain session cookie (`.go2my.link`); authenticated session validation + refresh; probabilistic session cleanup
+- 🔀 **nav.php** — Enhanced logged-in dropdown: avatar, email display, Dashboard/My Links/Profile links to admin.go2my.link
+- 🔀 **Admin index.php** — Replaced auth placeholder with `requireAuth('User')`; replaced inline HTML with file-based routing to dashboard pages
+- 📋 Version bumped to 0.5.0 across modified files
+
+### ✨ Previously Added
+
 - 🔀 **Redirect resolver functions** — `resolveShortCode()`, `validateDestination()`, `buildRedirectResponse()` for Component B (#10)
 - 🌐 **Domain resolver functions** — `getOrgByDomain()`, `getDomainFallbackURL()`, `getOrgFavicon()` for multi-domain org support (#10)
 - 🚫 **Branded error pages** for Component B — self-contained 404, expired/scheduled, and destination validation pages with countdown timers and ARIA live regions (#11)

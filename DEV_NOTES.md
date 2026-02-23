@@ -62,6 +62,18 @@ The admin dashboard (user dashboard, link management, settings) is served from
 `web/Go2My.Link/_admin/public_html/` at `admin.go2my.link`. This is part of Component A
 but separated from the public-facing website.
 
+### 🔑 Authentication & Sessions (Phase 4)
+
+All auth tokens (session, email verification, password reset) are stored as `hash('sha256', $plaintext)` in the database. The plaintext token is only ever in `$_SESSION` or in email links. This means a database leak does not compromise active tokens.
+
+Sessions are dual-layered: PHP session + database-backed token in `tblUserSessions`. Every authenticated request validates the `$_SESSION['session_token']` against the DB hash. Sessions can be revoked remotely (the sessions management page at `/profile/sessions`).
+
+Cross-subdomain session sharing uses cookie domain `.go2my.link` in production (set in `page_init.php`). This enables users to log in on go2my.link and access admin.go2my.link without re-authenticating.
+
+### 📧 Email System
+
+Emails are sent via PHP `mail()` using `g2ml_sendEmail()` with HTML templates in `web/_includes/email_templates/`. Template rendering uses output buffering with `extract($data)` for variable injection. Settings for From/Reply-To are in `tblSettings` (`email.from_address`, `email.from_name`, `email.reply_to`).
+
 ## 💡 Gotchas & Tips
 
 ### ⚠️ PHP 8.5 vs 8.4

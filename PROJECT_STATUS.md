@@ -4,7 +4,7 @@
 
 ## 🏗️ Current Phase
 
-**Phase 3: Core Product** — ✅ Complete
+**Phase 4: User System — Auth & Dashboard** — ✅ Complete
 
 ## 📋 Build Progress
 
@@ -14,7 +14,7 @@
 | Phase 1 | v0.2.0 — Database | ✅ **Complete** | 5 issues |
 | Phase 2 | v0.3.0 — PHP Framework | ✅ **Complete** | 11 issues |
 | Phase 3 | v0.4.0 — Core Product | ✅ **Complete** | 10 issues |
-| Phase 4 | v0.5.0 — User System: Auth & Dashboard | 🔜 Not Started | 4 issues |
+| Phase 4 | v0.5.0 — User System: Auth & Dashboard | ✅ **Complete** | 4 issues |
 | Phase 5 | v0.6.0 — Orgs, Admin & Advanced Auth | 🔜 Not Started | 5 issues |
 | Phase 6 | v0.7.0 — API & Analytics | 🔜 Not Started | 7 issues |
 | Phase 7 | v0.8.0 — LinksPage | 🔜 Not Started | 6 issues |
@@ -23,6 +23,13 @@
 | Phase 10 | v1.0.0 — Legal & Launch | 🔜 Not Started | 8 issues |
 
 ## ✅ Completed Milestones
+
+### v0.5.0 — 🔑 User System: Auth & Dashboard (Phase 4)
+
+- [x] 4.1 — 🔑 Auth functions: `registerUser()`, `loginUser()`, `logoutUser()`, `isAuthenticated()`, `requireAuth()`, role hierarchy, account lockout, email verification, password reset, password change (#25)
+- [x] 4.2 — 🔐 Session management: `createUserSession()`, `validateUserSession()`, `listUserSessions()`, `revokeSession()`, `revokeAllOtherSessions()`, device parsing, probabilistic cleanup (#26)
+- [x] 4.3 — 📝 Auth pages: Register, Login (adaptive CAPTCHA), Logout, Forgot Password (rate-limited), Reset Password (token-based), Verify Email — all CSRF-protected with i18n (#28)
+- [x] 4.4 — 🖥️ Admin dashboard: Overview (stats + recent links), Link CRUD (search, filter, paginate), Profile (personal info + password), Session management (list + revoke) (#30)
 
 ### v0.4.0 — 🚀 Core Product (Phase 3)
 
@@ -81,6 +88,10 @@ None.
 
 ## 📝 Recent Decisions
 
+- 🔑 **Token storage** — All tokens (session, email verify, password reset) stored as SHA-256 hashes in DB; plaintext only in `$_SESSION` or email links
+- 🔒 **Cross-subdomain sessions** — Cookie domain `.go2my.link` in production for sharing between go2my.link and admin.go2my.link
+- 🛡️ **Email enumeration prevention** — Generic errors on registration, login, and forgot-password; timing-safe dummy hash on user-not-found
+- 🔐 **Account lockout** — After 5 failed login attempts, account locked for 15 minutes (configurable via settings)
 - 🎨 **Dark/light mode** required for all web UI — manual toggle + automatic system preference detection (Bootstrap 5.3 `data-bs-theme`)
 - 📋 **Phase restructuring** — Merged old Phases 3+4 into new Phase 3 (Core Product); split old Phase 5 into new Phases 4+5 (basic auth vs org/admin)
 - ♿ Accessibility (WCAG 2.1 AA) is a foundational requirement from Phase 2 onwards
@@ -99,7 +110,7 @@ None.
 
 ## 🔜 Next Up
 
-**Phase 4: User System — Auth & Basic Dashboard** — User registration, login (email/password + social login), password reset, and a basic user dashboard for managing personal short links. 4 issues.
+**Phase 5: Organisations, Admin & Advanced Auth** — Organisation management, admin panel, social login (Google/GitHub), 2FA (TOTP), passkeys, and advanced user management. 5 issues.
 
 ## 🔗 Links
 
