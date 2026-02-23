@@ -39,6 +39,12 @@ BEGIN
     DECLARE v_i             INT;
     DECLARE v_len           INT;
 
+    -- Exception handler: return NULL on any SQL error
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SET outputCode = NULL;
+    END;
+
     -- Default length = 7 characters
     SET v_len = IFNULL(inputLength, 7);
     IF v_len < 4 THEN SET v_len = 4; END IF;

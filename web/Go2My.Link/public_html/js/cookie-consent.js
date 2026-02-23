@@ -61,6 +61,9 @@
             .then(function (result) {
                 if (result.success) {
                     hideBanner();
+                } else {
+                    // Server rejected consent — hide banner anyway to avoid stuck UI
+                    hideBanner();
                 }
             })
             .catch(function () {

@@ -24,6 +24,8 @@ USE `mwtools_Go2MyLink`;
 
 SET time_zone = '+00:00';
 
+START TRANSACTION;
+
 INSERT INTO `tblShortURLs` (
     `urlUID`,
     `orgHandle`,
@@ -80,6 +82,8 @@ FROM `mwtools_mwlink`.`tblShortURLs` old
 ON DUPLICATE KEY UPDATE
     `destinationURL` = VALUES(`destinationURL`),
     `updatedAt` = NOW();
+
+COMMIT;
 
 -- =========================================================================
 -- Verification

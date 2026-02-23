@@ -223,7 +223,9 @@ function loginUser(string $email, string $password): array
     // 📖 Reference: https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html#authentication-responses
     if ($user === null || $user === false)
     {
-        g2ml_verifyPassword($password, '$2y$12$dummyhashforthisprojecttopreventtimingleaks000000000000');
+        // Use Argon2id dummy hash to match the real algorithm's timing profile
+        // and prevent timing-based user enumeration
+        g2ml_verifyPassword($password, '$argon2id$v=19$m=65536,t=4,p=1$ZHVtbXlzYWx0Zm9ydGhpcw$dummyhashvaluetopreventtimingleaksinthisproject0000');
 
         return [
             'success'     => false,

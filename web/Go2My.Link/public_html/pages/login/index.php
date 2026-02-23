@@ -180,9 +180,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
                 $postRedirect = $_POST['redirect'] ?? '';
 
-                if ($postRedirect !== '' && strpos($postRedirect, '/') === 0)
+                if ($postRedirect !== '' && preg_match('/^\/[^\/\\\\]/', $postRedirect))
                 {
-                    // Only allow relative paths (prevent open redirect)
+                    // Only allow relative paths starting with exactly one /
+                    // Prevents open redirect via //evil.com (protocol-relative URLs)
                     $postLoginRedirect = $postRedirect;
                 }
 

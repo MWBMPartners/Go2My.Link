@@ -29,6 +29,8 @@ USE `mwtools_Go2MyLink`;
 
 SET time_zone = '+00:00';
 
+START TRANSACTION;
+
 -- =========================================================================
 -- Step 1: Migrate users with invalidated passwords
 -- =========================================================================
@@ -80,6 +82,8 @@ LEFT JOIN `mwtools_mwlink`.`tblCustomerOrg` org
 ON DUPLICATE KEY UPDATE
     `username` = VALUES(`username`),
     `updatedAt` = NOW();
+
+COMMIT;
 
 -- =========================================================================
 -- Verification

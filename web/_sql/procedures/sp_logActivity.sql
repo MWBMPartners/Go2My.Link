@@ -44,6 +44,10 @@ CREATE PROCEDURE `sp_logActivity`(
     MODIFIES SQL DATA
     COMMENT 'Insert a structured activity log entry'
 BEGIN
+    -- Exception handler: silently discard failed log entries to avoid
+    -- disrupting the calling application (logging should never cause errors)
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN END;
+
     -- Ensure UTC
     SET time_zone = '+00:00';
 

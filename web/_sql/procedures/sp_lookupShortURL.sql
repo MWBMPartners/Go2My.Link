@@ -42,6 +42,14 @@ CREATE PROCEDURE `sp_lookupShortURL`(
     READS SQL DATA
     COMMENT 'Resolve a short code to its destination URL with alias chain support (max 3 hops)'
 BEGIN
+    -- Exception handler: return error status on any SQL failure
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SET outputDestination = NULL;
+        SET outputStatus = 'error';
+        SET outputOrgHandle = NULL;
+    END;
+
     -- Local variables
     DECLARE v_orgHandle     VARCHAR(50)     DEFAULT NULL;
     DECLARE v_destination   TEXT            DEFAULT NULL;

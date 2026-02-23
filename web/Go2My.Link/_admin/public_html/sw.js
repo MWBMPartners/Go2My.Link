@@ -30,8 +30,6 @@ const CACHE_NAME = 'go2mylink-admin-v1';
 // 📦 App shell — static assets to pre-cache on install
 const APP_SHELL = [
     '/',
-    '/css/style.css',
-    '/js/theme.js',
     '/icons/icon-192x192.png',
     '/icons/icon-512x512.png',
     '/manifest.json'
@@ -120,7 +118,7 @@ self.addEventListener('fetch', function(event)
                         caches.open(CACHE_NAME).then(function(cache)
                         {
                             cache.put(request, responseClone);
-                        });
+                        }).catch(function() {});
                     }
 
                     return networkResponse;

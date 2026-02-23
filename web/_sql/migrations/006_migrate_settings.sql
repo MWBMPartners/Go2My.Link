@@ -21,6 +21,8 @@ USE `mwtools_Go2MyLink`;
 
 SET time_zone = '+00:00';
 
+START TRANSACTION;
+
 -- =========================================================================
 -- Step 1: Migrate setting definitions as Default-scope entries
 -- =========================================================================
@@ -85,6 +87,8 @@ FROM `mwtools_mwlink`.`tblSettings` old
 ON DUPLICATE KEY UPDATE
     `settingValue` = VALUES(`settingValue`),
     `updatedAt` = NOW();
+
+COMMIT;
 
 -- =========================================================================
 -- Verification

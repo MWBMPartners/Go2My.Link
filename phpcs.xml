@@ -20,7 +20,9 @@
      @since      Phase 5
      ======================================================================== -->
 
-<ruleset name="Go2MyLink">
+<ruleset name="Go2MyLink"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/PHPCSStandards/PHP_CodeSniffer/master/phpcs.xsd">
     <description>Go2My.Link coding standard (PSR-12 adapted)</description>
 
     <!-- Base standard -->

@@ -120,7 +120,22 @@ else
 // ============================================================================
 
 $isDebugEnvironment = in_array(G2ML_ENVIRONMENT, ['alpha', 'beta', 'local'], true);
-$isDebugRequested   = isset($_GET['debug']) && $_GET['debug'] === 'true';
+
+// In production, debug mode requires GlobalAdmin authentication.
+// Unauthenticated ?debug=true is ignored to prevent information leakage.
+$isDebugRequested = false;
+if (isset($_GET['debug']) && $_GET['debug'] === 'true')
+{
+    if ($isDebugEnvironment)
+    {
+        $isDebugRequested = true;
+    }
+    elseif (function_exists('isAuthenticated') && isAuthenticated()
+            && function_exists('hasMinimumRole') && hasMinimumRole($_SESSION['user_role'] ?? 'Anonymous', 'GlobalAdmin'))
+    {
+        $isDebugRequested = true;
+    }
+}
 
 define('G2ML_DEBUG', $isDebugEnvironment || $isDebugRequested);
 
@@ -206,6 +221,9 @@ if (session_status() === PHP_SESSION_NONE)
     } else {
         $sessionDomain = '';
     }
+
+    // Enforce strict session mode regardless of SAPI (mod_php, FPM, CGI)
+    ini_set('session.use_strict_mode', '1');
 
     session_set_cookie_params([
         'lifetime' => 0,                                   // Session cookie (expires when browser closes)
@@ -310,7 +328,7 @@ function g2ml_getDebugInfo(): array
         'peakMemory'     => round(memory_get_peak_usage() / 1024 / 1024, 2) . ' MB',
         'queryCount'     => count($GLOBALS['_g2ml_query_log'] ?? []),
         'queries'        => $GLOBALS['_g2ml_query_log'] ?? [],
-        'sessionID'      => session_id(),
+        'sessionActive'  => (session_status() === PHP_SESSION_ACTIVE),
         'requestURI'     => $_SERVER['REQUEST_URI'] ?? '',
         'requestMethod'  => $_SERVER['REQUEST_METHOD'] ?? '',
     ];

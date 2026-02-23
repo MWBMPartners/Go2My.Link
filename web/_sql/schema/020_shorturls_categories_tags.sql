@@ -185,6 +185,11 @@ CREATE TABLE IF NOT EXISTS `tblShortURLs` (
         ON UPDATE CASCADE
         ON DELETE SET NULL
 
+    -- NOTE: categoryID is a logical FK to tblCategories.categoryID but cannot
+    -- be enforced as a database constraint because tblCategories uses a composite
+    -- unique key (categoryID + orgHandle). A simple FK would fail since categoryID
+    -- alone is not unique. Application-level validation is used instead.
+
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci

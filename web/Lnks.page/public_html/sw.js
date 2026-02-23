@@ -118,7 +118,7 @@ self.addEventListener('fetch', function(event)
                         caches.open(CACHE_NAME).then(function(cache)
                         {
                             cache.put(request, responseClone);
-                        });
+                        }).catch(function() {});
                     }
 
                     return networkResponse;

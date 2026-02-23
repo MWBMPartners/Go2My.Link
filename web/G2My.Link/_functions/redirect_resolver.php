@@ -270,6 +270,15 @@ function buildRedirectResponse(string $destination, int $statusCode = 302): void
         return;
     }
 
+    // Defence-in-depth: verify the destination URL uses a safe scheme
+    // Prevents javascript: or data: URLs from being issued as redirect headers
+    if (!preg_match('/^https?:\/\//i', $destination))
+    {
+        error_log('[Go2My.Link] WARNING: Rejected redirect to non-HTTP URL: ' . $destination);
+        http_response_code(404);
+        return;
+    }
+
     header('Location: ' . $destination, true, $statusCode);
     exit;
 }

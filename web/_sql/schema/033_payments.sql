@@ -155,7 +155,13 @@ CREATE TABLE IF NOT EXISTS `tblPayments` (
         FOREIGN KEY (`orgHandle`)
         REFERENCES `tblOrganisations` (`orgHandle`)
         ON UPDATE CASCADE
-        ON DELETE RESTRICT
+        ON DELETE RESTRICT,
+
+    CONSTRAINT `FK_payment_discount`
+        FOREIGN KEY (`discountUID`)
+        REFERENCES `tblPaymentDiscounts` (`discountUID`)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL
 
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4

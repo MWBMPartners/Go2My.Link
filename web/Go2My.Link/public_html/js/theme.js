@@ -154,7 +154,7 @@ var G2ML_Theme = (function() {
 
         document.cookie = COOKIE_NAME + '=' + encodeURIComponent(preference)
             + ';expires=' + expires
-            + ';path=/;SameSite=Lax';
+            + ';path=/;SameSite=Lax;Secure';
     }
 
     /**

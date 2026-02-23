@@ -21,6 +21,8 @@ USE `mwtools_Go2MyLink`;
 
 SET time_zone = '+00:00';
 
+START TRANSACTION;
+
 INSERT INTO `tblCategories` (
     `categoryID`,
     `orgHandle`,
@@ -45,6 +47,8 @@ FROM `mwtools_mwlink`.`tblCategories` old
 ON DUPLICATE KEY UPDATE
     `categoryName` = VALUES(`categoryName`),
     `updatedAt` = NOW();
+
+COMMIT;
 
 -- =========================================================================
 -- Verification

@@ -28,6 +28,8 @@ USE `mwtools_Go2MyLink`;
 
 SET time_zone = '+00:00';
 
+START TRANSACTION;
+
 -- =========================================================================
 -- Step 1: Migrate organisations
 -- =========================================================================
@@ -83,6 +85,8 @@ WHERE old.`custOrgShortURLDomain` IS NOT NULL
   AND old.`custOrgShortURLDomain` != ''
 ON DUPLICATE KEY UPDATE
     `shortDomain` = VALUES(`shortDomain`);
+
+COMMIT;
 
 -- =========================================================================
 -- Verification

@@ -33,6 +33,7 @@ const APP_SHELL = [
     '/css/style.css',
     '/js/theme.js',
     '/js/app.js',
+    '/js/cookie-consent.js',
     '/icons/icon-192x192.png',
     '/icons/icon-512x512.png',
     '/manifest.json'
@@ -121,7 +122,7 @@ self.addEventListener('fetch', function(event)
                         caches.open(CACHE_NAME).then(function(cache)
                         {
                             cache.put(request, responseClone);
-                        });
+                        }).catch(function() {});
                     }
 
                     return networkResponse;

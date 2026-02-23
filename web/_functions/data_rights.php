@@ -173,10 +173,10 @@ function g2ml_requestDataExport(int $userUID): array
         $stmt->close();
 
         // Send email notification
-        if (function_exists('sendEmail') && $userData['profile'] !== null)
+        if (function_exists('g2ml_sendEmail') && $userData['profile'] !== null)
         {
             $email = $userData['profile']['email'];
-            sendEmail($email, 'Your Data Export is Ready', 'data_export_ready', [
+            g2ml_sendEmail($email, 'Your Data Export is Ready', 'data_export_ready', [
                 'displayName' => $userData['profile']['displayName'] ?? $userData['profile']['firstName'],
                 'downloadURL' => 'https://admin.go2my.link/privacy/export?download=' . $requestUID,
                 'expiryHours' => $expiryHours,
@@ -258,13 +258,13 @@ function g2ml_requestDataDeletion(int $userUID, ?string $reason = null): array
         $stmt->close();
 
         // Send confirmation email
-        if (function_exists('sendEmail') && function_exists('getCurrentUser'))
+        if (function_exists('g2ml_sendEmail') && function_exists('getCurrentUser'))
         {
             $user = getCurrentUser();
 
             if ($user !== null)
             {
-                sendEmail($user['email'], 'Data Deletion Request Received', 'data_deletion_requested', [
+                g2ml_sendEmail($user['email'], 'Data Deletion Request Received', 'data_deletion_requested', [
                     'displayName' => $user['displayName'] ?? $user['firstName'],
                     'graceDays'   => $graceDays,
                     'cancelURL'   => 'https://admin.go2my.link/privacy/delete?cancel=' . $requestUID,

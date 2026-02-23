@@ -433,6 +433,13 @@ function dbCallProcedure(string $procedureName, array $inParams = [], string $in
             $allPlaceholders[] = $outParam;
         }
 
+        // Validate procedure name to prevent SQL injection via dynamic names
+        if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $procedureName))
+        {
+            error_log('[Go2My.Link] ERROR: Invalid procedure name rejected: ' . $procedureName);
+            return false;
+        }
+
         $sql = 'CALL `' . $procedureName . '`(' . implode(', ', $allPlaceholders) . ')';
 
         $stmt = $db->prepare($sql);

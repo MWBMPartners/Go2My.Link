@@ -158,7 +158,7 @@ foreach ($exportRequests as $req)
         <?php if ($actionError !== '') { ?>
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
-            <?php echo $actionError; ?>
+            <?php echo g2ml_sanitiseOutput($actionError); ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<?php if (function_exists('__')) { echo __('export.close'); } else { echo 'Close'; } ?>"></button>
         </div>
         <?php } ?>

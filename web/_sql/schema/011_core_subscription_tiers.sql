@@ -45,14 +45,14 @@ CREATE TABLE IF NOT EXISTS `tblSubscriptionTiers` (
     `maxLinks`              INT UNSIGNED        DEFAULT NULL
         COMMENT 'Maximum short URLs allowed (NULL = unlimited)',
 
-    `maxCustomDomains`      INT UNSIGNED        NOT NULL DEFAULT 0
-        COMMENT 'Maximum custom short domains allowed',
+    `maxCustomDomains`      INT UNSIGNED        DEFAULT NULL
+        COMMENT 'Maximum custom short domains allowed (NULL = unlimited)',
 
     `maxAPIRequestsPerDay`  INT UNSIGNED        DEFAULT NULL
         COMMENT 'Maximum API requests per day (NULL = unlimited)',
 
-    `maxLinksPages`         INT UNSIGNED        NOT NULL DEFAULT 0
-        COMMENT 'Maximum LinksPage pages allowed',
+    `maxLinksPages`         INT UNSIGNED        DEFAULT NULL
+        COMMENT 'Maximum LinksPage pages allowed (NULL = unlimited)',
 
     `hasAdvancedRedirects`  TINYINT(1) UNSIGNED NOT NULL DEFAULT 0
         COMMENT 'Whether scheduled/device/geo redirects are available',
