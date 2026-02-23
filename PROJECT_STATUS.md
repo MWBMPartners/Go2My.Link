@@ -4,7 +4,7 @@
 
 ## 🏗️ Current Phase
 
-**Phase 6: Compliance, Legal & Pre-Launch** — 🔄 Near Complete (7/8 issues done)
+**Phase 6: Compliance, Legal & Pre-Launch** — ✅ Complete (v0.7.0 + v1.0.0-rc tagged)
 
 ## 📋 Build Progress
 
@@ -16,13 +16,13 @@
 | Phase 3 | v0.4.0 — Core Product | ✅ **Complete** | 10 issues | — |
 | Phase 4 | v0.5.0 — User System: Auth & Dashboard | ✅ **Complete** | 4 issues | — |
 | **Phase 5** | **v0.6.0 — Organisation Management** | ✅ **Complete** | **1 issue** | **20h** |
-| **Phase 6** | **v0.7.0 — Compliance, Legal & Pre-Launch** | 🔄 **Near Complete** | **7/8 issues** | **99h** |
-| — | **v1.0.0-rc — PRE-RELEASE CANDIDATE** | — | — | — |
-| Phase 7 | v1.1.0 — Advanced Authentication | 🔜 Not Started | 4 issues | 68h |
-| Phase 8 | v1.2.0 — API & Analytics | 🔜 Not Started | 8 issues | 116h |
-| Phase 9 | v1.3.0 — LinksPage | 🔜 Not Started | 6 issues | 84h |
-| Phase 10 | v1.4.0 — Advanced Redirects | 🔜 Not Started | 6 issues | 70h |
-| Phase 11 | v1.5.0 — Payments & Subscriptions | 🔜 Not Started | 4 issues | 60h |
+| **Phase 6** | **v0.7.0 — Compliance, Legal & Pre-Launch** | ✅ **Complete** | **7/8 issues** | **99h** |
+| — | **v1.0.0-rc — PRE-RELEASE CANDIDATE** | ✅ **Tagged** | — | — |
+| Phase 7 | v1.1.0 — API & Analytics | 🔜 Not Started | 8 issues | 116h |
+| Phase 8 | v1.2.0 — LinksPage | 🔜 Not Started | 6 issues | 84h |
+| Phase 9 | v1.3.0 — Advanced Redirects | 🔜 Not Started | 6 issues | 70h |
+| Phase 10 | v1.4.0 — Advanced Authentication (SIGNula) | 🔜 Not Started | 4 issues | 68h |
+| Phase 11 | v1.5.0 — Payments & Subscriptions (SIGNula) | 🔜 Not Started | 4 issues | 60h |
 
 ## 🔄 In Progress
 
@@ -157,7 +157,7 @@ None.
 - 🔒 Session cleanup probability tuning (currently 1/100, review under production load)
 - ⚖️ Professional legal review of all 5 legal documents (`{{LEGAL_REVIEW_NEEDED}}` placeholders)
 
-**Post-launch enhancements:** Phase 7 (Advanced Auth), Phase 8 (API & Analytics + Swagger #75), Phase 9 (LinksPage), Phase 10 (Advanced Redirects), Phase 11 (Payments).
+**Post-launch enhancements:** Phase 7 (API & Analytics + Swagger #75), Phase 8 (LinksPage), Phase 9 (Advanced Redirects), Phase 10 (Advanced Auth via SIGNula), Phase 11 (Payments via SIGNula).
 
 ## 🔗 Links
 

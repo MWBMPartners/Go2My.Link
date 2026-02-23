@@ -47,12 +47,12 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 
 ### 🔜 Planned
 
-- 🔐 **Advanced Auth** — Social login (Google/GitHub), 2FA (TOTP), passkeys (WebAuthn), SSO
 - 📡 **REST API** — JSON/XML endpoints, API key auth, OpenAPI/Swagger docs (#75)
 - 📊 **Analytics** — Click tracking, geographic maps, device breakdown, data export
 - 📑 **LinksPage** — Template system, WYSIWYG editor, custom domains, age verification
 - 🔀 **Advanced Redirects** — Scheduled, device-based, geo-based routing, age gates
-- 💰 **Payments** — Subscription tiers, PayPal, Apple Pay, Google Pay, crypto
+- 🔐 **Advanced Auth (SIGNula)** — Social login (Google/GitHub), 2FA (TOTP), passkeys (WebAuthn), SSO
+- 💰 **Payments (SIGNula)** — Subscription tiers, PayPal, Apple Pay, Google Pay, crypto
 
 ---
 
@@ -79,13 +79,13 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 | ✅ | 3 | v0.4.0 | Core Product | 10 | **Complete** |
 | ✅ | 4 | v0.5.0 | User System: Auth & Dashboard | 4 | **Complete** |
 | ✅ | 5 | v0.6.0 | Organisation Management | 1 | **Complete** |
-| 🔄 | 6 | v0.7.0 | Compliance, Legal & Pre-Launch | 7/8 | **Near Complete** |
-| 🏁 | — | v1.0.0-rc | **PRE-RELEASE CANDIDATE** | — | — |
-| 📋 | 7 | v1.1.0 | Advanced Authentication | 4 | Post-Launch |
-| 📋 | 8 | v1.2.0 | API & Analytics | 8 | Post-Launch |
-| 📋 | 9 | v1.3.0 | LinksPage | 6 | Post-Launch |
-| 📋 | 10 | v1.4.0 | Advanced Redirects | 6 | Post-Launch |
-| 📋 | 11 | v1.5.0 | Payments & Subscriptions | 4 | Post-Launch |
+| ✅ | 6 | v0.7.0 | Compliance, Legal & Pre-Launch | 7/8 | **Complete** |
+| ✅ | — | v1.0.0-rc | **PRE-RELEASE CANDIDATE** | — | **Tagged** |
+| 📋 | 7 | v1.1.0 | API & Analytics | 8 | Post-Launch |
+| 📋 | 8 | v1.2.0 | LinksPage | 6 | Post-Launch |
+| 📋 | 9 | v1.3.0 | Advanced Redirects | 6 | Post-Launch |
+| 📋 | 10 | v1.4.0 | Advanced Authentication (SIGNula) | 4 | Post-Launch |
+| 📋 | 11 | v1.5.0 | Payments & Subscriptions (SIGNula) | 4 | Post-Launch |
 
 > **50 of 78 issues complete (64%)** — tracked on the [GitHub Project Board](https://github.com/orgs/MWBMPartners/projects/4)
 
@@ -144,7 +144,7 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 - 🛡️ Role enforcement: GlobalAdmin > Admin > User with `canManageOrg()` permission check
 - 🗄️ tblOrgInvitations schema + 12 org settings + JSON Schema
 
-### 🔄 Phase 6 — Compliance, Legal & Pre-Launch (v0.7.0) — 7/8 Done
+### ✅ Phase 6 — Compliance, Legal & Pre-Launch (v0.7.0) — Complete
 
 - ✅ 📜 Legal document templates — Terms, Privacy, Cookies, Copyright, AUP (#61)
 - ✅ 🍪 Cookie consent system — jurisdiction-aware banner, preferences modal, consent API (#62)
@@ -160,11 +160,11 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 
 ### 📋 Phases 7–11 (Post-Launch Enhancements)
 
-- **Phase 7** — Advanced Authentication: 2FA/TOTP, social login, SSO, passkeys
-- **Phase 8** — API & Analytics: REST API, OpenAPI/Swagger docs, API keys, analytics dashboard
-- **Phase 9** — LinksPage: renderer, templates, WYSIWYG editor, custom domains
-- **Phase 10** — Advanced Redirects: scheduled, device, geo, age gates
-- **Phase 11** — Payments & Subscriptions: tiers, PayPal, Apple Pay, Google Pay, crypto
+- **Phase 7** — API & Analytics: REST API, OpenAPI/Swagger docs, API keys, analytics dashboard
+- **Phase 8** — LinksPage: renderer, templates, WYSIWYG editor, custom domains
+- **Phase 9** — Advanced Redirects: scheduled, device, geo, age gates
+- **Phase 10** — Advanced Authentication (SIGNula): 2FA/TOTP, social login, SSO, passkeys
+- **Phase 11** — Payments & Subscriptions (SIGNula): tiers, PayPal, Apple Pay, Google Pay, crypto
 
 ---
 

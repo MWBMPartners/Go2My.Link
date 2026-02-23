@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ✨ Added
+
+- ⚙️ **Legal review placeholder flag** — New `legal.hide_review_placeholders` setting to temporarily hide `{{LEGAL_REVIEW_NEEDED}}` alert blocks from all 5 legal pages (Terms, Privacy, Cookies, Copyright, AUP) while keeping content visible
+
+### 🏗️ Changed (Phase Reshuffling)
+
+- 📋 **Post-launch phases reordered** — Phases 7–11 reshuffled to prioritise API & Analytics first, with Advanced Auth and Payments deferred to SIGNula integration:
+  - Phase 7: API & Analytics (v1.1.0)
+  - Phase 8: LinksPage (v1.2.0)
+  - Phase 9: Advanced Redirects (v1.3.0)
+  - Phase 10: Advanced Authentication — SIGNula (v1.4.0)
+  - Phase 11: Payments & Subscriptions — SIGNula (v1.5.0)
+- 🏗️ GitHub milestones, issue labels, and issue titles updated to reflect new phase order
+
 ### 🔒 Fixed (Pre-Release Audit — Security Hardening, WCAG Refinements, W3C Compliance)
 
 - 🔒 **XSS prevention** — Replaced `innerHTML` with `textContent` on copy button (DOM-based XSS vector) in admin link creation page
