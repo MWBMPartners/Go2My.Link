@@ -168,9 +168,21 @@ function createOrganisation(string $name, string $handle, array $options = []): 
         return ['success' => false, 'error' => 'Organisation created but failed to assign you as admin.'];
     }
 
+    // Update account types in junction table
+    if (function_exists('revokeAccountType') && function_exists('assignAccountType'))
+    {
+        revokeAccountType($currentUser['userUID'], 'user', '[default]');
+        assignAccountType($currentUser['userUID'], 'admin', $handle, $currentUser['userUID']);
+    }
+
     // Update session data
     $_SESSION['user_org_handle'] = $handle;
     $_SESSION['user_role']       = 'Admin';
+
+    if (function_exists('refreshSessionAccountTypes'))
+    {
+        refreshSessionAccountTypes($currentUser['userUID'], $handle);
+    }
 
     logActivity('create_org', 'success', 201, [
         'userUID' => $currentUser['userUID'],
@@ -372,6 +384,17 @@ function removeMember(string $orgHandle, int $userUID): array
         return ['success' => false, 'error' => 'Failed to remove member.'];
     }
 
+    // Deactivate all account types in the old org and assign base 'user' in [default]
+    if (function_exists('assignAccountType'))
+    {
+        dbUpdate(
+            "UPDATE tblUserAccountTypes SET isActive = 0 WHERE userUID = ? AND orgHandle = ?",
+            'is',
+            [$userUID, $orgHandle]
+        );
+        assignAccountType($userUID, 'user', '[default]');
+    }
+
     logActivity('remove_org_member', 'success', 200, [
         'userUID' => $currentUser['userUID'],
         'logData' => ['orgHandle' => $orgHandle, 'removedUserUID' => $userUID],
@@ -429,6 +452,15 @@ function changeMemberRole(string $orgHandle, int $userUID, string $newRole): arr
     if ($result === false)
     {
         return ['success' => false, 'error' => 'Failed to change member role.'];
+    }
+
+    // Update account types in junction table
+    if (function_exists('revokeAccountType') && function_exists('assignAccountType'))
+    {
+        $oldTypeID = ($member['role'] === 'Admin') ? 'admin' : 'user';
+        $newTypeID = ($newRole === 'Admin') ? 'admin' : 'user';
+        revokeAccountType($userUID, $oldTypeID, $orgHandle);
+        assignAccountType($userUID, $newTypeID, $orgHandle, $currentUser['userUID']);
     }
 
     logActivity('change_org_member_role', 'success', 200, [
@@ -628,6 +660,19 @@ function acceptInvitation(string $token): array
         return ['success' => false, 'error' => 'Failed to join organisation.'];
     }
 
+    // Update account types in junction table
+    if (function_exists('revokeAccountType') && function_exists('assignAccountType'))
+    {
+        revokeAccountType($currentUser['userUID'], 'user', '[default]');
+        $typeID = ($invitation['role'] === 'Admin') ? 'admin' : 'user';
+        assignAccountType(
+            $currentUser['userUID'],
+            $typeID,
+            $invitation['orgHandle'],
+            (int) $invitation['invitedByUserUID']
+        );
+    }
+
     // Mark invitation as accepted
     dbUpdate(
         "UPDATE tblOrgInvitations SET status = 'accepted', acceptedAt = NOW()
@@ -639,6 +684,11 @@ function acceptInvitation(string $token): array
     // Update session
     $_SESSION['user_org_handle'] = $invitation['orgHandle'];
     $_SESSION['user_role']       = $invitation['role'];
+
+    if (function_exists('refreshSessionAccountTypes'))
+    {
+        refreshSessionAccountTypes($currentUser['userUID'], $invitation['orgHandle']);
+    }
 
     logActivity('accept_org_invitation', 'success', 200, [
         'userUID' => $currentUser['userUID'],

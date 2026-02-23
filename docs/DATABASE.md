@@ -48,6 +48,8 @@ Schema files are located in `web/_sql/schema/`.
 | `tblUserSessions` | 🔐 Active session tracking |
 | `tblOrgDomains` | 🌐 Organisation domain DNS verification |
 | `tblOrgShortDomains` | 🔗 Organisation custom short domains |
+| `tblAccountTypes` | 🏷️ Reference table of available account types (system + custom) |
+| `tblUserAccountTypes` | 🔀 Junction table linking users to account types (org-scoped, multi-type) |
 
 #### 🔗 Short URLs
 
@@ -107,7 +109,26 @@ Schema files are located in `web/_sql/schema/`.
 | `tblLanguages` | 🌐 Supported languages |
 | `tblTranslations` | 🔤 Translation strings per language |
 
-## 👤 User Roles
+## 👤 User Roles & Account Types
+
+### 🏷️ Account Types (Multi-Type Model)
+
+Users can hold **multiple account types** simultaneously via the `tblUserAccountTypes` junction table. Account types are org-scoped and support optional expiry and audit trails.
+
+The four **system account types** map to the legacy role hierarchy:
+
+| Account Type ID | Display Name | Role Level | Legacy Role | System? |
+| --- | --- | --- | --- | --- |
+| `anonymous` | Anonymous | 0 | ⚪ Anonymous | ✅ |
+| `user` | User | 1 | 🟢 User | ✅ |
+| `admin` | Admin | 2 | 🟠 Admin | ✅ |
+| `global-admin` | Global Admin | 3 | 🔴 GlobalAdmin | ✅ |
+
+### 🔄 Effective Role (Backward Compatibility)
+
+The `tblUsers.role` ENUM column is retained as a cached **"effective role"** — the highest-privilege account type the user holds. This column is automatically kept in sync by `syncEffectiveRole()` whenever account types change, ensuring `hasMinimumRole()` continues to work without modification.
+
+### 📖 Legacy Role Hierarchy
 
 | Role | Level | Description |
 | --- | --- | --- |

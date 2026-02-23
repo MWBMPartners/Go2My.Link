@@ -86,6 +86,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                 if ($result['success']) { $actionSuccess = 'Invitation cancelled.'; }
                 else { $actionError = $result['error']; }
                 break;
+
+            case 'add_account_type':
+                $targetUID = (int) ($_POST['user_uid'] ?? 0);
+                $addTypeID = $_POST['account_type_id'] ?? '';
+                if ($addTypeID !== '' && function_exists('assignAccountType'))
+                {
+                    $result = assignAccountType($targetUID, $addTypeID, $orgHandle, $currentUser['userUID']);
+                    if ($result['success']) { $actionSuccess = 'Account type assigned.'; }
+                    else { $actionError = $result['error'] ?? 'Failed to assign account type.'; }
+                }
+                break;
+
+            case 'remove_account_type':
+                $targetUID    = (int) ($_POST['user_uid'] ?? 0);
+                $removeTypeID = $_POST['account_type_id'] ?? '';
+                if ($removeTypeID !== '' && function_exists('revokeAccountType'))
+                {
+                    $result = revokeAccountType($targetUID, $removeTypeID, $orgHandle);
+                    if ($result['success']) { $actionSuccess = 'Account type revoked.'; }
+                    else { $actionError = $result['error'] ?? 'Failed to revoke account type.'; }
+                }
+                break;
         }
     }
 }
@@ -172,13 +194,39 @@ $invitations = getPendingInvitations($orgHandle);
                             <td><?php echo g2ml_sanitiseOutput($member['email']); ?></td>
                             <td>
                                 <?php
-                                $roleBadge = match($member['role']) {
-                                    'GlobalAdmin' => 'bg-danger',
-                                    'Admin'       => 'bg-warning text-dark',
-                                    default       => 'bg-secondary',
-                                };
+                                $memberTypes = function_exists('getUserAccountTypes')
+                                    ? getUserAccountTypes((int) $member['userUID'], $orgHandle)
+                                    : [];
+
+                                if (!empty($memberTypes))
+                                {
+                                    foreach ($memberTypes as $mType)
+                                    {
+                                        $typeBadge = match($mType['roleName'] ?? '')
+                                        {
+                                            'GlobalAdmin' => 'bg-danger',
+                                            'Admin'       => 'bg-warning text-dark',
+                                            default       => 'bg-secondary',
+                                        };
+                                        echo '<span class="badge ' . $typeBadge . ' me-1">'
+                                           . g2ml_sanitiseOutput($mType['accountTypeName'])
+                                           . '</span>';
+                                    }
+                                }
+                                else
+                                {
+                                    // Fallback to legacy single role
+                                    $roleBadge = match($member['role'])
+                                    {
+                                        'GlobalAdmin' => 'bg-danger',
+                                        'Admin'       => 'bg-warning text-dark',
+                                        default       => 'bg-secondary',
+                                    };
+                                    echo '<span class="badge ' . $roleBadge . '">'
+                                       . g2ml_sanitiseOutput($member['role'])
+                                       . '</span>';
+                                }
                                 ?>
-                                <span class="badge <?php echo $roleBadge; ?>"><?php echo g2ml_sanitiseOutput($member['role']); ?></span>
                             </td>
                             <td>
                                 <?php if ($member['lastLoginAt']) { ?>

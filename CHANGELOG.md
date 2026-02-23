@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Added
 
+- 🏷️ **Multi-account-type support** — Users can now hold multiple account types simultaneously (e.g. Admin + API User). New `tblAccountTypes` reference table and `tblUserAccountTypes` junction table replace the single-role model while maintaining full backward compatibility via `tblUsers.role` as a cached "effective role"
+  - New PHP library `web/_functions/account_types.php` with 9 functions: `getUserAccountTypes()`, `hasAccountType()`, `getEffectiveRole()`, `assignAccountType()`, `revokeAccountType()`, `syncEffectiveRole()`, `refreshSessionAccountTypes()`, `getAllAccountTypes()`, `getAccountType()`
+  - Admin members page updated to display multiple type badges per user
+  - Profile page updated to show all assigned account types
+  - Session now carries `$_SESSION['user_account_types']` array alongside the existing `$_SESSION['user_role']`
+  - Junction table is org-scoped (future multi-org ready) with optional expiry and audit trail
+  - Migration script backfills existing users from `tblUsers.role` into the junction table
+  - JSON schemas for both new tables (`account-type.schema.json`, `user-account-type.schema.json`)
 - ⚙️ **Legal review placeholder flag** — New `legal.hide_review_placeholders` setting to temporarily hide `{{LEGAL_REVIEW_NEEDED}}` alert blocks from all 5 legal pages (Terms, Privacy, Cookies, Copyright, AUP) while keeping content visible
 
 ### 🏗️ Changed (Phase Reshuffling)

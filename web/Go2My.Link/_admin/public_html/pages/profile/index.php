@@ -366,7 +366,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
                             </time>
                         </p>
                         <p class="text-body-secondary small mb-0">
-                            <strong>Role:</strong> <?php echo g2ml_sanitiseOutput($currentUser['role']); ?>
+                            <strong>Account Types:</strong>
+                            <?php
+                            $profileTypes = function_exists('getUserAccountTypes')
+                                ? getUserAccountTypes($currentUser['userUID'], $currentUser['orgHandle'])
+                                : [];
+
+                            if (!empty($profileTypes))
+                            {
+                                $typeNames = array_column($profileTypes, 'accountTypeName');
+                                echo g2ml_sanitiseOutput(implode(', ', $typeNames));
+                            }
+                            else
+                            {
+                                echo g2ml_sanitiseOutput($currentUser['role']);
+                            }
+                            ?>
                         </p>
                     </div>
                 </div>

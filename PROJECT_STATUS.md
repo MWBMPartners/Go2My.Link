@@ -26,6 +26,20 @@
 
 ## 🔄 In Progress
 
+### 🏷️ Infrastructure: Multi-Account-Type Support
+
+Cross-phase infrastructure improvement — enables users to hold multiple account types simultaneously:
+
+- [x] Database schema: `tblAccountTypes` reference table + `tblUserAccountTypes` junction table (`015_account_types.sql`)
+- [x] Seed data: 4 system account types matching legacy ENUM roles (`011_account_types.sql`)
+- [x] Migration: Backfill junction table from existing `tblUsers.role` (`008_migrate_account_types.sql`)
+- [x] PHP library: `account_types.php` with 9 functions (assign, revoke, sync, query)
+- [x] Auth integration: session loading, getCurrentUser(), registerUser()
+- [x] Org integration: createOrg, acceptInvitation, changeMemberRole, removeMember
+- [x] Admin UI: members page multi-type badges, profile page type display
+- [x] JSON schemas: `account-type.schema.json`, `user-account-type.schema.json`
+- [x] Documentation: CHANGELOG, DATABASE, DEV_NOTES, ARCHITECTURE, MEMORY
+
 ### v0.7.0 — ⚖️ Compliance, Legal & Pre-Launch (Phase 6) — 7/8 Issues Done
 
 - [x] 6.1 — 🛡️ DNT/GPC support & production hardening: `dnt.php` (3 functions), CSP headers on all 4 .htaccess files, HSTS enabled, custom error pages (400/403/500), 12 new compliance settings (#64)

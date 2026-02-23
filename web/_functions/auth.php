@@ -171,6 +171,12 @@ function registerUser(string $email, string $password, string $firstName, string
         ];
     }
 
+    // Assign default 'user' account type in the junction table
+    if (function_exists('assignAccountType'))
+    {
+        assignAccountType((int) $userUID, 'user', '[default]');
+    }
+
     // Log the registration activity
     logActivity('register', 'success', 201, [
         'userUID' => $userUID,
@@ -386,6 +392,15 @@ function loginUser(string $email, string $password): array
     $_SESSION['user_timezone']     = $user['timezone'] ?? 'UTC';
     $_SESSION['email_verified']    = (int) $user['emailVerified'];
 
+    // Load account types into session (multi-type support)
+    if (function_exists('getUserAccountTypes'))
+    {
+        $_SESSION['user_account_types'] = getUserAccountTypes(
+            (int) $user['userUID'],
+            $user['orgHandle']
+        );
+    }
+
     // Log successful login
     logActivity('login', 'success', 200, [
         'userUID' => $user['userUID'],
@@ -478,6 +493,7 @@ function getCurrentUser(): ?array
         'avatar'        => $_SESSION['user_avatar'] ?? '',
         'timezone'      => $_SESSION['user_timezone'] ?? 'UTC',
         'emailVerified' => (int) ($_SESSION['email_verified'] ?? 0),
+        'accountTypes'  => $_SESSION['user_account_types'] ?? [],
     ];
 }
 

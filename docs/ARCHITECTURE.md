@@ -154,6 +154,10 @@ User → lnks.page/{slug} → .htaccess → index.php?slug={slug}
 
 > 📝 **Note:** Authentication is implemented in Phase 4: User System — Auth & Dashboard.
 
+### 🏷️ Account Types & Role Hierarchy
+
+Users can hold **multiple account types** simultaneously via the `tblUserAccountTypes` junction table (org-scoped). The `tblUsers.role` ENUM column is retained as a cached "effective role" (highest privilege), kept in sync by `syncEffectiveRole()`. This ensures the existing `hasMinimumRole()` hierarchy (Anonymous < User < Admin < GlobalAdmin) works without modification. See `web/_functions/account_types.php` for the full API.
+
 ### 🔐 Encryption
 
 - **Algorithm:** AES-256-GCM

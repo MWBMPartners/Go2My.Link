@@ -1,0 +1,66 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://go2my.link/schemas/database/user-account-type.schema.json",
+    "title": "User Account Type Assignment",
+    "description": "Schema for tblUserAccountTypes records. Links users to account types within an org context, enabling multiple account types per user.",
+    "type": "object",
+    "required": [
+        "userAccountTypeUID",
+        "userUID",
+        "orgHandle",
+        "accountTypeID",
+        "grantedAt",
+        "isActive",
+        "createdAt"
+    ],
+    "properties": {
+        "userAccountTypeUID": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Auto-increment primary key"
+        },
+        "userUID": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "FK to tblUsers.userUID"
+        },
+        "orgHandle": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "description": "FK to tblOrganisations.orgHandle — org context for this assignment"
+        },
+        "accountTypeID": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "description": "FK to tblAccountTypes.accountTypeID"
+        },
+        "grantedByUserUID": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "FK to tblUsers.userUID — who assigned this type (null = system)"
+        },
+        "grantedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this type was assigned"
+        },
+        "expiresAt": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Optional expiry for time-limited assignments (null = permanent)"
+        },
+        "isActive": {
+            "type": "integer",
+            "enum": [0, 1],
+            "description": "Soft delete flag (0 = revoked, 1 = active)"
+        },
+        "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record creation timestamp"
+        }
+    },
+    "additionalProperties": false
+}

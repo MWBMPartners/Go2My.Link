@@ -74,6 +74,32 @@ Cross-subdomain session sharing uses cookie domain `.go2my.link` in production (
 
 Emails are sent via PHP `mail()` using `g2ml_sendEmail()` with HTML templates in `web/_includes/email_templates/`. Template rendering uses output buffering with `extract($data)` for variable injection. Settings for From/Reply-To are in `tblSettings` (`email.from_address`, `email.from_name`, `email.reply_to`).
 
+### 🏷️ Account Types (Multi-Type Support)
+
+Users can hold **multiple account types** simultaneously via the `tblUserAccountTypes` junction table. This replaces the single-role ENUM model while maintaining full backward compatibility.
+
+**Architecture:**
+
+- `tblAccountTypes` — reference table defining available types (4 system types + custom)
+- `tblUserAccountTypes` — junction table (user ↔ type, org-scoped)
+- `tblUsers.role` — retained as a cached "effective role" = highest-privilege type held
+- `syncEffectiveRole()` — automatically keeps `tblUsers.role` in sync after any type change
+
+**Session storage:**
+
+- `$_SESSION['user_role']` — effective role string (unchanged, backward compatible)
+- `$_SESSION['user_account_types']` — array of all active type assignments (new)
+
+**Key functions** in `web/_functions/account_types.php`:
+
+- `getUserAccountTypes($userUID, $orgHandle)` — get all active types
+- `hasAccountType($userUID, $accountTypeID, $orgHandle)` — check specific type
+- `assignAccountType($userUID, $typeID, $orgHandle, $grantedBy)` — assign + sync
+- `revokeAccountType($userUID, $typeID, $orgHandle)` — revoke + sync
+- `syncEffectiveRole($userUID)` — recalculate tblUsers.role from junction table
+
+**Why keep tblUsers.role?** The `hasMinimumRole()` function is called on every authenticated request. Reading a single ENUM column is faster than JOINing the junction table on every page load. The junction table is queried only on login and when types change.
+
 ### 🏢 Organisation Management (Phase 5)
 
 Organisations are the multi-tenancy layer. Each user belongs to ONE org via `tblUsers.orgHandle`. New users default to the `[default]` org. Creating an org moves the user out of `[default]` and promotes them to Admin.

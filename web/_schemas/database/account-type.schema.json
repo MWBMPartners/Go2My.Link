@@ -1,0 +1,79 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://go2my.link/schemas/database/account-type.schema.json",
+    "title": "Account Type",
+    "description": "Schema for tblAccountTypes records. Defines available account types that can be assigned to users.",
+    "type": "object",
+    "required": [
+        "accountTypeUID",
+        "accountTypeID",
+        "accountTypeName",
+        "roleLevel",
+        "roleName",
+        "isSystemType",
+        "sortOrder",
+        "isActive",
+        "createdAt"
+    ],
+    "properties": {
+        "accountTypeUID": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Auto-increment primary key"
+        },
+        "accountTypeID": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+            "description": "Unique slug identifier (e.g. user, admin, link-manager)"
+        },
+        "accountTypeName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Human-readable display name"
+        },
+        "accountTypeDescription": {
+            "type": ["string", "null"],
+            "description": "Longer description of what this type grants"
+        },
+        "roleLevel": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3,
+            "description": "Maps to G2ML_ROLE_LEVELS hierarchy: 0=Anonymous, 1=User, 2=Admin, 3=GlobalAdmin"
+        },
+        "roleName": {
+            "type": "string",
+            "enum": ["GlobalAdmin", "Admin", "User", "Anonymous"],
+            "description": "Legacy role name this type maps to (for effective role sync)"
+        },
+        "isSystemType": {
+            "type": "integer",
+            "enum": [0, 1],
+            "description": "System types cannot be deleted or renamed (1=yes)"
+        },
+        "sortOrder": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Display order in UI lists"
+        },
+        "isActive": {
+            "type": "integer",
+            "enum": [0, 1],
+            "description": "Whether this account type is available for assignment (1=yes)"
+        },
+        "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Record creation timestamp"
+        },
+        "updatedAt": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Last modification timestamp"
+        }
+    },
+    "additionalProperties": false
+}
