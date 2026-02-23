@@ -65,10 +65,10 @@ $contactEmail   = function_exists('getSetting') ? getSetting('site.contact_email
                 <nav aria-label="Table of Contents" class="mb-5">
                     <div class="card shadow-sm">
                         <div class="card-body">
-                            <h3 class="h6 fw-bold mb-3">
+                            <h2 class="h6 fw-bold mb-3">
                                 <i class="fas fa-list" aria-hidden="true"></i>
                                 <?php echo function_exists('__') ? __('legal.toc_heading') : 'Table of Contents'; ?>
-                            </h3>
+                            </h2>
                             <ol class="mb-0">
                                 <li><a href="#cookies-s1"><?php echo function_exists('__') ? __('legal.cookies_s1_title') : 'What Are Cookies'; ?></a></li>
                                 <li><a href="#cookies-s2"><?php echo function_exists('__') ? __('legal.cookies_s2_title') : 'How We Use Cookies'; ?></a></li>

@@ -92,7 +92,7 @@ $mainSiteURL  = 'https://go2my.link';
 </head>
 <body>
 
-    <div class="error-container" role="main">
+    <main class="error-container">
         <!-- 🔗 Error Icon -->
         <div class="error-icon text-body-secondary" aria-hidden="true">
             <i class="fas fa-link-slash"></i>
@@ -121,7 +121,7 @@ $mainSiteURL  = 'https://go2my.link';
                 <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>
             </a>
         </p>
-    </div>
+    </main>
 
 </body>
 </html>

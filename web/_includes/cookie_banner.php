@@ -59,10 +59,9 @@ $csrfToken = function_exists('g2ml_generateCSRFToken') ? g2ml_generateCSRFToken(
 <!-- ====================================================================== -->
 <div id="g2ml-cookie-banner"
      class="fixed-bottom bg-body border-top shadow-lg p-3"
-     role="alertdialog"
+     role="region"
      aria-labelledby="cookie-banner-title"
      aria-describedby="cookie-banner-desc"
-     aria-modal="false"
      style="z-index:1060;">
     <div class="container">
         <div class="row align-items-center">

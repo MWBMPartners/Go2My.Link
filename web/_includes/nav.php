@@ -43,6 +43,7 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
 <!-- Navigation                                                             -->
 <!-- 📖 Reference: https://getbootstrap.com/docs/5.3/components/navbar/     -->
 <!-- ====================================================================== -->
+<header>
 <nav class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark" aria-label="<?php echo function_exists('__') ? __('nav.aria_label') : 'Main navigation'; ?>">
     <div class="container">
 
@@ -218,6 +219,7 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
         </div>
     </div>
 </nav>
+</header>
 
 <!-- Main content area (target for skip-to-content link) -->
 <main id="main-content" tabindex="-1">

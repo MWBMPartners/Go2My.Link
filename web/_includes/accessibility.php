@@ -209,7 +209,7 @@ function formField(array $options): string
 
     $html .= '</label>';
 
-    // Input field
+    // Input/textarea field
     $inputClass = 'form-control ' . trim($extraClass);
 
     if ($error !== '')
@@ -217,25 +217,24 @@ function formField(array $options): string
         $inputClass .= ' is-invalid';
     }
 
-    $html .= '<input type="' . htmlspecialchars($type, ENT_QUOTES, 'UTF-8') . '"';
-    $html .= ' class="' . trim($inputClass) . '"';
-    $html .= ' id="' . $safeId . '"';
-    $html .= ' name="' . $safeName . '"';
-    $html .= ' value="' . $safeValue . '"';
+    // Build shared attributes
+    $sharedAttrs = ' class="' . trim($inputClass) . '"'
+        . ' id="' . $safeId . '"'
+        . ' name="' . $safeName . '"';
 
     if ($safePlaceholder !== '')
     {
-        $html .= ' placeholder="' . $safePlaceholder . '"';
+        $sharedAttrs .= ' placeholder="' . $safePlaceholder . '"';
     }
 
     if ($required)
     {
-        $html .= ' required aria-required="true"';
+        $sharedAttrs .= ' required aria-required="true"';
     }
 
     if ($autocomplete !== '')
     {
-        $html .= ' autocomplete="' . htmlspecialchars($autocomplete, ENT_QUOTES, 'UTF-8') . '"';
+        $sharedAttrs .= ' autocomplete="' . htmlspecialchars($autocomplete, ENT_QUOTES, 'UTF-8') . '"';
     }
 
     // Link input to help text and error message via aria-describedby
@@ -249,15 +248,28 @@ function formField(array $options): string
     if ($error !== '')
     {
         $describedBy[] = $safeId . '-error';
-        $html .= ' aria-invalid="true"';
+        $sharedAttrs .= ' aria-invalid="true"';
     }
 
     if (!empty($describedBy))
     {
-        $html .= ' aria-describedby="' . implode(' ', $describedBy) . '"';
+        $sharedAttrs .= ' aria-describedby="' . implode(' ', $describedBy) . '"';
     }
 
-    $html .= '>';
+    // Render textarea or input based on type
+    if ($type === 'textarea')
+    {
+        $rows = (int) ($options['rows'] ?? 3);
+        $html .= '<textarea' . $sharedAttrs . ' rows="' . $rows . '">';
+        $html .= $safeValue;
+        $html .= '</textarea>';
+    }
+    else
+    {
+        $html .= '<input type="' . htmlspecialchars($type, ENT_QUOTES, 'UTF-8') . '"';
+        $html .= $sharedAttrs;
+        $html .= ' value="' . $safeValue . '">';
+    }
 
     // Error message
     if ($error !== '')

@@ -101,7 +101,7 @@ $shortDomain = function_exists('getDefaultShortDomain')
                 <div class="card shadow-sm h-100">
                     <div class="card-body text-center">
                         <i class="fas fa-link fa-2x text-primary mb-2" aria-hidden="true"></i>
-                        <h3 class="display-6 fw-bold mb-0"><?php echo number_format($totalLinks); ?></h3>
+                        <p class="display-6 fw-bold mb-0"><?php echo number_format($totalLinks); ?></p>
                         <p class="text-body-secondary mb-0">
                             <?php echo function_exists('__') ? __('dashboard.stat_total_links') : 'Total Links'; ?>
                         </p>
@@ -112,7 +112,7 @@ $shortDomain = function_exists('getDefaultShortDomain')
                 <div class="card shadow-sm h-100">
                     <div class="card-body text-center">
                         <i class="fas fa-mouse-pointer fa-2x text-success mb-2" aria-hidden="true"></i>
-                        <h3 class="display-6 fw-bold mb-0"><?php echo number_format($totalClicks); ?></h3>
+                        <p class="display-6 fw-bold mb-0"><?php echo number_format($totalClicks); ?></p>
                         <p class="text-body-secondary mb-0">
                             <?php echo function_exists('__') ? __('dashboard.stat_total_clicks') : 'Total Clicks'; ?>
                         </p>
@@ -123,7 +123,7 @@ $shortDomain = function_exists('getDefaultShortDomain')
                 <div class="card shadow-sm h-100">
                     <div class="card-body text-center">
                         <i class="fas fa-check-circle fa-2x text-info mb-2" aria-hidden="true"></i>
-                        <h3 class="display-6 fw-bold mb-0"><?php echo number_format($activeLinks); ?></h3>
+                        <p class="display-6 fw-bold mb-0"><?php echo number_format($activeLinks); ?></p>
                         <p class="text-body-secondary mb-0">
                             <?php echo function_exists('__') ? __('dashboard.stat_active_links') : 'Active Links'; ?>
                         </p>
@@ -157,14 +157,14 @@ $shortDomain = function_exists('getDefaultShortDomain')
                 </div>
                 <?php else: ?>
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0">
+                    <table class="table table-hover mb-0" aria-label="<?php echo function_exists('__') ? __('dashboard.recent_links') : 'Recent Links'; ?>">
                         <thead>
                             <tr>
-                                <th><?php echo function_exists('__') ? __('dashboard.col_short_url') : 'Short URL'; ?></th>
-                                <th><?php echo function_exists('__') ? __('dashboard.col_destination') : 'Destination'; ?></th>
-                                <th class="text-center"><?php echo function_exists('__') ? __('dashboard.col_clicks') : 'Clicks'; ?></th>
-                                <th><?php echo function_exists('__') ? __('dashboard.col_status') : 'Status'; ?></th>
-                                <th><?php echo function_exists('__') ? __('dashboard.col_created') : 'Created'; ?></th>
+                                <th scope="col"><?php echo function_exists('__') ? __('dashboard.col_short_url') : 'Short URL'; ?></th>
+                                <th scope="col"><?php echo function_exists('__') ? __('dashboard.col_destination') : 'Destination'; ?></th>
+                                <th scope="col" class="text-center"><?php echo function_exists('__') ? __('dashboard.col_clicks') : 'Clicks'; ?></th>
+                                <th scope="col"><?php echo function_exists('__') ? __('dashboard.col_status') : 'Status'; ?></th>
+                                <th scope="col"><?php echo function_exists('__') ? __('dashboard.col_created') : 'Created'; ?></th>
                             </tr>
                         </thead>
                         <tbody>

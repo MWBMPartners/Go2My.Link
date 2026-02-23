@@ -225,12 +225,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
 
                             <!-- Email (read-only) -->
                             <div class="mb-3">
-                                <label class="form-label">Email Address</label>
-                                <input type="email" class="form-control" value="<?php echo g2ml_sanitiseOutput($userData['email']); ?>" readonly disabled>
+                                <label for="email-address" class="form-label">Email Address</label>
+                                <input type="email" class="form-control" id="email-address" value="<?php echo g2ml_sanitiseOutput($userData['email']); ?>" readonly disabled>
                                 <?php if ((int) $userData['emailVerified']): ?>
-                                <small class="text-success"><i class="fas fa-check-circle"></i> Verified</small>
+                                <small class="text-success"><i class="fas fa-check-circle" aria-hidden="true"></i> Verified</small>
                                 <?php else: ?>
-                                <small class="text-warning"><i class="fas fa-exclamation-triangle"></i> Not verified</small>
+                                <small class="text-warning"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i> Not verified</small>
                                 <?php endif; ?>
                             </div>
 

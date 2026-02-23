@@ -192,9 +192,9 @@ $shortDomain = function_exists('getDefaultShortDomain')
                     <div class="card-body p-4">
                         <!-- Read-only short code display -->
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Short URL</label>
+                            <label for="short-url-display" class="form-label fw-bold">Short URL</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" readonly
+                                <input type="text" class="form-control" id="short-url-display" readonly
                                        value="<?php echo g2ml_sanitiseOutput('https://' . $shortDomain . '/' . $linkData['shortCode']); ?>">
                                 <span class="input-group-text">
                                     <span class="badge bg-secondary"><?php echo number_format((int) $linkData['clickCount']); ?> clicks</span>

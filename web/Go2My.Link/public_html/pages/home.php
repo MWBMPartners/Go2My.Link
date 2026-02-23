@@ -18,7 +18,7 @@
  * ============================================================================
  */
 
-$pageTitle = getSetting('site.name', 'Go2My.Link');
+$pageTitle = function_exists('__') ? __('home.title') : 'Home';
 $pageDesc  = getSetting('site.tagline', 'Shorten. Track. Manage.');
 
 // 🤖 Determine bot protection configuration
@@ -143,7 +143,7 @@ $errorMsg   = isset($_GET['error']) ? g2ml_sanitiseInput($_GET['error']) : '';
 
                         <!-- ✅ AJAX Result Area (hidden until URL created via JS) -->
                         <div id="shorten-result" class="mt-4 d-none"
-                             role="region" aria-live="polite"
+                             role="region"
                              aria-label="<?php echo function_exists('__') ? __('home.result_label') : 'Shortened URL result'; ?>">
                             <div class="alert alert-success">
                                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">

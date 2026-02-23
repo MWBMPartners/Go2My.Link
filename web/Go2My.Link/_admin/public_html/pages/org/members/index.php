@@ -194,7 +194,9 @@ $invitations = getPendingInvitations($orgHandle);
                                         <?php echo g2ml_csrfField('org_members_form'); ?>
                                         <input type="hidden" name="action_type" value="remove_member">
                                         <input type="hidden" name="user_uid" value="<?php echo (int) $member['userUID']; ?>">
-                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Remove member">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                title="Remove member"
+                                                aria-label="Remove <?php echo g2ml_sanitiseOutput($member['displayName'] ?? $member['firstName']); ?>">
                                             <i class="fas fa-user-minus" aria-hidden="true"></i>
                                         </button>
                                     </form>

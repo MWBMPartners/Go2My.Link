@@ -343,10 +343,11 @@ foreach ($allRequests as $req)
                     <div class="mb-3">
                         <label for="confirm-password" class="form-label">
                             <?php echo function_exists('__') ? __('delete.password_label') : 'Your Password'; ?>
-                            <span class="text-danger" aria-label="required">*</span>
+                            <span class="text-danger" aria-hidden="true">*</span>
+                            <span class="visually-hidden">(<?php echo function_exists('__') ? __('common.required') : 'required'; ?>)</span>
                         </label>
                         <input type="password" class="form-control" id="confirm-password"
-                               name="confirm_password" required
+                               name="confirm_password" required aria-required="true"
                                autocomplete="current-password"
                                aria-describedby="password-help"
                                placeholder="<?php echo function_exists('__') ? __('delete.password_placeholder') : 'Enter your current password'; ?>">

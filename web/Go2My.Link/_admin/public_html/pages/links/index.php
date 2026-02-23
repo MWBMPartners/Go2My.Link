@@ -210,15 +210,15 @@ $shortDomain = function_exists('getDefaultShortDomain')
                 </div>
                 <?php else: ?>
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0">
+                    <table class="table table-hover mb-0" aria-label="<?php echo function_exists('__') ? __('links.heading') : 'My Links'; ?>">
                         <thead>
                             <tr>
-                                <th>Short URL</th>
-                                <th>Destination</th>
-                                <th class="text-center">Clicks</th>
-                                <th>Status</th>
-                                <th>Created</th>
-                                <th class="text-end">Actions</th>
+                                <th scope="col">Short URL</th>
+                                <th scope="col">Destination</th>
+                                <th scope="col" class="text-center">Clicks</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Created</th>
+                                <th scope="col" class="text-end">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -253,7 +253,8 @@ $shortDomain = function_exists('getDefaultShortDomain')
                                 </td>
                                 <td class="text-end">
                                     <a href="/links/edit?id=<?php echo urlencode($link['shortCode']); ?>"
-                                       class="btn btn-sm btn-outline-primary" title="Edit">
+                                       class="btn btn-sm btn-outline-primary"
+                                       title="Edit" aria-label="Edit <?php echo g2ml_sanitiseOutput($link['shortCode']); ?>">
                                         <i class="fas fa-edit" aria-hidden="true"></i>
                                     </a>
                                     <form action="/links" method="POST" class="d-inline"
@@ -261,7 +262,8 @@ $shortDomain = function_exists('getDefaultShortDomain')
                                         <?php echo g2ml_csrfField('delete_link'); ?>
                                         <input type="hidden" name="action" value="delete">
                                         <input type="hidden" name="short_code" value="<?php echo g2ml_sanitiseOutput($link['shortCode']); ?>">
-                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Deactivate">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                title="Deactivate" aria-label="Deactivate <?php echo g2ml_sanitiseOutput($link['shortCode']); ?>">
                                             <i class="fas fa-trash" aria-hidden="true"></i>
                                         </button>
                                     </form>

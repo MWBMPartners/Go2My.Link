@@ -136,9 +136,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                         <h2 class="h4 mb-3">Link Created!</h2>
                         <div class="input-group input-group-lg mb-3 mx-auto" style="max-width:500px;">
                             <input type="text" class="form-control text-center fw-bold" id="result-url"
-                                   value="<?php echo g2ml_sanitiseOutput($resultURL); ?>" readonly>
+                                   value="<?php echo g2ml_sanitiseOutput($resultURL); ?>" readonly
+                                   aria-label="<?php echo function_exists('__') ? __('create_link.result_url') : 'Created short URL'; ?>">
                             <button class="btn btn-primary" type="button" id="copy-btn"
-                                    onclick="navigator.clipboard.writeText(document.getElementById('result-url').value).then(function(){document.getElementById('copy-btn').innerHTML='<i class=\'fas fa-check\'></i> Copied!'})">
+                                    aria-label="<?php echo function_exists('__') ? __('create_link.copy_url') : 'Copy short URL to clipboard'; ?>"
+                                    onclick="navigator.clipboard.writeText(document.getElementById('result-url').value).then(function(){var b=document.getElementById('copy-btn');b.innerHTML='<i class=\'fas fa-check\' aria-hidden=\'true\'></i> Copied!';var s=document.getElementById('global-status');if(s){s.textContent='URL copied to clipboard';}})">
                                 <i class="fas fa-copy" aria-hidden="true"></i> Copy
                             </button>
                         </div>

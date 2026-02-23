@@ -189,6 +189,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Scroll result into view smoothly
         resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
+        // Move focus to copy button for keyboard users (WCAG 2.4.3)
+        if (copyBtn) { copyBtn.focus(); }
+
         announceStatus('Short URL created: ' + shortURL);
     }
 
@@ -207,6 +210,11 @@ document.addEventListener('DOMContentLoaded', function() {
             + '</div>';
 
         errorDiv.classList.remove('d-none');
+
+        // Move focus to error area for keyboard users (WCAG 2.4.3)
+        errorDiv.setAttribute('tabindex', '-1');
+        errorDiv.focus();
+
         announceStatus(message);
     }
 

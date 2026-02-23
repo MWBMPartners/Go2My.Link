@@ -26,10 +26,10 @@
 [data-bs-theme="light"] {
     --g2ml-brand-primary:       #1565C0;
     --g2ml-brand-primary-hover: #0D47A1;
-    --g2ml-brand-accent:        #1E88E5;
+    --g2ml-brand-accent:        #1976D2;
     --g2ml-brand-success:       #2E7D32;
     --g2ml-brand-danger:        #E94560;
-    --g2ml-focus-color:         #1E88E5;
+    --g2ml-focus-color:         #1976D2;
     --g2ml-skip-bg:             #1565C0;
     --g2ml-skip-color:          #ffffff;
 }
@@ -77,7 +77,7 @@
 }
 
 .btn-primary {
-    background-color: var(--g2ml-brand-accent);
+    background-color: var(--g2ml-brand-primary);
     border-color: var(--g2ml-brand-primary);
 }
 
@@ -164,6 +164,26 @@ main {
     border: 2px dashed var(--bs-border-color);
     border-radius: 0.5rem;
     padding: 2rem;
+}
+
+/* ========================================================================== */
+/* Navbar Inactive Link Contrast Fix (WCAG 1.4.3)                            */
+/* Bootstrap's default 0.55 opacity is insufficient on custom bg-primary     */
+/* ========================================================================== */
+.navbar[data-bs-theme="dark"] .nav-link:not(.active):not(.dropdown-toggle) {
+    color: rgba(255, 255, 255, 0.90) !important;
+}
+
+.navbar[data-bs-theme="dark"] .nav-link:hover {
+    color: #ffffff !important;
+}
+
+/* ========================================================================== */
+/* Footer Link Distinguishability (WCAG 1.4.1)                               */
+/* ========================================================================== */
+footer a:hover,
+footer a:focus {
+    text-decoration: underline !important;
 }
 
 /* Contact form */

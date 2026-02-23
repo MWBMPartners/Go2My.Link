@@ -63,10 +63,10 @@ $contactEmail   = function_exists('getSetting') ? getSetting('site.contact_email
                 <nav aria-label="Table of Contents" class="mb-5">
                     <div class="card">
                         <div class="card-body">
-                            <h3 class="card-title h5 mb-3">
+                            <h2 class="card-title h5 mb-3">
                                 <i class="fas fa-list" aria-hidden="true"></i>
                                 <?php echo function_exists('__') ? __('legal.toc_heading') : 'Table of Contents'; ?>
-                            </h3>
+                            </h2>
                             <ol class="mb-0">
                                 <li>
                                     <a href="#copyright-s1">

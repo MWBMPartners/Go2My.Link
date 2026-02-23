@@ -96,6 +96,9 @@
         banner.style.transform = 'translateY(100%)';
         setTimeout(function () {
             banner.style.display = 'none';
+            // Return focus to main content after dismissal (WCAG 2.4.3)
+            var mainContent = document.getElementById('main-content');
+            if (mainContent) { mainContent.focus(); }
         }, 300);
     }
 

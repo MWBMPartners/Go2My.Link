@@ -116,7 +116,7 @@ $statusIcon = ($status ?? 'expired') === 'not_yet_active'
 </head>
 <body>
 
-    <div class="error-container" role="main">
+    <main class="error-container">
         <!-- ⏰ Status Icon -->
         <div class="error-icon text-body-secondary" aria-hidden="true">
             <i class="fas <?php echo $statusIcon; ?>"></i>
@@ -153,7 +153,7 @@ $statusIcon = ($status ?? 'expired') === 'not_yet_active'
         <noscript>
             <p class="text-body-secondary">
                 <a href="<?php echo htmlspecialchars($fallbackURL, ENT_QUOTES, 'UTF-8'); ?>">
-                    Click here if you are not redirected automatically.
+                    Continue to <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?> if you are not redirected automatically.
                 </a>
             </p>
         </noscript>
@@ -166,7 +166,7 @@ $statusIcon = ($status ?? 'expired') === 'not_yet_active'
                 <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>
             </a>
         </p>
-    </div>
+    </main>
 
     <!-- ♿ ARIA Live Region for Countdown Announcements -->
     <div id="countdown-status" class="visually-hidden" aria-live="assertive" role="status"></div>

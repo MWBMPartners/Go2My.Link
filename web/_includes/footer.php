@@ -174,10 +174,10 @@ if (defined('G2ML_DEBUG') && G2ML_DEBUG === true && function_exists('g2ml_getDeb
             <table style="width:100%;border-collapse:collapse;margin-top:5px;">
                 <thead>
                     <tr style="color:#feca57;">
-                        <th style="text-align:left;padding:2px 5px;">#</th>
-                        <th style="text-align:left;padding:2px 5px;">SQL</th>
-                        <th style="text-align:right;padding:2px 5px;">Time</th>
-                        <th style="text-align:center;padding:2px 5px;">OK</th>
+                        <th scope="col" style="text-align:left;padding:2px 5px;">#</th>
+                        <th scope="col" style="text-align:left;padding:2px 5px;">SQL</th>
+                        <th scope="col" style="text-align:right;padding:2px 5px;">Time</th>
+                        <th scope="col" style="text-align:center;padding:2px 5px;">OK</th>
                     </tr>
                 </thead>
                 <tbody>

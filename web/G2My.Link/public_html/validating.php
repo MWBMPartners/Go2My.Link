@@ -120,7 +120,7 @@ if ($destination !== '')
 </head>
 <body>
 
-    <div class="validation-container" role="main">
+    <main class="validation-container">
         <!-- 🔍 Validation Icon -->
         <div class="validation-icon text-warning" aria-hidden="true">
             <i class="fas fa-shield-halved"></i>
@@ -164,7 +164,7 @@ if ($destination !== '')
         <div class="d-flex justify-content-center gap-3 mb-4">
             <?php if ($destination !== ''): ?>
             <a href="<?php echo htmlspecialchars($destination, ENT_QUOTES, 'UTF-8'); ?>"
-               class="btn btn-outline-warning"
+               class="btn btn-warning text-dark"
                rel="noopener noreferrer">
                 <i class="fas fa-external-link-alt" aria-hidden="true"></i>
                 Proceed Anyway
@@ -182,7 +182,7 @@ if ($destination !== '')
         <noscript>
             <p class="text-body-secondary">
                 <a href="<?php echo htmlspecialchars($fallbackURL, ENT_QUOTES, 'UTF-8'); ?>">
-                    Click here if you are not redirected automatically.
+                    Go to a safe page if you are not redirected automatically.
                 </a>
             </p>
         </noscript>
@@ -195,7 +195,7 @@ if ($destination !== '')
                 <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>
             </a>
         </p>
-    </div>
+    </main>
 
     <!-- ♿ ARIA Live Region for Countdown Announcements -->
     <div id="countdown-status" class="visually-hidden" aria-live="assertive" role="status"></div>

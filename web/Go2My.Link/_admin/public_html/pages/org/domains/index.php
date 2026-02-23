@@ -177,7 +177,7 @@ $dnsPrefix  = getSetting('org.dns_verify_prefix', '_g2ml-verify');
                         <?php foreach ($domains as $d): ?>
                         <tr>
                             <td><strong><?php echo g2ml_sanitiseOutput($d['domainName']); ?></strong></td>
-                            <td><span class="badge bg-info"><?php echo g2ml_sanitiseOutput($d['domainType']); ?></span></td>
+                            <td><span class="badge bg-info text-dark"><?php echo g2ml_sanitiseOutput($d['domainType']); ?></span></td>
                             <td>
                                 <?php
                                 $statusBadge = match($d['verificationStatus']) {
@@ -212,7 +212,8 @@ $dnsPrefix  = getSetting('org.dns_verify_prefix', '_g2ml-verify');
                                         <?php echo g2ml_csrfField('org_domains_form'); ?>
                                         <input type="hidden" name="action_type" value="remove_domain">
                                         <input type="hidden" name="domain_uid" value="<?php echo (int) $d['domainUID']; ?>">
-                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Remove domain">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                title="Remove domain" aria-label="Remove <?php echo g2ml_sanitiseOutput($d['domainName']); ?>">
                                             <i class="fas fa-trash" aria-hidden="true"></i>
                                         </button>
                                     </form>

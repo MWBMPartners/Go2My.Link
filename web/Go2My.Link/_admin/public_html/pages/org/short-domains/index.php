@@ -168,7 +168,8 @@ $shortDomains = getOrgShortDomains($orgHandle);
                                         <?php echo g2ml_csrfField('org_short_domains_form'); ?>
                                         <input type="hidden" name="action_type" value="remove_short_domain">
                                         <input type="hidden" name="domain_uid" value="<?php echo (int) $sd['shortDomainUID']; ?>">
-                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Remove">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm"
+                                                title="Remove" aria-label="Remove <?php echo g2ml_sanitiseOutput($sd['shortDomain']); ?>">
                                             <i class="fas fa-trash" aria-hidden="true"></i>
                                         </button>
                                     </form>

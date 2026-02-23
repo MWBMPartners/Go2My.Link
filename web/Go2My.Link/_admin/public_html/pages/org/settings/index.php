@@ -196,8 +196,8 @@ if ($isGlobalAdmin)
 
                             <!-- Handle (read-only) -->
                             <div class="mb-3">
-                                <label class="form-label">Handle</label>
-                                <input type="text" class="form-control" value="<?php echo g2ml_sanitiseOutput($org['orgHandle']); ?>" readonly disabled>
+                                <label for="org-handle" class="form-label">Handle</label>
+                                <input type="text" class="form-control" id="org-handle" value="<?php echo g2ml_sanitiseOutput($org['orgHandle']); ?>" readonly disabled>
                             </div>
 
                             <?php
