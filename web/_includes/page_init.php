@@ -24,8 +24,8 @@
  * @package    GoToMyLink
  * @subpackage Includes
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.3.0
- * @since      Phase 2
+ * @version    0.5.0
+ * @since      Phase 2 (updated Phase 4)
  * ============================================================================
  */
 
@@ -134,7 +134,8 @@ else
 // ============================================================================
 // 📦 Step 5: Load Function Files (Dependency Order)
 // ============================================================================
-// Layer 1 (zero dependencies) → Layer 2 (depends on Layer 1)
+// Layer 1 (zero dependencies) → Layer 2 (depends on Layer 1) → Layer 3
+// (depends on Layers 1+2)
 //
 // 📖 Reference: https://www.php.net/manual/en/function.require-once.php
 // ============================================================================
@@ -150,6 +151,11 @@ require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'settings.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'activity_logger.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'i18n.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'router.php';
+
+// Layer 3 — Authentication & Email (depend on Layers 1+2)
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'email.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'session.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'auth.php';
 
 // ============================================================================
 // ⚠️ Step 6: Register Error/Exception/Shutdown Handlers
@@ -178,14 +184,18 @@ if (session_status() === PHP_SESSION_NONE)
     session_name('G2ML_SESSION');
 
     // Configure session security
+    // Domain is set to .go2my.link in production for cross-subdomain sharing
+    // (go2my.link ↔ admin.go2my.link). In local/dev, left empty.
     // 📖 Reference: https://www.php.net/manual/en/function.session-set-cookie-params.php
+    $sessionDomain = (G2ML_ENVIRONMENT === 'production') ? '.go2my.link' : '';
+
     session_set_cookie_params([
-        'lifetime' => 0,        // Session cookie (expires when browser closes)
+        'lifetime' => 0,                                   // Session cookie (expires when browser closes)
         'path'     => '/',
-        'domain'   => '',       // Let the browser determine the domain
+        'domain'   => $sessionDomain,                      // Cross-subdomain in production
         'secure'   => (G2ML_ENVIRONMENT === 'production'), // HTTPS only in production
-        'httponly'  => true,     // Not accessible via JavaScript
-        'samesite' => 'Lax',    // CSRF protection
+        'httponly'  => true,                                // Not accessible via JavaScript
+        'samesite' => 'Lax',                               // CSRF protection
     ]);
 
     session_start();
@@ -201,6 +211,31 @@ if (session_status() === PHP_SESSION_NONE)
         session_regenerate_id(true);
         $_SESSION['_g2ml_session_created'] = time();
     }
+}
+
+// Validate and refresh authenticated sessions against the database
+// 📖 Reference: session.php → validateUserSession(), refreshUserSession()
+if (isset($_SESSION['user_uid']) && (int) $_SESSION['user_uid'] > 0)
+{
+    if (function_exists('validateUserSession') && !validateUserSession())
+    {
+        // DB session is invalid/expired — clear PHP session user data
+        unset($_SESSION['user_uid'], $_SESSION['user_email'], $_SESSION['user_display_name']);
+        unset($_SESSION['user_first_name'], $_SESSION['user_last_name'], $_SESSION['user_role']);
+        unset($_SESSION['user_org_handle'], $_SESSION['user_avatar'], $_SESSION['user_timezone']);
+        unset($_SESSION['email_verified'], $_SESSION['session_token']);
+    }
+    elseif (function_exists('refreshUserSession'))
+    {
+        refreshUserSession();
+    }
+}
+
+// Probabilistic session cleanup (1% of requests)
+// 📖 Reference: session.php → cleanExpiredSessions()
+if (function_exists('cleanExpiredSessions') && mt_rand(1, 100) === 1)
+{
+    cleanExpiredSessions();
 }
 
 // ============================================================================

@@ -1,0 +1,120 @@
+<?php
+/**
+ * ============================================================================
+ * 📧 GoToMyLink — Email Template: Password Changed Notification
+ * ============================================================================
+ *
+ * Sent as a security notification when a user's password is changed
+ * (via profile settings or password reset).
+ *
+ * Available variables (from $data):
+ *   $firstName  — User's first name
+ *   $changedAt  — Date/time the password was changed (formatted string)
+ *   $ipAddress  — IP address of the request
+ *   $siteName   — Site name (auto-injected)
+ *   $siteURL    — Site URL (auto-injected)
+ *   $currentYear — Current year (auto-injected)
+ *
+ * @package    GoToMyLink
+ * @subpackage EmailTemplates
+ * @version    0.5.0
+ * @since      Phase 4
+ * ============================================================================
+ */
+
+// 🛡️ Ensure variables exist
+$firstName   = $firstName ?? 'there';
+$changedAt   = $changedAt ?? date('j M Y, H:i T');
+$ipAddress   = $ipAddress ?? 'Unknown';
+$siteName    = $siteName ?? 'GoToMyLink';
+$siteURL     = $siteURL ?? 'https://go2my.link';
+$currentYear = $currentYear ?? date('Y');
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Changed — <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?></title>
+</head>
+<body style="margin:0; padding:0; background-color:#f8f9fa; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8f9fa; padding:40px 20px;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+
+                    <!-- Header -->
+                    <tr>
+                        <td style="background-color:#0d6efd; padding:30px 40px; text-align:center;">
+                            <h1 style="margin:0; color:#ffffff; font-size:24px; font-weight:700;">
+                                <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>
+                            </h1>
+                        </td>
+                    </tr>
+
+                    <!-- Body -->
+                    <tr>
+                        <td style="padding:40px;">
+                            <h2 style="margin:0 0 20px; color:#212529; font-size:20px;">
+                                Your Password Has Been Changed
+                            </h2>
+
+                            <p style="margin:0 0 20px; color:#495057; font-size:16px; line-height:1.6;">
+                                Hi <?php echo htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'); ?>,
+                            </p>
+
+                            <p style="margin:0 0 20px; color:#495057; font-size:16px; line-height:1.6;">
+                                This is a confirmation that the password for your <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?> account has been successfully changed.
+                            </p>
+
+                            <!-- Details Box -->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8f9fa; border-radius:6px; margin:20px 0;">
+                                <tr>
+                                    <td style="padding:20px;">
+                                        <p style="margin:0 0 8px; color:#495057; font-size:14px;">
+                                            <strong>When:</strong> <?php echo htmlspecialchars($changedAt, ENT_QUOTES, 'UTF-8'); ?>
+                                        </p>
+                                        <p style="margin:0; color:#495057; font-size:14px;">
+                                            <strong>IP Address:</strong> <?php echo htmlspecialchars($ipAddress, ENT_QUOTES, 'UTF-8'); ?>
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin:0 0 10px; color:#dc3545; font-size:14px; line-height:1.6;">
+                                <strong>If you did not make this change</strong>, please reset your password immediately and contact our support team.
+                            </p>
+
+                            <!-- CTA Button -->
+                            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0;">
+                                <tr>
+                                    <td style="background-color:#dc3545; border-radius:6px;">
+                                        <a href="<?php echo htmlspecialchars($siteURL . '/forgot-password', ENT_QUOTES, 'UTF-8'); ?>"
+                                           style="display:inline-block; padding:12px 24px; color:#ffffff; text-decoration:none; font-size:14px; font-weight:600;">
+                                            Reset Password
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color:#f8f9fa; padding:20px 40px; text-align:center; border-top:1px solid #dee2e6;">
+                            <p style="margin:0; color:#6c757d; font-size:12px;">
+                                &copy; <?php echo htmlspecialchars($currentYear, ENT_QUOTES, 'UTF-8'); ?> <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?> — MWBM Partners Ltd.
+                                <br>
+                                <a href="<?php echo htmlspecialchars($siteURL, ENT_QUOTES, 'UTF-8'); ?>" style="color:#6c757d;">
+                                    <?php echo htmlspecialchars($siteURL, ENT_QUOTES, 'UTF-8'); ?>
+                                </a>
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

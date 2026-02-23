@@ -12,8 +12,8 @@
  * @package    GoToMyLink
  * @subpackage Includes
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.4.0
- * @since      Phase 2 (theme toggle added Phase 3)
+ * @version    0.5.0
+ * @since      Phase 2 (theme toggle Phase 3, auth dropdown Phase 4)
  *
  * 📖 References:
  *     - Bootstrap Navbar: https://getbootstrap.com/docs/5.3/components/navbar/
@@ -129,27 +129,67 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
                 ?>
 
                 <?php if ($isLoggedIn): ?>
-                <!-- Logged-in user menu (placeholder — implemented in Phase 4) -->
+                <!-- ====================================================== -->
+                <!-- 👤 Logged-in User Dropdown                             -->
+                <!-- ====================================================== -->
+                <?php
+                $userAvatar      = $_SESSION['user_avatar'] ?? '';
+                $userDisplayName = $_SESSION['user_display_name'] ?? 'Account';
+                $userEmail       = $_SESSION['user_email'] ?? '';
+                ?>
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="userMenuDropdown"
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userMenuDropdown"
                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-user-circle" aria-hidden="true"></i>
-                        <?php echo htmlspecialchars($_SESSION['user_display_name'] ?? 'Account', ENT_QUOTES, 'UTF-8'); ?>
+                        <?php if ($userAvatar !== ''): ?>
+                        <img src="<?php echo g2ml_sanitiseOutput($userAvatar); ?>"
+                             alt="" class="rounded-circle me-1" width="24" height="24"
+                             style="object-fit:cover;">
+                        <?php else: ?>
+                        <i class="fas fa-user-circle me-1" aria-hidden="true"></i>
+                        <?php endif; ?>
+                        <?php echo htmlspecialchars($userDisplayName, ENT_QUOTES, 'UTF-8'); ?>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuDropdown">
+                        <!-- User info header -->
+                        <li class="dropdown-header">
+                            <strong><?php echo htmlspecialchars($userDisplayName, ENT_QUOTES, 'UTF-8'); ?></strong>
+                            <?php if ($userEmail !== ''): ?>
+                            <br><small class="text-body-secondary"><?php echo htmlspecialchars($userEmail, ENT_QUOTES, 'UTF-8'); ?></small>
+                            <?php endif; ?>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+
+                        <!-- Dashboard -->
                         <li><a class="dropdown-item" href="https://admin.go2my.link/">
-                            <i class="fas fa-tachometer-alt" aria-hidden="true"></i>
+                            <i class="fas fa-tachometer-alt fa-fw" aria-hidden="true"></i>
                             <?php echo function_exists('__') ? __('nav.dashboard') : 'Dashboard'; ?>
                         </a></li>
+
+                        <!-- My Links -->
+                        <li><a class="dropdown-item" href="https://admin.go2my.link/links">
+                            <i class="fas fa-link fa-fw" aria-hidden="true"></i>
+                            <?php echo function_exists('__') ? __('nav.my_links') : 'My Links'; ?>
+                        </a></li>
+
+                        <!-- Profile -->
+                        <li><a class="dropdown-item" href="https://admin.go2my.link/profile">
+                            <i class="fas fa-user-cog fa-fw" aria-hidden="true"></i>
+                            <?php echo function_exists('__') ? __('nav.profile') : 'Profile'; ?>
+                        </a></li>
+
                         <li><hr class="dropdown-divider"></li>
+
+                        <!-- Log Out -->
                         <li><a class="dropdown-item" href="/logout">
-                            <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+                            <i class="fas fa-sign-out-alt fa-fw" aria-hidden="true"></i>
                             <?php echo function_exists('__') ? __('nav.logout') : 'Log Out'; ?>
                         </a></li>
                     </ul>
                 </li>
                 <?php else: ?>
-                <!-- Login/Register links (placeholder — implemented in Phase 4) -->
+                <!-- ====================================================== -->
+                <!-- 🔐 Login / Register Links                              -->
+                <!-- ====================================================== -->
                 <li class="nav-item">
                     <a class="nav-link" href="/login">
                         <i class="fas fa-sign-in-alt" aria-hidden="true"></i>

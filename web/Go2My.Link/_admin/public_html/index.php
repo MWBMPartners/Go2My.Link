@@ -7,14 +7,14 @@
  * Entry point for admin.go2my.link — the user/org dashboard.
  * Uses file-based routing via ?route= parameter (set by .htaccess).
  *
- * Authentication is required for all admin pages (implemented in Phase 5).
- * For now, routes to pages/ directory with an auth placeholder.
+ * Authentication is required for all admin pages. Unauthenticated users
+ * are redirected to the login page on go2my.link.
  *
  * @package    GoToMyLink
  * @subpackage ComponentA_Admin
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.3.0
- * @since      Phase 2
+ * @version    0.5.0
+ * @since      Phase 2 (auth added Phase 4)
  * ============================================================================
  */
 
@@ -63,19 +63,13 @@ require_once G2ML_INCLUDES
     . DIRECTORY_SEPARATOR . 'accessibility.php';
 
 // ============================================================================
-// 🔐 Step 4: Authentication Check (Placeholder — Phase 5)
+// 🔐 Step 4: Authentication Check
 // ============================================================================
-// All admin pages require authentication. In Phase 5, this will check for
-// a valid session and redirect to the login page if not authenticated.
-//
-// For now, we allow access for framework testing purposes.
+// All admin pages require at least the 'User' role. Unauthenticated users
+// are redirected to the login page on the main go2my.link domain.
 // ============================================================================
 
-// TODO: Phase 5 — Implement authentication check
-// if (!isset($_SESSION['user_uid']) || $_SESSION['user_uid'] <= 0) {
-//     header('Location: https://go2my.link/login?redirect=' . urlencode($_SERVER['REQUEST_URI']));
-//     exit;
-// }
+requireAuth('User');
 
 // ============================================================================
 // 🔀 Step 5: Route the Request
@@ -101,42 +95,10 @@ else
     // 404 or show admin dashboard home
     if ($route === '')
     {
-        // No route — show admin dashboard placeholder
-        $pageTitle = 'Dashboard';
-
+        // No route — render the dashboard home page
         require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'header.php';
         require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'nav.php';
-        ?>
-        <div class="container py-5">
-            <h1><i class="fas fa-tachometer-alt" aria-hidden="true"></i> Dashboard</h1>
-            <p class="lead text-muted">
-                Admin dashboard — coming in Phase 5 (User System).
-            </p>
-            <div class="row mt-4">
-                <div class="col-md-4">
-                    <div class="card text-center p-4">
-                        <i class="fas fa-link fa-3x text-primary mb-3" aria-hidden="true"></i>
-                        <h5>My Links</h5>
-                        <p class="text-muted small">Manage your short links</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card text-center p-4">
-                        <i class="fas fa-chart-line fa-3x text-success mb-3" aria-hidden="true"></i>
-                        <h5>Analytics</h5>
-                        <p class="text-muted small">View click analytics</p>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="card text-center p-4">
-                        <i class="fas fa-cog fa-3x text-secondary mb-3" aria-hidden="true"></i>
-                        <h5>Settings</h5>
-                        <p class="text-muted small">Account & organisation settings</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <?php
+        require __DIR__ . DIRECTORY_SEPARATOR . 'pages' . DIRECTORY_SEPARATOR . 'home.php';
         require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'footer.php';
     }
     else

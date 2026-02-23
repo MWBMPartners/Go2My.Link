@@ -1,0 +1,169 @@
+# =============================================================================
+# GoToMyLink — .htaccess for Admin Dashboard (admin.go2my.link)
+# =============================================================================
+#
+# Handles: HTTPS enforcement, security headers, private directory blocking,
+#          clean URLs (no .php extension), URL routing to index.php
+#
+# Mirrors the Component A .htaccess with minor route differences.
+#
+# @package    GoToMyLink
+# @subpackage Configuration
+# @author     MWBM Partners Ltd (MWservices)
+# @version    0.5.0
+# @since      Phase 4
+# =============================================================================
+
+# =============================================================================
+# Enable Rewrite Engine
+# https://httpd.apache.org/docs/2.4/mod/mod_rewrite.html
+# =============================================================================
+RewriteEngine On
+
+# =============================================================================
+# HTTPS Enforcement
+# Redirect all HTTP traffic to HTTPS (301 Permanent)
+# https://httpd.apache.org/docs/2.4/rewrite/avoid.html
+# =============================================================================
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# =============================================================================
+# Security Headers
+# https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers
+# =============================================================================
+<IfModule mod_headers.c>
+    # Prevent MIME-type sniffing
+    Header set X-Content-Type-Options "nosniff"
+
+    # Clickjacking protection — allow framing from same origin only
+    Header set X-Frame-Options "SAMEORIGIN"
+
+    # XSS protection (legacy browsers)
+    Header set X-XSS-Protection "1; mode=block"
+
+    # Referrer policy — send origin only for cross-origin requests
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Permissions policy — disable unused browser APIs
+    Header set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(self)"
+
+    # HSTS — enforce HTTPS for 1 year (enable after confirming HTTPS works)
+    # Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# =============================================================================
+# Block Access to Private Directories
+# Directories prefixed with _ are not web-accessible.
+# Returns 403 Forbidden for any request to these paths.
+# =============================================================================
+RewriteRule ^_auth_keys(/|$) - [F,L]
+RewriteRule ^_includes(/|$) - [F,L]
+RewriteRule ^_functions(/|$) - [F,L]
+RewriteRule ^_libraries(/|$) - [F,L]
+RewriteRule ^_uploads(/|$) - [F,L]
+RewriteRule ^_backups(/|$) - [F,L]
+
+# =============================================================================
+# Block Access to Sensitive Files
+# =============================================================================
+<FilesMatch "\.(env|log|sql|bak|old|ini|sh|conf|dist)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Block .htaccess itself and other dot-files
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# =============================================================================
+# Directory Listing Protection
+# Prevent browsing of directory contents
+# https://httpd.apache.org/docs/2.4/mod/core.html#options
+# =============================================================================
+Options -Indexes
+
+# =============================================================================
+# Clean URLs — Remove .php Extension
+# Rewrites /page to /page.php if the file exists
+# https://httpd.apache.org/docs/2.4/rewrite/remapurl.html
+# =============================================================================
+
+# If the request is not a file and not a directory
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Check if a .php file exists for the request
+RewriteCond %{REQUEST_FILENAME}.php -f
+
+# Rewrite to the .php file (internally, no redirect)
+RewriteRule ^(.+)$ $1.php [L]
+
+# =============================================================================
+# URL Routing — Route to index.php
+# Catches all remaining requests and routes them via the ?route= parameter.
+# Actual files and directories are served directly (handled by conditions above).
+# =============================================================================
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?route=$1 [QSA,L]
+
+# =============================================================================
+# Character Encoding
+# =============================================================================
+AddDefaultCharset UTF-8
+
+# =============================================================================
+# PHP Configuration (if supported by hosting)
+# =============================================================================
+<IfModule mod_php.c>
+    # Display errors off in production
+    php_flag display_errors Off
+    php_flag log_errors On
+
+    # Session security
+    php_value session.cookie_httponly 1
+    php_value session.cookie_secure 1
+    php_value session.cookie_samesite "Lax"
+    php_value session.use_strict_mode 1
+</IfModule>
+
+# =============================================================================
+# Compression (if mod_deflate is available)
+# https://httpd.apache.org/docs/2.4/mod/mod_deflate.html
+# =============================================================================
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css
+    AddOutputFilterByType DEFLATE text/javascript application/javascript application/json
+    AddOutputFilterByType DEFLATE image/svg+xml application/xml
+</IfModule>
+
+# =============================================================================
+# Cache Control (static assets)
+# https://httpd.apache.org/docs/2.4/mod/mod_expires.html
+# =============================================================================
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+    ExpiresByType image/x-icon "access plus 1 month"
+    ExpiresByType text/css "access plus 1 week"
+    ExpiresByType text/javascript "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+    ExpiresByType font/woff2 "access plus 1 month"
+    ExpiresByType font/woff "access plus 1 month"
+</IfModule>
