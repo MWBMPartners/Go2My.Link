@@ -1,3 +1,9 @@
+-- Copyright (c) 2024–2026 MWBM Partners Ltd (MWservices).
+-- All rights reserved.
+--
+-- This source code is proprietary and confidential.
+-- Unauthorised copying, modification, or distribution is strictly prohibited.
+
 -- ============================================================================
 -- 🌍 Go2My.Link — Phase 6 Seed: en-GB Translations
 -- ============================================================================

@@ -1,6 +1,11 @@
+# Copyright (c) 2024–2026 MWBM Partners Ltd (MWservices).
+# All rights reserved.
+#
+# This source code is proprietary and confidential.
+# Unauthorised copying, modification, or distribution is strictly prohibited.
+
 # File: /.gitattributes
 # Purpose: Ensure binary assets are treated correctly by git
-# (C) 2025–present MWBM Partners Ltd (d/b/a MW Services)
 # Version: 1.0
 
 *.mp4 binary
