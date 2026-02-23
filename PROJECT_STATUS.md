@@ -37,6 +37,15 @@
 - [ ] 6.7 — 🌍 Seed key translations: en-GB baseline complete (~1,075 keys in `010_phase6_translations.sql`), 9 additional locales deferred to post-launch (#71)
 - [x] 6.8 — 🗄️ Data migration plan & dry-run: `docs/MIGRATION_PLAN.md` + `web/_sql/dry_run.sql` — 7-step process for 480 URLs, 5 orgs, 7 users (password force-reset), 429K activity log rows (#67)
 
+### 🔒 Pre-Release Audit (Complete)
+
+Comprehensive security, WCAG, and W3C compliance audit across all components. **20 files modified** with fixes:
+
+- 🔒 **Security:** innerHTML → textContent (XSS), OUT param regex validation (SQLi), referer allowlist (open redirect), SRI hash on RTL CSS, `noreferrer` on 7 external links
+- ♿ **Accessibility:** `aria-hidden` on toggler icon, `aria-live="assertive"` on countdown, debug panel contrast, footer link hover contrast, Bootstrap `text-muted` → `text-body-secondary`
+- 📧 **Email:** Footer text contrast fixed across all 7 templates (#6c757d → #5a6268)
+- ✅ **PHP lint:** All 87 PHP files pass syntax check (PHP 8.4)
+
 ## ✅ Completed Milestones
 
 ### v0.6.0 — 🏢 Organisation Management (Phase 5)
@@ -139,7 +148,14 @@ None.
 
 **#71 Translations** — en-GB baseline seeded with ~1,075 keys. The 9 additional locales (en-US, es, fr, de, pt-BR, ar, zh-CN, ja, hi) are deferred to post-launch. The interim Google Translate widget covers machine translation in the meantime.
 
-**v1.0.0-rc Pre-Release** — Phase 6 is functionally complete (7/8 issues done, remaining #71 is non-blocking). The product is legally compliant and ready for pre-release candidate.
+**v1.0.0-rc Pre-Release** — Phase 6 is functionally complete (7/8 issues done, remaining #71 is non-blocking). Pre-release security/WCAG/W3C audit complete with all findings fixed. The product is legally compliant and ready for pre-release candidate.
+
+**Post-launch suggestions** (from pre-release audit, non-blocking):
+
+- 🔒 Nonce-based CSP to replace `'unsafe-inline'` for scripts (requires server-side nonce generation)
+- 🔒 Replace `confirm()` dialogs with Bootstrap modals for better UX/accessibility
+- 🔒 Session cleanup probability tuning (currently 1/100, review under production load)
+- ⚖️ Professional legal review of all 5 legal documents (`{{LEGAL_REVIEW_NEEDED}}` placeholders)
 
 **Post-launch enhancements:** Phase 7 (Advanced Auth), Phase 8 (API & Analytics + Swagger #75), Phase 9 (LinksPage), Phase 10 (Advanced Redirects), Phase 11 (Payments).
 

@@ -43,6 +43,7 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 - 📜 **Legal Documents** — Terms of Use, Privacy Policy, Cookie Policy, Copyright Notice, Acceptable Use Policy
 - 📱 **PWA** — Progressive Web App manifests and service workers for all 3 web properties
 - ♿ **WCAG 2.1 AA** — Full accessibility audit with 23+ files fixed: landmarks, ARIA, contrast, headings, forms
+- 🔒 **Pre-Release Audit** — Security hardening (XSS, SQLi, open redirect), WCAG refinements, W3C compliance, email template contrast
 
 ### 🔜 Planned
 
@@ -153,6 +154,7 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 - ✅ ♿ WCAG 2.1 AA audit — 23 files fixed: landmarks, ARIA, contrast, headings, forms (#66)
 - ✅ 🗄️ Migration plan & dry-run SQL — 7-step process, rollback safeguards (#67)
 - 🔄 🌍 Translation seed — en-GB baseline (~1,075 keys) done; 9 locales deferred post-launch (#71)
+- ✅ 🔒 Pre-release audit — security hardening, WCAG refinements, W3C compliance (20 files)
 
 > 🏁 **v1.0.0-rc — Pre-Release Candidate** after Phase 6
 

@@ -151,6 +151,37 @@ The i18n system (`web/_functions/i18n.php`) uses a **language-family fallback** 
 | `zh` | `zh-CN` | Base language → first active `zh-*` |
 | `fr` (inactive) | `null` → site default | No active `fr-*` variant yet |
 
+### 🔒 Pre-Release Audit (Phase 6)
+
+A comprehensive security, WCAG, and W3C compliance audit was performed across all components prior to v1.0.0-rc. Six parallel audit agents covered: W3C/HTML5 standards, semantic landmarks, ARIA/forms, keyboard/focus management, colour contrast, and OWASP security. **20 files modified, 56 insertions, 40 deletions.**
+
+**Security fixes:**
+
+- `innerHTML` → `textContent` on copy button in admin link creation (DOM-based XSS prevention)
+- Regex validation (`/^@[a-zA-Z_][a-zA-Z0-9_]*$/`) for OUT parameter names in `dbCallProcedure()` (SQL injection prevention)
+- Same-origin referer allowlist on consent API redirect (open redirect prevention)
+- SRI `integrity` hash added to Bootstrap RTL CSS CDN link (was missing on the dynamic include)
+- `noreferrer` added to all `target="_blank"` external links across 7 files
+
+**Accessibility refinements:**
+
+- `aria-hidden="true"` on navbar toggler icon (decorative element)
+- `aria-live="assertive"` on Component B expired page countdown (time-sensitive notification)
+- Debug panel row number contrast (#666 → #999, 5.16:1 ratio)
+- Footer link hover/focus state with `var(--bs-light)` + underline (WCAG 1.4.1)
+- Bootstrap `text-muted` → `text-body-secondary` migration in footer
+
+**Email template fixes:**
+
+- Footer text colour changed from `#6c757d` to `#5a6268` across all 7 email templates (4.58:1 → 5.74:1 contrast on `#f8f9fa` background)
+
+**Post-launch recommendations** (non-blocking):
+
+- Nonce-based CSP to replace `'unsafe-inline'` for inline scripts
+- Replace browser `confirm()` dialogs with Bootstrap modals
+- Session cleanup probability tuning under production load
+- Professional legal review of all 5 legal documents
+
 ### 🗄️ Data Migration (Phase 6)
 
 `docs/MIGRATION_PLAN.md` documents the 7-step migration from the legacy MWlink database. `web/_sql/dry_run.sql` provides a non-destructive read-only validation script. Key decisions: all passwords force-reset (legacy is plaintext), `tblLicenses` skipped, activity log migrated in 10K-row batches (429K total). See the migration plan for rollback procedures.

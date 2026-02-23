@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🔒 Fixed (Pre-Release Audit — Security Hardening, WCAG Refinements, W3C Compliance)
+
+- 🔒 **XSS prevention** — Replaced `innerHTML` with `textContent` on copy button (DOM-based XSS vector) in admin link creation page
+- 🔒 **SQL injection prevention** — Added regex validation for OUT parameter names in `dbCallProcedure()` to prevent injection via session variable names
+- 🔒 **Open redirect prevention** — Added same-origin referer validation on consent API redirect (allowlist: go2my.link, admin.go2my.link, g2my.link, lnks.page)
+- 🔒 **SRI hash** — Added `integrity` attribute to Bootstrap RTL CSS CDN link in `header.php` (was missing on the dynamic RTL include)
+- 🔒 **Referrer leakage** — Added `noreferrer` to all external `target="_blank"` links across 7 files (home, info, dashboard, links, org pages)
+- ♿ **ARIA** — Added `aria-hidden="true"` to navbar toggler icon (decorative `<span>`)
+- ♿ **Contrast** — Changed `aria-live="polite"` to `"assertive"` on Component B expired page countdown (time-sensitive redirect notification)
+- ♿ **Contrast** — Fixed debug panel row number colour (#666 → #999, 5.16:1 ratio on #1a1a2e background)
+- ♿ **Contrast** — Fixed footer link hover/focus to use `var(--bs-light)` with underline for WCAG 1.4.1 link distinguishability
+- 🔄 **Bootstrap migration** — Replaced deprecated `text-muted` with `text-body-secondary` across all footer links and paragraphs
+- 📧 **Email contrast** — Changed footer text colour from `#6c757d` to `#5a6268` across all 7 email templates (4.58:1 → 5.74:1 on #f8f9fa background)
+
 ### ✨ Added (Phase 6 — Compliance, Legal & Pre-Launch — Batch 2)
 
 - 📱 **Progressive Web App (PWA)** — Manifests, service workers, and icon sets for all 3 domains: go2my.link, admin.go2my.link, and lnks.page; offline fallback pages, install prompts (#65)
