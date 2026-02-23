@@ -1,14 +1,14 @@
 <?php
 /**
  * ============================================================================
- * 🏠 GoToMyLink — Main Website Entry Point (Component A)
+ * 🏠 Go2My.Link — Main Website Entry Point (Component A)
  * ============================================================================
  *
  * Entry point for go2my.link — the public-facing main website.
  * Routes requests via ?route= parameter (set by .htaccess) to PHP files
  * in the pages/ directory using the file-based router.
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.4.0
@@ -35,7 +35,7 @@ if (file_exists($componentAuthPath))
 }
 else
 {
-    error_log('[GoToMyLink] CRITICAL: Component A auth_creds.php not found at: ' . $componentAuthPath);
+    error_log('[Go2My.Link] CRITICAL: Component A auth_creds.php not found at: ' . $componentAuthPath);
 }
 
 // ============================================================================

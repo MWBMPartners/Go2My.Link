@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * ⚙️ GoToMyLink — Settings Manager
+ * ⚙️ Go2My.Link — Settings Manager
  * ============================================================================
  *
  * Reads and writes application settings from tblSettings with scope cascade:
@@ -17,7 +17,7 @@
  * Dependencies: db_connect.php (getDB()), db_query.php (dbSelect(), dbInsert(),
  *               dbUpdate()), security.php (g2ml_encrypt(), g2ml_decrypt())
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage Functions
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.3.0
@@ -42,7 +42,7 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 // 💾 Settings Cache
 // ============================================================================
 // Settings are cached per-scope in a global array. The structure is:
-//   $_g2ml_settings_cache['Default']['site.name'] = 'GoToMyLink'
+//   $_g2ml_settings_cache['Default']['site.name'] = 'Go2My.Link'
 //   $_g2ml_settings_cache['System']['site.name'] = 'Custom Name'
 //   $_g2ml_settings_cache['Organisation:myorg']['site.name'] = 'Org Custom'
 //   $_g2ml_settings_cache['User:42']['site.name'] = 'User Pref'
@@ -75,7 +75,7 @@ function loadSettingsCache(): void
 
     if ($rows === false)
     {
-        error_log('[GoToMyLink] WARNING: Failed to load settings cache from database.');
+        error_log('[Go2My.Link] WARNING: Failed to load settings cache from database.');
         return;
     }
 
@@ -95,7 +95,7 @@ function loadSettingsCache(): void
             }
             else
             {
-                error_log('[GoToMyLink] WARNING: Failed to decrypt setting: ' . $row['settingID']);
+                error_log('[Go2My.Link] WARNING: Failed to decrypt setting: ' . $row['settingID']);
             }
         }
 
@@ -308,7 +308,7 @@ function setSetting(string $settingID, mixed $value, string $scope = 'System', ?
 
     if (!in_array($scope, $validScopes, true))
     {
-        error_log('[GoToMyLink] ERROR: setSetting called with invalid scope: ' . $scope);
+        error_log('[Go2My.Link] ERROR: setSetting called with invalid scope: ' . $scope);
         return false;
     }
 
@@ -322,7 +322,7 @@ function setSetting(string $settingID, mixed $value, string $scope = 'System', ?
 
         if ($encrypted === false)
         {
-            error_log('[GoToMyLink] ERROR: Failed to encrypt setting: ' . $settingID);
+            error_log('[Go2My.Link] ERROR: Failed to encrypt setting: ' . $settingID);
             return false;
         }
 

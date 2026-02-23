@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 🔒 GoToMyLink — Security Utilities
+ * 🔒 Go2My.Link — Security Utilities
  * ============================================================================
  *
  * AES-256-GCM encryption/decryption, Argon2id password hashing, CSRF token
@@ -12,7 +12,7 @@
  *
  * Dependencies: auth_creds.php constants (ENCRYPTION_SALT, ENCRYPTION_KEY_SECONDARY)
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage Functions
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.3.0
@@ -63,7 +63,7 @@ function g2ml_encrypt(string $plaintext, ?string $key = null): string|false
     if ($encryptionKey === '' || $encryptionKey === 'CHANGE_ME_TO_A_64_CHAR_HEX_STRING_GENERATED_WITH_RANDOM_BYTES_32')
     {
         // 📖 Reference: https://www.php.net/manual/en/function.error-log.php
-        error_log('[GoToMyLink] CRITICAL: ENCRYPTION_SALT is not configured. Cannot encrypt.');
+        error_log('[Go2My.Link] CRITICAL: ENCRYPTION_SALT is not configured. Cannot encrypt.');
         return false;
     }
 
@@ -91,7 +91,7 @@ function g2ml_encrypt(string $plaintext, ?string $key = null): string|false
 
     if ($ciphertext === false)
     {
-        error_log('[GoToMyLink] ERROR: openssl_encrypt failed: ' . openssl_error_string());
+        error_log('[Go2My.Link] ERROR: openssl_encrypt failed: ' . openssl_error_string());
         return false;
     }
 
@@ -118,7 +118,7 @@ function g2ml_decrypt(string $encrypted, ?string $key = null): string|false
 
     if ($encryptionKey === '' || $encryptionKey === 'CHANGE_ME_TO_A_64_CHAR_HEX_STRING_GENERATED_WITH_RANDOM_BYTES_32')
     {
-        error_log('[GoToMyLink] CRITICAL: ENCRYPTION_SALT is not configured. Cannot decrypt.');
+        error_log('[Go2My.Link] CRITICAL: ENCRYPTION_SALT is not configured. Cannot decrypt.');
         return false;
     }
 
@@ -131,7 +131,7 @@ function g2ml_decrypt(string $encrypted, ?string $key = null): string|false
 
     if ($raw === false || strlen($raw) < 28) // 12 (IV) + 16 (tag) minimum
     {
-        error_log('[GoToMyLink] ERROR: g2ml_decrypt received invalid encrypted data.');
+        error_log('[Go2My.Link] ERROR: g2ml_decrypt received invalid encrypted data.');
         return false;
     }
 
@@ -154,7 +154,7 @@ function g2ml_decrypt(string $encrypted, ?string $key = null): string|false
 
     if ($plaintext === false)
     {
-        error_log('[GoToMyLink] ERROR: openssl_decrypt failed (wrong key or tampered data): ' . openssl_error_string());
+        error_log('[Go2My.Link] ERROR: openssl_decrypt failed (wrong key or tampered data): ' . openssl_error_string());
         return false;
     }
 

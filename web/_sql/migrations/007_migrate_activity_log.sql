@@ -1,5 +1,5 @@
 -- =============================================================================
--- GoToMyLink — Migration 007: Activity Log (Optional)
+-- Go2My.Link — Migration 007: Activity Log (Optional)
 -- =============================================================================
 -- Migrates ~429K activity log entries from mwtools_mwlink.tblActivityLog.
 --
@@ -10,7 +10,7 @@
 -- Note: Geo/UA data (browserName, osName, etc.) is NOT populated during
 -- migration — those columns are populated by the new application.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

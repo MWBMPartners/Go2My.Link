@@ -1,10 +1,10 @@
 -- =============================================================================
--- GoToMyLink — Seed Data: Subscription Tiers
+-- Go2My.Link — Seed Data: Subscription Tiers
 -- =============================================================================
 -- Default subscription tier definitions.
 -- Must be loaded BEFORE organisation migrations (tblOrganisations references tierID).
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

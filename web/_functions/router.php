@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 🔀 GoToMyLink — File-Based Router
+ * 🔀 Go2My.Link — File-Based Router
  * ============================================================================
  *
  * Maps URL route segments to PHP files in a pages/ directory.
@@ -18,7 +18,7 @@
  *
  * Dependencies: None (standalone function)
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage Functions
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.3.0

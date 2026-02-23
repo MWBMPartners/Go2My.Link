@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 🔗 GoToMyLink — Shortlink Redirect Entry Point (Component B)
+ * 🔗 Go2My.Link — Shortlink Redirect Entry Point (Component B)
  * ============================================================================
  *
  * Entry point for g2my.link — the default short URL redirect domain.
@@ -17,7 +17,7 @@
  *   4. Log the activity (respecting DNT and analytics setting)
  *   5. Issue 302 redirect (or show branded error page)
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentB
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.4.0
@@ -39,7 +39,7 @@ if (file_exists($componentAuthPath))
 }
 else
 {
-    error_log('[GoToMyLink] CRITICAL: Component B auth_creds.php not found at: ' . $componentAuthPath);
+    error_log('[Go2My.Link] CRITICAL: Component B auth_creds.php not found at: ' . $componentAuthPath);
 }
 
 // ============================================================================

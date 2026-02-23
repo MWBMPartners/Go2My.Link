@@ -1,10 +1,10 @@
 -- =============================================================================
--- GoToMyLink — Seed Data: Default Organisation
+-- Go2My.Link — Seed Data: Default Organisation
 -- =============================================================================
 -- Creates the [default] organisation used for anonymous link creation
 -- and the default g2my.link short domain.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0
@@ -19,7 +19,7 @@ INSERT INTO `tblOrganisations` (
     `tierID`, `isVerified`, `isActive`, `orgNotes`
 ) VALUES (
     '[default]',
-    'GoToMyLink (Default)',
+    'Go2My.Link (Default)',
     'https://go2my.link',
     'go2my.link',
     'https://go2my.link',

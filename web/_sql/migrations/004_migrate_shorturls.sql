@@ -1,5 +1,5 @@
 -- =============================================================================
--- GoToMyLink — Migration 004: Short URLs
+-- Go2My.Link — Migration 004: Short URLs
 -- =============================================================================
 -- Migrates 480 short URL records from mwtools_mwlink.tblShortURLs.
 -- Preserves urlUID for FK compatibility. Sets isActive = 1 for all.
@@ -7,7 +7,7 @@
 --
 -- These are LIVE production URLs — preservation is critical.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

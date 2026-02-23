@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * ⚠️ GoToMyLink — Error & Exception Handlers
+ * ⚠️ Go2My.Link — Error & Exception Handlers
  * ============================================================================
  *
  * Custom error and exception handlers that log to tblErrorLog in the database.
@@ -12,7 +12,7 @@
  *
  * Dependencies: db_connect.php (getDB()), db_query.php (dbInsert())
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage Functions
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.3.0
@@ -204,7 +204,7 @@ function g2ml_logError(
 
     // Fallback: log to PHP error_log
     // 📖 Reference: https://www.php.net/manual/en/function.error-log.php
-    $fallbackMessage = '[GoToMyLink] ' . strtoupper($severity)
+    $fallbackMessage = '[Go2My.Link] ' . strtoupper($severity)
         . ' [' . ($code ?? 0) . ']: ' . $title;
 
     if ($file !== null)

@@ -1,13 +1,13 @@
 <?php
 /**
  * ============================================================================
- * 🔗 GoToMyLink — Links List (Admin Dashboard)
+ * 🔗 Go2My.Link — Links List (Admin Dashboard)
  * ============================================================================
  *
  * Paginated list of the user's short links with search, filter, and
  * delete actions.
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA_Admin
  * @version    0.5.0
  * @since      Phase 4

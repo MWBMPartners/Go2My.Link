@@ -1,13 +1,13 @@
 <?php
 /**
  * ============================================================================
- * 🔑 GoToMyLink — Reset Password Page (Component A)
+ * 🔑 Go2My.Link — Reset Password Page (Component A)
  * ============================================================================
  *
  * Password reset form. Requires a valid token from the forgot-password email.
  * Validates the token before showing the form, then resets the password.
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA
  * @version    0.5.0
  * @since      Phase 4

@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 📧 GoToMyLink — Email Template: Password Reset
+ * 📧 Go2My.Link — Email Template: Password Reset
  * ============================================================================
  *
  * Sent when a user requests a password reset via the forgot-password page.
@@ -13,7 +13,7 @@
  *   $siteURL   — Site URL (auto-injected)
  *   $currentYear — Current year (auto-injected)
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage EmailTemplates
  * @version    0.5.0
  * @since      Phase 4
@@ -23,7 +23,7 @@
 // 🛡️ Ensure variables exist
 $firstName   = $firstName ?? 'there';
 $resetURL    = $resetURL ?? '#';
-$siteName    = $siteName ?? 'GoToMyLink';
+$siteName    = $siteName ?? 'Go2My.Link';
 $siteURL     = $siteURL ?? 'https://go2my.link';
 $currentYear = $currentYear ?? date('Y');
 ?>

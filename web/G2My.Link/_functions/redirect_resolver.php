@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 🔀 GoToMyLink — Redirect Resolver (Component B)
+ * 🔀 Go2My.Link — Redirect Resolver (Component B)
  * ============================================================================
  *
  * Core redirect resolution logic for the shortlink engine. Wraps the
@@ -15,7 +15,7 @@
  *
  * Dependencies: db_query.php, settings.php (loaded via page_init.php)
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentB
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.4.0
@@ -66,7 +66,7 @@ function resolveShortCode(string $domain, string $code): array
     if ($result === false)
     {
         error_log(
-            '[GoToMyLink] ERROR: sp_lookupShortURL call failed'
+            '[Go2My.Link] ERROR: sp_lookupShortURL call failed'
             . ' — domain: ' . $domain
             . ', code: ' . $code
         );
@@ -145,7 +145,7 @@ function validateDestination(string $url, int $timeout = 5): array
             'follow_location'  => 0,       // Don't follow redirects — just check initial response
             'max_redirects'    => 0,
             'ignore_errors'    => true,     // Return headers even for error status codes
-            'user_agent'       => 'GoToMyLink URL Validator/1.0',
+            'user_agent'       => 'Go2My.Link URL Validator/1.0',
             'header'           => "Accept: */*\r\n",
         ],
         'ssl' => [
@@ -251,7 +251,7 @@ function buildRedirectResponse(string $destination, int $statusCode = 302): void
     if (headers_sent($file, $line))
     {
         error_log(
-            '[GoToMyLink] WARNING: Headers already sent in '
+            '[Go2My.Link] WARNING: Headers already sent in '
             . $file . ':' . $line
             . ' — cannot redirect to: ' . $destination
         );

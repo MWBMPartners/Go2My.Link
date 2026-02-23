@@ -1,13 +1,13 @@
 <?php
 /**
  * ============================================================================
- * 🔑 GoToMyLink — Forgot Password Page (Component A)
+ * 🔑 Go2My.Link — Forgot Password Page (Component A)
  * ============================================================================
  *
  * Password reset request form. Sends a reset email if the account exists,
  * but always shows a generic success message (email enumeration prevention).
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA
  * @version    0.5.0
  * @since      Phase 4
@@ -22,7 +22,7 @@ if (function_exists('isAuthenticated') && isAuthenticated())
 }
 
 $pageTitle = function_exists('__') ? __('forgot_password.title') : 'Forgot Password';
-$pageDesc  = function_exists('__') ? __('forgot_password.description') : 'Reset your GoToMyLink account password.';
+$pageDesc  = function_exists('__') ? __('forgot_password.description') : 'Reset your Go2My.Link account password.';
 
 // ============================================================================
 // Process form submission

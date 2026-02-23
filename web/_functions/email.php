@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 📧 GoToMyLink — Email Functions
+ * 📧 Go2My.Link — Email Functions
  * ============================================================================
  *
  * Sends transactional emails using PHP mail() with HTML templates.
@@ -11,7 +11,7 @@
  * Dependencies: settings.php (getSetting()), activity_logger.php (logActivity()),
  *               security.php (g2ml_sanitiseOutput())
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage Functions
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.5.0
@@ -65,7 +65,7 @@ function g2ml_sendEmail(string $to, string $subject, string $template, array $da
 
     if ($htmlBody === false)
     {
-        error_log('[GoToMyLink] ERROR: g2ml_sendEmail failed — template "' . $template . '" could not be rendered.');
+        error_log('[Go2My.Link] ERROR: g2ml_sendEmail failed — template "' . $template . '" could not be rendered.');
         return false;
     }
 
@@ -76,8 +76,8 @@ function g2ml_sendEmail(string $to, string $subject, string $template, array $da
         : 'noreply@go2my.link';
 
     $fromName = function_exists('getSetting')
-        ? getSetting('email.from_name', 'GoToMyLink')
-        : 'GoToMyLink';
+        ? getSetting('email.from_name', 'Go2My.Link')
+        : 'Go2My.Link';
 
     $replyTo = function_exists('getSetting')
         ? getSetting('email.reply_to', 'support@go2my.link')
@@ -89,7 +89,7 @@ function g2ml_sendEmail(string $to, string $subject, string $template, array $da
     $headers .= "Reply-To: " . $replyTo . "\r\n";
     $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
     $headers .= "MIME-Version: 1.0\r\n";
-    $headers .= "X-Mailer: GoToMyLink/0.5.0\r\n";
+    $headers .= "X-Mailer: Go2My.Link/0.5.0\r\n";
 
     // Send the email
     // 📖 Reference: https://www.php.net/manual/en/function.mail.php
@@ -109,7 +109,7 @@ function g2ml_sendEmail(string $to, string $subject, string $template, array $da
 
     if (!$sent)
     {
-        error_log('[GoToMyLink] ERROR: mail() failed for recipient: ' . $to . ' | template: ' . $template);
+        error_log('[Go2My.Link] ERROR: mail() failed for recipient: ' . $to . ' | template: ' . $template);
     }
 
     return $sent;
@@ -153,14 +153,14 @@ function g2ml_renderEmailTemplate(string $template, array $data = []): string|fa
     // 📖 Reference: https://www.php.net/manual/en/function.file-exists.php
     if (!file_exists($templateFile))
     {
-        error_log('[GoToMyLink] ERROR: Email template not found: ' . $templateFile);
+        error_log('[Go2My.Link] ERROR: Email template not found: ' . $templateFile);
         return false;
     }
 
     // Add convenience variables available to all templates
     $data['siteName'] = function_exists('getSetting')
-        ? getSetting('site.name', 'GoToMyLink')
-        : 'GoToMyLink';
+        ? getSetting('site.name', 'Go2My.Link')
+        : 'Go2My.Link';
 
     $data['siteURL'] = 'https://go2my.link';
 
@@ -181,7 +181,7 @@ function g2ml_renderEmailTemplate(string $template, array $data = []): string|fa
     catch (\Throwable $e)
     {
         ob_end_clean();
-        error_log('[GoToMyLink] ERROR: Email template render failed: ' . $e->getMessage());
+        error_log('[Go2My.Link] ERROR: Email template render failed: ' . $e->getMessage());
         return false;
     }
 

@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 🔍 GoToMyLink — Destination Validation Page (Component B)
+ * 🔍 Go2My.Link — Destination Validation Page (Component B)
  * ============================================================================
  *
  * Shown when the destination URL fails the validateDestination() check.
@@ -13,7 +13,7 @@
  *   - $orgHandle    (string|null) — Organisation handle for fallback
  *   - $shortCode    (string) — The short code that was resolved
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentB
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.4.0
@@ -34,7 +34,7 @@ if (!defined('G2ML_COMPONENT'))
 // 📋 Set Default Values
 // ============================================================================
 $destination  = $destination ?? '';
-$siteName     = function_exists('getSetting') ? getSetting('site.name', 'GoToMyLink') : 'GoToMyLink';
+$siteName     = function_exists('getSetting') ? getSetting('site.name', 'Go2My.Link') : 'Go2My.Link';
 $mainSiteURL  = 'https://go2my.link';
 
 // Fallback URL goes to the org fallback (NOT the unverified destination)

@@ -1,10 +1,10 @@
 -- =============================================================================
--- GoToMyLink — Payment & Subscription Tables
+-- Go2My.Link — Payment & Subscription Tables
 -- =============================================================================
 -- Subscription management, payment records, and discount rules.
 -- Note: tblSubscriptionTiers is created in 011_core_subscription_tiers.sql
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

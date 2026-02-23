@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 📧 GoToMyLink — Email Template: Verify Email Address
+ * 📧 Go2My.Link — Email Template: Verify Email Address
  * ============================================================================
  *
  * Sent after user registration to verify their email address.
@@ -13,7 +13,7 @@
  *   $siteURL         — Site URL (auto-injected)
  *   $currentYear     — Current year (auto-injected)
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage EmailTemplates
  * @version    0.5.0
  * @since      Phase 4
@@ -23,7 +23,7 @@
 // 🛡️ Ensure variables exist (prevent undefined variable notices)
 $firstName       = $firstName ?? 'there';
 $verificationURL = $verificationURL ?? '#';
-$siteName        = $siteName ?? 'GoToMyLink';
+$siteName        = $siteName ?? 'Go2My.Link';
 $siteURL         = $siteURL ?? 'https://go2my.link';
 $currentYear     = $currentYear ?? date('Y');
 ?>

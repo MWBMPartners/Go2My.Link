@@ -1,11 +1,11 @@
 -- =============================================================================
--- GoToMyLink — Seed Data: Languages
+-- Go2My.Link — Seed Data: Languages
 -- =============================================================================
 -- Default supported languages for the i18n system.
 -- English (en-GB) is the base/default language.
 -- Others are seeded but inactive until formal translations are available.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

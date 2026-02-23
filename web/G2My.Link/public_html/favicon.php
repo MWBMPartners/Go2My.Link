@@ -1,16 +1,16 @@
 <?php
 /**
  * ============================================================================
- * 🎨 GoToMyLink — Dynamic Favicon Handler (Component B)
+ * 🎨 Go2My.Link — Dynamic Favicon Handler (Component B)
  * ============================================================================
  *
  * Serves favicon.ico dynamically — org-specific favicons for custom domains,
- * or the default GoToMyLink favicon for g2my.link.
+ * or the default Go2My.Link favicon for g2my.link.
  *
  * Settings:
  *   - indexer.allow_favicon  — Whether to serve favicon (else 404)
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentB
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.4.0

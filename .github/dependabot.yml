@@ -1,11 +1,11 @@
 # =============================================================================
-# GoToMyLink — Dependabot Configuration
+# Go2My.Link — Dependabot Configuration
 # =============================================================================
 #
 # Monitors GitHub Actions for dependency updates.
 # No Composer/npm dependencies to monitor (Dreamhost has no CLI).
 #
-# @package    GoToMyLink
+# @package    Go2My.Link
 # @author     MWBM Partners Ltd (MWservices)
 # @since      Phase 0
 # =============================================================================

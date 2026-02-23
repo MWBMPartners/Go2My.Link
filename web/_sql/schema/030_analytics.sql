@@ -1,10 +1,10 @@
 -- =============================================================================
--- GoToMyLink — Analytics Tables
+-- Go2My.Link — Analytics Tables
 -- =============================================================================
 -- Activity logging (migrated from tblActivityLog) and error logging.
 -- InnoDB with structured columns replacing the legacy catch-all design.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

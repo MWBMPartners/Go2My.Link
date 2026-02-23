@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 📧 GoToMyLink — Email Template: Password Changed Notification
+ * 📧 Go2My.Link — Email Template: Password Changed Notification
  * ============================================================================
  *
  * Sent as a security notification when a user's password is changed
@@ -15,7 +15,7 @@
  *   $siteURL    — Site URL (auto-injected)
  *   $currentYear — Current year (auto-injected)
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage EmailTemplates
  * @version    0.5.0
  * @since      Phase 4
@@ -26,7 +26,7 @@
 $firstName   = $firstName ?? 'there';
 $changedAt   = $changedAt ?? date('j M Y, H:i T');
 $ipAddress   = $ipAddress ?? 'Unknown';
-$siteName    = $siteName ?? 'GoToMyLink';
+$siteName    = $siteName ?? 'Go2My.Link';
 $siteURL     = $siteURL ?? 'https://go2my.link';
 $currentYear = $currentYear ?? date('Y');
 ?>

@@ -1,10 +1,10 @@
 -- =============================================================================
--- GoToMyLink — Advanced Redirect Tables
+-- Go2My.Link — Advanced Redirect Tables
 -- =============================================================================
 -- Scheduled, device-based, geo-based redirects, and age verification gates.
 -- These are premium features gated behind subscription tiers.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

@@ -1,5 +1,5 @@
 # =============================================================================
-# GoToMyLink — .htaccess for G2My.Link (Component B — Shortlink Redirect)
+# Go2My.Link — .htaccess for G2My.Link (Component B — Shortlink Redirect)
 # =============================================================================
 #
 # Handles: HTTPS enforcement, security headers, short code routing.
@@ -8,7 +8,7 @@
 # This is the PERFORMANCE-CRITICAL component — every short URL redirect
 # passes through this .htaccess. Keep rules minimal.
 #
-# @package    GoToMyLink
+# @package    Go2My.Link
 # @subpackage Configuration
 # @author     MWBM Partners Ltd (MWservices)
 # @version    0.1.0

@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 📄 GoToMyLink — HTML Header Include
+ * 📄 Go2My.Link — HTML Header Include
  * ============================================================================
  *
  * Outputs the HTML5 doctype, <head>, and opening <body> tag.
@@ -14,7 +14,7 @@
  *
  * Dependencies: page_init.php (must be loaded first)
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage Includes
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.4.0
@@ -34,7 +34,7 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 // ============================================================================
 // 📋 Default Variable Values
 // ============================================================================
-$siteName  = function_exists('getSetting') ? getSetting('site.name', 'GoToMyLink') : 'GoToMyLink';
+$siteName  = function_exists('getSetting') ? getSetting('site.name', 'Go2My.Link') : 'Go2My.Link';
 $pageTitle = isset($pageTitle) ? $pageTitle . ' — ' . $siteName : $siteName;
 $pageDesc  = $pageDesc ?? (function_exists('getSetting') ? getSetting('site.tagline', 'Shorten. Track. Manage.') : 'Shorten. Track. Manage.');
 $bodyClass = $bodyClass ?? '';

@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 🏠 GoToMyLink — Homepage (Component A)
+ * 🏠 Go2My.Link — Homepage (Component A)
  * ============================================================================
  *
  * Public homepage for go2my.link. Features:
@@ -11,14 +11,14 @@
  *   - Result display with copy-to-clipboard
  *   - Feature highlights section
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA
  * @version    0.4.0
  * @since      Phase 2 (functional form added Phase 3)
  * ============================================================================
  */
 
-$pageTitle = getSetting('site.name', 'GoToMyLink');
+$pageTitle = getSetting('site.name', 'Go2My.Link');
 $pageDesc  = getSetting('site.tagline', 'Shorten. Track. Manage.');
 
 // 🤖 Determine bot protection configuration
@@ -46,7 +46,7 @@ $errorMsg   = isset($_GET['error']) ? g2ml_sanitiseInput($_GET['error']) : '';
 <section class="py-5 text-center" aria-labelledby="hero-heading">
     <div class="container">
         <h1 id="hero-heading" class="display-3 fw-bold">
-            <?php echo g2ml_sanitiseOutput(getSetting('site.name', 'GoToMyLink')); ?>
+            <?php echo g2ml_sanitiseOutput(getSetting('site.name', 'Go2My.Link')); ?>
         </h1>
         <p class="lead text-body-secondary mb-4">
             <?php echo g2ml_sanitiseOutput(getSetting('site.tagline', 'Shorten. Track. Manage.')); ?>

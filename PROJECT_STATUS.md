@@ -1,4 +1,4 @@
-# 📊 GoToMyLink — Project Status
+# 📊 Go2My.Link — Project Status
 
 > Last updated: 2026-02-23
 
@@ -109,6 +109,8 @@ None.
 - 🏢 Admin dashboard separated to `admin.go2my.link` subdomain (`_admin/public_html/`)
 - 🚀 **Release workflow** — GitHub Actions `release.yml` supports per-component releases (A, B, C, Admin, All) with PHP lint, tagging, and auto-generated release notes
 - 📡 **OpenAPI/Swagger docs** — Issue #75 added to Phase 6 for interactive API documentation at `/api/docs`
+- 🏷️ **Product rename** — Corrected from "GoToMyLink" to "Go2My.Link" across all files, repo, and project board
+- 📋 **Issue templates** — Added Bug Report, Feature Request, Phase Task forms + PR template
 
 ## 🔜 Next Up
 

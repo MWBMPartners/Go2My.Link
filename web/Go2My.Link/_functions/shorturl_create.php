@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * ✨ GoToMyLink — Short URL Creation Logic (Component A)
+ * ✨ Go2My.Link — Short URL Creation Logic (Component A)
  * ============================================================================
  *
  * Provides functions for creating short URLs, rate limiting anonymous
@@ -16,7 +16,7 @@
  * Dependencies: db_query.php, settings.php, security.php, activity_logger.php
  *               (all loaded via page_init.php)
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.4.0
@@ -164,7 +164,7 @@ function createShortURL(string $longURL, array $options = []): array
 
     if ($spResult === false || empty($spResult['@outputCode']))
     {
-        error_log('[GoToMyLink] ERROR: sp_generateShortCode failed for org: ' . $orgHandle);
+        error_log('[Go2My.Link] ERROR: sp_generateShortCode failed for org: ' . $orgHandle);
 
         return [
             'success'   => false,
@@ -230,7 +230,7 @@ function createShortURL(string $longURL, array $options = []): array
 
     if ($insertResult === false)
     {
-        error_log('[GoToMyLink] ERROR: Failed to insert short URL — code: ' . $shortCode . ', org: ' . $orgHandle);
+        error_log('[Go2My.Link] ERROR: Failed to insert short URL — code: ' . $shortCode . ', org: ' . $orgHandle);
 
         return [
             'success'   => false,
@@ -430,7 +430,7 @@ function verifyCaptcha(string $type, string $response, string $secretKey): bool
 
     if ($responseBody === false)
     {
-        error_log('[GoToMyLink] WARNING: CAPTCHA verification request failed for type: ' . $type);
+        error_log('[Go2My.Link] WARNING: CAPTCHA verification request failed for type: ' . $type);
         return false;
     }
 
@@ -440,7 +440,7 @@ function verifyCaptcha(string $type, string $response, string $secretKey): bool
 
     if (!is_array($result))
     {
-        error_log('[GoToMyLink] WARNING: CAPTCHA verification returned invalid JSON');
+        error_log('[Go2My.Link] WARNING: CAPTCHA verification returned invalid JSON');
         return false;
     }
 

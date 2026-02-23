@@ -1,11 +1,11 @@
 -- =============================================================================
--- GoToMyLink — Stored Procedure: sp_logActivity
+-- Go2My.Link — Stored Procedure: sp_logActivity
 -- =============================================================================
 -- Simplified structured insert into tblActivityLog.
 -- Replaces the legacy logActivity procedure which had copy-paste bugs
 -- (wrong variable names in INSERT VALUES).
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

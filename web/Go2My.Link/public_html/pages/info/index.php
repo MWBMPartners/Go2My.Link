@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * GoToMyLink — URL Info / Preview Page (Component A)
+ * Go2My.Link — URL Info / Preview Page (Component A)
  * ============================================================================
  *
  * Displays public information about a short URL. Accepts a short code
@@ -12,7 +12,7 @@
  * creation date, category. Full destination and analytics require login
  * (Phase 4).
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA
  * @version    0.4.0
  * @since      Phase 3
@@ -20,7 +20,7 @@
  */
 
 $pageTitle = function_exists('__') ? __('info.title') : 'Link Info';
-$pageDesc  = function_exists('__') ? __('info.description') : 'Preview and inspect a GoToMyLink short URL before visiting.';
+$pageDesc  = function_exists('__') ? __('info.description') : 'Preview and inspect a Go2My.Link short URL before visiting.';
 
 // ============================================================================
 // Determine the short code to look up
@@ -83,7 +83,7 @@ elseif (isset($_GET['url']) && $_GET['url'] !== '')
     {
         $infoError = function_exists('__')
             ? __('info.error_invalid_url')
-            : 'Could not extract a short code from that URL. Please enter a valid GoToMyLink short URL.';
+            : 'Could not extract a short code from that URL. Please enter a valid Go2My.Link short URL.';
     }
 }
 
@@ -235,7 +235,7 @@ if ($linkData !== null)
                                 'type'        => 'text',
                                 'placeholder' => 'g2my.link/abc123',
                                 'required'    => true,
-                                'helpText'    => function_exists('__') ? __('info.search_help') : 'Enter a GoToMyLink short URL or just the short code.',
+                                'helpText'    => function_exists('__') ? __('info.search_help') : 'Enter a Go2My.Link short URL or just the short code.',
                                 'value'       => isset($_GET['url']) ? g2ml_sanitiseOutput($_GET['url']) : '',
                             ]);
                             ?>
@@ -406,7 +406,7 @@ if ($linkData !== null)
                     <i class="fas fa-paste fa-2x text-primary mb-3" aria-hidden="true"></i>
                     <h3 class="h6"><?php echo function_exists('__') ? __('info.how_step1') : '1. Paste a Short URL'; ?></h3>
                     <p class="text-body-secondary small mb-0">
-                        <?php echo function_exists('__') ? __('info.how_step1_desc') : 'Enter any GoToMyLink short URL in the search box above.'; ?>
+                        <?php echo function_exists('__') ? __('info.how_step1_desc') : 'Enter any Go2My.Link short URL in the search box above.'; ?>
                     </p>
                 </div>
             </div>

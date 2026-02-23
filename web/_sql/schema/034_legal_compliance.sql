@@ -1,9 +1,9 @@
 -- =============================================================================
--- GoToMyLink — Legal & Compliance Tables
+-- Go2My.Link — Legal & Compliance Tables
 -- =============================================================================
 -- GDPR/CCPA consent tracking and data deletion requests.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

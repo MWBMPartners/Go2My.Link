@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 📋 GoToMyLink — LinksPage Entry Point (Component C)
+ * 📋 Go2My.Link — LinksPage Entry Point (Component C)
  * ============================================================================
  *
  * Entry point for lnks.page — the LinkTree-like link listing service.
@@ -11,7 +11,7 @@
  * Full LinksPage rendering is implemented in Phase 7. This is a placeholder
  * that sets up the bootstrap and shows a "coming soon" or 404 response.
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentC
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.3.0
@@ -33,7 +33,7 @@ if (file_exists($componentAuthPath))
 }
 else
 {
-    error_log('[GoToMyLink] CRITICAL: Component C auth_creds.php not found at: ' . $componentAuthPath);
+    error_log('[Go2My.Link] CRITICAL: Component C auth_creds.php not found at: ' . $componentAuthPath);
 }
 
 // ============================================================================
@@ -71,13 +71,13 @@ $slug = trim($slug);
 // Homepage (no slug)
 if ($slug === '')
 {
-    $pageTitle = 'LinksPage — ' . getSetting('site.name', 'GoToMyLink');
+    $pageTitle = 'LinksPage — ' . getSetting('site.name', 'Go2My.Link');
     $pageDesc  = 'Create your own customisable link listing page.';
 
     require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'header.php';
     ?>
     <div class="container py-5 text-center">
-        <h1 class="display-4"><?php echo htmlspecialchars(getSetting('site.name', 'GoToMyLink'), ENT_QUOTES, 'UTF-8'); ?></h1>
+        <h1 class="display-4"><?php echo htmlspecialchars(getSetting('site.name', 'Go2My.Link'), ENT_QUOTES, 'UTF-8'); ?></h1>
         <h2 class="text-muted">LinksPage</h2>
         <p class="lead mt-3">
             <?php echo function_exists('__') ? __('linkspage.coming_soon') : 'LinksPage is coming soon. Create your own customisable link listing page.'; ?>

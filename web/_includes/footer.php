@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 📄 GoToMyLink — HTML Footer Include
+ * 📄 Go2My.Link — HTML Footer Include
  * ============================================================================
  *
  * Closes the <main> element, outputs the footer with links, includes
@@ -10,7 +10,7 @@
  *
  * Dependencies: page_init.php (must be loaded first)
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage Includes
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.4.0
@@ -28,7 +28,7 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 }
 
 $currentYear = date('Y');
-$siteName    = function_exists('getSetting') ? getSetting('site.name', 'GoToMyLink') : 'GoToMyLink';
+$siteName    = function_exists('getSetting') ? getSetting('site.name', 'Go2My.Link') : 'Go2My.Link';
 ?>
 
 </main><!-- /#main-content -->

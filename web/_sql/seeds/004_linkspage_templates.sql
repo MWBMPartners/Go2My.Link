@@ -1,5 +1,5 @@
 -- =============================================================================
--- GoToMyLink — Seed Data: LinksPage Templates
+-- Go2My.Link — Seed Data: LinksPage Templates
 -- =============================================================================
 -- 5 system templates for the LinksPage service.
 -- These are non-editable by users (isSystem = 1).
@@ -13,7 +13,7 @@
 --   {{theme}}      — Theme accent colour
 --   {{background}} — Background colour
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

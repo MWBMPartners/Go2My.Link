@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * 🎨 GoToMyLink — Theme Controller (Dark/Light Mode)
+ * 🎨 Go2My.Link — Theme Controller (Dark/Light Mode)
  * ============================================================================
  *
  * Manages dark/light mode switching using Bootstrap 5.3 colour modes.
@@ -14,7 +14,7 @@
  *
  * Dependencies: Font Awesome 6 (for toggle button icons)
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage JavaScript
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.4.0

@@ -1,9 +1,9 @@
 -- =============================================================================
--- GoToMyLink — API Tables
+-- Go2My.Link — API Tables
 -- =============================================================================
 -- API key management and request logging.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

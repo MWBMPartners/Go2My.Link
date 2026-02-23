@@ -1,9 +1,9 @@
 -- =============================================================================
--- GoToMyLink — Translation / i18n Tables
+-- Go2My.Link — Translation / i18n Tables
 -- =============================================================================
 -- Supports the __('key') translation function and locale management.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

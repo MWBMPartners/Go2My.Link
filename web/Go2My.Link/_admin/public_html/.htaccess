@@ -1,5 +1,5 @@
 # =============================================================================
-# GoToMyLink — .htaccess for Admin Dashboard (admin.go2my.link)
+# Go2My.Link — .htaccess for Admin Dashboard (admin.go2my.link)
 # =============================================================================
 #
 # Handles: HTTPS enforcement, security headers, private directory blocking,
@@ -7,7 +7,7 @@
 #
 # Mirrors the Component A .htaccess with minor route differences.
 #
-# @package    GoToMyLink
+# @package    Go2My.Link
 # @subpackage Configuration
 # @author     MWBM Partners Ltd (MWservices)
 # @version    0.5.0

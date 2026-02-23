@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 🌍 GoToMyLink — Interim Google Translate Widget
+ * 🌍 Go2My.Link — Interim Google Translate Widget
  * ============================================================================
  *
  * Adds the Google Translate inline widget as an interim solution until
@@ -15,7 +15,7 @@
  *
  * Dependencies: i18n.php (getLocale(), getActiveLanguages())
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage Includes
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.3.0

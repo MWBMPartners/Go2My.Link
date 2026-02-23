@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 🔑 GoToMyLink — Authentication Functions
+ * 🔑 Go2My.Link — Authentication Functions
  * ============================================================================
  *
  * User registration, login/logout, password management, email verification,
@@ -15,7 +15,7 @@
  *               email.php (g2ml_sendEmail),
  *               activity_logger.php (logActivity)
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage Functions
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.5.0
@@ -155,7 +155,7 @@ function registerUser(string $email, string $password, string $firstName, string
 
     if ($userUID === false)
     {
-        error_log('[GoToMyLink] ERROR: registerUser — failed to insert user for email: ' . $email);
+        error_log('[Go2My.Link] ERROR: registerUser — failed to insert user for email: ' . $email);
 
         return [
             'success' => false,
@@ -350,7 +350,7 @@ function loginUser(string $email, string $password): array
 
     if ($sessionToken === false)
     {
-        error_log('[GoToMyLink] ERROR: loginUser — createUserSession failed for userUID: ' . $user['userUID']);
+        error_log('[Go2My.Link] ERROR: loginUser — createUserSession failed for userUID: ' . $user['userUID']);
 
         return [
             'success'     => false,
@@ -727,7 +727,7 @@ function generatePasswordResetToken(string $email): array
 
         g2ml_sendEmail(
             $user['email'],
-            'Reset Your Password — ' . getSetting('site.name', 'GoToMyLink'),
+            'Reset Your Password — ' . getSetting('site.name', 'Go2My.Link'),
             'password_reset',
             [
                 'firstName' => $user['firstName'],
@@ -843,7 +843,7 @@ function resetPassword(string $token, string $newPassword): array
 
         g2ml_sendEmail(
             $user['email'],
-            'Your Password Has Been Changed — ' . getSetting('site.name', 'GoToMyLink'),
+            'Your Password Has Been Changed — ' . getSetting('site.name', 'Go2My.Link'),
             'password_changed',
             [
                 'firstName' => $user['firstName'],
@@ -927,7 +927,7 @@ function changePassword(int $userUID, string $currentPassword, string $newPasswo
 
     g2ml_sendEmail(
         $user['email'],
-        'Your Password Has Been Changed — ' . getSetting('site.name', 'GoToMyLink'),
+        'Your Password Has Been Changed — ' . getSetting('site.name', 'Go2My.Link'),
         'password_changed',
         [
             'firstName' => $user['firstName'],
@@ -1045,7 +1045,7 @@ function _g2ml_sendNewLoginAlert(array $user): void
     // Send the alert
     g2ml_sendEmail(
         $user['email'],
-        'New Login to Your Account — ' . getSetting('site.name', 'GoToMyLink'),
+        'New Login to Your Account — ' . getSetting('site.name', 'Go2My.Link'),
         'new_login_alert',
         [
             'firstName'  => $user['firstName'],

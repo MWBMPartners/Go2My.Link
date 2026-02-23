@@ -1,0 +1,25 @@
+# =============================================================================
+# Go2My.Link — Issue Template Chooser Configuration
+# =============================================================================
+#
+# Configures the "New Issue" chooser page with links to external resources.
+#
+# @package    Go2My.Link
+# @author     MWBM Partners Ltd (MWservices)
+# @since      Phase 4
+# =============================================================================
+
+blank_issues_enabled: true
+
+contact_links:
+  - name: "📋 Project Board"
+    url: https://github.com/orgs/MWBMPartners/projects/4
+    about: "View the Go2My.Link Development project board for current status and priorities."
+
+  - name: "📊 Project Status"
+    url: https://github.com/MWBMPartners/Go2My.Link/blob/main/PROJECT_STATUS.md
+    about: "Check build progress, completed milestones, and upcoming phases."
+
+  - name: "📝 Dev Notes"
+    url: https://github.com/MWBMPartners/Go2My.Link/blob/main/DEV_NOTES.md
+    about: "Architecture decisions, environment notes, and development conventions."

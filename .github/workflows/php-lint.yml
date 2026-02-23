@@ -1,11 +1,11 @@
 # =============================================================================
-# GoToMyLink — PHP Lint Workflow
+# Go2My.Link — PHP Lint Workflow
 # =============================================================================
 #
 # Runs PHP syntax validation on all .php files when code is pushed or a
 # pull request is opened. Catches syntax errors before they reach production.
 #
-# @package    GoToMyLink
+# @package    Go2My.Link
 # @author     MWBM Partners Ltd (MWservices)
 # @since      Phase 0
 # =============================================================================

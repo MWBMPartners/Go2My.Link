@@ -1,13 +1,13 @@
 <?php
 /**
  * ============================================================================
- * 🏠 GoToMyLink — Dashboard Home (Admin)
+ * 🏠 Go2My.Link — Dashboard Home (Admin)
  * ============================================================================
  *
  * Overview page showing link count, total clicks, recent links, and recent
  * activity for the authenticated user.
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA_Admin
  * @version    0.5.0
  * @since      Phase 4

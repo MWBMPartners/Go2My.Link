@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 🌐 GoToMyLink — Domain Resolver (Component B)
+ * 🌐 Go2My.Link — Domain Resolver (Component B)
  * ============================================================================
  *
  * Resolves incoming request domains to organisation handles and provides
@@ -14,7 +14,7 @@
  *
  * Dependencies: db_query.php, settings.php (loaded via page_init.php)
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentB
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.4.0

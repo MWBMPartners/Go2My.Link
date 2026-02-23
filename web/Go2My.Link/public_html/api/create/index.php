@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 📡 GoToMyLink — Internal API: Create Short URL (Component A)
+ * 📡 Go2My.Link — Internal API: Create Short URL (Component A)
  * ============================================================================
  *
  * JSON API endpoint for creating short URLs. Accepts POST requests with
@@ -17,7 +17,7 @@
  * Foundation for Phase 6 public API (will add API key auth as alternative
  * to CSRF tokens).
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.4.0
@@ -41,7 +41,7 @@ if (file_exists($componentAuthPath))
 }
 else
 {
-    error_log('[GoToMyLink] CRITICAL: Component A auth_creds.php not found');
+    error_log('[Go2My.Link] CRITICAL: Component A auth_creds.php not found');
 }
 
 if (!defined('G2ML_COMPONENT'))

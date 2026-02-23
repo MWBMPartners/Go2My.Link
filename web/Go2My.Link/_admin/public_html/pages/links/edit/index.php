@@ -1,13 +1,13 @@
 <?php
 /**
  * ============================================================================
- * ✏️ GoToMyLink — Edit Link (Admin Dashboard)
+ * ✏️ Go2My.Link — Edit Link (Admin Dashboard)
  * ============================================================================
  *
  * Edit an existing short link. Ownership-checked — only the creator can edit.
  * Short code is read-only; all other fields are editable.
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA_Admin
  * @version    0.5.0
  * @since      Phase 4

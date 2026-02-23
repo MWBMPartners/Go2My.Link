@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 🤖 GoToMyLink — Dynamic robots.txt Handler (Component B)
+ * 🤖 Go2My.Link — Dynamic robots.txt Handler (Component B)
  * ============================================================================
  *
  * Generates robots.txt dynamically based on system settings. Short URL
@@ -14,7 +14,7 @@
  *
  * 📖 Reference: https://www.robotstxt.org/robotstxt.html
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentB
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.4.0

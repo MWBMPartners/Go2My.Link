@@ -1,10 +1,10 @@
 -- =============================================================================
--- GoToMyLink — Categories, Tags, and Short URLs
+-- Go2My.Link — Categories, Tags, and Short URLs
 -- =============================================================================
 -- Core short URL tables with enhanced fields for the new platform.
 -- Migrated from tblShortURLs and tblCategories.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

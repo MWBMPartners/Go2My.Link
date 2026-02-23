@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * ⏰ GoToMyLink — Expired / Not Yet Active Link Page (Component B)
+ * ⏰ Go2My.Link — Expired / Not Yet Active Link Page (Component B)
  * ============================================================================
  *
  * Branded error page for short links that have expired or are not yet active.
@@ -14,7 +14,7 @@
  *   - $orgHandle    (string|null) — Organisation handle for fallback
  *   - $status       (string) — SP status: 'expired' or 'not_yet_active'
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentB
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.4.0
@@ -36,7 +36,7 @@ if (!defined('G2ML_COMPONENT'))
 // ============================================================================
 $errorTitle   = $errorTitle ?? 'Link Expired';
 $errorMessage = $errorMessage ?? 'This short link has expired and is no longer available.';
-$siteName     = function_exists('getSetting') ? getSetting('site.name', 'GoToMyLink') : 'GoToMyLink';
+$siteName     = function_exists('getSetting') ? getSetting('site.name', 'Go2My.Link') : 'Go2My.Link';
 $mainSiteURL  = 'https://go2my.link';
 
 // Get the fallback URL via the cascade (category → org → system → default)

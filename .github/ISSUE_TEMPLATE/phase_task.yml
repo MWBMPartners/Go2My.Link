@@ -1,0 +1,114 @@
+# =============================================================================
+# Go2My.Link — Phase Task Issue Template
+# =============================================================================
+#
+# For creating development tasks within a specific build phase.
+# Use the title format: [Phase X.Y] Task description
+#
+# @package    Go2My.Link
+# @author     MWBM Partners Ltd (MWservices)
+# @since      Phase 4
+# =============================================================================
+
+name: "🏗️ Phase Task"
+description: "Create a development task for a specific build phase"
+labels: ["feature"]
+title: "[Phase X.Y] "
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🏗️ Phase Task
+        Use title format: **[Phase X.Y] Brief task description**
+        (e.g., `[Phase 6.3] Build API key management endpoints`)
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "📝 Description"
+      description: "What needs to be built? Include context and scope."
+    validations:
+      required: true
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: "📋 Implementation Tasks"
+      description: "Break the work into checkboxes. These become your progress tracker."
+      placeholder: |
+        - [ ] Create web/_functions/example.php
+        - [ ] Add exampleFunction() with parameters
+        - [ ] Create admin page at dashboard/example/index.php
+        - [ ] Add settings seed data
+        - [ ] Update page_init.php to load new functions
+      value: |
+        - [ ]
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: "✅ Acceptance Criteria"
+      description: "How do we know this is done? List verifiable conditions."
+      placeholder: |
+        - Users can perform X action
+        - Setting Y controls the behaviour
+        - PHP lint passes
+    validations:
+      required: false
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: "🏗️ Component"
+      description: "Which component(s) does this task affect?"
+      multiple: true
+      options:
+        - "Component A — Main Website (go2my.link)"
+        - "Component A — Admin Dashboard (admin.go2my.link)"
+        - "Component B — Redirect Engine (g2my.link)"
+        - "Component C — LinksPage (lnks.page)"
+        - "Shared — Functions / Includes"
+        - "API"
+        - "Database"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: "📅 Phase"
+      description: "Which build phase is this task part of?"
+      options:
+        - "Phase 5 — Orgs & Advanced Auth (v0.6.0)"
+        - "Phase 6 — API & Analytics (v0.7.0)"
+        - "Phase 7 — LinksPage (v0.8.0)"
+        - "Phase 8 — Advanced Redirects (v0.9.0)"
+        - "Phase 9 — Payments (v0.10.0)"
+        - "Phase 10 — Legal & Launch (v1.0.0)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: "🚨 Priority"
+      description: "How important is this task?"
+      options:
+        - "Critical — blocks other work"
+        - "High"
+        - "Medium"
+        - "Low"
+      default: 1
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: "📝 Notes"
+      description: "References, related issues, constraints (e.g., Dreamhost limitations), or design decisions."
+    validations:
+      required: false

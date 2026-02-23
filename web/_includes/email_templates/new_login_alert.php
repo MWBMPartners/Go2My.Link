@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 📧 GoToMyLink — Email Template: New Login Alert
+ * 📧 Go2My.Link — Email Template: New Login Alert
  * ============================================================================
  *
  * Sent as a security notification when a login is detected from a new
@@ -16,7 +16,7 @@
  *   $siteURL    — Site URL (auto-injected)
  *   $currentYear — Current year (auto-injected)
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage EmailTemplates
  * @version    0.5.0
  * @since      Phase 4
@@ -28,7 +28,7 @@ $firstName   = $firstName ?? 'there';
 $deviceInfo  = $deviceInfo ?? 'Unknown device';
 $ipAddress   = $ipAddress ?? 'Unknown';
 $loginAt     = $loginAt ?? date('j M Y, H:i T');
-$siteName    = $siteName ?? 'GoToMyLink';
+$siteName    = $siteName ?? 'Go2My.Link';
 $siteURL     = $siteURL ?? 'https://go2my.link';
 $currentYear = $currentYear ?? date('Y');
 ?>

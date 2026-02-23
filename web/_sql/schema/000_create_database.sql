@@ -1,9 +1,9 @@
 -- =============================================================================
--- GoToMyLink — Database Creation
+-- Go2My.Link — Database Creation
 -- =============================================================================
 -- Creates the new database with InnoDB defaults and utf8mb4 character set.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

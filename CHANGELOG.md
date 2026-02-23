@@ -1,4 +1,4 @@
-# 📝 GoToMyLink — Changelog
+# 📝 Go2My.Link — Changelog
 
 All notable changes to this project will be documented in this file.
 
@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### 🏗️ Infrastructure
+
+- 🏷️ **Product rename** — Corrected product name from "GoToMyLink" to "Go2My.Link" across all ~116 files (PHP, SQL, MD, YAML, JS, CSS, HTML, htaccess)
+- 🏷️ **GitHub repo renamed** — `MWBMPartners/GoToMyLink` → `MWBMPartners/Go2My.Link` (old URLs auto-redirect)
+- 🏷️ **Project board renamed** — "GoToMyLink Development" → "Go2My.Link Development"
+- 📋 **Issue templates** — Added 3 YAML-based issue forms: Bug Report, Feature Request, Phase Task
+- 📋 **Issue chooser config** — Links to Project Board, Project Status, and Dev Notes
+- 📋 **PR template** — Standardised pull request template with summary, changes, component checkboxes, testing checklist
 
 ### ✨ Added
 

@@ -1,13 +1,13 @@
 <?php
 /**
  * ============================================================================
- * GoToMyLink — Cookie Policy Page (Component A)
+ * Go2My.Link — Cookie Policy Page (Component A)
  * ============================================================================
  *
  * Placeholder page for Cookie Policy. Full legal content will be added
  * in Phase 10 (Legal & Compliance).
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA
  * @version    0.4.0
  * @since      Phase 3 (full content Phase 10)
@@ -15,7 +15,7 @@
  */
 
 $pageTitle = function_exists('__') ? __('legal.cookies_title') : 'Cookie Policy';
-$pageDesc  = function_exists('__') ? __('legal.cookies_description') : 'GoToMyLink Cookie Policy.';
+$pageDesc  = function_exists('__') ? __('legal.cookies_description') : 'Go2My.Link Cookie Policy.';
 ?>
 
 <!-- ====================================================================== -->
@@ -44,7 +44,7 @@ $pageDesc  = function_exists('__') ? __('legal.cookies_description') : 'GoToMyLi
                         <?php echo function_exists('__') ? __('legal.placeholder_heading') : 'Coming Soon'; ?>
                     </h3>
                     <p class="text-body-secondary mb-0">
-                        <?php echo function_exists('__') ? __('legal.cookies_placeholder') : 'Our Cookie Policy is being prepared and will be published in a future update. GoToMyLink uses essential cookies for session management and theme preferences. We do not use third-party tracking cookies.'; ?>
+                        <?php echo function_exists('__') ? __('legal.cookies_placeholder') : 'Our Cookie Policy is being prepared and will be published in a future update. Go2My.Link uses essential cookies for session management and theme preferences. We do not use third-party tracking cookies.'; ?>
                     </p>
                 </div>
 

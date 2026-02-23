@@ -1,10 +1,10 @@
 -- =============================================================================
--- GoToMyLink — Migration 006: Settings
+-- Go2My.Link — Migration 006: Settings
 -- =============================================================================
 -- Migrates 23 setting definitions from tblSettingsDictionary and 1 setting
 -- value from tblSettings. Expands with new settings for the platform.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

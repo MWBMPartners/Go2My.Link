@@ -1,5 +1,5 @@
 # =============================================================================
-# GoToMyLink — .htaccess for Lnks.page (Component C — LinksPage)
+# Go2My.Link — .htaccess for Lnks.page (Component C — LinksPage)
 # =============================================================================
 #
 # Handles: HTTPS enforcement, security headers, slug routing.
@@ -9,7 +9,7 @@
 #   lnks.page/username   → index.php?slug=username
 #   lnks.page/orgname    → index.php?slug=orgname
 #
-# @package    GoToMyLink
+# @package    Go2My.Link
 # @subpackage Configuration
 # @author     MWBM Partners Ltd (MWservices)
 # @version    0.1.0

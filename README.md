@@ -1,4 +1,4 @@
-# 🔗 GoToMyLink
+# 🔗 Go2My.Link
 
 A comprehensive URL shortening web service by **MWBM Partners Ltd** (trading as MWservices).
 
@@ -8,7 +8,7 @@ A comprehensive URL shortening web service by **MWBM Partners Ltd** (trading as 
 
 ## 📋 Overview
 
-GoToMyLink is a URL shortening platform comprising three interconnected web properties:
+Go2My.Link is a URL shortening platform comprising three interconnected web properties:
 
 | Domain | Component | Purpose |
 | --- | --- | --- |
@@ -153,7 +153,7 @@ GoToMyLink is a URL shortening platform comprising three interconnected web prop
 ## 📁 Repository Structure
 
 ```text
-GoToMyLink/
+Go2My.Link/
 ├── 🎨 assets/BrandKit/          ← Logos and branding (see BRAND_GUIDELINES.md)
 ├── 🤖 .claude/                  ← Claude AI context (project brief, plans, memory)
 ├── 🤖 .openai/                  ← OpenAI context
@@ -193,7 +193,7 @@ GoToMyLink/
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/MWBMPartners/GoToMyLink.git
+   git clone https://github.com/MWBMPartners/Go2My.Link.git
    ```
 
 2. Copy the auth credentials template:
@@ -241,7 +241,7 @@ Releases are managed via GitHub Actions. Each component can be released independ
 
 ## 📋 Project Management
 
-- 📌 **GitHub Project:** [GoToMyLink Development](https://github.com/orgs/MWBMPartners/projects/4)
+- 📌 **GitHub Project:** [Go2My.Link Development](https://github.com/orgs/MWBMPartners/projects/4)
 - 🐛 **Issues:** 75 issues tracked with phase labels (`phase-0` through `phase-10`)
 - 🏁 **Milestones:** v0.1.0 (Scaffold) through v1.0.0 (Launch)
 
@@ -254,7 +254,7 @@ Proprietary — MWBM Partners Ltd. All rights reserved.
 ## 🔗 Links
 
 - 🏢 **Organisation:** [github.com/MWBMPartners](https://github.com/MWBMPartners)
-- 📌 **Project Board:** [GoToMyLink Development](https://github.com/orgs/MWBMPartners/projects/4)
+- 📌 **Project Board:** [Go2My.Link Development](https://github.com/orgs/MWBMPartners/projects/4)
 - 📝 **Changelog:** [CHANGELOG.md](CHANGELOG.md)
 - 📊 **Status:** [PROJECT_STATUS.md](PROJECT_STATUS.md)
 - 🗒️ **Dev Notes:** [DEV_NOTES.md](DEV_NOTES.md)

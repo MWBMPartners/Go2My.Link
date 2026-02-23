@@ -1,13 +1,13 @@
 <?php
 /**
  * ============================================================================
- * GoToMyLink — Terms of Use Page (Component A)
+ * Go2My.Link — Terms of Use Page (Component A)
  * ============================================================================
  *
  * Placeholder page for Terms of Use. Full legal content will be added
  * in Phase 10 (Legal & Compliance).
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA
  * @version    0.4.0
  * @since      Phase 3 (full content Phase 10)
@@ -15,7 +15,7 @@
  */
 
 $pageTitle = function_exists('__') ? __('legal.terms_title') : 'Terms of Use';
-$pageDesc  = function_exists('__') ? __('legal.terms_description') : 'GoToMyLink Terms of Use.';
+$pageDesc  = function_exists('__') ? __('legal.terms_description') : 'Go2My.Link Terms of Use.';
 ?>
 
 <!-- ====================================================================== -->
@@ -44,7 +44,7 @@ $pageDesc  = function_exists('__') ? __('legal.terms_description') : 'GoToMyLink
                         <?php echo function_exists('__') ? __('legal.placeholder_heading') : 'Coming Soon'; ?>
                     </h3>
                     <p class="text-body-secondary mb-0">
-                        <?php echo function_exists('__') ? __('legal.terms_placeholder') : 'Our Terms of Use are being prepared and will be published in a future update. By using GoToMyLink, you agree to use the service responsibly and in accordance with applicable laws.'; ?>
+                        <?php echo function_exists('__') ? __('legal.terms_placeholder') : 'Our Terms of Use are being prepared and will be published in a future update. By using Go2My.Link, you agree to use the service responsibly and in accordance with applicable laws.'; ?>
                     </p>
                 </div>
 

@@ -1,12 +1,12 @@
 -- =============================================================================
--- GoToMyLink — Seed Data: Phase 3 Settings
+-- Go2My.Link — Seed Data: Phase 3 Settings
 -- =============================================================================
 -- Additional settings introduced in Phase 3 (Core Product).
 -- These are System-scope entries that override Default values.
 --
 -- Uses INSERT ... ON DUPLICATE KEY UPDATE to safely re-run.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.4.0

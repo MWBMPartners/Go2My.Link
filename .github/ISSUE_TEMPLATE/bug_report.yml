@@ -1,0 +1,142 @@
+# =============================================================================
+# Go2My.Link — Bug Report Issue Template
+# =============================================================================
+#
+# For reporting bugs found during development, QA, or production.
+#
+# @package    Go2My.Link
+# @author     MWBM Partners Ltd (MWservices)
+# @since      Phase 4
+# =============================================================================
+
+name: "🐛 Bug Report"
+description: "Report a bug or unexpected behaviour"
+labels: ["bug"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🐛 Bug Report
+        Please provide enough detail to reproduce the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "📝 Description"
+      description: "A clear summary of the bug."
+      placeholder: "What went wrong?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: "📋 Steps to Reproduce"
+      description: "Numbered steps to trigger the bug."
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Observe error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: "✅ Expected Behaviour"
+      description: "What should happen?"
+    validations:
+      required: false
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: "❌ Actual Behaviour"
+      description: "What actually happens?"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: "🏗️ Component"
+      description: "Which part of the system is affected?"
+      options:
+        - "Component A — Main Website (go2my.link)"
+        - "Component A — Admin Dashboard (admin.go2my.link)"
+        - "Component B — Redirect Engine (g2my.link)"
+        - "Component C — LinksPage (lnks.page)"
+        - "Shared — Functions / Includes"
+        - "API"
+        - "Database"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: "📅 Phase"
+      description: "Which development phase does this relate to?"
+      options:
+        - "Phase 0 — Scaffolding (v0.1.0)"
+        - "Phase 1 — Database (v0.2.0)"
+        - "Phase 2 — PHP Framework (v0.3.0)"
+        - "Phase 3 — Core Product (v0.4.0)"
+        - "Phase 4 — Auth & Dashboard (v0.5.0)"
+        - "Phase 5 — Orgs & Advanced Auth (v0.6.0)"
+        - "Phase 6 — API & Analytics (v0.7.0)"
+        - "Phase 7 — LinksPage (v0.8.0)"
+        - "Phase 8 — Advanced Redirects (v0.9.0)"
+        - "Phase 9 — Payments (v0.10.0)"
+        - "Phase 10 — Legal & Launch (v1.0.0)"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: "🚨 Priority"
+      description: "How urgent is this?"
+      options:
+        - "Critical — blocks other work"
+        - "High"
+        - "Medium"
+        - "Low — cosmetic / nice to fix"
+      default: 2
+    validations:
+      required: false
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: "🌐 Browser"
+      description: "If UI-related, which browser?"
+      multiple: true
+      options:
+        - Chrome
+        - Firefox
+        - Safari
+        - Edge
+        - Mobile Safari
+        - Mobile Chrome
+        - Other
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: "🖥️ Environment"
+      description: "PHP version, OS, or other context."
+      placeholder: "PHP 8.4, MySQL 8.0, macOS 15, etc."
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: "📸 Screenshots / Logs"
+      description: "Paste screenshots, error messages, or log excerpts."
+    validations:
+      required: false

@@ -1,5 +1,5 @@
 -- =============================================================================
--- GoToMyLink — Migration 002: Users
+-- Go2My.Link — Migration 002: Users
 -- =============================================================================
 -- Migrates 7 user records from mwtools_mwlink.tblCustomers.
 -- ALL passwords are invalidated (legacy system stored plaintext).
@@ -9,7 +9,7 @@
 --   - Users matching custAdminUsername in tblCustomerOrg → Admin
 --   - All others → User
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

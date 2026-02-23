@@ -1,6 +1,6 @@
-# GoToMyLink — Deployment Guide
+# Go2My.Link — Deployment Guide
 
-> Deployment procedures, hosting configuration, and environment setup for the GoToMyLink platform.
+> Deployment procedures, hosting configuration, and environment setup for the Go2My.Link platform.
 
 ## 🚢 Hosting Environment
 

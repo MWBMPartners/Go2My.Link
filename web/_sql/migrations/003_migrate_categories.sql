@@ -1,10 +1,10 @@
 -- =============================================================================
--- GoToMyLink — Migration 003: Categories
+-- Go2My.Link — Migration 003: Categories
 -- =============================================================================
 -- Migrates 4 category records from mwtools_mwlink.tblCategories.
 -- Adds organisation FK from the legacy custOrgHandle field.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

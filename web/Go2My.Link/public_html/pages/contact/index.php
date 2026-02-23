@@ -1,13 +1,13 @@
 <?php
 /**
  * ============================================================================
- * GoToMyLink — Contact Page (Component A)
+ * Go2My.Link — Contact Page (Component A)
  * ============================================================================
  *
  * Contact form with CSRF protection, optional CAPTCHA, and rate limiting.
  * Sends email via PHP mail() function.
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA
  * @version    0.4.0
  * @since      Phase 3
@@ -15,7 +15,7 @@
  */
 
 $pageTitle = function_exists('__') ? __('contact.title') : 'Contact Us';
-$pageDesc  = function_exists('__') ? __('contact.description') : 'Get in touch with the GoToMyLink team.';
+$pageDesc  = function_exists('__') ? __('contact.description') : 'Get in touch with the Go2My.Link team.';
 
 // Process form submission (no-JS fallback)
 $formSuccess = false;
@@ -80,7 +80,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             {
                 // Send email
                 $recipient = getSetting('contact.email_recipient', 'support@go2my.link');
-                $subject   = '[GoToMyLink Contact] '
+                $subject   = '[Go2My.Link Contact] '
                     . ($contactSubject !== '' ? $contactSubject : 'New Message');
 
                 $body  = "Name: " . $contactName . "\r\n";

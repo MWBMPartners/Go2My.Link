@@ -1,13 +1,13 @@
 <?php
 /**
  * ============================================================================
- * GoToMyLink — Features Page (Component A)
+ * Go2My.Link — Features Page (Component A)
  * ============================================================================
  *
  * Public features page for go2my.link. Displays the platform's capabilities
  * with icons and descriptions.
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA
  * @version    0.4.0
  * @since      Phase 3
@@ -15,7 +15,7 @@
  */
 
 $pageTitle = function_exists('__') ? __('features.title') : 'Features';
-$pageDesc  = function_exists('__') ? __('features.description') : 'Discover the powerful features of GoToMyLink.';
+$pageDesc  = function_exists('__') ? __('features.description') : 'Discover the powerful features of Go2My.Link.';
 ?>
 
 <!-- ====================================================================== -->

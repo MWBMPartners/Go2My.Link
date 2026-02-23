@@ -1,10 +1,10 @@
 -- =============================================================================
--- GoToMyLink — Stored Procedure: sp_generateShortCode
+-- Go2My.Link — Stored Procedure: sp_generateShortCode
 -- =============================================================================
 -- Generates a unique random alphanumeric short code.
 -- Checks for collisions against existing codes in the given org.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

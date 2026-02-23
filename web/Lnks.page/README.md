@@ -4,7 +4,7 @@ A LinkTree-like service for displaying curated lists of links on a single page.
 
 - **Domain:** [lnks.page](https://lnks.page)
 - **Purpose:** Customisable link listing pages for users and organisations
-- **Part of:** [GoToMyLink](https://github.com/MWBMPartners/GoToMyLink) by MWBM Partners Ltd
+- **Part of:** [Go2My.Link](https://github.com/MWBMPartners/Go2My.Link) by MWBM Partners Ltd
 
 ## Directory Structure
 

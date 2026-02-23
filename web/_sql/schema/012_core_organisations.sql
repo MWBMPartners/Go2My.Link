@@ -1,10 +1,10 @@
 -- =============================================================================
--- GoToMyLink — Organisations Table
+-- Go2My.Link — Organisations Table
 -- =============================================================================
 -- Migrated from tblCustomerOrg. Organisations can have custom short domains,
 -- subscription tiers, and multiple users.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

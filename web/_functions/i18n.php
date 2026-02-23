@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 🌍 GoToMyLink — Internationalisation (i18n) Functions
+ * 🌍 Go2My.Link — Internationalisation (i18n) Functions
  * ============================================================================
  *
  * Translation system using dot-notation keys stored in tblTranslations.
@@ -12,7 +12,7 @@
  *
  * Dependencies: db_query.php (dbSelect()), settings.php (getSetting())
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage Functions
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.3.0

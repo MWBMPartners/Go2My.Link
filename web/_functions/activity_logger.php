@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 📊 GoToMyLink — Activity Logger
+ * 📊 Go2My.Link — Activity Logger
  * ============================================================================
  *
  * Logs request/redirect activity to tblActivityLog with basic User-Agent
@@ -12,7 +12,7 @@
  *
  * Dependencies: db_connect.php (getDB()), security.php (g2ml_getClientIP())
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage Functions
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.3.0
@@ -78,7 +78,7 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
 
     if ($db === null)
     {
-        error_log('[GoToMyLink] WARNING: logActivity failed — no database connection.');
+        error_log('[Go2My.Link] WARNING: logActivity failed — no database connection.');
         return false;
     }
 
@@ -141,7 +141,7 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
 
         if ($stmt === false)
         {
-            error_log('[GoToMyLink] ERROR: logActivity prepare failed: ' . $db->error);
+            error_log('[Go2My.Link] ERROR: logActivity prepare failed: ' . $db->error);
             return false;
         }
 
@@ -178,7 +178,7 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
     catch (\Throwable $e)
     {
         // Don't let activity logging failures break the application
-        error_log('[GoToMyLink] ERROR: logActivity exception: ' . $e->getMessage());
+        error_log('[Go2My.Link] ERROR: logActivity exception: ' . $e->getMessage());
         return false;
     }
 }

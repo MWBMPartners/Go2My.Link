@@ -1,6 +1,6 @@
-# GoToMyLink — Accessibility Standards
+# Go2My.Link — Accessibility Standards
 
-> WCAG 2.1 AA compliance guide for the GoToMyLink platform.
+> WCAG 2.1 AA compliance guide for the Go2My.Link platform.
 
 ## 🎯 Compliance Target
 

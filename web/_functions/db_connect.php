@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 🗄️ GoToMyLink — Database Connection Manager
+ * 🗄️ Go2My.Link — Database Connection Manager
  * ============================================================================
  *
  * Provides a MySQLi singleton connection via getDB(). The connection is lazy-
@@ -13,7 +13,7 @@
  * Dependencies: auth_creds.php constants (DB_HOST, DB_USER, DB_PASS, DB_NAME,
  *               DB_CHARSET, DB_PORT)
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage Functions
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.3.0
@@ -76,7 +76,7 @@ function getDB(): ?mysqli
     {
         if (!defined($constant))
         {
-            error_log('[GoToMyLink] CRITICAL: Database constant ' . $constant . ' is not defined. Check auth_creds.php.');
+            error_log('[Go2My.Link] CRITICAL: Database constant ' . $constant . ' is not defined. Check auth_creds.php.');
             return null;
         }
     }
@@ -98,7 +98,7 @@ function getDB(): ?mysqli
     if ($db->connect_errno)
     {
         error_log(
-            '[GoToMyLink] CRITICAL: Database connection failed: ('
+            '[Go2My.Link] CRITICAL: Database connection failed: ('
             . $db->connect_errno . ') ' . $db->connect_error
         );
         $db = null;
@@ -111,7 +111,7 @@ function getDB(): ?mysqli
 
     if (!$db->set_charset($charset))
     {
-        error_log('[GoToMyLink] WARNING: Failed to set charset to ' . $charset . ': ' . $db->error);
+        error_log('[Go2My.Link] WARNING: Failed to set charset to ' . $charset . ': ' . $db->error);
     }
 
     // Set the session timezone to UTC for consistent date/time handling

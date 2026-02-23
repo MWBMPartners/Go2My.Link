@@ -1,13 +1,13 @@
 <?php
 /**
  * ============================================================================
- * 🖥️ GoToMyLink — Active Sessions (Admin Dashboard)
+ * 🖥️ Go2My.Link — Active Sessions (Admin Dashboard)
  * ============================================================================
  *
  * Session management page. Lists all active sessions with device info, IP,
  * and last activity. Users can revoke individual sessions or all other sessions.
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA_Admin
  * @version    0.5.0
  * @since      Phase 4

@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 🚀 GoToMyLink — Page Initialisation (Master Bootstrap)
+ * 🚀 Go2My.Link — Page Initialisation (Master Bootstrap)
  * ============================================================================
  *
  * This file is included by every entry point (index.php) AFTER the component's
@@ -21,7 +21,7 @@
  * Dependencies: auth_creds.php constants must be defined before including this file.
  *               Component constants (G2ML_COMPONENT, etc.) must be defined before including.
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage Includes
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.5.0

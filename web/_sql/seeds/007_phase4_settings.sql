@@ -1,12 +1,12 @@
 -- =============================================================================
--- GoToMyLink — Seed Data: Phase 4 Settings
+-- Go2My.Link — Seed Data: Phase 4 Settings
 -- =============================================================================
 -- Settings introduced in Phase 4 (User System: Auth & Dashboard).
 -- Password rules, email configuration, auth behaviour.
 --
 -- Uses INSERT ... ON DUPLICATE KEY UPDATE to safely re-run.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.5.0
@@ -84,7 +84,7 @@ INSERT INTO `tblSettings` (
     `settingDataType`, `isSensitive`, `isEditable`
 ) VALUES
 ('email.from_name', 'System', NULL,
- 'GoToMyLink', 'GoToMyLink', 'Display name for outgoing emails (From header)',
+ 'Go2My.Link', 'Go2My.Link', 'Display name for outgoing emails (From header)',
  'string', 0, 1)
 ON DUPLICATE KEY UPDATE
     `settingDescription` = VALUES(`settingDescription`);

@@ -1,9 +1,9 @@
 -- =============================================================================
--- GoToMyLink — LinksPage Tables
+-- Go2My.Link — LinksPage Tables
 -- =============================================================================
 -- LinkTree-like customisable link listing pages for lnks.page.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

@@ -1,12 +1,12 @@
 -- =============================================================================
--- GoToMyLink — Migration 001: Organisations
+-- Go2My.Link — Migration 001: Organisations
 -- =============================================================================
 -- Migrates 5 organisation records from mwtools_mwlink.tblCustomerOrg
 -- to mwtools_Go2MyLink.tblOrganisations and tblOrgShortDomains.
 --
 -- Preserves custOrgHandle as orgHandle for FK compatibility.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

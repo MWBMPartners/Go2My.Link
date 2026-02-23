@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 🌐 GoToMyLink — Language Switcher Dropdown
+ * 🌐 Go2My.Link — Language Switcher Dropdown
  * ============================================================================
  *
  * Renders a Bootstrap dropdown for switching between active languages.
@@ -11,7 +11,7 @@
  *
  * Dependencies: i18n.php (getActiveLanguages(), getLocale())
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage Includes
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.3.0

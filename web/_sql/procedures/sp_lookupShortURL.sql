@@ -1,5 +1,5 @@
 -- =============================================================================
--- GoToMyLink — Stored Procedure: sp_lookupShortURL
+-- Go2My.Link — Stored Procedure: sp_lookupShortURL
 -- =============================================================================
 -- Resolves a short code to its destination URL.
 -- Handles: domain-to-org mapping, alias chains (max 3 hops), date validation,
@@ -11,7 +11,7 @@
 --   - Simplified and clarified alias chain logic
 --   - Returns structured result set instead of relying on side effects
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

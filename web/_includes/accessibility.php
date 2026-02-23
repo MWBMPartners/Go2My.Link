@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * ♿ GoToMyLink — Accessibility Helpers (WCAG 2.1 AA)
+ * ♿ Go2My.Link — Accessibility Helpers (WCAG 2.1 AA)
  * ============================================================================
  *
  * Helper functions for generating accessible HTML patterns.
@@ -16,7 +16,7 @@
  *
  * Dependencies: None (standalone helper functions)
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage Includes
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.3.0

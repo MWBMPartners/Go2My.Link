@@ -1,4 +1,4 @@
-# GoToMyLink — Third-Party Libraries
+# Go2My.Link — Third-Party Libraries
 
 > Local fallback copies of CDN-hosted libraries. Used when CDN is unreachable.
 

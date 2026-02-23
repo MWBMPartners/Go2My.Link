@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 🧭 GoToMyLink — Navigation Bar Include
+ * 🧭 Go2My.Link — Navigation Bar Include
  * ============================================================================
  *
  * Responsive Bootstrap 5 navbar with i18n support and login state placeholder.
@@ -9,7 +9,7 @@
  *
  * Dependencies: page_init.php, accessibility.php, i18n.php
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage Includes
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.5.0
@@ -34,7 +34,7 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 // 📋 Navigation Configuration
 // ============================================================================
 $component    = defined('G2ML_COMPONENT') ? G2ML_COMPONENT : 'A';
-$siteName     = function_exists('getSetting') ? getSetting('site.name', 'GoToMyLink') : 'GoToMyLink';
+$siteName     = function_exists('getSetting') ? getSetting('site.name', 'Go2My.Link') : 'Go2My.Link';
 $isLoggedIn   = isset($_SESSION['user_uid']) && $_SESSION['user_uid'] > 0;
 $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
 ?>

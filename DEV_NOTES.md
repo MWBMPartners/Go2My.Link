@@ -1,4 +1,4 @@
-# GoToMyLink — Developer Notes
+# Go2My.Link — Developer Notes
 
 > Working notes, decisions, gotchas, and tips for the development team.
 

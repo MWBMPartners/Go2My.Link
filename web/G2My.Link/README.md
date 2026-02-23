@@ -4,7 +4,7 @@ The redirect engine that resolves short codes to their destination URLs.
 
 - **Domain:** [g2my.link](https://g2my.link)
 - **Purpose:** Short URL resolution and redirection
-- **Part of:** [GoToMyLink](https://github.com/MWBMPartners/GoToMyLink) by MWBM Partners Ltd
+- **Part of:** [Go2My.Link](https://github.com/MWBMPartners/Go2My.Link) by MWBM Partners Ltd
 
 ## Directory Structure
 

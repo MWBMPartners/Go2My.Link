@@ -1,11 +1,11 @@
 # =============================================================================
-# GoToMyLink — .htaccess for Go2My.Link (Component A — Main Website)
+# Go2My.Link — .htaccess for Go2My.Link (Component A — Main Website)
 # =============================================================================
 #
 # Handles: HTTPS enforcement, security headers, private directory blocking,
 #          clean URLs (no .php extension), URL routing to index.php
 #
-# @package    GoToMyLink
+# @package    Go2My.Link
 # @subpackage Configuration
 # @author     MWBM Partners Ltd (MWservices)
 # @version    0.1.0

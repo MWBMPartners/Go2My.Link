@@ -1,10 +1,10 @@
 -- =============================================================================
--- GoToMyLink — Users & Authentication Tables
+-- Go2My.Link — Users & Authentication Tables
 -- =============================================================================
 -- Migrated from tblCustomers. Adds Argon2id hashing, role-based access,
 -- 2FA (TOTP), PassKey (WebAuthn), social login, and session management.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

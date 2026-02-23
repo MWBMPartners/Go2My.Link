@@ -1,5 +1,5 @@
 # =============================================================================
-# GoToMyLink — Release Workflow
+# Go2My.Link — Release Workflow
 # =============================================================================
 #
 # Creates a tagged GitHub Release for individual components or the full
@@ -19,7 +19,7 @@
 #   - Component B:    component-b/v0.5.0
 #   - Component C:    component-c/v0.5.0
 #
-# @package    GoToMyLink
+# @package    Go2My.Link
 # @author     MWBM Partners Ltd (MWservices)
 # @since      Phase 4
 # =============================================================================
@@ -90,7 +90,7 @@ jobs:
           case "$COMPONENT_KEY" in
             all)
               TAG="v${VERSION}"
-              RELEASE_NAME="GoToMyLink v${VERSION}"
+              RELEASE_NAME="Go2My.Link v${VERSION}"
               COMPONENT_PATH="web/"
               COMPONENT_LABEL="Full Platform"
               ;;

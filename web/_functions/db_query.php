@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 📊 GoToMyLink — Database Query Wrappers
+ * 📊 Go2My.Link — Database Query Wrappers
  * ============================================================================
  *
  * Prepared statement wrappers for common database operations. All functions
@@ -11,7 +11,7 @@
  *
  * Dependencies: db_connect.php (getDB())
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage Functions
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.3.0
@@ -94,7 +94,7 @@ function dbSelect(string $sql, string $types = '', array $params = []): array|fa
 
     if ($db === null)
     {
-        error_log('[GoToMyLink] ERROR: dbSelect failed — no database connection.');
+        error_log('[Go2My.Link] ERROR: dbSelect failed — no database connection.');
         return false;
     }
 
@@ -108,7 +108,7 @@ function dbSelect(string $sql, string $types = '', array $params = []): array|fa
 
         if ($stmt === false)
         {
-            error_log('[GoToMyLink] ERROR: dbSelect prepare failed: ' . $db->error . ' | SQL: ' . $sql);
+            error_log('[Go2My.Link] ERROR: dbSelect prepare failed: ' . $db->error . ' | SQL: ' . $sql);
             _g2ml_logQuery($sql, $params, (microtime(true) - $startTime) * 1000, false);
             return false;
         }
@@ -130,7 +130,7 @@ function dbSelect(string $sql, string $types = '', array $params = []): array|fa
 
         if ($result === false)
         {
-            error_log('[GoToMyLink] ERROR: dbSelect get_result failed: ' . $stmt->error . ' | SQL: ' . $sql);
+            error_log('[Go2My.Link] ERROR: dbSelect get_result failed: ' . $stmt->error . ' | SQL: ' . $sql);
             _g2ml_logQuery($sql, $params, (microtime(true) - $startTime) * 1000, false);
             $stmt->close();
             return false;
@@ -149,7 +149,7 @@ function dbSelect(string $sql, string $types = '', array $params = []): array|fa
     }
     catch (mysqli_sql_exception $e)
     {
-        error_log('[GoToMyLink] ERROR: dbSelect exception: ' . $e->getMessage() . ' | SQL: ' . $sql);
+        error_log('[Go2My.Link] ERROR: dbSelect exception: ' . $e->getMessage() . ' | SQL: ' . $sql);
         _g2ml_logQuery($sql, $params, (microtime(true) - $startTime) * 1000, false);
         return false;
     }
@@ -219,7 +219,7 @@ function dbInsert(string $sql, string $types = '', array $params = []): int|bool
 
     if ($db === null)
     {
-        error_log('[GoToMyLink] ERROR: dbInsert failed — no database connection.');
+        error_log('[Go2My.Link] ERROR: dbInsert failed — no database connection.');
         return false;
     }
 
@@ -231,7 +231,7 @@ function dbInsert(string $sql, string $types = '', array $params = []): int|bool
 
         if ($stmt === false)
         {
-            error_log('[GoToMyLink] ERROR: dbInsert prepare failed: ' . $db->error . ' | SQL: ' . $sql);
+            error_log('[Go2My.Link] ERROR: dbInsert prepare failed: ' . $db->error . ' | SQL: ' . $sql);
             _g2ml_logQuery($sql, $params, (microtime(true) - $startTime) * 1000, false);
             return false;
         }
@@ -253,7 +253,7 @@ function dbInsert(string $sql, string $types = '', array $params = []): int|bool
     }
     catch (mysqli_sql_exception $e)
     {
-        error_log('[GoToMyLink] ERROR: dbInsert exception: ' . $e->getMessage() . ' | SQL: ' . $sql);
+        error_log('[Go2My.Link] ERROR: dbInsert exception: ' . $e->getMessage() . ' | SQL: ' . $sql);
         _g2ml_logQuery($sql, $params, (microtime(true) - $startTime) * 1000, false);
         return false;
     }
@@ -289,7 +289,7 @@ function dbUpdate(string $sql, string $types = '', array $params = []): int|fals
 
     if ($db === null)
     {
-        error_log('[GoToMyLink] ERROR: dbUpdate failed — no database connection.');
+        error_log('[Go2My.Link] ERROR: dbUpdate failed — no database connection.');
         return false;
     }
 
@@ -301,7 +301,7 @@ function dbUpdate(string $sql, string $types = '', array $params = []): int|fals
 
         if ($stmt === false)
         {
-            error_log('[GoToMyLink] ERROR: dbUpdate prepare failed: ' . $db->error . ' | SQL: ' . $sql);
+            error_log('[Go2My.Link] ERROR: dbUpdate prepare failed: ' . $db->error . ' | SQL: ' . $sql);
             _g2ml_logQuery($sql, $params, (microtime(true) - $startTime) * 1000, false);
             return false;
         }
@@ -322,7 +322,7 @@ function dbUpdate(string $sql, string $types = '', array $params = []): int|fals
     }
     catch (mysqli_sql_exception $e)
     {
-        error_log('[GoToMyLink] ERROR: dbUpdate exception: ' . $e->getMessage() . ' | SQL: ' . $sql);
+        error_log('[Go2My.Link] ERROR: dbUpdate exception: ' . $e->getMessage() . ' | SQL: ' . $sql);
         _g2ml_logQuery($sql, $params, (microtime(true) - $startTime) * 1000, false);
         return false;
     }
@@ -391,7 +391,7 @@ function dbCallProcedure(string $procedureName, array $inParams = [], string $in
 
     if ($db === null)
     {
-        error_log('[GoToMyLink] ERROR: dbCallProcedure failed — no database connection.');
+        error_log('[Go2My.Link] ERROR: dbCallProcedure failed — no database connection.');
         return false;
     }
 
@@ -420,7 +420,7 @@ function dbCallProcedure(string $procedureName, array $inParams = [], string $in
 
         if ($stmt === false)
         {
-            error_log('[GoToMyLink] ERROR: dbCallProcedure prepare failed: ' . $db->error . ' | CALL: ' . $procedureName);
+            error_log('[Go2My.Link] ERROR: dbCallProcedure prepare failed: ' . $db->error . ' | CALL: ' . $procedureName);
             _g2ml_logQuery($sql, $inParams, (microtime(true) - $startTime) * 1000, false);
             return false;
         }
@@ -461,7 +461,7 @@ function dbCallProcedure(string $procedureName, array $inParams = [], string $in
             }
             else
             {
-                error_log('[GoToMyLink] WARNING: dbCallProcedure OUT param SELECT failed: ' . $db->error);
+                error_log('[Go2My.Link] WARNING: dbCallProcedure OUT param SELECT failed: ' . $db->error);
             }
         }
 
@@ -471,7 +471,7 @@ function dbCallProcedure(string $procedureName, array $inParams = [], string $in
     }
     catch (mysqli_sql_exception $e)
     {
-        error_log('[GoToMyLink] ERROR: dbCallProcedure exception: ' . $e->getMessage() . ' | CALL: ' . $procedureName);
+        error_log('[Go2My.Link] ERROR: dbCallProcedure exception: ' . $e->getMessage() . ' | CALL: ' . $procedureName);
         _g2ml_logQuery('CALL ' . $procedureName, $inParams, (microtime(true) - $startTime) * 1000, false);
         return false;
     }
@@ -494,7 +494,7 @@ function dbRawQuery(string $sql): mysqli_result|bool
 
     if ($db === null)
     {
-        error_log('[GoToMyLink] ERROR: dbRawQuery failed — no database connection.');
+        error_log('[Go2My.Link] ERROR: dbRawQuery failed — no database connection.');
         return false;
     }
 
@@ -508,7 +508,7 @@ function dbRawQuery(string $sql): mysqli_result|bool
     }
     catch (mysqli_sql_exception $e)
     {
-        error_log('[GoToMyLink] ERROR: dbRawQuery exception: ' . $e->getMessage() . ' | SQL: ' . $sql);
+        error_log('[Go2My.Link] ERROR: dbRawQuery exception: ' . $e->getMessage() . ' | SQL: ' . $sql);
         _g2ml_logQuery($sql, [], (microtime(true) - $startTime) * 1000, false);
         return false;
     }

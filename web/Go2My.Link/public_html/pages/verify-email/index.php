@@ -1,13 +1,13 @@
 <?php
 /**
  * ============================================================================
- * ✉️ GoToMyLink — Email Verification Page (Component A)
+ * ✉️ Go2My.Link — Email Verification Page (Component A)
  * ============================================================================
  *
  * Handles email verification via token from URL. Verifies the token on page
  * load and shows success or error.
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA
  * @version    0.5.0
  * @since      Phase 4

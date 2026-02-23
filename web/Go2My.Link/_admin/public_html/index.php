@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 🛠️ GoToMyLink — Admin Dashboard Entry Point (Component A — Admin)
+ * 🛠️ Go2My.Link — Admin Dashboard Entry Point (Component A — Admin)
  * ============================================================================
  *
  * Entry point for admin.go2my.link — the user/org dashboard.
@@ -10,7 +10,7 @@
  * Authentication is required for all admin pages. Unauthenticated users
  * are redirected to the login page on go2my.link.
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA_Admin
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.5.0
@@ -35,7 +35,7 @@ if (file_exists($componentAuthPath))
 }
 else
 {
-    error_log('[GoToMyLink] CRITICAL: Component A auth_creds.php not found at: ' . $componentAuthPath);
+    error_log('[Go2My.Link] CRITICAL: Component A auth_creds.php not found at: ' . $componentAuthPath);
 }
 
 // ============================================================================

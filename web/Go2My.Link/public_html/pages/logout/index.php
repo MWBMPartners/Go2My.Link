@@ -1,13 +1,13 @@
 <?php
 /**
  * ============================================================================
- * 🚪 GoToMyLink — Logout Page (Component A)
+ * 🚪 Go2My.Link — Logout Page (Component A)
  * ============================================================================
  *
  * Handles user logout. GET request → destroy session → redirect to homepage.
  * No form needed — this is a simple action endpoint.
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA
  * @version    0.5.0
  * @since      Phase 4

@@ -1,13 +1,13 @@
 <?php
 /**
  * ============================================================================
- * GoToMyLink — Privacy Policy Page (Component A)
+ * Go2My.Link — Privacy Policy Page (Component A)
  * ============================================================================
  *
  * Placeholder page for Privacy Policy. Full legal content will be added
  * in Phase 10 (Legal & Compliance).
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA
  * @version    0.4.0
  * @since      Phase 3 (full content Phase 10)
@@ -15,7 +15,7 @@
  */
 
 $pageTitle = function_exists('__') ? __('legal.privacy_title') : 'Privacy Policy';
-$pageDesc  = function_exists('__') ? __('legal.privacy_description') : 'GoToMyLink Privacy Policy.';
+$pageDesc  = function_exists('__') ? __('legal.privacy_description') : 'Go2My.Link Privacy Policy.';
 ?>
 
 <!-- ====================================================================== -->

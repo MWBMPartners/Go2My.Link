@@ -1,5 +1,5 @@
 # =============================================================================
-# GoToMyLink — SFTP Deploy Workflow
+# Go2My.Link — SFTP Deploy Workflow
 # =============================================================================
 #
 # Deploys files to Dreamhost via SFTP. Manual trigger only.
@@ -11,7 +11,7 @@
 #   SFTP_PASSWORD — SFTP password (or use SSH key)
 #   SFTP_SSH_KEY  — SSH private key (alternative to password)
 #
-# @package    GoToMyLink
+# @package    Go2My.Link
 # @author     MWBM Partners Ltd (MWservices)
 # @since      Phase 0
 # =============================================================================

@@ -1,0 +1,111 @@
+# =============================================================================
+# Go2My.Link — Feature Request Issue Template
+# =============================================================================
+#
+# For proposing new features or enhancements to existing functionality.
+#
+# @package    Go2My.Link
+# @author     MWBM Partners Ltd (MWservices)
+# @since      Phase 4
+# =============================================================================
+
+name: "✨ Feature Request"
+description: "Propose a new feature or enhancement"
+labels: ["enhancement"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## ✨ Feature Request
+        Describe what you'd like to add or improve.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: "📝 Description"
+      description: "What feature or enhancement are you proposing?"
+      placeholder: "A clear description of the feature."
+    validations:
+      required: true
+
+  - type: textarea
+    id: use_case
+    attributes:
+      label: "👥 Use Case"
+      description: "Who benefits and why? What problem does this solve?"
+      placeholder: "As a [type of user], I want [goal] so that [benefit]."
+    validations:
+      required: false
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: "💡 Proposed Solution"
+      description: "How should this be implemented? Include files, functions, or UI changes."
+    validations:
+      required: false
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: "🏗️ Component"
+      description: "Which part of the system does this affect?"
+      multiple: true
+      options:
+        - "Component A — Main Website (go2my.link)"
+        - "Component A — Admin Dashboard (admin.go2my.link)"
+        - "Component B — Redirect Engine (g2my.link)"
+        - "Component C — LinksPage (lnks.page)"
+        - "Shared — Functions / Includes"
+        - "API"
+        - "Database"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: phase
+    attributes:
+      label: "📅 Target Phase"
+      description: "Which phase should this be part of?"
+      options:
+        - "Phase 5 — Orgs & Advanced Auth (v0.6.0)"
+        - "Phase 6 — API & Analytics (v0.7.0)"
+        - "Phase 7 — LinksPage (v0.8.0)"
+        - "Phase 8 — Advanced Redirects (v0.9.0)"
+        - "Phase 9 — Payments (v0.10.0)"
+        - "Phase 10 — Legal & Launch (v1.0.0)"
+        - "Backlog — not yet assigned"
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: "🚨 Priority"
+      description: "How important is this?"
+      options:
+        - "Critical — blocks other work"
+        - "High"
+        - "Medium"
+        - "Low — nice to have"
+      default: 2
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: premium
+    attributes:
+      label: "💰 Premium Feature?"
+      description: "Is this a paid-tier feature?"
+      options:
+        - label: "This is a premium/paid-tier feature"
+          required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "🔄 Alternatives Considered"
+      description: "Any alternative approaches you've thought about?"
+    validations:
+      required: false

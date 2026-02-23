@@ -1,6 +1,6 @@
-# GoToMyLink — Database Documentation
+# Go2My.Link — Database Documentation
 
-> Database schema, migration strategy, and conventions for the GoToMyLink platform.
+> Database schema, migration strategy, and conventions for the Go2My.Link platform.
 
 ## 📋 Overview
 

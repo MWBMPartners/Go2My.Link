@@ -1,11 +1,11 @@
 -- =============================================================================
--- GoToMyLink — Core Settings Table
+-- Go2My.Link — Core Settings Table
 -- =============================================================================
 -- Merged settings dictionary and values into a single table.
 -- Supports scope hierarchy: User > Organisation > System > Default.
 -- Sensitive values are encrypted with AES-256-GCM (isSensitive flag).
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0

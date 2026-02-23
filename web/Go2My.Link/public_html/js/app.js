@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * GoToMyLink — Component A Custom JavaScript
+ * Go2My.Link — Component A Custom JavaScript
  * ============================================================================
  *
  * Custom JS for go2my.link (Main Website).

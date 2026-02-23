@@ -1,13 +1,13 @@
 <?php
 /**
  * ============================================================================
- * GoToMyLink — About Page (Component A)
+ * Go2My.Link — About Page (Component A)
  * ============================================================================
  *
  * Public about page for go2my.link. Describes the service, mission,
- * and the team behind GoToMyLink.
+ * and the team behind Go2My.Link.
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA
  * @version    0.4.0
  * @since      Phase 3
@@ -15,7 +15,7 @@
  */
 
 $pageTitle = function_exists('__') ? __('about.title') : 'About';
-$pageDesc  = function_exists('__') ? __('about.description') : 'Learn about GoToMyLink — the smart URL shortening platform.';
+$pageDesc  = function_exists('__') ? __('about.description') : 'Learn about Go2My.Link — the smart URL shortening platform.';
 ?>
 
 <!-- ====================================================================== -->
@@ -24,7 +24,7 @@ $pageDesc  = function_exists('__') ? __('about.description') : 'Learn about GoTo
 <section class="page-header text-center" aria-labelledby="about-heading">
     <div class="container">
         <h1 id="about-heading" class="display-4 fw-bold">
-            <?php echo function_exists('__') ? __('about.heading') : 'About GoToMyLink'; ?>
+            <?php echo function_exists('__') ? __('about.heading') : 'About Go2My.Link'; ?>
         </h1>
         <p class="lead text-body-secondary">
             <?php echo function_exists('__') ? __('about.subtitle') : 'Smarter links for a connected world.'; ?>
@@ -43,7 +43,7 @@ $pageDesc  = function_exists('__') ? __('about.description') : 'Learn about GoTo
                     <?php echo function_exists('__') ? __('about.mission_heading') : 'Our Mission'; ?>
                 </h2>
                 <p class="text-body-secondary">
-                    <?php echo function_exists('__') ? __('about.mission_text') : 'GoToMyLink was built to make link management simple, secure, and powerful. Whether you\'re sharing a single URL or managing thousands of links across an organisation, we provide the tools you need to shorten, track, and manage your links with confidence.'; ?>
+                    <?php echo function_exists('__') ? __('about.mission_text') : 'Go2My.Link was built to make link management simple, secure, and powerful. Whether you\'re sharing a single URL or managing thousands of links across an organisation, we provide the tools you need to shorten, track, and manage your links with confidence.'; ?>
                 </p>
             </div>
         </div>
@@ -126,7 +126,7 @@ $pageDesc  = function_exists('__') ? __('about.description') : 'Learn about GoTo
                     <?php echo function_exists('__') ? __('about.team_heading') : 'Built by MWBM Partners'; ?>
                 </h2>
                 <p class="text-body-secondary">
-                    <?php echo function_exists('__') ? __('about.team_text') : 'GoToMyLink is developed and maintained by MWBM Partners Ltd (trading as MWservices), a technology company focused on building practical, reliable web tools. We believe in clean architecture, strong security, and accessible design.'; ?>
+                    <?php echo function_exists('__') ? __('about.team_text') : 'Go2My.Link is developed and maintained by MWBM Partners Ltd (trading as MWservices), a technology company focused on building practical, reliable web tools. We believe in clean architecture, strong security, and accessible design.'; ?>
                 </p>
                 <a href="/contact" class="btn btn-primary mt-3">
                     <i class="fas fa-envelope" aria-hidden="true"></i>

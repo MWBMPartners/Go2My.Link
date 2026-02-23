@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================================================
- * 🔐 GoToMyLink — Session Management Functions
+ * 🔐 Go2My.Link — Session Management Functions
  * ============================================================================
  *
  * Database-backed session management. PHP sessions carry the user identity,
@@ -17,7 +17,7 @@
  *               settings.php (getSetting),
  *               activity_logger.php (logActivity)
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage Functions
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.5.0
@@ -94,7 +94,7 @@ function createUserSession(int $userUID): string|false
 
     if ($sessionUID === false)
     {
-        error_log('[GoToMyLink] ERROR: createUserSession — failed to insert session for userUID: ' . $userUID);
+        error_log('[Go2My.Link] ERROR: createUserSession — failed to insert session for userUID: ' . $userUID);
         return false;
     }
 

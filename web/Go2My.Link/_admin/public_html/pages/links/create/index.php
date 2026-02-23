@@ -1,14 +1,14 @@
 <?php
 /**
  * ============================================================================
- * ✨ GoToMyLink — Create Link (Admin Dashboard)
+ * ✨ Go2My.Link — Create Link (Admin Dashboard)
  * ============================================================================
  *
  * Full link creation form for authenticated users. Includes title, notes,
  * category, date range, and active toggle (options not available to
  * anonymous users on the homepage).
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA_Admin
  * @version    0.5.0
  * @since      Phase 4

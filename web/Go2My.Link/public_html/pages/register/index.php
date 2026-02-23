@@ -1,13 +1,13 @@
 <?php
 /**
  * ============================================================================
- * 📝 GoToMyLink — Registration Page (Component A)
+ * 📝 Go2My.Link — Registration Page (Component A)
  * ============================================================================
  *
  * User registration form with CSRF protection, password validation, CAPTCHA,
  * and email verification. Follows the contact form pattern.
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA
  * @version    0.5.0
  * @since      Phase 4
@@ -22,7 +22,7 @@ if (function_exists('isAuthenticated') && isAuthenticated())
 }
 
 $pageTitle = function_exists('__') ? __('register.title') : 'Create Account';
-$pageDesc  = function_exists('__') ? __('register.description') : 'Sign up for a free GoToMyLink account.';
+$pageDesc  = function_exists('__') ? __('register.description') : 'Sign up for a free Go2My.Link account.';
 
 // ============================================================================
 // Process form submission
@@ -94,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
                     g2ml_sendEmail(
                         $email,
-                        'Verify Your Email — ' . getSetting('site.name', 'GoToMyLink'),
+                        'Verify Your Email — ' . getSetting('site.name', 'Go2My.Link'),
                         'verify_email',
                         [
                             'firstName'       => $firstName,
@@ -319,7 +319,7 @@ function _g2ml_verifyTurnstile(string $response): bool
 
     if ($result === false)
     {
-        error_log('[GoToMyLink] WARNING: Turnstile verification request failed.');
+        error_log('[Go2My.Link] WARNING: Turnstile verification request failed.');
         return false;
     }
 
@@ -367,7 +367,7 @@ function _g2ml_verifyRecaptcha(string $response): bool
 
     if ($result === false)
     {
-        error_log('[GoToMyLink] WARNING: reCAPTCHA verification request failed.');
+        error_log('[Go2My.Link] WARNING: reCAPTCHA verification request failed.');
         return false;
     }
 

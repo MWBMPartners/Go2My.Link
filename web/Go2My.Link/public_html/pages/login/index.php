@@ -1,13 +1,13 @@
 <?php
 /**
  * ============================================================================
- * 🔐 GoToMyLink — Login Page (Component A)
+ * 🔐 Go2My.Link — Login Page (Component A)
  * ============================================================================
  *
  * Login form with CSRF protection, CAPTCHA after N failed attempts,
  * account lockout display, and redirect-back support.
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA
  * @version    0.5.0
  * @since      Phase 4
@@ -22,7 +22,7 @@ if (function_exists('isAuthenticated') && isAuthenticated())
 }
 
 $pageTitle = function_exists('__') ? __('login.title') : 'Log In';
-$pageDesc  = function_exists('__') ? __('login.description') : 'Log in to your GoToMyLink account.';
+$pageDesc  = function_exists('__') ? __('login.description') : 'Log in to your Go2My.Link account.';
 
 // ============================================================================
 // Determine if CAPTCHA should be shown (after N failed attempts from this IP)

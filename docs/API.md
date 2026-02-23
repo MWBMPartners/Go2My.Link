@@ -1,10 +1,10 @@
-# GoToMyLink — API Documentation
+# Go2My.Link — API Documentation
 
-> RESTful API reference for the GoToMyLink platform.
+> RESTful API reference for the Go2My.Link platform.
 
 ## 📋 Overview
 
-The GoToMyLink API provides programmatic access to URL shortening, link management, and analytics.
+The Go2My.Link API provides programmatic access to URL shortening, link management, and analytics.
 
 | Property | Value |
 | --- | --- |

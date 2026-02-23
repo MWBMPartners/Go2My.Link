@@ -1,13 +1,13 @@
 <?php
 /**
  * ============================================================================
- * GoToMyLink — Pricing Page (Component A)
+ * Go2My.Link — Pricing Page (Component A)
  * ============================================================================
  *
  * Pricing placeholder page. Full pricing tiers and Stripe integration
  * will be added in Phase 9 (Billing & Subscriptions).
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA
  * @version    0.4.0
  * @since      Phase 3 (functional pricing Phase 9)
@@ -15,7 +15,7 @@
  */
 
 $pageTitle = function_exists('__') ? __('pricing.title') : 'Pricing';
-$pageDesc  = function_exists('__') ? __('pricing.description') : 'GoToMyLink pricing plans — free and premium options.';
+$pageDesc  = function_exists('__') ? __('pricing.description') : 'Go2My.Link pricing plans — free and premium options.';
 ?>
 
 <!-- ====================================================================== -->

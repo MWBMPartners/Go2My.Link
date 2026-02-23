@@ -1,10 +1,10 @@
-# GoToMyLink — Architecture
+# Go2My.Link — Architecture
 
-> Technical architecture overview for the GoToMyLink platform.
+> Technical architecture overview for the Go2My.Link platform.
 
 ## 📋 System Overview
 
-GoToMyLink is a URL shortening platform comprising three interconnected web properties, sharing a common PHP backend and MySQL database.
+Go2My.Link is a URL shortening platform comprising three interconnected web properties, sharing a common PHP backend and MySQL database.
 
 ### 🧩 Components
 

@@ -1,11 +1,11 @@
 -- =============================================================================
--- GoToMyLink — Subscription Tiers Table
+-- Go2My.Link — Subscription Tiers Table
 -- =============================================================================
 -- Defines the available subscription tiers and their feature limits.
 -- Referenced by tblOrganisations and tblSubscriptions.
 -- Created early as it's a FK dependency for organisations.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS `tblSubscriptionTiers` (
         COMMENT 'Whether detailed analytics are available',
 
     `hasQRCodes`            TINYINT(1) UNSIGNED NOT NULL DEFAULT 0
-        COMMENT 'Whether QR code integration is available (via external GoToMyLink QR service)',
+        COMMENT 'Whether QR code integration is available (via external Go2My.Link QR service)',
 
     `hasAPIAccess`          TINYINT(1) UNSIGNED NOT NULL DEFAULT 0
         COMMENT 'Whether API access is available',

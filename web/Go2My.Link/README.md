@@ -1,11 +1,11 @@
 # Go2My.Link — Main Website (Component A)
 
-The public-facing website for the GoToMyLink URL shortening service.
+The public-facing website for the Go2My.Link URL shortening service.
 
 - **Domain:** [go2my.link](https://go2my.link)
 - **Admin:** [admin.go2my.link](https://admin.go2my.link)
 - **Purpose:** Service promotion, user sign-up, short link creation, user/admin dashboard
-- **Part of:** [GoToMyLink](https://github.com/MWBMPartners/GoToMyLink) by MWBM Partners Ltd
+- **Part of:** [Go2My.Link](https://github.com/MWBMPartners/Go2My.Link) by MWBM Partners Ltd
 
 ## Directory Structure
 

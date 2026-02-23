@@ -1,13 +1,13 @@
 <?php
 /**
  * ============================================================================
- * 👤 GoToMyLink — User Profile (Admin Dashboard)
+ * 👤 Go2My.Link — User Profile (Admin Dashboard)
  * ============================================================================
  *
  * User profile page with personal info editing and password change sections.
  * Each section has its own CSRF-protected form.
  *
- * @package    GoToMyLink
+ * @package    Go2My.Link
  * @subpackage ComponentA_Admin
  * @version    0.5.0
  * @since      Phase 4

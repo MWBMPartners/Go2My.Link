@@ -1,10 +1,10 @@
 -- =============================================================================
--- GoToMyLink — Seed Data: Default Settings
+-- Go2My.Link — Seed Data: Default Settings
 -- =============================================================================
 -- Platform-wide default settings.
 -- These are Default-scope entries — can be overridden at System/Org/User level.
 --
--- @package    GoToMyLink
+-- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    0.2.0
@@ -22,7 +22,7 @@ INSERT INTO `tblSettings` (
 -- Site settings
 -- =========================================================================
 ('site.name', 'Default', NULL,
- 'GoToMyLink', 'GoToMyLink', 'Platform display name',
+ 'Go2My.Link', 'Go2My.Link', 'Platform display name',
  'string', 0, 1),
 
 ('site.tagline', 'Default', NULL,

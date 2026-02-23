@@ -2,7 +2,7 @@ We have created a "bare-bones" URL shortening web-based service which has served
 
 We now would like to expand this with additional, more advanced, functionality.
 
-This enhanced version is being fleshed out into a whole new product (it was previously only internal, and had no official name, but rather a kind of 'codename' of "MWlink". The new name will be "GoToMy.Link" (or with a GitHub Repo name of "GoToMyLink"). This is a product of MWBM Partners Ltd (under the trading name of MWservices), and will thus be under our organisation GitHub account GitHub.com/MWBMPartners)
+This enhanced version is being fleshed out into a whole new product (it was previously only internal, and had no official name, but rather a kind of 'codename' of "MWlink". The new name will be "Go2My.Link" (or with a GitHub Repo name of "Go2My.Link"). This is a product of MWBM Partners Ltd (under the trading name of MWservices), and will thus be under our organisation GitHub account GitHub.com/MWBMPartners)
 
 The Key of the basis/idea behind the new expanded webservice is a URL shortening service/website where a user can enter a URL, and have a short-url (short link) produced, in a similar way to Bit.ly.
 
@@ -249,7 +249,7 @@ Within this repository, ALL components that need to be uploaded to the web must 
 ├── _libraries/                 	← Stores Site/Server-wide shared 'libraries' (dompdf, Parsedown etc)
 ├── _uploads/                 		← Stores Site/Server-wide 'uploads' that are not directly publically accessible
 ├── _backups/                 		← Stores Site/Server-wide 'backups' that are not directly publically accessible
-├── GoToMy.link/			← Main Website (A): public/PR/"face of the service" website
+├── Go2My.Link/			← Main Website (A): public/PR/"face of the service" website
 │   ├── _auth_keys/                 ← Website specific DB creds (outside web root) IF different from side/server wide wide
 │   │   ├── auth_creds.php          ← Stored securely (not accessible via web)
 │   ├── _includes/                  ← Website specific shared 'includes' that are not directly publically accessible
@@ -395,7 +395,7 @@ OpenAI/ChatGPT/Codex prompts, memory and contact info should be saved/stored/kep
 
 Please also dynamically maintain .gitignore, for development on Windows or MacOS via Visual Studio Code or Xcode, for the entire project as we progress, includig exclusion of ftp-sync.json files created by the FTP Sync Visual Studio Code extension.
 
-As this project will be hosted on a GitHub Repo (https://github.com/MWBMPartners/GoToMyLink), please also Setup, and constantly maintain use of the following GitHub functionality:
+As this project will be hosted on a GitHub Repo (https://github.com/MWBMPartners/Go2My.Link), please also Setup, and constantly maintain use of the following GitHub functionality:
  * GitHub Issues - For Issue and Feature Request tracking
  * GitHub Project - for managing the overall project
  * GitHub Wiki - for GitHub hosted wiki docs
