@@ -18,7 +18,11 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('home.title') : 'Home';
+if (function_exists('__')) {
+    $pageTitle = __('home.title');
+} else {
+    $pageTitle = 'Home';
+}
 $pageDesc  = getSetting('site.tagline', 'Shorten. Track. Manage.');
 
 // 🤖 Determine bot protection configuration
@@ -36,8 +40,16 @@ elseif ($recaptchaSiteKey !== '')
 }
 
 // ♿ Check for no-JS fallback results (from API redirect)
-$createdURL = isset($_GET['created']) ? g2ml_sanitiseInput($_GET['created']) : '';
-$errorMsg   = isset($_GET['error']) ? g2ml_sanitiseInput($_GET['error']) : '';
+if (isset($_GET['created'])) {
+    $createdURL = g2ml_sanitiseInput($_GET['created']);
+} else {
+    $createdURL = '';
+}
+if (isset($_GET['error'])) {
+    $errorMsg = g2ml_sanitiseInput($_GET['error']);
+} else {
+    $errorMsg = '';
+}
 ?>
 
 <!-- ====================================================================== -->
@@ -65,7 +77,7 @@ $errorMsg   = isset($_GET['error']) ? g2ml_sanitiseInput($_GET['error']) : '';
                     <div class="card-body p-4">
                         <h2 id="shorten-heading" class="h5 mb-3">
                             <i class="fas fa-link" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('home.shorten_url') : 'Shorten a URL'; ?>
+                            <?php if (function_exists('__')) { echo __('home.shorten_url'); } else { echo 'Shorten a URL'; } ?>
                         </h2>
 
                         <?php
@@ -75,7 +87,7 @@ $errorMsg   = isset($_GET['error']) ? g2ml_sanitiseInput($_GET['error']) : '';
                         <div class="alert alert-success" role="status">
                             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
                                 <div>
-                                    <strong><?php echo function_exists('__') ? __('home.result_success') : 'Your short URL is ready!'; ?></strong>
+                                    <strong><?php if (function_exists('__')) { echo __('home.result_success'); } else { echo 'Your short URL is ready!'; } ?></strong>
                                     <div class="mt-1">
                                         <a href="<?php echo g2ml_sanitiseOutput($createdURL); ?>"
                                            target="_blank" rel="noopener noreferrer"
@@ -103,14 +115,24 @@ $errorMsg   = isset($_GET['error']) ? g2ml_sanitiseInput($_GET['error']) : '';
                             <?php echo g2ml_csrfField('shorten_url'); ?>
 
                             <?php
+                                if (function_exists('__')) {
+                                    $fieldLabel = __('home.url_label');
+                                } else {
+                                    $fieldLabel = 'Enter your long URL';
+                                }
+                                if (function_exists('__')) {
+                                    $fieldHelpText = __('home.url_help');
+                                } else {
+                                    $fieldHelpText = 'Paste the URL you want to shorten';
+                                }
                             echo formField([
                                 'id'           => 'destination-url',
                                 'name'         => 'longURL',
-                                'label'        => function_exists('__') ? __('home.url_label') : 'Enter your long URL',
+                                'label' => $fieldLabel,
                                 'type'         => 'url',
                                 'placeholder'  => 'https://example.com/my-very-long-url',
                                 'required'     => true,
-                                'helpText'     => function_exists('__') ? __('home.url_help') : 'Paste the URL you want to shorten',
+                                'helpText' => $fieldHelpText,
                                 'autocomplete' => 'url',
                             ]);
                             ?>
@@ -136,7 +158,7 @@ $errorMsg   = isset($_GET['error']) ? g2ml_sanitiseInput($_GET['error']) : '';
                                 <button type="submit" class="btn btn-primary btn-lg"
                                         id="shorten-submit">
                                     <i class="fas fa-magic" aria-hidden="true"></i>
-                                    <?php echo function_exists('__') ? __('home.shorten_button') : 'Shorten URL'; ?>
+                                    <?php if (function_exists('__')) { echo __('home.shorten_button'); } else { echo 'Shorten URL'; } ?>
                                 </button>
                             </div>
                         </form>
@@ -144,11 +166,11 @@ $errorMsg   = isset($_GET['error']) ? g2ml_sanitiseInput($_GET['error']) : '';
                         <!-- ✅ AJAX Result Area (hidden until URL created via JS) -->
                         <div id="shorten-result" class="mt-4 d-none"
                              role="region"
-                             aria-label="<?php echo function_exists('__') ? __('home.result_label') : 'Shortened URL result'; ?>">
+                             aria-label="<?php if (function_exists('__')) { echo __('home.result_label'); } else { echo 'Shortened URL result'; } ?>">
                             <div class="alert alert-success">
                                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
                                     <div>
-                                        <strong><?php echo function_exists('__') ? __('home.result_success') : 'Your short URL is ready!'; ?></strong>
+                                        <strong><?php if (function_exists('__')) { echo __('home.result_success'); } else { echo 'Your short URL is ready!'; } ?></strong>
                                         <div class="mt-1">
                                             <a id="result-url" href="#" target="_blank" rel="noopener noreferrer"
                                                class="fw-bold fs-5"></a>
@@ -156,9 +178,9 @@ $errorMsg   = isset($_GET['error']) ? g2ml_sanitiseInput($_GET['error']) : '';
                                     </div>
                                     <button type="button" class="btn btn-outline-success"
                                             id="copy-url-btn"
-                                            aria-label="<?php echo function_exists('__') ? __('home.copy_to_clipboard') : 'Copy short URL to clipboard'; ?>">
+                                            aria-label="<?php if (function_exists('__')) { echo __('home.copy_to_clipboard'); } else { echo 'Copy short URL to clipboard'; } ?>">
                                         <i class="fas fa-copy" aria-hidden="true"></i>
-                                        <span id="copy-btn-text"><?php echo function_exists('__') ? __('home.copy_button') : 'Copy'; ?></span>
+                                        <span id="copy-btn-text"><?php if (function_exists('__')) { echo __('home.copy_button'); } else { echo 'Copy'; } ?></span>
                                     </button>
                                 </div>
                             </div>
@@ -179,28 +201,28 @@ $errorMsg   = isset($_GET['error']) ? g2ml_sanitiseInput($_GET['error']) : '';
 <section class="py-5" aria-labelledby="features-heading">
     <div class="container">
         <h2 id="features-heading" class="visually-hidden">
-            <?php echo function_exists('__') ? __('home.features_heading') : 'Features'; ?>
+            <?php if (function_exists('__')) { echo __('home.features_heading'); } else { echo 'Features'; } ?>
         </h2>
         <div class="row text-center g-4">
             <div class="col-md-4">
                 <div class="p-3">
                     <i class="fas fa-bolt fa-3x text-primary mb-3" aria-hidden="true"></i>
-                    <h3 class="h5"><?php echo function_exists('__') ? __('home.feature_fast') : 'Fast Redirects'; ?></h3>
-                    <p class="text-body-secondary"><?php echo function_exists('__') ? __('home.feature_fast_desc') : 'Lightning-fast URL resolution with alias chain support.'; ?></p>
+                    <h3 class="h5"><?php if (function_exists('__')) { echo __('home.feature_fast'); } else { echo 'Fast Redirects'; } ?></h3>
+                    <p class="text-body-secondary"><?php if (function_exists('__')) { echo __('home.feature_fast_desc'); } else { echo 'Lightning-fast URL resolution with alias chain support.'; } ?></p>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="p-3">
                     <i class="fas fa-chart-bar fa-3x text-success mb-3" aria-hidden="true"></i>
-                    <h3 class="h5"><?php echo function_exists('__') ? __('home.feature_analytics') : 'Detailed Analytics'; ?></h3>
-                    <p class="text-body-secondary"><?php echo function_exists('__') ? __('home.feature_analytics_desc') : 'Track clicks, geographic data, devices, and more.'; ?></p>
+                    <h3 class="h5"><?php if (function_exists('__')) { echo __('home.feature_analytics'); } else { echo 'Detailed Analytics'; } ?></h3>
+                    <p class="text-body-secondary"><?php if (function_exists('__')) { echo __('home.feature_analytics_desc'); } else { echo 'Track clicks, geographic data, devices, and more.'; } ?></p>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="p-3">
                     <i class="fas fa-shield-alt fa-3x text-danger mb-3" aria-hidden="true"></i>
-                    <h3 class="h5"><?php echo function_exists('__') ? __('home.feature_secure') : 'Enterprise Security'; ?></h3>
-                    <p class="text-body-secondary"><?php echo function_exists('__') ? __('home.feature_secure_desc') : 'AES-256 encryption, 2FA, SSO, and role-based access.'; ?></p>
+                    <h3 class="h5"><?php if (function_exists('__')) { echo __('home.feature_secure'); } else { echo 'Enterprise Security'; } ?></h3>
+                    <p class="text-body-secondary"><?php if (function_exists('__')) { echo __('home.feature_secure_desc'); } else { echo 'AES-256 encryption, 2FA, SSO, and role-based access.'; } ?></p>
                 </div>
             </div>
         </div>

@@ -14,8 +14,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('org.create_title') : 'Create Organisation';
-$pageDesc  = function_exists('__') ? __('org.create_description') : 'Set up a new organisation for your team.';
+if (function_exists('__')) {
+    $pageTitle = __('org.create_title');
+} else {
+    $pageTitle = 'Create Organisation';
+}
+if (function_exists('__')) {
+    $pageDesc = __('org.create_description');
+} else {
+    $pageDesc = 'Set up a new organisation for your team.';
+}
 
 $currentUser = getCurrentUser();
 
@@ -62,9 +70,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         }
         else
         {
+            if ($orgURL !== '') {
+                $orgURLVal = $orgURL;
+            } else {
+                $orgURLVal = null;
+            }
+            if ($orgDesc !== '') {
+                $orgDescVal = $orgDesc;
+            } else {
+                $orgDescVal = null;
+            }
+
             $result = createOrganisation($orgName, $orgHandle, [
-                'orgURL'         => $orgURL !== '' ? $orgURL : null,
-                'orgDescription' => $orgDesc !== '' ? $orgDesc : null,
+                'orgURL'         => $orgURLVal,
+                'orgDescription' => $orgDescVal,
             ]);
 
             if ($result['success'])
@@ -94,7 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
         <h1 id="create-org-heading" class="h2 mb-4">
             <i class="fas fa-plus-circle" aria-hidden="true"></i>
-            <?php echo function_exists('__') ? __('org.create_heading') : 'Create Organisation'; ?>
+            <?php if (function_exists('__')) { echo __('org.create_heading'); } else { echo 'Create Organisation'; } ?>
         </h1>
 
         <?php if ($formSuccess) { ?>

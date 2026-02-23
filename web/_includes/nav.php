@@ -33,10 +33,22 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 // ============================================================================
 // 📋 Navigation Configuration
 // ============================================================================
-$component    = defined('G2ML_COMPONENT') ? G2ML_COMPONENT : 'A';
-$siteName     = function_exists('getSetting') ? getSetting('site.name', 'Go2My.Link') : 'Go2My.Link';
+if (defined('G2ML_COMPONENT')) {
+    $component = G2ML_COMPONENT;
+} else {
+    $component = 'A';
+}
+if (function_exists('getSetting')) {
+    $siteName = getSetting('site.name', 'Go2My.Link');
+} else {
+    $siteName = 'Go2My.Link';
+}
 $isLoggedIn   = isset($_SESSION['user_uid']) && $_SESSION['user_uid'] > 0;
-$currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
+if (function_exists('getCurrentRoute')) {
+    $currentRoute = getCurrentRoute();
+} else {
+    $currentRoute = '';
+}
 ?>
 
 <!-- ====================================================================== -->
@@ -44,7 +56,7 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
 <!-- 📖 Reference: https://getbootstrap.com/docs/5.3/components/navbar/     -->
 <!-- ====================================================================== -->
 <header>
-<nav class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark" aria-label="<?php echo function_exists('__') ? __('nav.aria_label') : 'Main navigation'; ?>">
+<nav class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark" aria-label="<?php if (function_exists('__')) { echo __('nav.aria_label'); } else { echo 'Main navigation'; } ?>">
     <div class="container">
 
         <!-- Brand -->
@@ -56,7 +68,7 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
         <button class="navbar-toggler" type="button"
                 data-bs-toggle="collapse" data-bs-target="#mainNavbar"
                 aria-controls="mainNavbar" aria-expanded="false"
-                aria-label="<?php echo function_exists('__') ? __('nav.toggle') : 'Toggle navigation'; ?>">
+                aria-label="<?php if (function_exists('__')) { echo __('nav.toggle'); } else { echo 'Toggle navigation'; } ?>">
             <span class="navbar-toggler-icon" aria-hidden="true"></span>
         </button>
 
@@ -69,35 +81,35 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
             <!-- ========================================================== -->
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li class="nav-item">
-                    <a class="nav-link<?php echo ($currentRoute === '' ? ' active' : ''); ?>"
-                       <?php echo ($currentRoute === '' ? 'aria-current="page"' : ''); ?>
+                    <a class="nav-link<?php if ($currentRoute === '') { echo ' active'; } ?>"
+                       <?php if ($currentRoute === '') { echo 'aria-current="page"'; } ?>
                        href="/">
                         <i class="fas fa-home" aria-hidden="true"></i>
-                        <?php echo function_exists('__') ? __('nav.home') : 'Home'; ?>
+                        <?php if (function_exists('__')) { echo __('nav.home'); } else { echo 'Home'; } ?>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link<?php echo ($currentRoute === 'about' ? ' active' : ''); ?>"
-                       <?php echo ($currentRoute === 'about' ? 'aria-current="page"' : ''); ?>
+                    <a class="nav-link<?php if ($currentRoute === 'about') { echo ' active'; } ?>"
+                       <?php if ($currentRoute === 'about') { echo 'aria-current="page"'; } ?>
                        href="/about">
                         <i class="fas fa-info-circle" aria-hidden="true"></i>
-                        <?php echo function_exists('__') ? __('nav.about') : 'About'; ?>
+                        <?php if (function_exists('__')) { echo __('nav.about'); } else { echo 'About'; } ?>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link<?php echo ($currentRoute === 'features' ? ' active' : ''); ?>"
-                       <?php echo ($currentRoute === 'features' ? 'aria-current="page"' : ''); ?>
+                    <a class="nav-link<?php if ($currentRoute === 'features') { echo ' active'; } ?>"
+                       <?php if ($currentRoute === 'features') { echo 'aria-current="page"'; } ?>
                        href="/features">
                         <i class="fas fa-star" aria-hidden="true"></i>
-                        <?php echo function_exists('__') ? __('nav.features') : 'Features'; ?>
+                        <?php if (function_exists('__')) { echo __('nav.features'); } else { echo 'Features'; } ?>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link<?php echo ($currentRoute === 'pricing' ? ' active' : ''); ?>"
-                       <?php echo ($currentRoute === 'pricing' ? 'aria-current="page"' : ''); ?>
+                    <a class="nav-link<?php if ($currentRoute === 'pricing') { echo ' active'; } ?>"
+                       <?php if ($currentRoute === 'pricing') { echo 'aria-current="page"'; } ?>
                        href="/pricing">
                         <i class="fas fa-tags" aria-hidden="true"></i>
-                        <?php echo function_exists('__') ? __('nav.pricing') : 'Pricing'; ?>
+                        <?php if (function_exists('__')) { echo __('nav.pricing'); } else { echo 'Pricing'; } ?>
                     </a>
                 </li>
             </ul>
@@ -114,10 +126,10 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
                     <button type="button"
                             class="btn btn-link nav-link border-0"
                             id="g2ml-theme-toggle"
-                            aria-label="<?php echo function_exists('__') ? __('nav.theme_toggle') : 'Toggle theme (light/dark/auto)'; ?>"
-                            title="<?php echo function_exists('__') ? __('nav.theme_toggle') : 'Toggle theme'; ?>">
+                            aria-label="<?php if (function_exists('__')) { echo __('nav.theme_toggle'); } else { echo 'Toggle theme (light/dark/auto)'; } ?>"
+                            title="<?php if (function_exists('__')) { echo __('nav.theme_toggle'); } else { echo 'Toggle theme'; } ?>">
                         <i id="g2ml-theme-icon" class="fas fa-circle-half-stroke" aria-hidden="true"></i>
-                        <span class="visually-hidden" id="g2ml-theme-label"><?php echo function_exists('__') ? __('theme.auto') : 'Auto (system)'; ?></span>
+                        <span class="visually-hidden" id="g2ml-theme-label"><?php if (function_exists('__')) { echo __('theme.auto'); } else { echo 'Auto (system)'; } ?></span>
                     </button>
                 </li>
 
@@ -163,31 +175,31 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
                         <!-- Dashboard -->
                         <li><a class="dropdown-item" href="https://admin.go2my.link/">
                             <i class="fas fa-tachometer-alt fa-fw" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('nav.dashboard') : 'Dashboard'; ?>
+                            <?php if (function_exists('__')) { echo __('nav.dashboard'); } else { echo 'Dashboard'; } ?>
                         </a></li>
 
                         <!-- My Links -->
                         <li><a class="dropdown-item" href="https://admin.go2my.link/links">
                             <i class="fas fa-link fa-fw" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('nav.my_links') : 'My Links'; ?>
+                            <?php if (function_exists('__')) { echo __('nav.my_links'); } else { echo 'My Links'; } ?>
                         </a></li>
 
                         <!-- Organisation -->
                         <li><a class="dropdown-item" href="https://admin.go2my.link/org">
                             <i class="fas fa-building fa-fw" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('nav.organisation') : 'Organisation'; ?>
+                            <?php if (function_exists('__')) { echo __('nav.organisation'); } else { echo 'Organisation'; } ?>
                         </a></li>
 
                         <!-- Privacy & Data -->
                         <li><a class="dropdown-item" href="https://admin.go2my.link/privacy">
                             <i class="fas fa-shield-halved fa-fw" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('nav.privacy') : 'Privacy & Data'; ?>
+                            <?php if (function_exists('__')) { echo __('nav.privacy'); } else { echo 'Privacy & Data'; } ?>
                         </a></li>
 
                         <!-- Profile -->
                         <li><a class="dropdown-item" href="https://admin.go2my.link/profile">
                             <i class="fas fa-user-cog fa-fw" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('nav.profile') : 'Profile'; ?>
+                            <?php if (function_exists('__')) { echo __('nav.profile'); } else { echo 'Profile'; } ?>
                         </a></li>
 
                         <li><hr class="dropdown-divider"></li>
@@ -195,7 +207,7 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
                         <!-- Log Out -->
                         <li><a class="dropdown-item" href="/logout">
                             <i class="fas fa-sign-out-alt fa-fw" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('nav.logout') : 'Log Out'; ?>
+                            <?php if (function_exists('__')) { echo __('nav.logout'); } else { echo 'Log Out'; } ?>
                         </a></li>
                     </ul>
                 </li>
@@ -206,12 +218,12 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
                 <li class="nav-item">
                     <a class="nav-link" href="/login">
                         <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
-                        <?php echo function_exists('__') ? __('nav.login') : 'Log In'; ?>
+                        <?php if (function_exists('__')) { echo __('nav.login'); } else { echo 'Log In'; } ?>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="btn btn-outline-light btn-sm ms-2 mt-1 mt-lg-0" href="/register">
-                        <?php echo function_exists('__') ? __('nav.register') : 'Sign Up'; ?>
+                        <?php if (function_exists('__')) { echo __('nav.register'); } else { echo 'Sign Up'; } ?>
                     </a>
                 </li>
                 <?php } ?>

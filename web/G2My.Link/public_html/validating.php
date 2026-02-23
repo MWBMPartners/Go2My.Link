@@ -34,18 +34,26 @@ if (!defined('G2ML_COMPONENT'))
 // 📋 Set Default Values
 // ============================================================================
 $destination  = $destination ?? '';
-$siteName     = function_exists('getSetting') ? getSetting('site.name', 'Go2My.Link') : 'Go2My.Link';
+if (function_exists('getSetting')) {
+    $siteName = getSetting('site.name', 'Go2My.Link');
+} else {
+    $siteName = 'Go2My.Link';
+}
 $mainSiteURL  = 'https://go2my.link';
 
 // Fallback URL goes to the org fallback (NOT the unverified destination)
-$fallbackURL  = function_exists('getDomainFallbackURL')
-    ? getDomainFallbackURL($orgHandle ?? '[default]')
-    : $mainSiteURL;
+if (function_exists('getDomainFallbackURL')) {
+    $fallbackURL = getDomainFallbackURL($orgHandle ?? '[default]');
+} else {
+    $fallbackURL = $mainSiteURL;
+}
 
 // Countdown delay from settings (default: 5 seconds)
-$countdownDelay = function_exists('getSetting')
-    ? (int) getSetting('redirect.fallback_delay', 5)
-    : 5;
+if (function_exists('getSetting')) {
+    $countdownDelay = (int) getSetting('redirect.fallback_delay', 5);
+} else {
+    $countdownDelay = 5;
+}
 
 // Show the destination domain for user context (not the full URL for safety)
 $destinationDomain = '';

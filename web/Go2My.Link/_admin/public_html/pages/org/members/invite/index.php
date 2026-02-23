@@ -13,8 +13,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('org.invite_title') : 'Invite Member';
-$pageDesc  = function_exists('__') ? __('org.invite_description') : 'Send an invitation to join your organisation.';
+if (function_exists('__')) {
+    $pageTitle = __('org.invite_title');
+} else {
+    $pageTitle = 'Invite Member';
+}
+if (function_exists('__')) {
+    $pageDesc = __('org.invite_description');
+} else {
+    $pageDesc = 'Send an invitation to join your organisation.';
+}
 
 $currentUser = getCurrentUser();
 $orgHandle   = $currentUser['orgHandle'];
@@ -145,10 +153,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                     <div class="mb-3">
                         <label for="invite-role" class="form-label">Role</label>
                         <select class="form-select" id="invite-role" name="invite_role">
-                            <option value="User" <?php echo (($_POST['invite_role'] ?? 'User') === 'User') ? 'selected' : ''; ?>>
+                            <option value="User" <?php if ((($_POST['invite_role'] ?? 'User') === 'User')) { echo 'selected'; } ?>>
                                 User — Can create and manage their own short links
                             </option>
-                            <option value="Admin" <?php echo (($_POST['invite_role'] ?? '') === 'Admin') ? 'selected' : ''; ?>>
+                            <option value="Admin" <?php if ((($_POST['invite_role'] ?? '') === 'Admin')) { echo 'selected'; } ?>>
                                 Admin — Can manage organisation settings, members, and domains
                             </option>
                         </select>

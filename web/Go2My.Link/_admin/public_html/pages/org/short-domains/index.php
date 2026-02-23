@@ -13,8 +13,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('org.short_domains_title') : 'Short Domains';
-$pageDesc  = function_exists('__') ? __('org.short_domains_description') : 'Manage your organisation\'s short URL domains.';
+if (function_exists('__')) {
+    $pageTitle = __('org.short_domains_title');
+} else {
+    $pageTitle = 'Short Domains';
+}
+if (function_exists('__')) {
+    $pageDesc = __('org.short_domains_description');
+} else {
+    $pageDesc = 'Manage your organisation\'s short URL domains.';
+}
 
 $currentUser = getCurrentUser();
 $orgHandle   = $currentUser['orgHandle'];

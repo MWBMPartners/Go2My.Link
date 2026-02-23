@@ -36,7 +36,11 @@ if (!defined('G2ML_COMPONENT'))
 // ============================================================================
 $errorTitle   = $errorTitle ?? '404 — Link Not Found';
 $errorMessage = $errorMessage ?? 'The short link you requested does not exist or has been removed.';
-$siteName     = function_exists('getSetting') ? getSetting('site.name', 'Go2My.Link') : 'Go2My.Link';
+if (function_exists('getSetting')) {
+    $siteName = getSetting('site.name', 'Go2My.Link');
+} else {
+    $siteName = 'Go2My.Link';
+}
 $mainSiteURL  = 'https://go2my.link';
 ?>
 <!DOCTYPE html>

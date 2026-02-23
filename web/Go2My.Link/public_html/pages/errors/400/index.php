@@ -14,8 +14,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('error.400_title') : '400 — Bad Request';
-$pageDesc  = function_exists('__') ? __('error.400_description') : 'The request could not be understood by the server.';
+if (function_exists('__')) {
+    $pageTitle = __('error.400_title');
+} else {
+    $pageTitle = '400 — Bad Request';
+}
+if (function_exists('__')) {
+    $pageDesc = __('error.400_description');
+} else {
+    $pageDesc = 'The request could not be understood by the server.';
+}
 
 http_response_code(400);
 ?>
@@ -28,19 +36,19 @@ http_response_code(400);
             </div>
             <h1 id="error-heading" class="display-4 fw-bold mb-3">400</h1>
             <h2 class="h4 mb-3">
-                <?php echo function_exists('__') ? __('error.400_heading') : 'Bad Request'; ?>
+                <?php if (function_exists('__')) { echo __('error.400_heading'); } else { echo 'Bad Request'; } ?>
             </h2>
             <p class="text-body-secondary mb-4">
-                <?php echo function_exists('__') ? __('error.400_message') : 'The server could not understand your request. Please check the URL and try again.'; ?>
+                <?php if (function_exists('__')) { echo __('error.400_message'); } else { echo 'The server could not understand your request. Please check the URL and try again.'; } ?>
             </p>
             <div class="d-flex justify-content-center gap-2">
                 <a href="/" class="btn btn-primary">
                     <i class="fas fa-home" aria-hidden="true"></i>
-                    <?php echo function_exists('__') ? __('error.go_home') : 'Go Home'; ?>
+                    <?php if (function_exists('__')) { echo __('error.go_home'); } else { echo 'Go Home'; } ?>
                 </a>
                 <a href="/contact" class="btn btn-outline-secondary">
                     <i class="fas fa-envelope" aria-hidden="true"></i>
-                    <?php echo function_exists('__') ? __('error.contact_us') : 'Contact Us'; ?>
+                    <?php if (function_exists('__')) { echo __('error.contact_us'); } else { echo 'Contact Us'; } ?>
                 </a>
             </div>
         </div>

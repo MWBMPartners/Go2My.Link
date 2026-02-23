@@ -58,7 +58,13 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 function g2ml_encrypt(string $plaintext, ?string $key = null): string|false
 {
     // Use the primary encryption salt if no key provided
-    $encryptionKey = $key ?? (defined('ENCRYPTION_SALT') ? ENCRYPTION_SALT : '');
+    if ($key !== null) {
+        $encryptionKey = $key;
+    } elseif (defined('ENCRYPTION_SALT')) {
+        $encryptionKey = ENCRYPTION_SALT;
+    } else {
+        $encryptionKey = '';
+    }
 
     if ($encryptionKey === '' || $encryptionKey === 'CHANGE_ME_TO_A_64_CHAR_HEX_STRING_GENERATED_WITH_RANDOM_BYTES_32')
     {
@@ -114,7 +120,13 @@ function g2ml_encrypt(string $plaintext, ?string $key = null): string|false
 function g2ml_decrypt(string $encrypted, ?string $key = null): string|false
 {
     // Use the primary encryption salt if no key provided
-    $encryptionKey = $key ?? (defined('ENCRYPTION_SALT') ? ENCRYPTION_SALT : '');
+    if ($key !== null) {
+        $encryptionKey = $key;
+    } elseif (defined('ENCRYPTION_SALT')) {
+        $encryptionKey = ENCRYPTION_SALT;
+    } else {
+        $encryptionKey = '';
+    }
 
     if ($encryptionKey === '' || $encryptionKey === 'CHANGE_ME_TO_A_64_CHAR_HEX_STRING_GENERATED_WITH_RANDOM_BYTES_32')
     {

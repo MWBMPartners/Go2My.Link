@@ -106,7 +106,11 @@ function srHeading(string $text, int $level = 2): string
 function ariaLiveRegion(string $id, string $content = '', string $politeness = 'polite', string $role = 'status'): string
 {
     $safeContent = htmlspecialchars($content, ENT_QUOTES, 'UTF-8');
-    $safePoliteness = in_array($politeness, ['polite', 'assertive', 'off'], true) ? $politeness : 'polite';
+    if (in_array($politeness, ['polite', 'assertive', 'off'], true)) {
+        $safePoliteness = $politeness;
+    } else {
+        $safePoliteness = 'polite';
+    }
     $safeRole = htmlspecialchars($role, ENT_QUOTES, 'UTF-8');
 
     return '<div id="' . htmlspecialchars($id, ENT_QUOTES, 'UTF-8') . '"'
@@ -135,7 +139,13 @@ function ariaLiveRegion(string $id, string $content = '', string $politeness = '
  */
 function skipToContent(string $targetID = 'main-content', ?string $text = null): string
 {
-    $linkText = $text ?? (function_exists('__') ? __('a11y.skip_to_content') : 'Skip to main content');
+    if ($text !== null) {
+        $linkText = $text;
+    } elseif (function_exists('__')) {
+        $linkText = __('a11y.skip_to_content');
+    } else {
+        $linkText = 'Skip to main content';
+    }
 
     // If translation returns the key (not found), use English default
     if ($linkText === 'a11y.skip_to_content')
@@ -305,7 +315,11 @@ function formField(array $options): string
 function accessibleAlert(string $message, string $type = 'info', bool $dismissible = true): string
 {
     $safeMessage = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
-    $safeType    = in_array($type, ['success', 'danger', 'warning', 'info', 'primary', 'secondary'], true) ? $type : 'info';
+    if (in_array($type, ['success', 'danger', 'warning', 'info', 'primary', 'secondary'], true)) {
+        $safeType = $type;
+    } else {
+        $safeType = 'info';
+    }
 
     $classes = 'alert alert-' . $safeType;
 
@@ -319,8 +333,13 @@ function accessibleAlert(string $message, string $type = 'info', bool $dismissib
 
     if ($dismissible)
     {
+        if (function_exists('_e')) {
+            $closeLabel = _e('a11y.close_alert');
+        } else {
+            $closeLabel = 'Close';
+        }
         $html .= '<button type="button" class="btn-close" data-bs-dismiss="alert"';
-        $html .= ' aria-label="' . (function_exists('_e') ? _e('a11y.close_alert') : 'Close') . '"></button>';
+        $html .= ' aria-label="' . $closeLabel . '"></button>';
     }
 
     $html .= '</div>';

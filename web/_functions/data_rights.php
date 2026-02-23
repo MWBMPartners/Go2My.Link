@@ -139,8 +139,11 @@ function g2ml_requestDataExport(int $userUID): array
         file_put_contents($filepath, $jsonContent);
 
         // Calculate expiry
-        $expiryHours = function_exists('getSetting')
-                       ? (int) getSetting('compliance.data_export_expiry_hours', 48) : 48;
+        if (function_exists('getSetting')) {
+        $expiryHours = (int) getSetting('compliance.data_export_expiry_hours', 48);
+    } else {
+        $expiryHours = 48;
+    }
         $expiresAt   = date('Y-m-d H:i:s', strtotime("+{$expiryHours} hours"));
 
         // Create request record
@@ -229,8 +232,11 @@ function g2ml_requestDataDeletion(int $userUID, ?string $reason = null): array
         return ['success' => false, 'error' => 'A deletion request is already pending'];
     }
 
-    $graceDays = function_exists('getSetting')
-                 ? (int) getSetting('compliance.data_deletion_grace_days', 30) : 30;
+    if (function_exists('getSetting')) {
+        $graceDays = (int) getSetting('compliance.data_deletion_grace_days', 30);
+    } else {
+        $graceDays = 30;
+    }
 
     try
     {
@@ -385,7 +391,11 @@ function g2ml_processDataDeletion(int $requestUID, int $processedByUserUID): boo
     $success = g2ml_anonymiseUserData($request['userUID']);
 
     // Update request status
-    $newStatus = $success ? 'completed' : 'rejected';
+    if ($success) {
+        $newStatus = 'completed';
+    } else {
+        $newStatus = 'rejected';
+    }
     $sql  = "UPDATE tblDataDeletionRequests
              SET status = ?, processedByUserUID = ?, processedAt = NOW()
              WHERE requestUID = ?";

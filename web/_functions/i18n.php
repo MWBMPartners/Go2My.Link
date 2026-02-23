@@ -129,9 +129,11 @@ function detectLocale(): string
     // 5. Fall back to default
     if ($locale === null)
     {
-        $locale = function_exists('getSetting')
-            ? getSetting('site.default_locale', 'en-GB')
-            : 'en-GB';
+        if (function_exists('getSetting')) {
+            $locale = getSetting('site.default_locale', 'en-GB');
+        } else {
+            $locale = 'en-GB';
+        }
     }
 
     g2ml_setLocale($locale);
@@ -553,7 +555,11 @@ function _g2ml_parseAcceptLanguage(string $header): ?string
         for ($i = 0; $i < count($matches[1]); $i++)
         {
             $locale  = $matches[1][$i];
-            $quality = isset($matches[2][$i]) && $matches[2][$i] !== '' ? (float) $matches[2][$i] : 1.0;
+            if (isset($matches[2][$i]) && $matches[2][$i] !== '') {
+                $quality = (float) $matches[2][$i];
+            } else {
+                $quality = 1.0;
+            }
             $locales[$locale] = $quality;
         }
     }

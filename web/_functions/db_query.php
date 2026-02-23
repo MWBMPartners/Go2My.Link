@@ -249,7 +249,11 @@ function dbInsert(string $sql, string $types = '', array $params = []): int|bool
         _g2ml_logQuery($sql, $params, (microtime(true) - $startTime) * 1000, true);
 
         // Return the insert ID if available, otherwise return true for success
-        return ($insertID > 0) ? $insertID : true;
+        if (($insertID > 0)) {
+            return $insertID;
+        } else {
+            return true;
+        }
     }
     catch (mysqli_sql_exception $e)
     {

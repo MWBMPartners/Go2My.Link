@@ -39,7 +39,11 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 
 // Only show the translate widget if the current language doesn't have
 // high-quality formal translations
-$currentLocale   = function_exists('getLocale') ? getLocale() : 'en-GB';
+if (function_exists('getLocale')) {
+    $currentLocale = getLocale();
+} else {
+    $currentLocale = 'en-GB';
+}
 $defaultLocale   = $GLOBALS['_g2ml_default_locale'] ?? 'en-GB';
 
 // Don't show widget for the default language (English already complete)
@@ -57,7 +61,7 @@ if ($currentLocale === $defaultLocale)
      style="background:#f8f9fa;border-top:1px solid #dee2e6;">
     <small class="text-muted">
         <i class="fas fa-language" aria-hidden="true"></i>
-        <?php echo function_exists('__') ? __('translate.powered_by') : 'Machine translation powered by'; ?>
+        <?php if (function_exists('__')) { echo __('translate.powered_by'); } else { echo 'Machine translation powered by'; } ?>
     </small>
     <div id="google_translate_element" class="d-inline-block ms-2"></div>
 </div>

@@ -34,13 +34,39 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 // ============================================================================
 // 📋 Default Variable Values
 // ============================================================================
-$siteName  = function_exists('getSetting') ? getSetting('site.name', 'Go2My.Link') : 'Go2My.Link';
-$pageTitle = isset($pageTitle) ? $pageTitle . ' — ' . $siteName : $siteName;
-$pageDesc  = $pageDesc ?? (function_exists('getSetting') ? getSetting('site.tagline', 'Shorten. Track. Manage.') : 'Shorten. Track. Manage.');
+if (function_exists('getSetting')) {
+    $siteName = getSetting('site.name', 'Go2My.Link');
+} else {
+    $siteName = 'Go2My.Link';
+}
+if (isset($pageTitle)) {
+    $pageTitle = $pageTitle . ' — ' . $siteName;
+} else {
+    $pageTitle = $siteName;
+}
+if (!isset($pageDesc)) {
+    if (function_exists('getSetting')) {
+        $pageDesc = getSetting('site.tagline', 'Shorten. Track. Manage.');
+    } else {
+        $pageDesc = 'Shorten. Track. Manage.';
+    }
+}
 $bodyClass = $bodyClass ?? '';
-$locale    = function_exists('getLocale') ? getLocale() : 'en-GB';
-$textDir   = function_exists('getTextDirection') ? getTextDirection() : 'ltr';
-$componentDomain = defined('G2ML_COMPONENT_DOMAIN') ? G2ML_COMPONENT_DOMAIN : 'go2my.link';
+if (function_exists('getLocale')) {
+    $locale = getLocale();
+} else {
+    $locale = 'en-GB';
+}
+if (function_exists('getTextDirection')) {
+    $textDir = getTextDirection();
+} else {
+    $textDir = 'ltr';
+}
+if (defined('G2ML_COMPONENT_DOMAIN')) {
+    $componentDomain = G2ML_COMPONENT_DOMAIN;
+} else {
+    $componentDomain = 'go2my.link';
+}
 
 // ============================================================================
 // 🎨 Theme Preference (Dark/Light Mode)
@@ -59,7 +85,11 @@ if (!in_array($themePref, $validThemes, true))
     $themePref = 'auto';
 }
 
-$initialTheme = ($themePref === 'auto') ? 'light' : $themePref;
+if (($themePref === 'auto')) {
+    $initialTheme = 'light';
+} else {
+    $initialTheme = $themePref;
+}
 ?>
 <!DOCTYPE html>
 <html lang="<?php echo htmlspecialchars($locale, ENT_QUOTES, 'UTF-8'); ?>"
@@ -167,7 +197,14 @@ $initialTheme = ($themePref === 'auto') ? 'light' : $themePref;
         }
     </script>
 </head>
-<body class="<?php echo htmlspecialchars(trim('g2ml-' . (defined('G2ML_COMPONENT') ? G2ML_COMPONENT : 'unknown') . ' ' . $bodyClass), ENT_QUOTES, 'UTF-8'); ?>">
+<?php
+if (defined('G2ML_COMPONENT')) {
+    $bodyComponent = G2ML_COMPONENT;
+} else {
+    $bodyComponent = 'unknown';
+}
+?>
+<body class="<?php echo htmlspecialchars(trim('g2ml-' . $bodyComponent . ' ' . $bodyClass), ENT_QUOTES, 'UTF-8'); ?>">
 
 <?php
 // Skip to content link (first focusable element)

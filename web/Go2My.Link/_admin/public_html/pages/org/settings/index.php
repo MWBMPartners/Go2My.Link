@@ -14,8 +14,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('org.settings_title') : 'Organisation Settings';
-$pageDesc  = function_exists('__') ? __('org.settings_description') : 'Update your organisation details.';
+if (function_exists('__')) {
+    $pageTitle = __('org.settings_title');
+} else {
+    $pageTitle = 'Organisation Settings';
+}
+if (function_exists('__')) {
+    $pageDesc = __('org.settings_description');
+} else {
+    $pageDesc = 'Update your organisation details.';
+}
 
 $currentUser = getCurrentUser();
 $orgHandle   = $currentUser['orgHandle'];
@@ -80,9 +88,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ba
         else
         {
             // Empty strings → null for optional fields
-            if ($updateData['orgURL'] === '') $updateData['orgURL'] = null;
-            if ($updateData['orgDescription'] === '') $updateData['orgDescription'] = null;
-            if ($updateData['orgFallbackURL'] === '') $updateData['orgFallbackURL'] = null;
+            if ($updateData['orgURL'] === '') {
+                $updateData['orgURL'] = null;
+            }
+            if ($updateData['orgDescription'] === '') {
+                $updateData['orgDescription'] = null;
+            }
+            if ($updateData['orgFallbackURL'] === '') {
+                $updateData['orgFallbackURL'] = null;
+            }
 
             $result = updateOrganisation($orgHandle, $updateData);
 
@@ -117,14 +131,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ad
     }
     else
     {
+        if (isset($_POST['is_verified'])) {
+            $isVerifiedVal = 1;
+        } else {
+            $isVerifiedVal = 0;
+        }
+        if (isset($_POST['is_active'])) {
+            $isActiveVal = 1;
+        } else {
+            $isActiveVal = 0;
+        }
+
         $adminData = [
             'tierID'     => trim(g2ml_sanitiseInput($_POST['tier_id'] ?? '')),
-            'isVerified' => isset($_POST['is_verified']) ? 1 : 0,
-            'isActive'   => isset($_POST['is_active']) ? 1 : 0,
+            'isVerified' => $isVerifiedVal,
+            'isActive'   => $isActiveVal,
             'orgNotes'   => trim(g2ml_sanitiseInput($_POST['org_notes'] ?? '')),
         ];
 
-        if ($adminData['orgNotes'] === '') $adminData['orgNotes'] = null;
+        if ($adminData['orgNotes'] === '') {
+            $adminData['orgNotes'] = null;
+        }
 
         $result = updateOrganisation($orgHandle, $adminData);
 
@@ -144,7 +171,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['form_type'] ?? '') === 'ad
 $tiers = [];
 if ($isGlobalAdmin)
 {
-    $tiers = dbSelect("SELECT tierID, tierName FROM tblSubscriptionTiers ORDER BY tierUID ASC", '', []) ?: [];
+    $result = dbSelect("SELECT tierID, tierName FROM tblSubscriptionTiers ORDER BY tierUID ASC", '', []);
+    if ($result) {
+        $tiers = $result;
+    } else {
+        $tiers = [];
+    }
 }
 ?>
 
@@ -161,7 +193,7 @@ if ($isGlobalAdmin)
 
         <h1 id="org-settings-heading" class="h2 mb-4">
             <i class="fas fa-cog" aria-hidden="true"></i>
-            <?php echo function_exists('__') ? __('org.settings_heading') : 'Organisation Settings'; ?>
+            <?php if (function_exists('__')) { echo __('org.settings_heading'); } else { echo 'Organisation Settings'; } ?>
         </h1>
 
         <div class="row g-4">
@@ -284,7 +316,7 @@ if ($isGlobalAdmin)
                                 <select class="form-select" id="tier-id" name="tier_id">
                                     <?php foreach ($tiers as $tier) { ?>
                                     <option value="<?php echo g2ml_sanitiseOutput($tier['tierID']); ?>"
-                                        <?php echo ($org['tierID'] === $tier['tierID']) ? 'selected' : ''; ?>>
+                                        <?php if (($org['tierID'] === $tier['tierID'])) { echo 'selected'; } ?>>
                                         <?php echo g2ml_sanitiseOutput($tier['tierName']); ?>
                                     </option>
                                     <?php } ?>
@@ -294,14 +326,14 @@ if ($isGlobalAdmin)
                             <!-- Verified -->
                             <div class="form-check mb-3">
                                 <input class="form-check-input" type="checkbox" id="is-verified" name="is_verified" value="1"
-                                       <?php echo ((int) $org['isVerified']) ? 'checked' : ''; ?>>
+                                       <?php if (((int) $org['isVerified'])) { echo 'checked'; } ?>>
                                 <label class="form-check-label" for="is-verified">Verified Organisation</label>
                             </div>
 
                             <!-- Active -->
                             <div class="form-check mb-3">
                                 <input class="form-check-input" type="checkbox" id="is-active" name="is_active" value="1"
-                                       <?php echo ((int) $org['isActive']) ? 'checked' : ''; ?>>
+                                       <?php if (((int) $org['isActive'])) { echo 'checked'; } ?>>
                                 <label class="form-check-label" for="is-active">Active</label>
                             </div>
 

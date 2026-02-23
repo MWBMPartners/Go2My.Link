@@ -28,7 +28,11 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 }
 
 $currentYear = date('Y');
-$siteName    = function_exists('getSetting') ? getSetting('site.name', 'Go2My.Link') : 'Go2My.Link';
+if (function_exists('getSetting')) {
+    $siteName = getSetting('site.name', 'Go2My.Link');
+} else {
+    $siteName = 'Go2My.Link';
+}
 ?>
 
 </main><!-- /#main-content -->
@@ -44,34 +48,34 @@ $siteName    = function_exists('getSetting') ? getSetting('site.name', 'Go2My.Li
             <div class="col-md-4 mb-3">
                 <h5><?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?></h5>
                 <p class="text-body-secondary small">
-                    <?php echo function_exists('getSetting') ? htmlspecialchars(getSetting('site.tagline', 'Shorten. Track. Manage.'), ENT_QUOTES, 'UTF-8') : 'Shorten. Track. Manage.'; ?>
+                    <?php if (function_exists('getSetting')) { echo htmlspecialchars(getSetting('site.tagline', 'Shorten. Track. Manage.'), ENT_QUOTES, 'UTF-8'); } else { echo 'Shorten. Track. Manage.'; } ?>
                 </p>
                 <p class="text-body-secondary small mb-0">
                     &copy; <?php echo $currentYear; ?> MWBM Partners Ltd.
-                    <?php echo function_exists('__') ? __('footer.rights') : 'All rights reserved.'; ?>
+                    <?php if (function_exists('__')) { echo __('footer.rights'); } else { echo 'All rights reserved.'; } ?>
                 </p>
             </div>
 
             <!-- Column 2: Quick Links -->
             <div class="col-md-4 mb-3">
-                <h6><?php echo function_exists('__') ? __('footer.quick_links') : 'Quick Links'; ?></h6>
+                <h6><?php if (function_exists('__')) { echo __('footer.quick_links'); } else { echo 'Quick Links'; } ?></h6>
                 <ul class="list-unstyled small">
-                    <li><a href="/about" class="text-body-secondary text-decoration-none"><?php echo function_exists('__') ? __('nav.about') : 'About'; ?></a></li>
-                    <li><a href="/features" class="text-body-secondary text-decoration-none"><?php echo function_exists('__') ? __('nav.features') : 'Features'; ?></a></li>
-                    <li><a href="/pricing" class="text-body-secondary text-decoration-none"><?php echo function_exists('__') ? __('nav.pricing') : 'Pricing'; ?></a></li>
-                    <li><a href="/contact" class="text-body-secondary text-decoration-none"><?php echo function_exists('__') ? __('footer.contact') : 'Contact'; ?></a></li>
+                    <li><a href="/about" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('nav.about'); } else { echo 'About'; } ?></a></li>
+                    <li><a href="/features" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('nav.features'); } else { echo 'Features'; } ?></a></li>
+                    <li><a href="/pricing" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('nav.pricing'); } else { echo 'Pricing'; } ?></a></li>
+                    <li><a href="/contact" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.contact'); } else { echo 'Contact'; } ?></a></li>
                 </ul>
             </div>
 
             <!-- Column 3: Legal -->
             <div class="col-md-4 mb-3">
-                <h6><?php echo function_exists('__') ? __('footer.legal') : 'Legal'; ?></h6>
+                <h6><?php if (function_exists('__')) { echo __('footer.legal'); } else { echo 'Legal'; } ?></h6>
                 <ul class="list-unstyled small">
-                    <li><a href="/legal/terms" class="text-body-secondary text-decoration-none"><?php echo function_exists('__') ? __('footer.terms') : 'Terms of Use'; ?></a></li>
-                    <li><a href="/legal/privacy" class="text-body-secondary text-decoration-none"><?php echo function_exists('__') ? __('footer.privacy') : 'Privacy Policy'; ?></a></li>
-                    <li><a href="/legal/cookies" class="text-body-secondary text-decoration-none"><?php echo function_exists('__') ? __('footer.cookies') : 'Cookie Policy'; ?></a></li>
-                    <li><a href="/legal/acceptable-use" class="text-body-secondary text-decoration-none"><?php echo function_exists('__') ? __('footer.aup') : 'Acceptable Use'; ?></a></li>
-                    <li><a href="/legal/copyright" class="text-body-secondary text-decoration-none"><?php echo function_exists('__') ? __('footer.copyright') : 'Copyright'; ?></a></li>
+                    <li><a href="/legal/terms" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.terms'); } else { echo 'Terms of Use'; } ?></a></li>
+                    <li><a href="/legal/privacy" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.privacy'); } else { echo 'Privacy Policy'; } ?></a></li>
+                    <li><a href="/legal/cookies" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.cookies'); } else { echo 'Cookie Policy'; } ?></a></li>
+                    <li><a href="/legal/acceptable-use" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.aup'); } else { echo 'Acceptable Use'; } ?></a></li>
+                    <li><a href="/legal/copyright" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.copyright'); } else { echo 'Copyright'; } ?></a></li>
                 </ul>
             </div>
 
@@ -92,7 +96,7 @@ if (file_exists(G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'cookie_banner.php'))
 <!-- ====================================================================== -->
 <!-- ARIA Live Region for Dynamic Status Updates                            -->
 <!-- ====================================================================== -->
-<?php echo function_exists('ariaLiveRegion') ? ariaLiveRegion('global-status', '', 'polite', 'status') : ''; ?>
+<?php if (function_exists('ariaLiveRegion')) { echo ariaLiveRegion('global-status', '', 'polite', 'status'); } ?>
 
 <!-- ====================================================================== -->
 <!-- Interim Translation Widget                                             -->
@@ -189,7 +193,7 @@ if (defined('G2ML_DEBUG') && G2ML_DEBUG === true && function_exists('g2ml_getDeb
                             <?php echo htmlspecialchars(substr($q['sql'], 0, 120), ENT_QUOTES, 'UTF-8'); ?>
                         </td>
                         <td style="padding:2px 5px;text-align:right;"><?php echo $q['duration']; ?>ms</td>
-                        <td style="padding:2px 5px;text-align:center;"><?php echo $q['success'] ? '✅' : '❌'; ?></td>
+                        <td style="padding:2px 5px;text-align:center;"><?php if ($q['success']) { echo '✅'; } else { echo '❌'; } ?></td>
                     </tr>
                 <?php } ?>
                 </tbody>

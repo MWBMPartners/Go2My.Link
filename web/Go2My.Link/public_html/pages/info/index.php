@@ -19,8 +19,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('info.title') : 'Link Info';
-$pageDesc  = function_exists('__') ? __('info.description') : 'Preview and inspect a Go2My.Link short URL before visiting.';
+if (function_exists('__')) {
+    $pageTitle = __('info.title');
+} else {
+    $pageTitle = 'Link Info';
+}
+if (function_exists('__')) {
+    $pageDesc = __('info.description');
+} else {
+    $pageDesc = 'Preview and inspect a Go2My.Link short URL before visiting.';
+}
 
 // ============================================================================
 // Determine the short code to look up
@@ -81,9 +89,11 @@ elseif (isset($_GET['url']) && $_GET['url'] !== '')
 
     if ($shortCode === '')
     {
-        $infoError = function_exists('__')
-            ? __('info.error_invalid_url')
-            : 'Could not extract a short code from that URL. Please enter a valid Go2My.Link short URL.';
+        if (function_exists('__')) {
+            $infoError = __('info.error_invalid_url');
+        } else {
+            $infoError = 'Could not extract a short code from that URL. Please enter a valid Go2My.Link short URL.';
+        }
     }
 }
 
@@ -109,9 +119,11 @@ if ($shortCode !== '')
 
     if ($linkData === null || $linkData === false)
     {
-        $infoError = function_exists('__')
-            ? __('info.error_not_found')
-            : 'No link found with that short code.';
+        if (function_exists('__')) {
+            $infoError = __('info.error_not_found');
+        } else {
+            $infoError = 'No link found with that short code.';
+        }
         $linkData = null;
     }
 }
@@ -161,22 +173,38 @@ if ($linkData !== null)
 
     if (!$linkData['isActive'])
     {
-        $statusBadge = function_exists('__') ? __('info.status_inactive') : 'Inactive';
+        if (function_exists('__')) {
+            $statusBadge = __('info.status_inactive');
+        } else {
+            $statusBadge = 'Inactive';
+        }
         $statusClass = 'bg-secondary';
     }
     elseif ($linkData['endDate'] !== null && strtotime($linkData['endDate']) < $now)
     {
-        $statusBadge = function_exists('__') ? __('info.status_expired') : 'Expired';
+        if (function_exists('__')) {
+            $statusBadge = __('info.status_expired');
+        } else {
+            $statusBadge = 'Expired';
+        }
         $statusClass = 'bg-warning text-dark';
     }
     elseif ($linkData['startDate'] !== null && strtotime($linkData['startDate']) > $now)
     {
-        $statusBadge = function_exists('__') ? __('info.status_scheduled') : 'Scheduled';
+        if (function_exists('__')) {
+            $statusBadge = __('info.status_scheduled');
+        } else {
+            $statusBadge = 'Scheduled';
+        }
         $statusClass = 'bg-info';
     }
     else
     {
-        $statusBadge = function_exists('__') ? __('info.status_active') : 'Active';
+        if (function_exists('__')) {
+            $statusBadge = __('info.status_active');
+        } else {
+            $statusBadge = 'Active';
+        }
         $statusClass = 'bg-success';
     }
 }
@@ -204,10 +232,10 @@ if ($linkData !== null)
 <section class="page-header text-center" aria-labelledby="info-heading">
     <div class="container">
         <h1 id="info-heading" class="display-4 fw-bold">
-            <?php echo function_exists('__') ? __('info.heading') : 'Link Info'; ?>
+            <?php if (function_exists('__')) { echo __('info.heading'); } else { echo 'Link Info'; } ?>
         </h1>
         <p class="lead text-body-secondary">
-            <?php echo function_exists('__') ? __('info.subtitle') : 'Preview a short link before visiting.'; ?>
+            <?php if (function_exists('__')) { echo __('info.subtitle'); } else { echo 'Preview a short link before visiting.'; } ?>
         </p>
     </div>
 </section>
@@ -223,27 +251,42 @@ if ($linkData !== null)
                     <div class="card-body p-4">
                         <h2 id="search-heading" class="h5 mb-3">
                             <i class="fas fa-search" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('info.search_heading') : 'Look Up a Link'; ?>
+                            <?php if (function_exists('__')) { echo __('info.search_heading'); } else { echo 'Look Up a Link'; } ?>
                         </h2>
 
                         <form action="/info" method="GET" id="info-search-form">
                             <?php
+                                if (function_exists('__')) {
+                                    $fieldLabel = __('info.search_label');
+                                } else {
+                                    $fieldLabel = 'Short URL or Code';
+                                }
+                                if (function_exists('__')) {
+                                    $fieldHelpText = __('info.search_help');
+                                } else {
+                                    $fieldHelpText = 'Enter a Go2My.Link short URL or just the short code.';
+                                }
+                                if (isset($_GET['url'])) {
+                                    $fieldValue = g2ml_sanitiseOutput($_GET['url']);
+                                } else {
+                                    $fieldValue = '';
+                                }
                             echo formField([
                                 'id'          => 'info-url',
                                 'name'        => 'url',
-                                'label'       => function_exists('__') ? __('info.search_label') : 'Short URL or Code',
+                                'label' => $fieldLabel,
                                 'type'        => 'text',
                                 'placeholder' => 'g2my.link/abc123',
                                 'required'    => true,
-                                'helpText'    => function_exists('__') ? __('info.search_help') : 'Enter a Go2My.Link short URL or just the short code.',
-                                'value'       => isset($_GET['url']) ? g2ml_sanitiseOutput($_GET['url']) : '',
+                                'helpText' => $fieldHelpText,
+                                'value' => $fieldValue,
                             ]);
                             ?>
 
                             <div class="d-grid">
                                 <button type="submit" class="btn btn-primary">
                                     <i class="fas fa-search" aria-hidden="true"></i>
-                                    <?php echo function_exists('__') ? __('info.search_button') : 'Look Up'; ?>
+                                    <?php if (function_exists('__')) { echo __('info.search_button'); } else { echo 'Look Up'; } ?>
                                 </button>
                             </div>
                         </form>
@@ -284,13 +327,13 @@ if ($linkData !== null)
                     <div class="card-body p-4">
                         <h2 id="link-info-heading" class="h5 mb-4">
                             <i class="fas fa-info-circle" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('info.details_heading') : 'Link Details'; ?>
+                            <?php if (function_exists('__')) { echo __('info.details_heading'); } else { echo 'Link Details'; } ?>
                         </h2>
 
                         <dl class="row mb-0">
                             <!-- Short URL -->
                             <dt class="col-sm-4 text-body-secondary">
-                                <?php echo function_exists('__') ? __('info.label_short_url') : 'Short URL'; ?>
+                                <?php if (function_exists('__')) { echo __('info.label_short_url'); } else { echo 'Short URL'; } ?>
                             </dt>
                             <dd class="col-sm-8">
                                 <a href="<?php echo g2ml_sanitiseOutput($shortURL); ?>"
@@ -302,7 +345,7 @@ if ($linkData !== null)
 
                             <!-- Destination -->
                             <dt class="col-sm-4 text-body-secondary">
-                                <?php echo function_exists('__') ? __('info.label_destination') : 'Destination'; ?>
+                                <?php if (function_exists('__')) { echo __('info.label_destination'); } else { echo 'Destination'; } ?>
                             </dt>
                             <dd class="col-sm-8">
                                 <i class="fas fa-external-link-alt text-body-secondary" aria-hidden="true"></i>
@@ -311,7 +354,7 @@ if ($linkData !== null)
 
                             <!-- Status -->
                             <dt class="col-sm-4 text-body-secondary">
-                                <?php echo function_exists('__') ? __('info.label_status') : 'Status'; ?>
+                                <?php if (function_exists('__')) { echo __('info.label_status'); } else { echo 'Status'; } ?>
                             </dt>
                             <dd class="col-sm-8">
                                 <span class="badge <?php echo $statusClass; ?>">
@@ -322,7 +365,7 @@ if ($linkData !== null)
                             <!-- Title (if set) -->
                             <?php if (!empty($linkData['title'])) { ?>
                             <dt class="col-sm-4 text-body-secondary">
-                                <?php echo function_exists('__') ? __('info.label_title') : 'Title'; ?>
+                                <?php if (function_exists('__')) { echo __('info.label_title'); } else { echo 'Title'; } ?>
                             </dt>
                             <dd class="col-sm-8">
                                 <?php echo g2ml_sanitiseOutput($linkData['title']); ?>
@@ -332,7 +375,7 @@ if ($linkData !== null)
                             <!-- Category (if set) -->
                             <?php if (!empty($linkData['categoryName'])) { ?>
                             <dt class="col-sm-4 text-body-secondary">
-                                <?php echo function_exists('__') ? __('info.label_category') : 'Category'; ?>
+                                <?php if (function_exists('__')) { echo __('info.label_category'); } else { echo 'Category'; } ?>
                             </dt>
                             <dd class="col-sm-8">
                                 <?php echo g2ml_sanitiseOutput($linkData['categoryName']); ?>
@@ -341,7 +384,7 @@ if ($linkData !== null)
 
                             <!-- Created Date -->
                             <dt class="col-sm-4 text-body-secondary">
-                                <?php echo function_exists('__') ? __('info.label_created') : 'Created'; ?>
+                                <?php if (function_exists('__')) { echo __('info.label_created'); } else { echo 'Created'; } ?>
                             </dt>
                             <dd class="col-sm-8">
                                 <time datetime="<?php echo g2ml_sanitiseOutput($linkData['createdAt']); ?>">
@@ -354,16 +397,20 @@ if ($linkData !== null)
                             <!-- Date Range (if set) -->
                             <?php if (!empty($linkData['startDate']) || !empty($linkData['endDate'])) { ?>
                             <dt class="col-sm-4 text-body-secondary">
-                                <?php echo function_exists('__') ? __('info.label_active_period') : 'Active Period'; ?>
+                                <?php if (function_exists('__')) { echo __('info.label_active_period'); } else { echo 'Active Period'; } ?>
                             </dt>
                             <dd class="col-sm-8">
                                 <?php
-                                $start = !empty($linkData['startDate'])
-                                    ? date('j M Y', strtotime($linkData['startDate']))
-                                    : '...';
-                                $end = !empty($linkData['endDate'])
-                                    ? date('j M Y', strtotime($linkData['endDate']))
-                                    : '...';
+                                if (!empty($linkData['startDate'])) {
+                                    $start = date('j M Y', strtotime($linkData['startDate']));
+                                } else {
+                                    $start = '...';
+                                }
+                                if (!empty($linkData['endDate'])) {
+                                    $end = date('j M Y', strtotime($linkData['endDate']));
+                                } else {
+                                    $end = '...';
+                                }
                                 echo g2ml_sanitiseOutput($start . ' — ' . $end);
                                 ?>
                             </dd>
@@ -377,11 +424,11 @@ if ($linkData !== null)
                            class="btn btn-primary"
                            target="_blank" rel="noopener noreferrer">
                             <i class="fas fa-external-link-alt" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('info.visit_link') : 'Visit Link'; ?>
+                            <?php if (function_exists('__')) { echo __('info.visit_link'); } else { echo 'Visit Link'; } ?>
                         </a>
                         <a href="/" class="btn btn-outline-primary ms-2">
                             <i class="fas fa-plus" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('info.create_link') : 'Create a Short Link'; ?>
+                            <?php if (function_exists('__')) { echo __('info.create_link'); } else { echo 'Create a Short Link'; } ?>
                         </a>
                     </div>
                 </div>
@@ -398,33 +445,33 @@ if ($linkData !== null)
 <section class="py-5 bg-body-tertiary" aria-labelledby="how-heading">
     <div class="container">
         <h2 id="how-heading" class="h3 text-center mb-4">
-            <?php echo function_exists('__') ? __('info.how_heading') : 'How It Works'; ?>
+            <?php if (function_exists('__')) { echo __('info.how_heading'); } else { echo 'How It Works'; } ?>
         </h2>
         <div class="row text-center g-4">
             <div class="col-md-4">
                 <div class="p-3">
                     <i class="fas fa-paste fa-2x text-primary mb-3" aria-hidden="true"></i>
-                    <h3 class="h6"><?php echo function_exists('__') ? __('info.how_step1') : '1. Paste a Short URL'; ?></h3>
+                    <h3 class="h6"><?php if (function_exists('__')) { echo __('info.how_step1'); } else { echo '1. Paste a Short URL'; } ?></h3>
                     <p class="text-body-secondary small mb-0">
-                        <?php echo function_exists('__') ? __('info.how_step1_desc') : 'Enter any Go2My.Link short URL in the search box above.'; ?>
+                        <?php if (function_exists('__')) { echo __('info.how_step1_desc'); } else { echo 'Enter any Go2My.Link short URL in the search box above.'; } ?>
                     </p>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="p-3">
                     <i class="fas fa-eye fa-2x text-success mb-3" aria-hidden="true"></i>
-                    <h3 class="h6"><?php echo function_exists('__') ? __('info.how_step2') : '2. Preview the Destination'; ?></h3>
+                    <h3 class="h6"><?php if (function_exists('__')) { echo __('info.how_step2'); } else { echo '2. Preview the Destination'; } ?></h3>
                     <p class="text-body-secondary small mb-0">
-                        <?php echo function_exists('__') ? __('info.how_step2_desc') : 'See where the link goes before clicking — the destination domain is displayed.'; ?>
+                        <?php if (function_exists('__')) { echo __('info.how_step2_desc'); } else { echo 'See where the link goes before clicking — the destination domain is displayed.'; } ?>
                     </p>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="p-3">
                     <i class="fas fa-shield-alt fa-2x text-danger mb-3" aria-hidden="true"></i>
-                    <h3 class="h6"><?php echo function_exists('__') ? __('info.how_step3') : '3. Visit Safely'; ?></h3>
+                    <h3 class="h6"><?php if (function_exists('__')) { echo __('info.how_step3'); } else { echo '3. Visit Safely'; } ?></h3>
                     <p class="text-body-secondary small mb-0">
-                        <?php echo function_exists('__') ? __('info.how_step3_desc') : 'If the link looks safe, click to visit. If not, close the tab and stay protected.'; ?>
+                        <?php if (function_exists('__')) { echo __('info.how_step3_desc'); } else { echo 'If the link looks safe, click to visit. If not, close the tab and stay protected.'; } ?>
                     </p>
                 </div>
             </div>

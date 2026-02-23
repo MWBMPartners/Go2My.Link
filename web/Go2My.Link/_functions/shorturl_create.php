@@ -296,9 +296,11 @@ function checkAnonymousRateLimit(string $ipAddress): array
         [$ipAddress]
     );
 
-    $hourlyCount = ($hourlyRow !== null && $hourlyRow !== false)
-        ? (int) $hourlyRow['cnt']
-        : 0;
+    if (($hourlyRow !== null && $hourlyRow !== false)) {
+        $hourlyCount = (int) $hourlyRow['cnt'];
+    } else {
+        $hourlyCount = 0;
+    }
 
     // Count recent creations from this IP (daily window)
     $dailyRow = dbSelectOne(
@@ -311,9 +313,11 @@ function checkAnonymousRateLimit(string $ipAddress): array
         [$ipAddress]
     );
 
-    $dailyCount = ($dailyRow !== null && $dailyRow !== false)
-        ? (int) $dailyRow['cnt']
-        : 0;
+    if (($dailyRow !== null && $dailyRow !== false)) {
+        $dailyCount = (int) $dailyRow['cnt'];
+    } else {
+        $dailyCount = 0;
+    }
 
     // Check if limits are exceeded
     $allowed   = ($hourlyCount < $perHour) && ($dailyCount < $perDay);

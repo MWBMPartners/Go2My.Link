@@ -14,8 +14,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('sessions.title') : 'Active Sessions';
-$pageDesc  = function_exists('__') ? __('sessions.description') : 'View and manage your active sessions.';
+if (function_exists('__')) {
+    $pageTitle = __('sessions.title');
+} else {
+    $pageTitle = 'Active Sessions';
+}
+if (function_exists('__')) {
+    $pageDesc = __('sessions.description');
+} else {
+    $pageDesc = 'View and manage your active sessions.';
+}
 
 $currentUser = getCurrentUser();
 $userUID     = $currentUser['userUID'];
@@ -84,9 +92,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             {
                 $count = revokeAllOtherSessions($userUID, $currentToken);
 
-                $actionSuccess = ($count > 0)
-                    ? $count . ' other session(s) revoked.'
-                    : 'No other active sessions to revoke.';
+                if (($count > 0)) {
+                    $actionSuccess = $count . ' other session(s) revoked.';
+                } else {
+                    $actionSuccess = 'No other active sessions to revoke.';
+                }
 
                 logActivity('revoke_all_sessions', 'success', 200, [
                     'userUID' => $userUID,
@@ -125,7 +135,7 @@ $sessions = listUserSessions($userUID);
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 id="sessions-heading" class="h2 mb-0">
                 <i class="fas fa-desktop" aria-hidden="true"></i>
-                <?php echo function_exists('__') ? __('sessions.heading') : 'Active Sessions'; ?>
+                <?php if (function_exists('__')) { echo __('sessions.heading'); } else { echo 'Active Sessions'; } ?>
             </h1>
 
             <?php if (count($sessions) > 1) { ?>
@@ -142,9 +152,7 @@ $sessions = listUserSessions($userUID);
         </div>
 
         <p class="text-body-secondary mb-4">
-            <?php echo function_exists('__')
-                ? __('sessions.intro')
-                : 'These are the devices currently signed in to your account. If you see a device you don\'t recognise, revoke it and change your password.'; ?>
+            <?php if (function_exists('__')) { echo __('sessions.intro'); } else { echo 'These are the devices currently signed in to your account. If you see a device you don\'t recognise, revoke it and change your password.'; } ?>
         </p>
 
         <!-- Alerts -->
@@ -175,7 +183,7 @@ $sessions = listUserSessions($userUID);
         <div class="row g-3">
             <?php foreach ($sessions as $session) { ?>
             <div class="col-12">
-                <div class="card shadow-sm <?php echo $session['isCurrent'] ? 'border-primary' : ''; ?>">
+                <div class="card shadow-sm <?php if ($session['isCurrent']) { echo 'border-primary'; } ?>">
                     <div class="card-body">
                         <div class="row align-items-center">
 
@@ -249,7 +257,7 @@ $sessions = listUserSessions($userUID);
                                 </p>
                                 <p class="small text-body-secondary mb-0">
                                     <strong>Signed in:</strong><br>
-                                    <?php echo $session['createdAt'] ? date('j M Y, H:i', strtotime($session['createdAt'])) : 'Unknown'; ?>
+                                    <?php if ($session['createdAt']) { echo date('j M Y, H:i', strtotime($session['createdAt'])); } else { echo 'Unknown'; } ?>
                                 </p>
                             </div>
 

@@ -14,8 +14,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('logout.title') : 'Logging Out';
-$pageDesc  = function_exists('__') ? __('logout.description') : 'You are being logged out.';
+if (function_exists('__')) {
+    $pageTitle = __('logout.title');
+} else {
+    $pageTitle = 'Logging Out';
+}
+if (function_exists('__')) {
+    $pageDesc = __('logout.description');
+} else {
+    $pageDesc = 'You are being logged out.';
+}
 
 // Perform the logout
 if (function_exists('logoutUser'))

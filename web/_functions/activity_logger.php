@@ -105,7 +105,11 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
     $shortCode      = $context['shortCode'] ?? null;
     $destinationURL = $context['destinationURL'] ?? null;
     $apiKeyUID      = $context['apiKeyUID'] ?? null;
-    $logData        = isset($context['logData']) ? json_encode($context['logData']) : null;
+    if (isset($context['logData'])) {
+        $logData = json_encode($context['logData']);
+    } else {
+        $logData = null;
+    }
 
     // Gather request metadata
     $requestDomain  = $_SERVER['HTTP_HOST'] ?? null;
@@ -113,7 +117,11 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
     $requestMethod  = $_SERVER['REQUEST_METHOD'] ?? null;
     $requestReferer = $_SERVER['HTTP_REFERER'] ?? null;
     $requestUA      = $_SERVER['HTTP_USER_AGENT'] ?? null;
-    $ipAddress      = function_exists('g2ml_getClientIP') ? g2ml_getClientIP() : ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
+    if (function_exists('g2ml_getClientIP')) {
+        $ipAddress = g2ml_getClientIP();
+    } else {
+        $ipAddress = ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
+    }
 
     // Parse User-Agent for structured fields
     $uaParsed = _g2ml_parseUserAgent($requestUA);

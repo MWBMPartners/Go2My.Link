@@ -21,8 +21,16 @@ if (function_exists('isAuthenticated') && isAuthenticated())
     exit;
 }
 
-$pageTitle = function_exists('__') ? __('forgot_password.title') : 'Forgot Password';
-$pageDesc  = function_exists('__') ? __('forgot_password.description') : 'Reset your Go2My.Link account password.';
+if (function_exists('__')) {
+    $pageTitle = __('forgot_password.title');
+} else {
+    $pageTitle = 'Forgot Password';
+}
+if (function_exists('__')) {
+    $pageDesc = __('forgot_password.description');
+} else {
+    $pageDesc = 'Reset your Go2My.Link account password.';
+}
 
 // ============================================================================
 // Process form submission
@@ -38,9 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
     if (!g2ml_validateCSRFToken($csrfToken, 'forgot_password_form'))
     {
-        $formError = function_exists('__')
-            ? __('forgot_password.error_csrf')
-            : 'Your session has expired. Please reload the page and try again.';
+        if (function_exists('__')) {
+            $formError = __('forgot_password.error_csrf');
+        } else {
+            $formError = 'Your session has expired. Please reload the page and try again.';
+        }
     }
     else
     {
@@ -62,9 +72,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
         if (!$captchaValid)
         {
-            $formError = function_exists('__')
-                ? __('forgot_password.error_captcha')
-                : 'CAPTCHA verification failed. Please try again.';
+            if (function_exists('__')) {
+                $formError = __('forgot_password.error_captcha');
+            } else {
+                $formError = 'CAPTCHA verification failed. Please try again.';
+            }
         }
         else
         {
@@ -80,13 +92,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                 [$clientIP]
             );
 
-            $resetCount = ($rateCheck !== null && $rateCheck !== false) ? (int) $rateCheck['cnt'] : 0;
+            if (($rateCheck !== null && $rateCheck !== false)) {
+                $resetCount = (int) $rateCheck['cnt'];
+            } else {
+                $resetCount = 0;
+            }
 
             if ($resetCount >= 5)
             {
-                $formError = function_exists('__')
-                    ? __('forgot_password.error_rate_limit')
-                    : 'Too many reset requests. Please try again later.';
+                if (function_exists('__')) {
+                    $formError = __('forgot_password.error_rate_limit');
+                } else {
+                    $formError = 'Too many reset requests. Please try again later.';
+                }
             }
             else
             {
@@ -94,9 +112,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
                 if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false)
                 {
-                    $formError = function_exists('__')
-                        ? __('forgot_password.error_email')
-                        : 'Please enter a valid email address.';
+                    if (function_exists('__')) {
+                        $formError = __('forgot_password.error_email');
+                    } else {
+                        $formError = 'Please enter a valid email address.';
+                    }
                 }
                 else
                 {
@@ -130,10 +150,10 @@ elseif ($recaptchaSiteKey !== '')
 <section class="page-header text-center" aria-labelledby="forgot-heading">
     <div class="container">
         <h1 id="forgot-heading" class="display-4 fw-bold">
-            <?php echo function_exists('__') ? __('forgot_password.heading') : 'Forgot Password'; ?>
+            <?php if (function_exists('__')) { echo __('forgot_password.heading'); } else { echo 'Forgot Password'; } ?>
         </h1>
         <p class="lead text-body-secondary">
-            <?php echo function_exists('__') ? __('forgot_password.subtitle') : "Enter your email and we'll send you a reset link."; ?>
+            <?php if (function_exists('__')) { echo __('forgot_password.subtitle'); } else { echo "Enter your email and we'll send you a reset link."; } ?>
         </p>
     </div>
 </section>
@@ -149,20 +169,18 @@ elseif ($recaptchaSiteKey !== '')
                     <div class="card-body p-4">
                         <h2 id="form-heading" class="h5 mb-3">
                             <i class="fas fa-envelope" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('forgot_password.form_heading') : 'Reset Your Password'; ?>
+                            <?php if (function_exists('__')) { echo __('forgot_password.form_heading'); } else { echo 'Reset Your Password'; } ?>
                         </h2>
 
                         <?php if ($formSuccess) { ?>
                         <div class="alert alert-success" role="status">
                             <i class="fas fa-check-circle" aria-hidden="true"></i>
-                            <?php echo function_exists('__')
-                                ? __('forgot_password.success')
-                                : 'If an account exists with that email, we\'ve sent a password reset link. Please check your inbox (and spam folder).'; ?>
+                            <?php if (function_exists('__')) { echo __('forgot_password.success'); } else { echo 'If an account exists with that email, we\'ve sent a password reset link. Please check your inbox (and spam folder).'; } ?>
                         </div>
                         <div class="text-center">
                             <a href="/login" class="btn btn-primary">
                                 <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
-                                <?php echo function_exists('__') ? __('forgot_password.back_to_login') : 'Back to Login'; ?>
+                                <?php if (function_exists('__')) { echo __('forgot_password.back_to_login'); } else { echo 'Back to Login'; } ?>
                             </a>
                         </div>
                         <?php } else { ?>
@@ -178,15 +196,30 @@ elseif ($recaptchaSiteKey !== '')
                                 <?php echo g2ml_csrfField('forgot_password_form'); ?>
 
                                 <?php
+                                    if (function_exists('__')) {
+                                        $fieldLabel = __('forgot_password.label_email');
+                                    } else {
+                                        $fieldLabel = 'Email Address';
+                                    }
+                                    if (function_exists('__')) {
+                                        $fieldPlaceholder = __('forgot_password.placeholder_email');
+                                    } else {
+                                        $fieldPlaceholder = 'you@example.com';
+                                    }
+                                    if (isset($_POST['email'])) {
+                                        $fieldValue = g2ml_sanitiseOutput($_POST['email']);
+                                    } else {
+                                        $fieldValue = '';
+                                    }
                                 echo formField([
                                     'id'           => 'forgot-email',
                                     'name'         => 'email',
-                                    'label'        => function_exists('__') ? __('forgot_password.label_email') : 'Email Address',
+                                    'label' => $fieldLabel,
                                     'type'         => 'email',
-                                    'placeholder'  => function_exists('__') ? __('forgot_password.placeholder_email') : 'you@example.com',
+                                    'placeholder' => $fieldPlaceholder,
                                     'required'     => true,
                                     'autocomplete' => 'email',
-                                    'value'        => isset($_POST['email']) ? g2ml_sanitiseOutput($_POST['email']) : '',
+                                    'value' => $fieldValue,
                                 ]);
                                 ?>
 
@@ -204,13 +237,13 @@ elseif ($recaptchaSiteKey !== '')
                                 <div class="d-grid mb-3">
                                     <button type="submit" class="btn btn-primary btn-lg">
                                         <i class="fas fa-paper-plane" aria-hidden="true"></i>
-                                        <?php echo function_exists('__') ? __('forgot_password.submit_button') : 'Send Reset Link'; ?>
+                                        <?php if (function_exists('__')) { echo __('forgot_password.submit_button'); } else { echo 'Send Reset Link'; } ?>
                                     </button>
                                 </div>
 
                                 <p class="text-center text-body-secondary small mb-0">
-                                    <?php echo function_exists('__') ? __('forgot_password.remember_password') : 'Remember your password?'; ?>
-                                    <a href="/login"><?php echo function_exists('__') ? __('forgot_password.login_link') : 'Log in'; ?></a>
+                                    <?php if (function_exists('__')) { echo __('forgot_password.remember_password'); } else { echo 'Remember your password?'; } ?>
+                                    <a href="/login"><?php if (function_exists('__')) { echo __('forgot_password.login_link'); } else { echo 'Log in'; } ?></a>
                                 </p>
                             </form>
                         <?php } ?>

@@ -148,15 +148,38 @@ function g2ml_recordConsent(string $type, bool $given, string $method = 'banner'
         return false;
     }
 
-    $userUID        = (isset($_SESSION['user_uid']) && (int) $_SESSION['user_uid'] > 0)
-                      ? (int) $_SESSION['user_uid'] : null;
+    if (isset($_SESSION['user_uid']) && (int) $_SESSION['user_uid'] > 0) {
+        $userUID = (int) $_SESSION['user_uid'];
+    } else {
+        $userUID = null;
+    }
     $sessionID      = session_id();
-    $consentGiven   = $given ? 1 : 0;
-    $ipAddress      = function_exists('g2ml_getClientIP') ? g2ml_getClientIP() : ($_SERVER['REMOTE_ADDR'] ?? null);
+    if ($given) {
+        $consentGiven = 1;
+    } else {
+        $consentGiven = 0;
+    }
+    if (function_exists('g2ml_getClientIP')) {
+        $ipAddress = g2ml_getClientIP();
+    } else {
+        $ipAddress = ($_SERVER['REMOTE_ADDR'] ?? null);
+    }
     $userAgent      = $_SERVER['HTTP_USER_AGENT'] ?? null;
-    $jurisdiction   = function_exists('g2ml_detectJurisdiction') ? g2ml_detectJurisdiction() : null;
-    $consentVersion = function_exists('getSetting') ? getSetting('compliance.consent_version', '1.0') : '1.0';
-    $expiryDays     = function_exists('getSetting') ? (int) getSetting('compliance.consent_expiry_days', 365) : 365;
+    if (function_exists('g2ml_detectJurisdiction')) {
+        $jurisdiction = g2ml_detectJurisdiction();
+    } else {
+        $jurisdiction = null;
+    }
+    if (function_exists('getSetting')) {
+        $consentVersion = getSetting('compliance.consent_version', '1.0');
+    } else {
+        $consentVersion = '1.0';
+    }
+    if (function_exists('getSetting')) {
+        $expiryDays = (int) getSetting('compliance.consent_expiry_days', 365);
+    } else {
+        $expiryDays = 365;
+    }
 
     // Truncate UA to column limit
     if ($userAgent !== null && strlen($userAgent) > 500)
@@ -264,8 +287,11 @@ function g2ml_hasValidConsent(): bool
         return false;
     }
 
-    $currentVersion = function_exists('getSetting')
-                      ? getSetting('compliance.consent_version', '1.0') : '1.0';
+    if (function_exists('getSetting')) {
+        $currentVersion = getSetting('compliance.consent_version', '1.0');
+    } else {
+        $currentVersion = '1.0';
+    }
 
     $userUID   = $_SESSION['user_uid'] ?? null;
     $sessionID = session_id();
@@ -309,8 +335,11 @@ function g2ml_hasValidConsent(): bool
  */
 function g2ml_detectJurisdiction(): string
 {
-    $default = function_exists('getSetting')
-               ? getSetting('compliance.default_jurisdiction', 'EU') : 'EU';
+    if (function_exists('getSetting')) {
+        $default = getSetting('compliance.default_jurisdiction', 'EU');
+    } else {
+        $default = 'EU';
+    }
 
     $acceptLang = $_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? '';
 

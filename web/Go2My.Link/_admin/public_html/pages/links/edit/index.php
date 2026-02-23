@@ -14,8 +14,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('edit_link.title') : 'Edit Link';
-$pageDesc  = function_exists('__') ? __('edit_link.description') : 'Edit your short link settings.';
+if (function_exists('__')) {
+    $pageTitle = __('edit_link.title');
+} else {
+    $pageTitle = 'Edit Link';
+}
+if (function_exists('__')) {
+    $pageDesc = __('edit_link.description');
+} else {
+    $pageDesc = 'Edit your short link settings.';
+}
 
 $currentUser = getCurrentUser();
 $userUID     = $currentUser['userUID'];
@@ -87,7 +95,11 @@ if ($linkData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
         $categoryID     = g2ml_sanitiseInput($_POST['category_id'] ?? '');
         $startDate      = g2ml_sanitiseInput($_POST['start_date'] ?? '');
         $endDate        = g2ml_sanitiseInput($_POST['end_date'] ?? '');
-        $isActive       = isset($_POST['is_active']) ? 1 : 0;
+        if (isset($_POST['is_active'])) {
+            $isActive = 1;
+        } else {
+            $isActive = 0;
+        }
 
         // Validate destination URL
         $sanitisedURL = g2ml_sanitiseURL($destinationURL);
@@ -98,6 +110,32 @@ if ($linkData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
         }
         else
         {
+            if ($title !== '') {
+                $titleVal = $title;
+            } else {
+                $titleVal = null;
+            }
+            if ($notes !== '') {
+                $notesVal = $notes;
+            } else {
+                $notesVal = null;
+            }
+            if ($categoryID !== '') {
+                $categoryIDVal = $categoryID;
+            } else {
+                $categoryIDVal = null;
+            }
+            if ($startDate !== '') {
+                $startDateVal = $startDate;
+            } else {
+                $startDateVal = null;
+            }
+            if ($endDate !== '') {
+                $endDateVal = $endDate;
+            } else {
+                $endDateVal = null;
+            }
+
             $result = dbUpdate(
                 "UPDATE tblShortURLs SET
                     destinationURL = ?, title = ?, notes = ?, categoryID = ?,
@@ -106,11 +144,11 @@ if ($linkData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
                 'ssssssisi',
                 [
                     $sanitisedURL,
-                    $title !== '' ? $title : null,
-                    $notes !== '' ? $notes : null,
-                    $categoryID !== '' ? $categoryID : null,
-                    $startDate !== '' ? $startDate : null,
-                    $endDate !== '' ? $endDate : null,
+                    $titleVal,
+                    $notesVal,
+                    $categoryIDVal,
+                    $startDateVal,
+                    $endDateVal,
                     $isActive,
                     $shortCode,
                     $userUID,
@@ -121,11 +159,31 @@ if ($linkData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
             {
                 // Refresh link data
                 $linkData['destinationURL'] = $sanitisedURL;
-                $linkData['title']          = $title !== '' ? $title : null;
-                $linkData['notes']          = $notes !== '' ? $notes : null;
-                $linkData['categoryID']     = $categoryID !== '' ? $categoryID : null;
-                $linkData['startDate']      = $startDate !== '' ? $startDate : null;
-                $linkData['endDate']        = $endDate !== '' ? $endDate : null;
+                if ($title !== '') {
+                    $linkData['title'] = $title;
+                } else {
+                    $linkData['title'] = null;
+                }
+                if ($notes !== '') {
+                    $linkData['notes'] = $notes;
+                } else {
+                    $linkData['notes'] = null;
+                }
+                if ($categoryID !== '') {
+                    $linkData['categoryID'] = $categoryID;
+                } else {
+                    $linkData['categoryID'] = null;
+                }
+                if ($startDate !== '') {
+                    $linkData['startDate'] = $startDate;
+                } else {
+                    $linkData['startDate'] = null;
+                }
+                if ($endDate !== '') {
+                    $linkData['endDate'] = $endDate;
+                } else {
+                    $linkData['endDate'] = null;
+                }
                 $linkData['isActive']       = $isActive;
 
                 $formSuccess = true;
@@ -144,9 +202,11 @@ if ($linkData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
 }
 
 // Get default short domain for display
-$shortDomain = function_exists('getDefaultShortDomain')
-    ? getDefaultShortDomain($currentUser['orgHandle'])
-    : 'g2my.link';
+if (function_exists('getDefaultShortDomain')) {
+    $shortDomain = getDefaultShortDomain($currentUser['orgHandle']);
+} else {
+    $shortDomain = 'g2my.link';
+}
 ?>
 
 <!-- ====================================================================== -->
@@ -157,7 +217,7 @@ $shortDomain = function_exists('getDefaultShortDomain')
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 id="edit-heading" class="h2 mb-0">
                 <i class="fas fa-edit" aria-hidden="true"></i>
-                <?php echo function_exists('__') ? __('edit_link.heading') : 'Edit Link'; ?>
+                <?php if (function_exists('__')) { echo __('edit_link.heading'); } else { echo 'Edit Link'; } ?>
             </h1>
             <a href="/links" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left" aria-hidden="true"></i> Back to Links
@@ -245,7 +305,7 @@ $shortDomain = function_exists('getDefaultShortDomain')
                                     <option value="">No category</option>
                                     <?php foreach ($categories as $cat) { ?>
                                     <option value="<?php echo g2ml_sanitiseOutput($cat['categoryID']); ?>"
-                                        <?php echo ($linkData['categoryID'] === $cat['categoryID']) ? 'selected' : ''; ?>>
+                                        <?php if (($linkData['categoryID'] === $cat['categoryID'])) { echo 'selected'; } ?>>
                                         <?php echo g2ml_sanitiseOutput($cat['categoryName']); ?>
                                     </option>
                                     <?php } ?>
@@ -256,7 +316,11 @@ $shortDomain = function_exists('getDefaultShortDomain')
                             <div class="row">
                                 <div class="col-md-6">
                                     <?php
-                                    $startVal = !empty($linkData['startDate']) ? date('Y-m-d\TH:i', strtotime($linkData['startDate'])) : '';
+                                    if (!empty($linkData['startDate'])) {
+                                        $startVal = date('Y-m-d\TH:i', strtotime($linkData['startDate']));
+                                    } else {
+                                        $startVal = '';
+                                    }
                                     echo formField([
                                         'id'       => 'start-date',
                                         'name'     => 'start_date',
@@ -269,7 +333,11 @@ $shortDomain = function_exists('getDefaultShortDomain')
                                 </div>
                                 <div class="col-md-6">
                                     <?php
-                                    $endVal = !empty($linkData['endDate']) ? date('Y-m-d\TH:i', strtotime($linkData['endDate'])) : '';
+                                    if (!empty($linkData['endDate'])) {
+                                        $endVal = date('Y-m-d\TH:i', strtotime($linkData['endDate']));
+                                    } else {
+                                        $endVal = '';
+                                    }
                                     echo formField([
                                         'id'       => 'end-date',
                                         'name'     => 'end_date',
@@ -285,7 +353,7 @@ $shortDomain = function_exists('getDefaultShortDomain')
                             <!-- Active Toggle -->
                             <div class="form-check form-switch mb-3">
                                 <input class="form-check-input" type="checkbox" id="is-active" name="is_active" value="1"
-                                    <?php echo (int) $linkData['isActive'] ? 'checked' : ''; ?>>
+                                    <?php if ((int) $linkData['isActive']) { echo 'checked'; } ?>>
                                 <label class="form-check-label" for="is-active">Active</label>
                             </div>
 

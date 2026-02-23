@@ -14,8 +14,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('org.title') : 'Organisation';
-$pageDesc  = function_exists('__') ? __('org.description') : 'Manage your organisation settings and members.';
+if (function_exists('__')) {
+    $pageTitle = __('org.title');
+} else {
+    $pageTitle = 'Organisation';
+}
+if (function_exists('__')) {
+    $pageDesc = __('org.description');
+} else {
+    $pageDesc = 'Manage your organisation settings and members.';
+}
 
 $currentUser = getCurrentUser();
 $orgHandle   = $currentUser['orgHandle'];
@@ -33,14 +41,14 @@ $isAdmin     = canManageOrg($orgHandle);
         <div class="text-center py-5">
             <i class="fas fa-building fa-4x text-body-secondary mb-4" aria-hidden="true"></i>
             <h1 id="org-heading" class="h2 mb-3">
-                <?php echo function_exists('__') ? __('org.no_org_heading') : 'No Organisation'; ?>
+                <?php if (function_exists('__')) { echo __('org.no_org_heading'); } else { echo 'No Organisation'; } ?>
             </h1>
             <p class="text-body-secondary mb-4" style="max-width:500px; margin:0 auto;">
-                <?php echo function_exists('__') ? __('org.no_org_desc') : 'You\'re not currently part of an organisation. Create one to manage team members, custom domains, and branded short links.'; ?>
+                <?php if (function_exists('__')) { echo __('org.no_org_desc'); } else { echo 'You\'re not currently part of an organisation. Create one to manage team members, custom domains, and branded short links.'; } ?>
             </p>
             <a href="/org/create" class="btn btn-primary btn-lg">
                 <i class="fas fa-plus-circle" aria-hidden="true"></i>
-                <?php echo function_exists('__') ? __('org.create_btn') : 'Create Organisation'; ?>
+                <?php if (function_exists('__')) { echo __('org.create_btn'); } else { echo 'Create Organisation'; } ?>
             </a>
         </div>
 

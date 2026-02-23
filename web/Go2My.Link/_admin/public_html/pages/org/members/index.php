@@ -13,8 +13,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('org.members_title') : 'Members';
-$pageDesc  = function_exists('__') ? __('org.members_description') : 'Manage your organisation members.';
+if (function_exists('__')) {
+    $pageTitle = __('org.members_title');
+} else {
+    $pageTitle = 'Members';
+}
+if (function_exists('__')) {
+    $pageDesc = __('org.members_description');
+} else {
+    $pageDesc = 'Manage your organisation members.';
+}
 
 $currentUser = getCurrentUser();
 $orgHandle   = $currentUser['orgHandle'];
@@ -183,8 +191,8 @@ $invitations = getPendingInvitations($orgHandle);
                                         <input type="hidden" name="user_uid" value="<?php echo (int) $member['userUID']; ?>">
                                         <select name="new_role" class="form-select form-select-sm d-inline-block" style="width:auto;"
                                                 onchange="this.form.submit()" aria-label="Change role">
-                                            <option value="User" <?php echo ($member['role'] === 'User') ? 'selected' : ''; ?>>User</option>
-                                            <option value="Admin" <?php echo ($member['role'] === 'Admin') ? 'selected' : ''; ?>>Admin</option>
+                                            <option value="User" <?php if (($member['role'] === 'User')) { echo 'selected'; } ?>>User</option>
+                                            <option value="Admin" <?php if (($member['role'] === 'Admin')) { echo 'selected'; } ?>>Admin</option>
                                         </select>
                                     </form>
 

@@ -20,8 +20,16 @@
 
 requireAuth();
 
-$pageTitle = function_exists('__') ? __('consent.title') : 'Cookie Preferences';
-$pageDesc  = function_exists('__') ? __('consent.description') : 'Manage your cookie consent preferences.';
+if (function_exists('__')) {
+    $pageTitle = __('consent.title');
+} else {
+    $pageTitle = 'Cookie Preferences';
+}
+if (function_exists('__')) {
+    $pageDesc = __('consent.description');
+} else {
+    $pageDesc = 'Manage your cookie consent preferences.';
+}
 
 $currentUser = getCurrentUser();
 $userUID     = $currentUser['userUID'];
@@ -39,9 +47,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
     if (!g2ml_validateCSRFToken($csrfToken, 'consent_prefs'))
     {
-        $actionError = function_exists('__')
-            ? __('consent.error_csrf')
-            : 'Session expired. Please try again.';
+        if (function_exists('__')) {
+            $actionError = __('consent.error_csrf');
+        } else {
+            $actionError = 'Session expired. Please try again.';
+        }
     }
     else
     {
@@ -74,9 +84,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
         if ($errors === 0)
         {
-            $actionSuccess = function_exists('__')
-                ? __('consent.success_updated')
-                : 'Cookie preferences updated successfully.';
+            if (function_exists('__')) {
+                $actionSuccess = __('consent.success_updated');
+            } else {
+                $actionSuccess = 'Cookie preferences updated successfully.';
+            }
 
             if (function_exists('logActivity'))
             {
@@ -87,9 +99,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         }
         else
         {
-            $actionError = function_exists('__')
-                ? __('consent.error_partial')
-                : 'Some preferences could not be saved. Please try again.';
+            if (function_exists('__')) {
+                $actionError = __('consent.error_partial');
+            } else {
+                $actionError = 'Some preferences could not be saved. Please try again.';
+            }
         }
     }
 }
@@ -98,8 +112,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 // Fetch current consent summary and history
 // ============================================================================
 
-$consentSummary = function_exists('g2ml_getConsentSummary') ? g2ml_getConsentSummary() : [];
-$consentHistory = function_exists('g2ml_getConsentHistory') ? g2ml_getConsentHistory($userUID) : [];
+if (function_exists('g2ml_getConsentSummary')) {
+    $consentSummary = g2ml_getConsentSummary();
+} else {
+    $consentSummary = [];
+}
+if (function_exists('g2ml_getConsentHistory')) {
+    $consentHistory = g2ml_getConsentHistory($userUID);
+} else {
+    $consentHistory = [];
+}
 ?>
 
 <!-- ====================================================================== -->
@@ -111,20 +133,18 @@ $consentHistory = function_exists('g2ml_getConsentHistory') ? g2ml_getConsentHis
         <!-- Breadcrumb -->
         <nav aria-label="breadcrumb" class="mb-3">
             <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="/privacy"><?php echo function_exists('__') ? __('consent.breadcrumb_privacy') : 'Privacy & Data'; ?></a></li>
-                <li class="breadcrumb-item active" aria-current="page"><?php echo function_exists('__') ? __('consent.breadcrumb_consent') : 'Cookie Preferences'; ?></li>
+                <li class="breadcrumb-item"><a href="/privacy"><?php if (function_exists('__')) { echo __('consent.breadcrumb_privacy'); } else { echo 'Privacy & Data'; } ?></a></li>
+                <li class="breadcrumb-item active" aria-current="page"><?php if (function_exists('__')) { echo __('consent.breadcrumb_consent'); } else { echo 'Cookie Preferences'; } ?></li>
             </ol>
         </nav>
 
         <h1 id="consent-heading" class="h2 mb-4">
             <i class="fas fa-sliders-h" aria-hidden="true"></i>
-            <?php echo function_exists('__') ? __('consent.heading') : 'Cookie Preferences'; ?>
+            <?php if (function_exists('__')) { echo __('consent.heading'); } else { echo 'Cookie Preferences'; } ?>
         </h1>
 
         <p class="text-body-secondary mb-4">
-            <?php echo function_exists('__')
-                ? __('consent.intro')
-                : 'Choose which types of cookies you allow. Essential cookies are required for the site to function and cannot be disabled. Changes take effect immediately.'; ?>
+            <?php if (function_exists('__')) { echo __('consent.intro'); } else { echo 'Choose which types of cookies you allow. Essential cookies are required for the site to function and cannot be disabled. Changes take effect immediately.'; } ?>
         </p>
 
         <!-- Alerts -->
@@ -132,7 +152,7 @@ $consentHistory = function_exists('g2ml_getConsentHistory') ? g2ml_getConsentHis
         <div class="alert alert-success alert-dismissible fade show" role="status">
             <i class="fas fa-check-circle" aria-hidden="true"></i>
             <?php echo g2ml_sanitiseOutput($actionSuccess); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<?php echo function_exists('__') ? __('consent.close') : 'Close'; ?>"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<?php if (function_exists('__')) { echo __('consent.close'); } else { echo 'Close'; } ?>"></button>
         </div>
         <?php } ?>
 
@@ -140,7 +160,7 @@ $consentHistory = function_exists('g2ml_getConsentHistory') ? g2ml_getConsentHis
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
             <?php echo g2ml_sanitiseOutput($actionError); ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<?php echo function_exists('__') ? __('consent.close') : 'Close'; ?>"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<?php if (function_exists('__')) { echo __('consent.close'); } else { echo 'Close'; } ?>"></button>
         </div>
         <?php } ?>
 
@@ -151,7 +171,7 @@ $consentHistory = function_exists('g2ml_getConsentHistory') ? g2ml_getConsentHis
             <div class="card-header">
                 <h2 class="h5 mb-0">
                     <i class="fas fa-cookie" aria-hidden="true"></i>
-                    <?php echo function_exists('__') ? __('consent.preferences_heading') : 'Your Preferences'; ?>
+                    <?php if (function_exists('__')) { echo __('consent.preferences_heading'); } else { echo 'Your Preferences'; } ?>
                 </h2>
             </div>
             <div class="card-body">
@@ -165,13 +185,11 @@ $consentHistory = function_exists('g2ml_getConsentHistory') ? g2ml_getConsentHis
                                aria-describedby="essential-desc">
                         <label class="form-check-label fw-bold" for="consent-essential">
                             <i class="fas fa-lock text-secondary" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('consent.essential_label') : 'Essential Cookies'; ?>
-                            <span class="badge bg-secondary ms-1"><?php echo function_exists('__') ? __('consent.always_on') : 'Always On'; ?></span>
+                            <?php if (function_exists('__')) { echo __('consent.essential_label'); } else { echo 'Essential Cookies'; } ?>
+                            <span class="badge bg-secondary ms-1"><?php if (function_exists('__')) { echo __('consent.always_on'); } else { echo 'Always On'; } ?></span>
                         </label>
                         <div id="essential-desc" class="form-text">
-                            <?php echo function_exists('__')
-                                ? __('consent.essential_desc')
-                                : 'Required for the site to function. Includes session management, CSRF protection, and authentication cookies.'; ?>
+                            <?php if (function_exists('__')) { echo __('consent.essential_desc'); } else { echo 'Required for the site to function. Includes session management, CSRF protection, and authentication cookies.'; } ?>
                         </div>
                     </div>
 
@@ -179,16 +197,14 @@ $consentHistory = function_exists('g2ml_getConsentHistory') ? g2ml_getConsentHis
                     <div class="form-check form-switch mb-3 pb-3 border-bottom">
                         <input class="form-check-input" type="checkbox" role="switch"
                                id="consent-analytics" name="consent_analytics" value="1"
-                               <?php echo ($consentSummary['analytics'] ?? null) === true ? 'checked' : ''; ?>
+                               <?php if (($consentSummary['analytics'] ?? null) === true) { echo 'checked'; } ?>
                                aria-describedby="analytics-desc">
                         <label class="form-check-label fw-bold" for="consent-analytics">
                             <i class="fas fa-chart-bar text-primary" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('consent.analytics_label') : 'Analytics Cookies'; ?>
+                            <?php if (function_exists('__')) { echo __('consent.analytics_label'); } else { echo 'Analytics Cookies'; } ?>
                         </label>
                         <div id="analytics-desc" class="form-text">
-                            <?php echo function_exists('__')
-                                ? __('consent.analytics_desc')
-                                : 'Help us understand how visitors interact with the site by collecting anonymous usage statistics.'; ?>
+                            <?php if (function_exists('__')) { echo __('consent.analytics_desc'); } else { echo 'Help us understand how visitors interact with the site by collecting anonymous usage statistics.'; } ?>
                         </div>
                     </div>
 
@@ -196,16 +212,14 @@ $consentHistory = function_exists('g2ml_getConsentHistory') ? g2ml_getConsentHis
                     <div class="form-check form-switch mb-3 pb-3 border-bottom">
                         <input class="form-check-input" type="checkbox" role="switch"
                                id="consent-functional" name="consent_functional" value="1"
-                               <?php echo ($consentSummary['functional'] ?? null) === true ? 'checked' : ''; ?>
+                               <?php if (($consentSummary['functional'] ?? null) === true) { echo 'checked'; } ?>
                                aria-describedby="functional-desc">
                         <label class="form-check-label fw-bold" for="consent-functional">
                             <i class="fas fa-cogs text-primary" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('consent.functional_label') : 'Functional Cookies'; ?>
+                            <?php if (function_exists('__')) { echo __('consent.functional_label'); } else { echo 'Functional Cookies'; } ?>
                         </label>
                         <div id="functional-desc" class="form-text">
-                            <?php echo function_exists('__')
-                                ? __('consent.functional_desc')
-                                : 'Enable enhanced functionality and personalisation, such as remembering your preferences and settings.'; ?>
+                            <?php if (function_exists('__')) { echo __('consent.functional_desc'); } else { echo 'Enable enhanced functionality and personalisation, such as remembering your preferences and settings.'; } ?>
                         </div>
                     </div>
 
@@ -213,23 +227,21 @@ $consentHistory = function_exists('g2ml_getConsentHistory') ? g2ml_getConsentHis
                     <div class="form-check form-switch mb-3">
                         <input class="form-check-input" type="checkbox" role="switch"
                                id="consent-marketing" name="consent_marketing" value="1"
-                               <?php echo ($consentSummary['marketing'] ?? null) === true ? 'checked' : ''; ?>
+                               <?php if (($consentSummary['marketing'] ?? null) === true) { echo 'checked'; } ?>
                                aria-describedby="marketing-desc">
                         <label class="form-check-label fw-bold" for="consent-marketing">
                             <i class="fas fa-bullhorn text-primary" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('consent.marketing_label') : 'Marketing Cookies'; ?>
+                            <?php if (function_exists('__')) { echo __('consent.marketing_label'); } else { echo 'Marketing Cookies'; } ?>
                         </label>
                         <div id="marketing-desc" class="form-text">
-                            <?php echo function_exists('__')
-                                ? __('consent.marketing_desc')
-                                : 'Used to deliver relevant advertisements and measure their effectiveness. May be shared with third-party advertising partners.'; ?>
+                            <?php if (function_exists('__')) { echo __('consent.marketing_desc'); } else { echo 'Used to deliver relevant advertisements and measure their effectiveness. May be shared with third-party advertising partners.'; } ?>
                         </div>
                     </div>
 
                     <div class="mt-4">
                         <button type="submit" class="btn btn-primary">
                             <i class="fas fa-save" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('consent.save_preferences') : 'Save Preferences'; ?>
+                            <?php if (function_exists('__')) { echo __('consent.save_preferences'); } else { echo 'Save Preferences'; } ?>
                         </button>
                     </div>
                 </form>
@@ -243,7 +255,7 @@ $consentHistory = function_exists('g2ml_getConsentHistory') ? g2ml_getConsentHis
             <div class="card-header">
                 <h2 class="h5 mb-0">
                     <i class="fas fa-history" aria-hidden="true"></i>
-                    <?php echo function_exists('__') ? __('consent.history_heading') : 'Consent History'; ?>
+                    <?php if (function_exists('__')) { echo __('consent.history_heading'); } else { echo 'Consent History'; } ?>
                 </h2>
             </div>
             <div class="card-body p-0">
@@ -251,20 +263,18 @@ $consentHistory = function_exists('g2ml_getConsentHistory') ? g2ml_getConsentHis
                 <div class="p-4 text-center text-body-secondary">
                     <i class="fas fa-inbox fa-2x mb-2" aria-hidden="true"></i>
                     <p class="mb-0">
-                        <?php echo function_exists('__')
-                            ? __('consent.no_history')
-                            : 'No consent history recorded yet.'; ?>
+                        <?php if (function_exists('__')) { echo __('consent.no_history'); } else { echo 'No consent history recorded yet.'; } ?>
                     </p>
                 </div>
                 <?php } else { ?>
                 <div class="table-responsive">
-                    <table class="table table-hover table-sm mb-0" aria-label="<?php echo function_exists('__') ? __('consent.history_table_label') : 'Consent history'; ?>">
+                    <table class="table table-hover table-sm mb-0" aria-label="<?php if (function_exists('__')) { echo __('consent.history_table_label'); } else { echo 'Consent history'; } ?>">
                         <thead>
                             <tr>
-                                <th scope="col"><?php echo function_exists('__') ? __('consent.col_type') : 'Category'; ?></th>
-                                <th scope="col"><?php echo function_exists('__') ? __('consent.col_decision') : 'Decision'; ?></th>
-                                <th scope="col"><?php echo function_exists('__') ? __('consent.col_method') : 'Method'; ?></th>
-                                <th scope="col"><?php echo function_exists('__') ? __('consent.col_date') : 'Date'; ?></th>
+                                <th scope="col"><?php if (function_exists('__')) { echo __('consent.col_type'); } else { echo 'Category'; } ?></th>
+                                <th scope="col"><?php if (function_exists('__')) { echo __('consent.col_decision'); } else { echo 'Decision'; } ?></th>
+                                <th scope="col"><?php if (function_exists('__')) { echo __('consent.col_method'); } else { echo 'Method'; } ?></th>
+                                <th scope="col"><?php if (function_exists('__')) { echo __('consent.col_date'); } else { echo 'Date'; } ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -277,12 +287,12 @@ $consentHistory = function_exists('g2ml_getConsentHistory') ? g2ml_getConsentHis
                                     <?php if ((int) ($record['consentGiven'] ?? 0) === 1) { ?>
                                     <span class="badge bg-success">
                                         <i class="fas fa-check" aria-hidden="true"></i>
-                                        <?php echo function_exists('__') ? __('consent.granted') : 'Granted'; ?>
+                                        <?php if (function_exists('__')) { echo __('consent.granted'); } else { echo 'Granted'; } ?>
                                     </span>
                                     <?php } else { ?>
                                     <span class="badge bg-secondary">
                                         <i class="fas fa-times" aria-hidden="true"></i>
-                                        <?php echo function_exists('__') ? __('consent.refused') : 'Refused'; ?>
+                                        <?php if (function_exists('__')) { echo __('consent.refused'); } else { echo 'Refused'; } ?>
                                     </span>
                                     <?php } ?>
                                 </td>
@@ -311,7 +321,7 @@ $consentHistory = function_exists('g2ml_getConsentHistory') ? g2ml_getConsentHis
         <div class="mt-4">
             <a href="/privacy" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left" aria-hidden="true"></i>
-                <?php echo function_exists('__') ? __('consent.back_privacy') : 'Back to Privacy & Data'; ?>
+                <?php if (function_exists('__')) { echo __('consent.back_privacy'); } else { echo 'Back to Privacy & Data'; } ?>
             </a>
         </div>
     </div>

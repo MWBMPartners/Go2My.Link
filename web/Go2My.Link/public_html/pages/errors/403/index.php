@@ -14,8 +14,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('error.403_title') : '403 — Forbidden';
-$pageDesc  = function_exists('__') ? __('error.403_description') : 'You do not have permission to access this resource.';
+if (function_exists('__')) {
+    $pageTitle = __('error.403_title');
+} else {
+    $pageTitle = '403 — Forbidden';
+}
+if (function_exists('__')) {
+    $pageDesc = __('error.403_description');
+} else {
+    $pageDesc = 'You do not have permission to access this resource.';
+}
 
 http_response_code(403);
 ?>
@@ -28,19 +36,19 @@ http_response_code(403);
             </div>
             <h1 id="error-heading" class="display-4 fw-bold mb-3">403</h1>
             <h2 class="h4 mb-3">
-                <?php echo function_exists('__') ? __('error.403_heading') : 'Access Denied'; ?>
+                <?php if (function_exists('__')) { echo __('error.403_heading'); } else { echo 'Access Denied'; } ?>
             </h2>
             <p class="text-body-secondary mb-4">
-                <?php echo function_exists('__') ? __('error.403_message') : 'You don\'t have permission to access this page. If you believe this is an error, please contact support.'; ?>
+                <?php if (function_exists('__')) { echo __('error.403_message'); } else { echo 'You don\'t have permission to access this page. If you believe this is an error, please contact support.'; } ?>
             </p>
             <div class="d-flex justify-content-center gap-2">
                 <a href="/" class="btn btn-primary">
                     <i class="fas fa-home" aria-hidden="true"></i>
-                    <?php echo function_exists('__') ? __('error.go_home') : 'Go Home'; ?>
+                    <?php if (function_exists('__')) { echo __('error.go_home'); } else { echo 'Go Home'; } ?>
                 </a>
                 <a href="/login" class="btn btn-outline-secondary">
                     <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
-                    <?php echo function_exists('__') ? __('nav.login') : 'Log In'; ?>
+                    <?php if (function_exists('__')) { echo __('nav.login'); } else { echo 'Log In'; } ?>
                 </a>
             </div>
         </div>

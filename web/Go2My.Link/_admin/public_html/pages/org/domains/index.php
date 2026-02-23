@@ -13,8 +13,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('org.domains_title') : 'Custom Domains';
-$pageDesc  = function_exists('__') ? __('org.domains_description') : 'Manage your organisation\'s custom domains.';
+if (function_exists('__')) {
+    $pageTitle = __('org.domains_title');
+} else {
+    $pageTitle = 'Custom Domains';
+}
+if (function_exists('__')) {
+    $pageDesc = __('org.domains_description');
+} else {
+    $pageDesc = 'Manage your organisation\'s custom domains.';
+}
 
 $currentUser = getCurrentUser();
 $orgHandle   = $currentUser['orgHandle'];

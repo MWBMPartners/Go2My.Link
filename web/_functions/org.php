@@ -129,7 +129,11 @@ function createOrganisation(string $name, string $handle, array $options = []): 
     }
 
     // Create the organisation
-    $orgURL     = isset($options['orgURL']) ? g2ml_sanitiseURL($options['orgURL']) : null;
+    if (isset($options['orgURL'])) {
+        $orgURL = g2ml_sanitiseURL($options['orgURL']);
+    } else {
+        $orgURL = null;
+    }
     $orgDesc    = $options['orgDescription'] ?? null;
 
     $insertResult = dbInsert(
@@ -233,7 +237,11 @@ function updateOrganisation(string $orgHandle, array $data): array
 
         $setClauses[] = "`{$field}` = ?";
         $params[]     = $value;
-        $types       .= is_int($value) ? 'i' : 's';
+        if (is_int($value)) {
+            $types .= 'i';
+        } else {
+            $types .= 's';
+        }
     }
 
     if (empty($setClauses))
@@ -964,7 +972,11 @@ function addOrgShortDomain(string $orgHandle, string $domain): array
         's',
         [$orgHandle]
     );
-    $isDefault = ((int) ($currentCount['cnt'] ?? 0) === 0) ? 1 : 0;
+    if (((int) ($currentCount['cnt'] ?? 0) === 0)) {
+        $isDefault = 1;
+    } else {
+        $isDefault = 0;
+    }
 
     $insertResult = dbInsert(
         "INSERT INTO tblOrgShortDomains (orgHandle, shortDomain, isDefault, isActive)

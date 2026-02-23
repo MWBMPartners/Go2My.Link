@@ -80,10 +80,10 @@ if ($slug === '')
         <h1 class="display-4"><?php echo htmlspecialchars(getSetting('site.name', 'Go2My.Link'), ENT_QUOTES, 'UTF-8'); ?></h1>
         <h2 class="text-muted">LinksPage</h2>
         <p class="lead mt-3">
-            <?php echo function_exists('__') ? __('linkspage.coming_soon') : 'LinksPage is coming soon. Create your own customisable link listing page.'; ?>
+            <?php if (function_exists('__')) { echo __('linkspage.coming_soon'); } else { echo 'LinksPage is coming soon. Create your own customisable link listing page.'; } ?>
         </p>
         <a href="https://go2my.link" class="btn btn-primary btn-lg mt-3">
-            <?php echo function_exists('__') ? __('linkspage.learn_more') : 'Learn More'; ?>
+            <?php if (function_exists('__')) { echo __('linkspage.learn_more'); } else { echo 'Learn More'; } ?>
         </a>
     </div>
     <?php
@@ -109,10 +109,10 @@ require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'header.php';
 <div class="container py-5 text-center">
     <h1 class="display-4 text-muted">404</h1>
     <p class="lead">
-        <?php echo function_exists('__') ? __('linkspage.not_found') : 'This LinksPage does not exist or has not been set up yet.'; ?>
+        <?php if (function_exists('__')) { echo __('linkspage.not_found'); } else { echo 'This LinksPage does not exist or has not been set up yet.'; } ?>
     </p>
     <a href="/" class="btn btn-primary mt-3">
-        <?php echo function_exists('__') ? __('error.back_home') : 'Back to Home'; ?>
+        <?php if (function_exists('__')) { echo __('error.back_home'); } else { echo 'Back to Home'; } ?>
     </a>
 </div>
 <?php

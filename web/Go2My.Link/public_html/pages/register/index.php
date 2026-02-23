@@ -21,8 +21,16 @@ if (function_exists('isAuthenticated') && isAuthenticated())
     exit;
 }
 
-$pageTitle = function_exists('__') ? __('register.title') : 'Create Account';
-$pageDesc  = function_exists('__') ? __('register.description') : 'Sign up for a free Go2My.Link account.';
+if (function_exists('__')) {
+    $pageTitle = __('register.title');
+} else {
+    $pageTitle = 'Create Account';
+}
+if (function_exists('__')) {
+    $pageDesc = __('register.description');
+} else {
+    $pageDesc = 'Sign up for a free Go2My.Link account.';
+}
 
 // ============================================================================
 // Process form submission
@@ -38,9 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
     if (!g2ml_validateCSRFToken($csrfToken, 'register_form'))
     {
-        $formError = function_exists('__')
-            ? __('register.error_csrf')
-            : 'Your session has expired. Please reload the page and try again.';
+        if (function_exists('__')) {
+            $formError = __('register.error_csrf');
+        } else {
+            $formError = 'Your session has expired. Please reload the page and try again.';
+        }
     }
     else
     {
@@ -62,9 +72,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
         if (!$captchaValid)
         {
-            $formError = function_exists('__')
-                ? __('register.error_captcha')
-                : 'CAPTCHA verification failed. Please try again.';
+            if (function_exists('__')) {
+                $formError = __('register.error_captcha');
+            } else {
+                $formError = 'CAPTCHA verification failed. Please try again.';
+            }
         }
         else
         {
@@ -78,9 +90,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             // Check passwords match
             if ($password !== $confirmPassword)
             {
-                $formError = function_exists('__')
-                    ? __('register.error_password_mismatch')
-                    : 'Passwords do not match.';
+                if (function_exists('__')) {
+                    $formError = __('register.error_password_mismatch');
+                } else {
+                    $formError = 'Passwords do not match.';
+                }
             }
             else
             {
@@ -134,10 +148,10 @@ elseif ($recaptchaSiteKey !== '')
 <section class="page-header text-center" aria-labelledby="register-heading">
     <div class="container">
         <h1 id="register-heading" class="display-4 fw-bold">
-            <?php echo function_exists('__') ? __('register.heading') : 'Create Your Account'; ?>
+            <?php if (function_exists('__')) { echo __('register.heading'); } else { echo 'Create Your Account'; } ?>
         </h1>
         <p class="lead text-body-secondary">
-            <?php echo function_exists('__') ? __('register.subtitle') : 'Sign up to manage your short links, view analytics, and more.'; ?>
+            <?php if (function_exists('__')) { echo __('register.subtitle'); } else { echo 'Sign up to manage your short links, view analytics, and more.'; } ?>
         </p>
     </div>
 </section>
@@ -153,18 +167,18 @@ elseif ($recaptchaSiteKey !== '')
                     <div class="card-body p-4">
                         <h2 id="form-heading" class="h5 mb-3">
                             <i class="fas fa-user-plus" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('register.form_heading') : 'Sign Up'; ?>
+                            <?php if (function_exists('__')) { echo __('register.form_heading'); } else { echo 'Sign Up'; } ?>
                         </h2>
 
                         <?php if ($formSuccess) { ?>
                         <div class="alert alert-success" role="status">
                             <i class="fas fa-check-circle" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('register.success') : 'Account created! Please check your email to verify your address, then log in.'; ?>
+                            <?php if (function_exists('__')) { echo __('register.success'); } else { echo 'Account created! Please check your email to verify your address, then log in.'; } ?>
                         </div>
                         <div class="text-center">
                             <a href="/login" class="btn btn-primary">
                                 <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
-                                <?php echo function_exists('__') ? __('register.go_to_login') : 'Go to Login'; ?>
+                                <?php if (function_exists('__')) { echo __('register.go_to_login'); } else { echo 'Go to Login'; } ?>
                             </a>
                         </div>
                         <?php } else { ?>
@@ -182,63 +196,133 @@ elseif ($recaptchaSiteKey !== '')
                                 <div class="row">
                                     <div class="col-md-6">
                                         <?php
+                                            if (function_exists('__')) {
+                                                $fieldLabel = __('register.label_first_name');
+                                            } else {
+                                                $fieldLabel = 'First Name';
+                                            }
+                                            if (function_exists('__')) {
+                                                $fieldPlaceholder = __('register.placeholder_first_name');
+                                            } else {
+                                                $fieldPlaceholder = 'John';
+                                            }
+                                            if (isset($_POST['first_name'])) {
+                                                $fieldValue = g2ml_sanitiseOutput($_POST['first_name']);
+                                            } else {
+                                                $fieldValue = '';
+                                            }
                                         echo formField([
                                             'id'           => 'reg-first-name',
                                             'name'         => 'first_name',
-                                            'label'        => function_exists('__') ? __('register.label_first_name') : 'First Name',
+                                            'label' => $fieldLabel,
                                             'type'         => 'text',
-                                            'placeholder'  => function_exists('__') ? __('register.placeholder_first_name') : 'John',
+                                            'placeholder' => $fieldPlaceholder,
                                             'required'     => true,
                                             'autocomplete' => 'given-name',
-                                            'value'        => isset($_POST['first_name']) ? g2ml_sanitiseOutput($_POST['first_name']) : '',
+                                            'value' => $fieldValue,
                                         ]);
                                         ?>
                                     </div>
                                     <div class="col-md-6">
                                         <?php
+                                            if (function_exists('__')) {
+                                                $fieldLabel = __('register.label_last_name');
+                                            } else {
+                                                $fieldLabel = 'Last Name';
+                                            }
+                                            if (function_exists('__')) {
+                                                $fieldPlaceholder = __('register.placeholder_last_name');
+                                            } else {
+                                                $fieldPlaceholder = 'Doe';
+                                            }
+                                            if (isset($_POST['last_name'])) {
+                                                $fieldValue = g2ml_sanitiseOutput($_POST['last_name']);
+                                            } else {
+                                                $fieldValue = '';
+                                            }
                                         echo formField([
                                             'id'           => 'reg-last-name',
                                             'name'         => 'last_name',
-                                            'label'        => function_exists('__') ? __('register.label_last_name') : 'Last Name',
+                                            'label' => $fieldLabel,
                                             'type'         => 'text',
-                                            'placeholder'  => function_exists('__') ? __('register.placeholder_last_name') : 'Doe',
+                                            'placeholder' => $fieldPlaceholder,
                                             'required'     => true,
                                             'autocomplete' => 'family-name',
-                                            'value'        => isset($_POST['last_name']) ? g2ml_sanitiseOutput($_POST['last_name']) : '',
+                                            'value' => $fieldValue,
                                         ]);
                                         ?>
                                     </div>
                                 </div>
 
                                 <?php
+                                    if (function_exists('__')) {
+                                        $fieldLabel = __('register.label_email');
+                                    } else {
+                                        $fieldLabel = 'Email Address';
+                                    }
+                                    if (function_exists('__')) {
+                                        $fieldPlaceholder = __('register.placeholder_email');
+                                    } else {
+                                        $fieldPlaceholder = 'you@example.com';
+                                    }
+                                    if (isset($_POST['email'])) {
+                                        $fieldValue = g2ml_sanitiseOutput($_POST['email']);
+                                    } else {
+                                        $fieldValue = '';
+                                    }
                                 echo formField([
                                     'id'           => 'reg-email',
                                     'name'         => 'email',
-                                    'label'        => function_exists('__') ? __('register.label_email') : 'Email Address',
+                                    'label' => $fieldLabel,
                                     'type'         => 'email',
-                                    'placeholder'  => function_exists('__') ? __('register.placeholder_email') : 'you@example.com',
+                                    'placeholder' => $fieldPlaceholder,
                                     'required'     => true,
                                     'autocomplete' => 'email',
-                                    'value'        => isset($_POST['email']) ? g2ml_sanitiseOutput($_POST['email']) : '',
+                                    'value' => $fieldValue,
                                 ]);
 
+                                    if (function_exists('__')) {
+                                        $fieldLabel = __('register.label_password');
+                                    } else {
+                                        $fieldLabel = 'Password';
+                                    }
+                                    if (function_exists('__')) {
+                                        $fieldPlaceholder = __('register.placeholder_password');
+                                    } else {
+                                        $fieldPlaceholder = 'At least 8 characters';
+                                    }
+                                    if (function_exists('__')) {
+                                        $fieldHelpText = __('register.password_help');
+                                    } else {
+                                        $fieldHelpText = 'Minimum 8 characters with at least one uppercase letter, one lowercase letter, and one number.';
+                                    }
                                 echo formField([
                                     'id'           => 'reg-password',
                                     'name'         => 'password',
-                                    'label'        => function_exists('__') ? __('register.label_password') : 'Password',
+                                    'label' => $fieldLabel,
                                     'type'         => 'password',
-                                    'placeholder'  => function_exists('__') ? __('register.placeholder_password') : 'At least 8 characters',
+                                    'placeholder' => $fieldPlaceholder,
                                     'required'     => true,
                                     'autocomplete' => 'new-password',
-                                    'helpText'     => function_exists('__') ? __('register.password_help') : 'Minimum 8 characters with at least one uppercase letter, one lowercase letter, and one number.',
+                                    'helpText' => $fieldHelpText,
                                 ]);
 
+                                    if (function_exists('__')) {
+                                        $fieldLabel = __('register.label_confirm_password');
+                                    } else {
+                                        $fieldLabel = 'Confirm Password';
+                                    }
+                                    if (function_exists('__')) {
+                                        $fieldPlaceholder = __('register.placeholder_confirm_password');
+                                    } else {
+                                        $fieldPlaceholder = 'Re-enter your password';
+                                    }
                                 echo formField([
                                     'id'           => 'reg-confirm-password',
                                     'name'         => 'confirm_password',
-                                    'label'        => function_exists('__') ? __('register.label_confirm_password') : 'Confirm Password',
+                                    'label' => $fieldLabel,
                                     'type'         => 'password',
-                                    'placeholder'  => function_exists('__') ? __('register.placeholder_confirm_password') : 'Re-enter your password',
+                                    'placeholder' => $fieldPlaceholder,
                                     'required'     => true,
                                     'autocomplete' => 'new-password',
                                 ]);
@@ -258,13 +342,13 @@ elseif ($recaptchaSiteKey !== '')
                                 <div class="d-grid mb-3">
                                     <button type="submit" class="btn btn-primary btn-lg">
                                         <i class="fas fa-user-plus" aria-hidden="true"></i>
-                                        <?php echo function_exists('__') ? __('register.submit_button') : 'Create Account'; ?>
+                                        <?php if (function_exists('__')) { echo __('register.submit_button'); } else { echo 'Create Account'; } ?>
                                     </button>
                                 </div>
 
                                 <p class="text-center text-body-secondary small mb-0">
-                                    <?php echo function_exists('__') ? __('register.has_account') : 'Already have an account?'; ?>
-                                    <a href="/login"><?php echo function_exists('__') ? __('register.login_link') : 'Log in'; ?></a>
+                                    <?php if (function_exists('__')) { echo __('register.has_account'); } else { echo 'Already have an account?'; } ?>
+                                    <a href="/login"><?php if (function_exists('__')) { echo __('register.login_link'); } else { echo 'Log in'; } ?></a>
                                 </p>
                             </form>
                         <?php } ?>

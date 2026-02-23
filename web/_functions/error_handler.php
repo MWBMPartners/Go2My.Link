@@ -149,8 +149,16 @@ function g2ml_logError(
         }
     }
 
-    $requestHeaders = !empty($safeHeaders) ? json_encode($safeHeaders) : null;
-    $ipAddress      = function_exists('g2ml_getClientIP') ? g2ml_getClientIP() : ($_SERVER['REMOTE_ADDR'] ?? null);
+    if (!empty($safeHeaders)) {
+        $requestHeaders = json_encode($safeHeaders);
+    } else {
+        $requestHeaders = null;
+    }
+    if (function_exists('g2ml_getClientIP')) {
+        $ipAddress = g2ml_getClientIP();
+    } else {
+        $ipAddress = ($_SERVER['REMOTE_ADDR'] ?? null);
+    }
     $userUID        = $_SESSION['user_uid'] ?? null;
 
     // Attempt database insert

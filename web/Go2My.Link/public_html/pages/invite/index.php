@@ -17,8 +17,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('invite.page_title') : 'Accept Invitation';
-$pageDesc  = function_exists('__') ? __('invite.page_description') : 'Join an organisation on Go2My.Link.';
+if (function_exists('__')) {
+    $pageTitle = __('invite.page_title');
+} else {
+    $pageTitle = 'Accept Invitation';
+}
+if (function_exists('__')) {
+    $pageDesc = __('invite.page_description');
+} else {
+    $pageDesc = 'Join an organisation on Go2My.Link.';
+}
 
 $token       = trim($_GET['token'] ?? '');
 $isLoggedIn  = isset($_SESSION['user_uid']) && $_SESSION['user_uid'] > 0;

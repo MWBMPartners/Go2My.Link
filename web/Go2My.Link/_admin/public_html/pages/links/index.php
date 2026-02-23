@@ -14,8 +14,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('links.title') : 'My Links';
-$pageDesc  = function_exists('__') ? __('links.description') : 'Manage your short links.';
+if (function_exists('__')) {
+    $pageTitle = __('links.title');
+} else {
+    $pageTitle = 'My Links';
+}
+if (function_exists('__')) {
+    $pageDesc = __('links.description');
+} else {
+    $pageDesc = 'Manage your short links.';
+}
 
 $currentUser = getCurrentUser();
 $userUID     = $currentUser['userUID'];
@@ -103,7 +111,11 @@ $countRow = dbSelectOne(
     $whereTypes,
     $whereParams
 );
-$totalCount = ($countRow !== null && $countRow !== false) ? (int) $countRow['cnt'] : 0;
+if (($countRow !== null && $countRow !== false)) {
+    $totalCount = (int) $countRow['cnt'];
+} else {
+    $totalCount = 0;
+}
 $totalPages = max(1, (int) ceil($totalCount / $perPage));
 
 // Fetch links for current page
@@ -131,9 +143,11 @@ if ($links === false)
 }
 
 // Get default short domain
-$shortDomain = function_exists('getDefaultShortDomain')
-    ? getDefaultShortDomain($currentUser['orgHandle'])
-    : 'g2my.link';
+if (function_exists('getDefaultShortDomain')) {
+    $shortDomain = getDefaultShortDomain($currentUser['orgHandle']);
+} else {
+    $shortDomain = 'g2my.link';
+}
 ?>
 
 <!-- ====================================================================== -->
@@ -144,12 +158,12 @@ $shortDomain = function_exists('getDefaultShortDomain')
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 id="links-heading" class="h2 mb-0">
                 <i class="fas fa-link" aria-hidden="true"></i>
-                <?php echo function_exists('__') ? __('links.heading') : 'My Links'; ?>
+                <?php if (function_exists('__')) { echo __('links.heading'); } else { echo 'My Links'; } ?>
                 <span class="badge bg-secondary fs-6"><?php echo number_format($totalCount); ?></span>
             </h1>
             <a href="/links/create" class="btn btn-primary">
                 <i class="fas fa-plus" aria-hidden="true"></i>
-                <?php echo function_exists('__') ? __('links.create_new') : 'Create Link'; ?>
+                <?php if (function_exists('__')) { echo __('links.create_new'); } else { echo 'Create Link'; } ?>
             </a>
         </div>
 
@@ -178,15 +192,15 @@ $shortDomain = function_exists('getDefaultShortDomain')
                     <div class="col-md-6">
                         <label for="search-input" class="form-label visually-hidden">Search</label>
                         <input type="text" class="form-control" id="search-input" name="search"
-                               placeholder="<?php echo function_exists('__') ? __('links.search_placeholder') : 'Search by short code, URL, or title...'; ?>"
+                               placeholder="<?php if (function_exists('__')) { echo __('links.search_placeholder'); } else { echo 'Search by short code, URL, or title...'; } ?>"
                                value="<?php echo g2ml_sanitiseOutput($search); ?>">
                     </div>
                     <div class="col-md-3">
                         <label for="filter-select" class="form-label visually-hidden">Filter</label>
                         <select class="form-select" id="filter-select" name="filter">
-                            <option value="" <?php echo $filter === '' ? 'selected' : ''; ?>>All Links</option>
-                            <option value="active" <?php echo $filter === 'active' ? 'selected' : ''; ?>>Active Only</option>
-                            <option value="inactive" <?php echo $filter === 'inactive' ? 'selected' : ''; ?>>Inactive Only</option>
+                            <option value="" <?php if ($filter === '') { echo 'selected'; } ?>>All Links</option>
+                            <option value="active" <?php if ($filter === 'active') { echo 'selected'; } ?>>Active Only</option>
+                            <option value="inactive" <?php if ($filter === 'inactive') { echo 'selected'; } ?>>Inactive Only</option>
                         </select>
                     </div>
                     <div class="col-md-3">
@@ -206,11 +220,11 @@ $shortDomain = function_exists('getDefaultShortDomain')
                 <?php if (count($links) === 0) { ?>
                 <div class="p-4 text-center text-body-secondary">
                     <i class="fas fa-link fa-2x mb-2" aria-hidden="true"></i>
-                    <p class="mb-0"><?php echo function_exists('__') ? __('links.no_links') : 'No links found.'; ?></p>
+                    <p class="mb-0"><?php if (function_exists('__')) { echo __('links.no_links'); } else { echo 'No links found.'; } ?></p>
                 </div>
                 <?php } else { ?>
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0" aria-label="<?php echo function_exists('__') ? __('links.heading') : 'My Links'; ?>">
+                    <table class="table table-hover mb-0" aria-label="<?php if (function_exists('__')) { echo __('links.heading'); } else { echo 'My Links'; } ?>">
                         <thead>
                             <tr>
                                 <th scope="col">Short URL</th>
@@ -281,21 +295,21 @@ $shortDomain = function_exists('getDefaultShortDomain')
             <div class="card-footer">
                 <nav aria-label="Links pagination">
                     <ul class="pagination justify-content-center mb-0">
-                        <li class="page-item <?php echo $page <= 1 ? 'disabled' : ''; ?>">
+                        <li class="page-item <?php if ($page <= 1) { echo 'disabled'; } ?>">
                             <a class="page-link" href="?page=<?php echo $page - 1; ?>&search=<?php echo urlencode($search); ?>&filter=<?php echo urlencode($filter); ?>">
                                 &laquo; Prev
                             </a>
                         </li>
 
                         <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++) { ?>
-                        <li class="page-item <?php echo $i === $page ? 'active' : ''; ?>">
+                        <li class="page-item <?php if ($i === $page) { echo 'active'; } ?>">
                             <a class="page-link" href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&filter=<?php echo urlencode($filter); ?>">
                                 <?php echo $i; ?>
                             </a>
                         </li>
                         <?php } ?>
 
-                        <li class="page-item <?php echo $page >= $totalPages ? 'disabled' : ''; ?>">
+                        <li class="page-item <?php if ($page >= $totalPages) { echo 'disabled'; } ?>">
                             <a class="page-link" href="?page=<?php echo $page + 1; ?>&search=<?php echo urlencode($search); ?>&filter=<?php echo urlencode($filter); ?>">
                                 Next &raquo;
                             </a>

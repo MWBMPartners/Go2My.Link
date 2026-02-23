@@ -21,8 +21,16 @@ if (function_exists('isAuthenticated') && isAuthenticated())
     exit;
 }
 
-$pageTitle = function_exists('__') ? __('login.title') : 'Log In';
-$pageDesc  = function_exists('__') ? __('login.description') : 'Log in to your Go2My.Link account.';
+if (function_exists('__')) {
+    $pageTitle = __('login.title');
+} else {
+    $pageTitle = 'Log In';
+}
+if (function_exists('__')) {
+    $pageDesc = __('login.description');
+} else {
+    $pageDesc = 'Log in to your Go2My.Link account.';
+}
 
 // ============================================================================
 // Determine if CAPTCHA should be shown (after N failed attempts from this IP)
@@ -42,9 +50,11 @@ $failedFromIP = dbSelectOne(
     [$clientIP]
 );
 
-$recentFailures = ($failedFromIP !== null && $failedFromIP !== false)
-    ? (int) $failedFromIP['cnt']
-    : 0;
+if (($failedFromIP !== null && $failedFromIP !== false)) {
+    $recentFailures = (int) $failedFromIP['cnt'];
+} else {
+    $recentFailures = 0;
+}
 
 $showCaptcha = ($recentFailures >= $captchaThreshold);
 
@@ -74,28 +84,38 @@ $isLocked   = false;
 $lockSeconds = 0;
 
 // Get redirect URL from query string (for post-login redirect)
-$redirectURL = isset($_GET['redirect']) ? g2ml_sanitiseInput($_GET['redirect']) : '';
+if (isset($_GET['redirect'])) {
+    $redirectURL = g2ml_sanitiseInput($_GET['redirect']);
+} else {
+    $redirectURL = '';
+}
 
 // Flash message from registration or password reset
 $flashMessage = '';
 
 if (isset($_GET['registered']) && $_GET['registered'] === '1')
 {
-    $flashMessage = function_exists('__')
-        ? __('login.flash_registered')
-        : 'Account created! Please check your email to verify your address, then log in.';
+    if (function_exists('__')) {
+        $flashMessage = __('login.flash_registered');
+    } else {
+        $flashMessage = 'Account created! Please check your email to verify your address, then log in.';
+    }
 }
 elseif (isset($_GET['reset']) && $_GET['reset'] === '1')
 {
-    $flashMessage = function_exists('__')
-        ? __('login.flash_password_reset')
-        : 'Your password has been reset. You can now log in with your new password.';
+    if (function_exists('__')) {
+        $flashMessage = __('login.flash_password_reset');
+    } else {
+        $flashMessage = 'Your password has been reset. You can now log in with your new password.';
+    }
 }
 elseif (isset($_GET['verified']) && $_GET['verified'] === '1')
 {
-    $flashMessage = function_exists('__')
-        ? __('login.flash_email_verified')
-        : 'Email verified successfully! You can now log in.';
+    if (function_exists('__')) {
+        $flashMessage = __('login.flash_email_verified');
+    } else {
+        $flashMessage = 'Email verified successfully! You can now log in.';
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST')
@@ -105,9 +125,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
     if (!g2ml_validateCSRFToken($csrfToken, 'login_form'))
     {
-        $formError = function_exists('__')
-            ? __('login.error_csrf')
-            : 'Your session has expired. Please reload the page and try again.';
+        if (function_exists('__')) {
+            $formError = __('login.error_csrf');
+        } else {
+            $formError = 'Your session has expired. Please reload the page and try again.';
+        }
     }
     else
     {
@@ -130,9 +152,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
         if (!$captchaValid)
         {
-            $formError = function_exists('__')
-                ? __('login.error_captcha')
-                : 'CAPTCHA verification failed. Please try again.';
+            if (function_exists('__')) {
+                $formError = __('login.error_captcha');
+            } else {
+                $formError = 'CAPTCHA verification failed. Please try again.';
+            }
         }
         else
         {
@@ -174,10 +198,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 <section class="page-header text-center" aria-labelledby="login-heading">
     <div class="container">
         <h1 id="login-heading" class="display-4 fw-bold">
-            <?php echo function_exists('__') ? __('login.heading') : 'Log In'; ?>
+            <?php if (function_exists('__')) { echo __('login.heading'); } else { echo 'Log In'; } ?>
         </h1>
         <p class="lead text-body-secondary">
-            <?php echo function_exists('__') ? __('login.subtitle') : 'Sign in to manage your short links and analytics.'; ?>
+            <?php if (function_exists('__')) { echo __('login.subtitle'); } else { echo 'Sign in to manage your short links and analytics.'; } ?>
         </p>
     </div>
 </section>
@@ -193,7 +217,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                     <div class="card-body p-4">
                         <h2 id="form-heading" class="h5 mb-3">
                             <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('login.form_heading') : 'Sign In'; ?>
+                            <?php if (function_exists('__')) { echo __('login.form_heading'); } else { echo 'Sign In'; } ?>
                         </h2>
 
                         <?php if ($flashMessage !== '') { ?>
@@ -213,13 +237,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                         <?php if ($isLocked) { ?>
                         <div class="alert alert-warning" role="alert">
                             <i class="fas fa-lock" aria-hidden="true"></i>
-                            <?php echo function_exists('__')
-                                ? __('login.locked_message')
-                                : 'Account temporarily locked. Please try again later or reset your password.'; ?>
+                            <?php if (function_exists('__')) { echo __('login.locked_message'); } else { echo 'Account temporarily locked. Please try again later or reset your password.'; } ?>
                         </div>
                         <?php } ?>
 
-                        <form action="/login<?php echo $redirectURL !== '' ? '?redirect=' . urlencode($redirectURL) : ''; ?>" method="POST" id="login-form" novalidate>
+                        <form action="/login<?php if ($redirectURL !== '') { echo '?redirect=' . urlencode($redirectURL); } ?>" method="POST" id="login-form" novalidate>
                             <?php echo g2ml_csrfField('login_form'); ?>
 
                             <?php if ($redirectURL !== '') { ?>
@@ -227,23 +249,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                             <?php } ?>
 
                             <?php
+                                if (function_exists('__')) {
+                                    $fieldLabel = __('login.label_email');
+                                } else {
+                                    $fieldLabel = 'Email Address';
+                                }
+                                if (function_exists('__')) {
+                                    $fieldPlaceholder = __('login.placeholder_email');
+                                } else {
+                                    $fieldPlaceholder = 'you@example.com';
+                                }
+                                if (isset($_POST['email'])) {
+                                    $fieldValue = g2ml_sanitiseOutput($_POST['email']);
+                                } else {
+                                    $fieldValue = '';
+                                }
                             echo formField([
                                 'id'           => 'login-email',
                                 'name'         => 'email',
-                                'label'        => function_exists('__') ? __('login.label_email') : 'Email Address',
+                                'label' => $fieldLabel,
                                 'type'         => 'email',
-                                'placeholder'  => function_exists('__') ? __('login.placeholder_email') : 'you@example.com',
+                                'placeholder' => $fieldPlaceholder,
                                 'required'     => true,
                                 'autocomplete' => 'email',
-                                'value'        => isset($_POST['email']) ? g2ml_sanitiseOutput($_POST['email']) : '',
+                                'value' => $fieldValue,
                             ]);
 
+                                if (function_exists('__')) {
+                                    $fieldLabel = __('login.label_password');
+                                } else {
+                                    $fieldLabel = 'Password';
+                                }
+                                if (function_exists('__')) {
+                                    $fieldPlaceholder = __('login.placeholder_password');
+                                } else {
+                                    $fieldPlaceholder = 'Your password';
+                                }
                             echo formField([
                                 'id'           => 'login-password',
                                 'name'         => 'password',
-                                'label'        => function_exists('__') ? __('login.label_password') : 'Password',
+                                'label' => $fieldLabel,
                                 'type'         => 'password',
-                                'placeholder'  => function_exists('__') ? __('login.placeholder_password') : 'Your password',
+                                'placeholder' => $fieldPlaceholder,
                                 'required'     => true,
                                 'autocomplete' => 'current-password',
                             ]);
@@ -253,11 +300,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="remember-me" name="remember_me" value="1">
                                     <label class="form-check-label" for="remember-me">
-                                        <?php echo function_exists('__') ? __('login.remember_me') : 'Remember me'; ?>
+                                        <?php if (function_exists('__')) { echo __('login.remember_me'); } else { echo 'Remember me'; } ?>
                                     </label>
                                 </div>
                                 <a href="/forgot-password" class="small">
-                                    <?php echo function_exists('__') ? __('login.forgot_password') : 'Forgot password?'; ?>
+                                    <?php if (function_exists('__')) { echo __('login.forgot_password'); } else { echo 'Forgot password?'; } ?>
                                 </a>
                             </div>
 
@@ -273,15 +320,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                             <?php } ?>
 
                             <div class="d-grid mb-3">
-                                <button type="submit" class="btn btn-primary btn-lg" <?php echo $isLocked ? 'disabled' : ''; ?>>
+                                <button type="submit" class="btn btn-primary btn-lg" <?php if ($isLocked) { echo 'disabled'; } ?>>
                                     <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
-                                    <?php echo function_exists('__') ? __('login.submit_button') : 'Log In'; ?>
+                                    <?php if (function_exists('__')) { echo __('login.submit_button'); } else { echo 'Log In'; } ?>
                                 </button>
                             </div>
 
                             <p class="text-center text-body-secondary small mb-0">
-                                <?php echo function_exists('__') ? __('login.no_account') : "Don't have an account?"; ?>
-                                <a href="/register"><?php echo function_exists('__') ? __('login.register_link') : 'Sign up'; ?></a>
+                                <?php if (function_exists('__')) { echo __('login.no_account'); } else { echo "Don't have an account?"; } ?>
+                                <a href="/register"><?php if (function_exists('__')) { echo __('login.register_link'); } else { echo 'Sign up'; } ?></a>
                             </p>
                         </form>
                     </div>

@@ -71,17 +71,23 @@ function g2ml_sendEmail(string $to, string $subject, string $template, array $da
 
     // Get email settings from database
     // 📖 Reference: settings.php → getSetting()
-    $fromAddress = function_exists('getSetting')
-        ? getSetting('email.from_address', 'noreply@go2my.link')
-        : 'noreply@go2my.link';
+    if (function_exists('getSetting')) {
+        $fromAddress = getSetting('email.from_address', 'noreply@go2my.link');
+    } else {
+        $fromAddress = 'noreply@go2my.link';
+    }
 
-    $fromName = function_exists('getSetting')
-        ? getSetting('email.from_name', 'Go2My.Link')
-        : 'Go2My.Link';
+    if (function_exists('getSetting')) {
+        $fromName = getSetting('email.from_name', 'Go2My.Link');
+    } else {
+        $fromName = 'Go2My.Link';
+    }
 
-    $replyTo = function_exists('getSetting')
-        ? getSetting('email.reply_to', 'support@go2my.link')
-        : 'support@go2my.link';
+    if (function_exists('getSetting')) {
+        $replyTo = getSetting('email.reply_to', 'support@go2my.link');
+    } else {
+        $replyTo = 'support@go2my.link';
+    }
 
     // Build email headers
     // 📖 Reference: https://www.php.net/manual/en/function.mail.php#refsect1-function.mail-parameters
@@ -98,7 +104,14 @@ function g2ml_sendEmail(string $to, string $subject, string $template, array $da
     // Log the activity
     if (function_exists('logActivity'))
     {
-        logActivity('send_email', $sent ? 'success' : 'mail_failed', $sent ? 200 : 500, [
+        if ($sent) {
+            $logStatus = 'success';
+            $logCode = 200;
+        } else {
+            $logStatus = 'mail_failed';
+            $logCode = 500;
+        }
+        logActivity('send_email', $logStatus, $logCode, [
             'logData' => [
                 'recipient' => $to,
                 'template'  => $template,
@@ -143,9 +156,11 @@ function g2ml_sendEmail(string $to, string $subject, string $template, array $da
 function g2ml_renderEmailTemplate(string $template, array $data = []): string|false
 {
     // Build the template file path
-    $templateDir = defined('G2ML_INCLUDES')
-        ? G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'email_templates'
-        : dirname(__DIR__) . DIRECTORY_SEPARATOR . '_includes' . DIRECTORY_SEPARATOR . 'email_templates';
+    if (defined('G2ML_INCLUDES')) {
+        $templateDir = G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'email_templates';
+    } else {
+        $templateDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . '_includes' . DIRECTORY_SEPARATOR . 'email_templates';
+    }
 
     $templateFile = $templateDir . DIRECTORY_SEPARATOR . $template . '.php';
 
@@ -158,9 +173,11 @@ function g2ml_renderEmailTemplate(string $template, array $data = []): string|fa
     }
 
     // Add convenience variables available to all templates
-    $data['siteName'] = function_exists('getSetting')
-        ? getSetting('site.name', 'Go2My.Link')
-        : 'Go2My.Link';
+    if (function_exists('getSetting')) {
+        $data['siteName'] = getSetting('site.name', 'Go2My.Link');
+    } else {
+        $data['siteName'] = 'Go2My.Link';
+    }
 
     $data['siteURL'] = 'https://go2my.link';
 

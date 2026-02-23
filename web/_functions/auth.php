@@ -319,7 +319,11 @@ function loginUser(string $email, string $password): array
     // === Password is correct — login successful ===
 
     // Reset failed login attempts and update login metadata
-    $ipAddress = function_exists('g2ml_getClientIP') ? g2ml_getClientIP() : ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
+    if (function_exists('g2ml_getClientIP')) {
+        $ipAddress = g2ml_getClientIP();
+    } else {
+        $ipAddress = ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
+    }
 
     dbUpdate(
         "UPDATE tblUsers SET failedLoginAttempts = 0, lockedUntil = NULL, lastLoginAt = NOW(), lastLoginIP = ? WHERE userUID = ?",
@@ -839,7 +843,11 @@ function resetPassword(string $token, string $newPassword): array
 
     if ($user !== null && $user !== false)
     {
-        $ipAddress = function_exists('g2ml_getClientIP') ? g2ml_getClientIP() : 'Unknown';
+        if (function_exists('g2ml_getClientIP')) {
+            $ipAddress = g2ml_getClientIP();
+        } else {
+            $ipAddress = 'Unknown';
+        }
 
         g2ml_sendEmail(
             $user['email'],
@@ -923,7 +931,11 @@ function changePassword(int $userUID, string $currentPassword, string $newPasswo
     }
 
     // Send password changed notification
-    $ipAddress = function_exists('g2ml_getClientIP') ? g2ml_getClientIP() : 'Unknown';
+    if (function_exists('g2ml_getClientIP')) {
+        $ipAddress = g2ml_getClientIP();
+    } else {
+        $ipAddress = 'Unknown';
+    }
 
     g2ml_sendEmail(
         $user['email'],
@@ -1010,7 +1022,11 @@ function hasMinimumRole(string $userRole, string $requiredRole): bool
  */
 function _g2ml_sendNewLoginAlert(array $user): void
 {
-    $ipAddress = function_exists('g2ml_getClientIP') ? g2ml_getClientIP() : ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
+    if (function_exists('g2ml_getClientIP')) {
+        $ipAddress = g2ml_getClientIP();
+    } else {
+        $ipAddress = ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
+    }
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
 
     // Check if this IP has been used before for this user (excluding the current session)

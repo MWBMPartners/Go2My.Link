@@ -15,8 +15,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('create_link.title') : 'Create Link';
-$pageDesc  = function_exists('__') ? __('create_link.description') : 'Create a new short link with full options.';
+if (function_exists('__')) {
+    $pageTitle = __('create_link.title');
+} else {
+    $pageTitle = 'Create Link';
+}
+if (function_exists('__')) {
+    $pageDesc = __('create_link.description');
+} else {
+    $pageDesc = 'Create a new short link with full options.';
+}
 
 $currentUser = getCurrentUser();
 
@@ -65,16 +73,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         $categoryID     = g2ml_sanitiseInput($_POST['category_id'] ?? '');
         $startDate      = g2ml_sanitiseInput($_POST['start_date'] ?? '');
         $endDate        = g2ml_sanitiseInput($_POST['end_date'] ?? '');
-        $isActive       = isset($_POST['is_active']) ? 1 : 0;
+        if (isset($_POST['is_active'])) {
+            $isActive = 1;
+        } else {
+            $isActive = 0;
+        }
+
+        if ($title !== '') {
+            $titleVal = $title;
+        } else {
+            $titleVal = null;
+        }
+        if ($notes !== '') {
+            $notesVal = $notes;
+        } else {
+            $notesVal = null;
+        }
+        if ($categoryID !== '') {
+            $categoryIDVal = $categoryID;
+        } else {
+            $categoryIDVal = null;
+        }
+        if ($startDate !== '') {
+            $startDateVal = $startDate;
+        } else {
+            $startDateVal = null;
+        }
+        if ($endDate !== '') {
+            $endDateVal = $endDate;
+        } else {
+            $endDateVal = null;
+        }
 
         $options = [
             'userUID'    => $currentUser['userUID'],
             'orgHandle'  => $currentUser['orgHandle'],
-            'title'      => $title !== '' ? $title : null,
-            'notes'      => $notes !== '' ? $notes : null,
-            'categoryID' => $categoryID !== '' ? $categoryID : null,
-            'startDate'  => $startDate !== '' ? $startDate : null,
-            'endDate'    => $endDate !== '' ? $endDate : null,
+            'title'      => $titleVal,
+            'notes'      => $notesVal,
+            'categoryID' => $categoryIDVal,
+            'startDate'  => $startDateVal,
+            'endDate'    => $endDateVal,
         ];
 
         if (function_exists('createShortURL'))
@@ -118,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 id="create-heading" class="h2 mb-0">
                 <i class="fas fa-plus-circle" aria-hidden="true"></i>
-                <?php echo function_exists('__') ? __('create_link.heading') : 'Create a New Link'; ?>
+                <?php if (function_exists('__')) { echo __('create_link.heading'); } else { echo 'Create a New Link'; } ?>
             </h1>
             <a href="/links" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left" aria-hidden="true"></i> Back to Links
@@ -137,9 +175,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                         <div class="input-group input-group-lg mb-3 mx-auto" style="max-width:500px;">
                             <input type="text" class="form-control text-center fw-bold" id="result-url"
                                    value="<?php echo g2ml_sanitiseOutput($resultURL); ?>" readonly
-                                   aria-label="<?php echo function_exists('__') ? __('create_link.result_url') : 'Created short URL'; ?>">
+                                   aria-label="<?php if (function_exists('__')) { echo __('create_link.result_url'); } else { echo 'Created short URL'; } ?>">
                             <button class="btn btn-primary" type="button" id="copy-btn"
-                                    aria-label="<?php echo function_exists('__') ? __('create_link.copy_url') : 'Copy short URL to clipboard'; ?>"
+                                    aria-label="<?php if (function_exists('__')) { echo __('create_link.copy_url'); } else { echo 'Copy short URL to clipboard'; } ?>"
                                     onclick="navigator.clipboard.writeText(document.getElementById('result-url').value).then(function(){var b=document.getElementById('copy-btn');b.textContent='\u2713 Copied!';var s=document.getElementById('global-status');if(s){s.textContent='URL copied to clipboard';}}).catch(function(){var s=document.getElementById('global-status');if(s){s.textContent='Failed to copy. Please select and copy manually.';}})">
                                 <i class="fas fa-copy" aria-hidden="true"></i> Copy
                             </button>
@@ -171,6 +209,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                             <?php echo g2ml_csrfField('create_link_form'); ?>
 
                             <?php
+                                if (isset($_POST['destination_url'])) {
+                                    $fieldValue = g2ml_sanitiseOutput($_POST['destination_url']);
+                                } else {
+                                    $fieldValue = '';
+                                }
                             echo formField([
                                 'id'          => 'destination-url',
                                 'name'        => 'destination_url',
@@ -179,9 +222,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                                 'placeholder' => 'https://example.com/your-long-url',
                                 'required'    => true,
                                 'helpText'    => 'The URL you want to shorten. Must start with http:// or https://.',
-                                'value'       => isset($_POST['destination_url']) ? g2ml_sanitiseOutput($_POST['destination_url']) : '',
+                                'value' => $fieldValue,
                             ]);
 
+                                if (isset($_POST['title'])) {
+                                    $fieldValue = g2ml_sanitiseOutput($_POST['title']);
+                                } else {
+                                    $fieldValue = '';
+                                }
                             echo formField([
                                 'id'          => 'link-title',
                                 'name'        => 'title',
@@ -190,7 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                                 'placeholder' => 'My Link',
                                 'required'    => false,
                                 'helpText'    => 'A descriptive title for your own reference.',
-                                'value'       => isset($_POST['title']) ? g2ml_sanitiseOutput($_POST['title']) : '',
+                                'value' => $fieldValue,
                             ]);
 
                             echo formField([
@@ -211,7 +259,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                                     <option value="">No category</option>
                                     <?php foreach ($categories as $cat) { ?>
                                     <option value="<?php echo g2ml_sanitiseOutput($cat['categoryID']); ?>"
-                                        <?php echo (isset($_POST['category_id']) && $_POST['category_id'] === $cat['categoryID']) ? 'selected' : ''; ?>>
+                                        <?php if ((isset($_POST['category_id']) && $_POST['category_id'] === $cat['categoryID'])) { echo 'selected'; } ?>>
                                         <?php echo g2ml_sanitiseOutput($cat['categoryName']); ?>
                                     </option>
                                     <?php } ?>

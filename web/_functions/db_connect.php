@@ -85,12 +85,18 @@ function getDB(): ?mysqli
     // 📖 Reference: https://www.php.net/manual/en/mysqli.construct.php
     mysqli_report(MYSQLI_REPORT_OFF);
 
+    if (defined('DB_PORT')) {
+        $dbPort = DB_PORT;
+    } else {
+        $dbPort = 3306;
+    }
+
     $db = @new mysqli(
         DB_HOST,
         DB_USER,
         DB_PASS,
         DB_NAME,
-        defined('DB_PORT') ? DB_PORT : 3306
+        $dbPort
     );
 
     // Check for connection errors
@@ -107,7 +113,11 @@ function getDB(): ?mysqli
 
     // Set character set to utf8mb4 for full Unicode support
     // 📖 Reference: https://www.php.net/manual/en/mysqli.set-charset.php
-    $charset = defined('DB_CHARSET') ? DB_CHARSET : 'utf8mb4';
+    if (defined('DB_CHARSET')) {
+        $charset = DB_CHARSET;
+    } else {
+        $charset = 'utf8mb4';
+    }
 
     if (!$db->set_charset($charset))
     {

@@ -342,13 +342,19 @@ function setSetting(string $settingID, mixed $value, string $scope = 'System', ?
         return false; // Query error
     }
 
+    if ($isSensitive) {
+        $isSensitiveInt = 1;
+    } else {
+        $isSensitiveInt = 0;
+    }
+
     if ($existing !== null)
     {
         // Update existing row
         $result = dbUpdate(
             "UPDATE tblSettings SET settingValue = ?, isSensitive = ? WHERE settingUID = ?",
             'sii',
-            [$stringValue, $isSensitive ? 1 : 0, (int) $existing['settingUID']]
+            [$stringValue, $isSensitiveInt, (int) $existing['settingUID']]
         );
     }
     else
@@ -358,7 +364,7 @@ function setSetting(string $settingID, mixed $value, string $scope = 'System', ?
             "INSERT INTO tblSettings (settingID, settingScope, settingScopeRef, settingValue, isSensitive)
              VALUES (?, ?, ?, ?, ?)",
             'ssssi',
-            [$settingID, $scope, $scopeRef, $stringValue, $isSensitive ? 1 : 0]
+            [$settingID, $scope, $scopeRef, $stringValue, $isSensitiveInt]
         );
     }
 
@@ -427,7 +433,11 @@ function _g2ml_settingToString(mixed $value): ?string
 
     if (is_bool($value))
     {
-        return $value ? '1' : '0';
+        if ($value) {
+            return '1';
+        } else {
+            return '0';
+        }
     }
 
     if (is_array($value) || is_object($value))

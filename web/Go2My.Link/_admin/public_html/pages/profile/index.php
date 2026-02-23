@@ -14,8 +14,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('profile.title') : 'Profile';
-$pageDesc  = function_exists('__') ? __('profile.description') : 'Manage your account settings.';
+if (function_exists('__')) {
+    $pageTitle = __('profile.title');
+} else {
+    $pageTitle = 'Profile';
+}
+if (function_exists('__')) {
+    $pageDesc = __('profile.description');
+} else {
+    $pageDesc = 'Manage your account settings.';
+}
 
 $currentUser = getCurrentUser();
 $userUID     = $currentUser['userUID'];
@@ -149,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
     <div class="container">
         <h1 id="profile-heading" class="h2 mb-4">
             <i class="fas fa-user-cog" aria-hidden="true"></i>
-            <?php echo function_exists('__') ? __('profile.heading') : 'Profile Settings'; ?>
+            <?php if (function_exists('__')) { echo __('profile.heading'); } else { echo 'Profile Settings'; } ?>
         </h1>
 
         <div class="row g-4">
@@ -245,7 +253,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
                                                   'Australia/Sydney', 'Pacific/Auckland'];
                                     foreach ($timezones as $tz) {
                                     ?>
-                                    <option value="<?php echo $tz; ?>" <?php echo ($userData['timezone'] === $tz) ? 'selected' : ''; ?>>
+                                    <option value="<?php echo $tz; ?>" <?php if (($userData['timezone'] === $tz)) { echo 'selected'; } ?>>
                                         <?php echo $tz; ?>
                                     </option>
                                     <?php } ?>

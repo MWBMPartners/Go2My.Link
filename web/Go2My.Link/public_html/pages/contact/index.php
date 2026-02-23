@@ -14,8 +14,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('contact.title') : 'Contact Us';
-$pageDesc  = function_exists('__') ? __('contact.description') : 'Get in touch with the Go2My.Link team.';
+if (function_exists('__')) {
+    $pageTitle = __('contact.title');
+} else {
+    $pageTitle = 'Contact Us';
+}
+if (function_exists('__')) {
+    $pageDesc = __('contact.description');
+} else {
+    $pageDesc = 'Get in touch with the Go2My.Link team.';
+}
 
 // Process form submission (no-JS fallback)
 $formSuccess = false;
@@ -28,9 +36,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
     if (!g2ml_validateCSRFToken($csrfToken, 'contact_form'))
     {
-        $formError = function_exists('__')
-            ? __('contact.error_csrf')
-            : 'Your session has expired. Please reload the page and try again.';
+        if (function_exists('__')) {
+            $formError = __('contact.error_csrf');
+        } else {
+            $formError = 'Your session has expired. Please reload the page and try again.';
+        }
     }
     else
     {
@@ -42,15 +52,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
         if ($contactName === '' || $contactEmail === '' || $contactMessage === '')
         {
-            $formError = function_exists('__')
-                ? __('contact.error_required')
-                : 'Please fill in all required fields.';
+            if (function_exists('__')) {
+                $formError = __('contact.error_required');
+            } else {
+                $formError = 'Please fill in all required fields.';
+            }
         }
         elseif (!filter_var($contactEmail, FILTER_VALIDATE_EMAIL))
         {
-            $formError = function_exists('__')
-                ? __('contact.error_email')
-                : 'Please enter a valid email address.';
+            if (function_exists('__')) {
+                $formError = __('contact.error_email');
+            } else {
+                $formError = 'Please enter a valid email address.';
+            }
         }
         else
         {
@@ -66,15 +80,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                 [$clientIP]
             );
 
-            $contactCount = ($rateCheck !== null && $rateCheck !== false)
-                ? (int) $rateCheck['cnt']
-                : 0;
+            if (($rateCheck !== null && $rateCheck !== false)) {
+                $contactCount = (int) $rateCheck['cnt'];
+            } else {
+                $contactCount = 0;
+            }
 
             if ($contactCount >= 5)
             {
-                $formError = function_exists('__')
-                    ? __('contact.error_rate_limit')
-                    : 'Too many messages sent. Please try again later.';
+                if (function_exists('__')) {
+                    $formError = __('contact.error_rate_limit');
+                } else {
+                    $formError = 'Too many messages sent. Please try again later.';
+                }
             }
             else
             {
@@ -97,7 +115,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                 $mailSent = @mail($recipient, $subject, $body, $headers);
 
                 // Log the activity regardless of mail success
-                logActivity('contact_form', $mailSent ? 'success' : 'mail_failed', $mailSent ? 200 : 500, [
+                if ($mailSent) {
+                    $logStatus = 'success';
+                    $logCode = 200;
+                } else {
+                    $logStatus = 'mail_failed';
+                    $logCode = 500;
+                }
+                logActivity('contact_form', $logStatus, $logCode, [
                     'logData' => [
                         'senderEmail' => $contactEmail,
                         'subject'     => $contactSubject,
@@ -110,9 +135,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                 }
                 else
                 {
-                    $formError = function_exists('__')
-                        ? __('contact.error_send')
-                        : 'Failed to send your message. Please try again later.';
+                    if (function_exists('__')) {
+                        $formError = __('contact.error_send');
+                    } else {
+                        $formError = 'Failed to send your message. Please try again later.';
+                    }
                 }
             }
         }
@@ -140,10 +167,10 @@ elseif ($recaptchaSiteKey !== '')
 <section class="page-header text-center" aria-labelledby="contact-heading">
     <div class="container">
         <h1 id="contact-heading" class="display-4 fw-bold">
-            <?php echo function_exists('__') ? __('contact.heading') : 'Contact Us'; ?>
+            <?php if (function_exists('__')) { echo __('contact.heading'); } else { echo 'Contact Us'; } ?>
         </h1>
         <p class="lead text-body-secondary">
-            <?php echo function_exists('__') ? __('contact.subtitle') : 'Have a question or feedback? We\'d love to hear from you.'; ?>
+            <?php if (function_exists('__')) { echo __('contact.subtitle'); } else { echo 'Have a question or feedback? We\'d love to hear from you.'; } ?>
         </p>
     </div>
 </section>
@@ -159,13 +186,13 @@ elseif ($recaptchaSiteKey !== '')
                     <div class="card-body p-4">
                         <h2 id="form-heading" class="h5 mb-3">
                             <i class="fas fa-envelope" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('contact.form_heading') : 'Send a Message'; ?>
+                            <?php if (function_exists('__')) { echo __('contact.form_heading'); } else { echo 'Send a Message'; } ?>
                         </h2>
 
                         <?php if ($formSuccess) { ?>
                         <div class="alert alert-success" role="status">
                             <i class="fas fa-check-circle" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('contact.success') : 'Your message has been sent. We\'ll get back to you as soon as possible.'; ?>
+                            <?php if (function_exists('__')) { echo __('contact.success'); } else { echo 'Your message has been sent. We\'ll get back to you as soon as possible.'; } ?>
                         </div>
                         <?php } else { ?>
 
@@ -180,41 +207,81 @@ elseif ($recaptchaSiteKey !== '')
                                 <?php echo g2ml_csrfField('contact_form'); ?>
 
                                 <?php
+                                    if (function_exists('__')) {
+                                        $fieldLabel = __('contact.label_name');
+                                    } else {
+                                        $fieldLabel = 'Your Name';
+                                    }
+                                    if (function_exists('__')) {
+                                        $fieldPlaceholder = __('contact.placeholder_name');
+                                    } else {
+                                        $fieldPlaceholder = 'John Doe';
+                                    }
                                 echo formField([
                                     'id'           => 'contact-name',
                                     'name'         => 'contact_name',
-                                    'label'        => function_exists('__') ? __('contact.label_name') : 'Your Name',
+                                    'label' => $fieldLabel,
                                     'type'         => 'text',
-                                    'placeholder'  => function_exists('__') ? __('contact.placeholder_name') : 'John Doe',
+                                    'placeholder' => $fieldPlaceholder,
                                     'required'     => true,
                                     'autocomplete' => 'name',
                                 ]);
 
+                                    if (function_exists('__')) {
+                                        $fieldLabel = __('contact.label_email');
+                                    } else {
+                                        $fieldLabel = 'Email Address';
+                                    }
+                                    if (function_exists('__')) {
+                                        $fieldPlaceholder = __('contact.placeholder_email');
+                                    } else {
+                                        $fieldPlaceholder = 'you@example.com';
+                                    }
                                 echo formField([
                                     'id'           => 'contact-email',
                                     'name'         => 'contact_email',
-                                    'label'        => function_exists('__') ? __('contact.label_email') : 'Email Address',
+                                    'label' => $fieldLabel,
                                     'type'         => 'email',
-                                    'placeholder'  => function_exists('__') ? __('contact.placeholder_email') : 'you@example.com',
+                                    'placeholder' => $fieldPlaceholder,
                                     'required'     => true,
                                     'autocomplete' => 'email',
                                 ]);
 
+                                    if (function_exists('__')) {
+                                        $fieldLabel = __('contact.label_subject');
+                                    } else {
+                                        $fieldLabel = 'Subject';
+                                    }
+                                    if (function_exists('__')) {
+                                        $fieldPlaceholder = __('contact.placeholder_subject');
+                                    } else {
+                                        $fieldPlaceholder = 'How can we help?';
+                                    }
                                 echo formField([
                                     'id'          => 'contact-subject',
                                     'name'        => 'contact_subject',
-                                    'label'       => function_exists('__') ? __('contact.label_subject') : 'Subject',
+                                    'label' => $fieldLabel,
                                     'type'        => 'text',
-                                    'placeholder' => function_exists('__') ? __('contact.placeholder_subject') : 'How can we help?',
+                                    'placeholder' => $fieldPlaceholder,
                                     'required'    => false,
                                 ]);
 
+                                    if (function_exists('__')) {
+                                        $fieldLabel = __('contact.label_message');
+                                    } else {
+                                        $fieldLabel = 'Message';
+                                    }
+                                    if (function_exists('__')) {
+                                        $fieldPlaceholder = __('contact.placeholder_message');
+                                    } else {
+                                        $fieldPlaceholder = 'Your message...';
+                                    }
                                 echo formField([
                                     'id'          => 'contact-message',
                                     'name'        => 'contact_message',
-                                    'label'       => function_exists('__') ? __('contact.label_message') : 'Message',
+                                    'label' => $fieldLabel,
                                     'type'        => 'textarea',
-                                    'placeholder' => function_exists('__') ? __('contact.placeholder_message') : 'Your message...',
+                                    'placeholder' => $fieldPlaceholder,
                                     'required'    => true,
                                     'rows'        => 5,
                                 ]);
@@ -234,7 +301,7 @@ elseif ($recaptchaSiteKey !== '')
                                 <div class="d-grid">
                                     <button type="submit" class="btn btn-primary btn-lg">
                                         <i class="fas fa-paper-plane" aria-hidden="true"></i>
-                                        <?php echo function_exists('__') ? __('contact.send_button') : 'Send Message'; ?>
+                                        <?php if (function_exists('__')) { echo __('contact.send_button'); } else { echo 'Send Message'; } ?>
                                     </button>
                                 </div>
                             </form>

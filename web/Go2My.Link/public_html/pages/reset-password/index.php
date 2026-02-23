@@ -21,8 +21,16 @@ if (function_exists('isAuthenticated') && isAuthenticated())
     exit;
 }
 
-$pageTitle = function_exists('__') ? __('reset_password.title') : 'Reset Password';
-$pageDesc  = function_exists('__') ? __('reset_password.description') : 'Choose a new password for your account.';
+if (function_exists('__')) {
+    $pageTitle = __('reset_password.title');
+} else {
+    $pageTitle = 'Reset Password';
+}
+if (function_exists('__')) {
+    $pageDesc = __('reset_password.description');
+} else {
+    $pageDesc = 'Choose a new password for your account.';
+}
 
 // ============================================================================
 // Validate the token from the URL
@@ -36,9 +44,11 @@ $formSuccess = false;
 
 if ($token === '')
 {
-    $tokenError = function_exists('__')
-        ? __('reset_password.error_no_token')
-        : 'No reset token provided. Please use the link from your email.';
+    if (function_exists('__')) {
+        $tokenError = __('reset_password.error_no_token');
+    } else {
+        $tokenError = 'No reset token provided. Please use the link from your email.';
+    }
 }
 else
 {
@@ -65,9 +75,11 @@ if ($tokenValid && $_SERVER['REQUEST_METHOD'] === 'POST')
 
     if (!g2ml_validateCSRFToken($csrfToken, 'reset_password_form'))
     {
-        $formError = function_exists('__')
-            ? __('reset_password.error_csrf')
-            : 'Your session has expired. Please reload the page and try again.';
+        if (function_exists('__')) {
+            $formError = __('reset_password.error_csrf');
+        } else {
+            $formError = 'Your session has expired. Please reload the page and try again.';
+        }
     }
     else
     {
@@ -76,9 +88,11 @@ if ($tokenValid && $_SERVER['REQUEST_METHOD'] === 'POST')
 
         if ($newPassword !== $confirmPassword)
         {
-            $formError = function_exists('__')
-                ? __('reset_password.error_password_mismatch')
-                : 'Passwords do not match.';
+            if (function_exists('__')) {
+                $formError = __('reset_password.error_password_mismatch');
+            } else {
+                $formError = 'Passwords do not match.';
+            }
         }
         else
         {
@@ -103,10 +117,10 @@ if ($tokenValid && $_SERVER['REQUEST_METHOD'] === 'POST')
 <section class="page-header text-center" aria-labelledby="reset-heading">
     <div class="container">
         <h1 id="reset-heading" class="display-4 fw-bold">
-            <?php echo function_exists('__') ? __('reset_password.heading') : 'Reset Password'; ?>
+            <?php if (function_exists('__')) { echo __('reset_password.heading'); } else { echo 'Reset Password'; } ?>
         </h1>
         <p class="lead text-body-secondary">
-            <?php echo function_exists('__') ? __('reset_password.subtitle') : 'Choose a new password for your account.'; ?>
+            <?php if (function_exists('__')) { echo __('reset_password.subtitle'); } else { echo 'Choose a new password for your account.'; } ?>
         </p>
     </div>
 </section>
@@ -122,7 +136,7 @@ if ($tokenValid && $_SERVER['REQUEST_METHOD'] === 'POST')
                     <div class="card-body p-4">
                         <h2 id="form-heading" class="h5 mb-3">
                             <i class="fas fa-key" aria-hidden="true"></i>
-                            <?php echo function_exists('__') ? __('reset_password.form_heading') : 'New Password'; ?>
+                            <?php if (function_exists('__')) { echo __('reset_password.form_heading'); } else { echo 'New Password'; } ?>
                         </h2>
 
                         <?php if ($tokenError !== '') { ?>
@@ -134,7 +148,7 @@ if ($tokenValid && $_SERVER['REQUEST_METHOD'] === 'POST')
                         <div class="text-center">
                             <a href="/forgot-password" class="btn btn-primary">
                                 <i class="fas fa-redo" aria-hidden="true"></i>
-                                <?php echo function_exists('__') ? __('reset_password.request_new') : 'Request a New Link'; ?>
+                                <?php if (function_exists('__')) { echo __('reset_password.request_new'); } else { echo 'Request a New Link'; } ?>
                             </a>
                         </div>
 
@@ -142,14 +156,12 @@ if ($tokenValid && $_SERVER['REQUEST_METHOD'] === 'POST')
                         <!-- Password reset successful -->
                         <div class="alert alert-success" role="status">
                             <i class="fas fa-check-circle" aria-hidden="true"></i>
-                            <?php echo function_exists('__')
-                                ? __('reset_password.success')
-                                : 'Your password has been reset successfully. You can now log in with your new password.'; ?>
+                            <?php if (function_exists('__')) { echo __('reset_password.success'); } else { echo 'Your password has been reset successfully. You can now log in with your new password.'; } ?>
                         </div>
                         <div class="text-center">
                             <a href="/login?reset=1" class="btn btn-primary">
                                 <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
-                                <?php echo function_exists('__') ? __('reset_password.go_to_login') : 'Go to Login'; ?>
+                                <?php if (function_exists('__')) { echo __('reset_password.go_to_login'); } else { echo 'Go to Login'; } ?>
                             </a>
                         </div>
 
@@ -167,23 +179,48 @@ if ($tokenValid && $_SERVER['REQUEST_METHOD'] === 'POST')
                                 <?php echo g2ml_csrfField('reset_password_form'); ?>
 
                                 <?php
+                                    if (function_exists('__')) {
+                                        $fieldLabel = __('reset_password.label_password');
+                                    } else {
+                                        $fieldLabel = 'New Password';
+                                    }
+                                    if (function_exists('__')) {
+                                        $fieldPlaceholder = __('reset_password.placeholder_password');
+                                    } else {
+                                        $fieldPlaceholder = 'At least 8 characters';
+                                    }
+                                    if (function_exists('__')) {
+                                        $fieldHelpText = __('reset_password.password_help');
+                                    } else {
+                                        $fieldHelpText = 'Minimum 8 characters with at least one uppercase letter, one lowercase letter, and one number.';
+                                    }
                                 echo formField([
                                     'id'           => 'reset-password',
                                     'name'         => 'password',
-                                    'label'        => function_exists('__') ? __('reset_password.label_password') : 'New Password',
+                                    'label' => $fieldLabel,
                                     'type'         => 'password',
-                                    'placeholder'  => function_exists('__') ? __('reset_password.placeholder_password') : 'At least 8 characters',
+                                    'placeholder' => $fieldPlaceholder,
                                     'required'     => true,
                                     'autocomplete' => 'new-password',
-                                    'helpText'     => function_exists('__') ? __('reset_password.password_help') : 'Minimum 8 characters with at least one uppercase letter, one lowercase letter, and one number.',
+                                    'helpText' => $fieldHelpText,
                                 ]);
 
+                                    if (function_exists('__')) {
+                                        $fieldLabel = __('reset_password.label_confirm_password');
+                                    } else {
+                                        $fieldLabel = 'Confirm New Password';
+                                    }
+                                    if (function_exists('__')) {
+                                        $fieldPlaceholder = __('reset_password.placeholder_confirm_password');
+                                    } else {
+                                        $fieldPlaceholder = 'Re-enter your new password';
+                                    }
                                 echo formField([
                                     'id'           => 'reset-confirm-password',
                                     'name'         => 'confirm_password',
-                                    'label'        => function_exists('__') ? __('reset_password.label_confirm_password') : 'Confirm New Password',
+                                    'label' => $fieldLabel,
                                     'type'         => 'password',
-                                    'placeholder'  => function_exists('__') ? __('reset_password.placeholder_confirm_password') : 'Re-enter your new password',
+                                    'placeholder' => $fieldPlaceholder,
                                     'required'     => true,
                                     'autocomplete' => 'new-password',
                                 ]);
@@ -192,7 +229,7 @@ if ($tokenValid && $_SERVER['REQUEST_METHOD'] === 'POST')
                                 <div class="d-grid">
                                     <button type="submit" class="btn btn-primary btn-lg">
                                         <i class="fas fa-key" aria-hidden="true"></i>
-                                        <?php echo function_exists('__') ? __('reset_password.submit_button') : 'Reset Password'; ?>
+                                        <?php if (function_exists('__')) { echo __('reset_password.submit_button'); } else { echo 'Reset Password'; } ?>
                                     </button>
                                 </div>
                             </form>

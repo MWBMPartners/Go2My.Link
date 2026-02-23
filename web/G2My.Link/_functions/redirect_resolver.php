@@ -183,7 +183,11 @@ function validateDestination(string $url, int $timeout = 5): array
             // Extract status code from the first header line
             // Format: "HTTP/1.1 200 OK" or "HTTP/2 200"
             // 📖 Reference: https://www.php.net/manual/en/function.preg-match.php
-            $statusLine = is_array($headers) ? ($headers[0] ?? '') : '';
+            if (is_array($headers)) {
+                $statusLine = ($headers[0] ?? '');
+            } else {
+                $statusLine = '';
+            }
 
             if (preg_match('/HTTP\/[\d.]+\s+(\d{3})/', $statusLine, $matches))
             {

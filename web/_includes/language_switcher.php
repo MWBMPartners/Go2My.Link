@@ -32,8 +32,16 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
     exit;
 }
 
-$activeLanguages = function_exists('getActiveLanguages') ? getActiveLanguages() : [];
-$currentLocale   = function_exists('getLocale') ? getLocale() : 'en-GB';
+if (function_exists('getActiveLanguages')) {
+    $activeLanguages = getActiveLanguages();
+} else {
+    $activeLanguages = [];
+}
+if (function_exists('getLocale')) {
+    $currentLocale = getLocale();
+} else {
+    $currentLocale = 'en-GB';
+}
 
 // Only show the switcher if there are multiple active languages
 if (count($activeLanguages) > 1) {
@@ -42,7 +50,7 @@ if (count($activeLanguages) > 1) {
 <li class="nav-item dropdown">
     <a class="nav-link dropdown-toggle" href="#" id="languageSwitcher"
        role="button" data-bs-toggle="dropdown" aria-expanded="false"
-       aria-label="<?php echo function_exists('__') ? __('nav.language') : 'Language'; ?>">
+       aria-label="<?php if (function_exists('__')) { echo __('nav.language'); } else { echo 'Language'; } ?>">
         <i class="fas fa-globe" aria-hidden="true"></i>
         <span class="d-none d-lg-inline"><?php echo htmlspecialchars($currentLang['nativeName'], ENT_QUOTES, 'UTF-8'); ?></span>
     </a>
@@ -54,14 +62,18 @@ if (count($activeLanguages) > 1) {
             // Remove any existing lang= parameter
             $cleanURL   = preg_replace('/([?&])lang=[^&]*(&|$)/', '$1', $currentURL);
             $cleanURL   = rtrim($cleanURL, '?&');
-            $separator   = (strpos($cleanURL, '?') !== false) ? '&' : '?';
+            if ((strpos($cleanURL, '?') !== false)) {
+                $separator = '&';
+            } else {
+                $separator = '?';
+            }
             $switchURL   = $cleanURL . $separator . 'lang=' . urlencode($localeCode);
             $isCurrent   = ($localeCode === $currentLocale);
             ?>
             <li>
-                <a class="dropdown-item<?php echo $isCurrent ? ' active' : ''; ?>"
+                <a class="dropdown-item<?php if ($isCurrent) { echo ' active'; } ?>"
                    href="<?php echo htmlspecialchars($switchURL, ENT_QUOTES, 'UTF-8'); ?>"
-                   <?php echo $isCurrent ? 'aria-current="true"' : ''; ?>
+                   <?php if ($isCurrent) { echo 'aria-current="true"'; } ?>
                    lang="<?php echo htmlspecialchars($localeCode, ENT_QUOTES, 'UTF-8'); ?>"
                    dir="<?php echo htmlspecialchars($langInfo['direction'], ENT_QUOTES, 'UTF-8'); ?>">
                     <?php echo htmlspecialchars($langInfo['nativeName'], ENT_QUOTES, 'UTF-8'); ?>

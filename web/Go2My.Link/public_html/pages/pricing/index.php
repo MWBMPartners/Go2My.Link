@@ -14,8 +14,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('pricing.title') : 'Pricing';
-$pageDesc  = function_exists('__') ? __('pricing.description') : 'Go2My.Link pricing plans — free and premium options.';
+if (function_exists('__')) {
+    $pageTitle = __('pricing.title');
+} else {
+    $pageTitle = 'Pricing';
+}
+if (function_exists('__')) {
+    $pageDesc = __('pricing.description');
+} else {
+    $pageDesc = 'Go2My.Link pricing plans — free and premium options.';
+}
 ?>
 
 <!-- ====================================================================== -->
@@ -24,10 +32,10 @@ $pageDesc  = function_exists('__') ? __('pricing.description') : 'Go2My.Link pri
 <section class="page-header text-center" aria-labelledby="pricing-heading">
     <div class="container">
         <h1 id="pricing-heading" class="display-4 fw-bold">
-            <?php echo function_exists('__') ? __('pricing.heading') : 'Pricing'; ?>
+            <?php if (function_exists('__')) { echo __('pricing.heading'); } else { echo 'Pricing'; } ?>
         </h1>
         <p class="lead text-body-secondary">
-            <?php echo function_exists('__') ? __('pricing.subtitle') : 'Simple, transparent pricing for everyone.'; ?>
+            <?php if (function_exists('__')) { echo __('pricing.subtitle'); } else { echo 'Simple, transparent pricing for everyone.'; } ?>
         </p>
     </div>
 </section>
@@ -38,7 +46,7 @@ $pageDesc  = function_exists('__') ? __('pricing.description') : 'Go2My.Link pri
 <section class="py-5" aria-labelledby="tiers-heading">
     <div class="container">
         <h2 id="tiers-heading" class="visually-hidden">
-            <?php echo function_exists('__') ? __('pricing.tiers_heading') : 'Plans'; ?>
+            <?php if (function_exists('__')) { echo __('pricing.tiers_heading'); } else { echo 'Plans'; } ?>
         </h2>
         <div class="row g-4 justify-content-center">
 
@@ -46,18 +54,18 @@ $pageDesc  = function_exists('__') ? __('pricing.description') : 'Go2My.Link pri
             <div class="col-md-6 col-lg-4">
                 <div class="card h-100 border-0 shadow-sm">
                     <div class="card-body text-center p-4">
-                        <h3 class="h5 text-body-secondary"><?php echo function_exists('__') ? __('pricing.tier_free') : 'Free'; ?></h3>
+                        <h3 class="h5 text-body-secondary"><?php if (function_exists('__')) { echo __('pricing.tier_free'); } else { echo 'Free'; } ?></h3>
                         <div class="display-5 fw-bold my-3">$0</div>
                         <p class="text-body-secondary">
-                            <?php echo function_exists('__') ? __('pricing.tier_free_desc') : 'Perfect for personal use and trying out the platform.'; ?>
+                            <?php if (function_exists('__')) { echo __('pricing.tier_free_desc'); } else { echo 'Perfect for personal use and trying out the platform.'; } ?>
                         </p>
                         <ul class="list-unstyled text-start mb-4">
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php echo function_exists('__') ? __('pricing.free_feature_1') : 'Unlimited short links'; ?></li>
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php echo function_exists('__') ? __('pricing.free_feature_2') : 'Basic click analytics'; ?></li>
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php echo function_exists('__') ? __('pricing.free_feature_3') : 'g2my.link short domain'; ?></li>
+                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.free_feature_1'); } else { echo 'Unlimited short links'; } ?></li>
+                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.free_feature_2'); } else { echo 'Basic click analytics'; } ?></li>
+                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.free_feature_3'); } else { echo 'g2my.link short domain'; } ?></li>
                         </ul>
                         <a href="/" class="btn btn-outline-primary">
-                            <?php echo function_exists('__') ? __('pricing.get_started') : 'Get Started Free'; ?>
+                            <?php if (function_exists('__')) { echo __('pricing.get_started'); } else { echo 'Get Started Free'; } ?>
                         </a>
                     </div>
                 </div>
@@ -67,21 +75,21 @@ $pageDesc  = function_exists('__') ? __('pricing.description') : 'Go2My.Link pri
             <div class="col-md-6 col-lg-4">
                 <div class="card h-100 border-primary shadow">
                     <div class="card-body text-center p-4">
-                        <h3 class="h5 text-primary"><?php echo function_exists('__') ? __('pricing.tier_pro') : 'Pro'; ?></h3>
+                        <h3 class="h5 text-primary"><?php if (function_exists('__')) { echo __('pricing.tier_pro'); } else { echo 'Pro'; } ?></h3>
                         <div class="display-5 fw-bold my-3">
-                            <span class="text-body-secondary fs-6"><?php echo function_exists('__') ? __('pricing.coming_soon') : 'Coming Soon'; ?></span>
+                            <span class="text-body-secondary fs-6"><?php if (function_exists('__')) { echo __('pricing.coming_soon'); } else { echo 'Coming Soon'; } ?></span>
                         </div>
                         <p class="text-body-secondary">
-                            <?php echo function_exists('__') ? __('pricing.tier_pro_desc') : 'For professionals and small teams who need more.'; ?>
+                            <?php if (function_exists('__')) { echo __('pricing.tier_pro_desc'); } else { echo 'For professionals and small teams who need more.'; } ?>
                         </p>
                         <ul class="list-unstyled text-start mb-4">
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php echo function_exists('__') ? __('pricing.pro_feature_1') : 'Everything in Free'; ?></li>
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php echo function_exists('__') ? __('pricing.pro_feature_2') : 'Custom short domains'; ?></li>
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php echo function_exists('__') ? __('pricing.pro_feature_3') : 'Advanced analytics'; ?></li>
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php echo function_exists('__') ? __('pricing.pro_feature_4') : 'API access'; ?></li>
+                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.pro_feature_1'); } else { echo 'Everything in Free'; } ?></li>
+                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.pro_feature_2'); } else { echo 'Custom short domains'; } ?></li>
+                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.pro_feature_3'); } else { echo 'Advanced analytics'; } ?></li>
+                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.pro_feature_4'); } else { echo 'API access'; } ?></li>
                         </ul>
                         <button class="btn btn-primary" disabled>
-                            <?php echo function_exists('__') ? __('pricing.coming_soon') : 'Coming Soon'; ?>
+                            <?php if (function_exists('__')) { echo __('pricing.coming_soon'); } else { echo 'Coming Soon'; } ?>
                         </button>
                     </div>
                 </div>
@@ -91,21 +99,21 @@ $pageDesc  = function_exists('__') ? __('pricing.description') : 'Go2My.Link pri
             <div class="col-md-6 col-lg-4">
                 <div class="card h-100 border-0 shadow-sm">
                     <div class="card-body text-center p-4">
-                        <h3 class="h5 text-body-secondary"><?php echo function_exists('__') ? __('pricing.tier_enterprise') : 'Enterprise'; ?></h3>
+                        <h3 class="h5 text-body-secondary"><?php if (function_exists('__')) { echo __('pricing.tier_enterprise'); } else { echo 'Enterprise'; } ?></h3>
                         <div class="display-5 fw-bold my-3">
-                            <span class="text-body-secondary fs-6"><?php echo function_exists('__') ? __('pricing.coming_soon') : 'Coming Soon'; ?></span>
+                            <span class="text-body-secondary fs-6"><?php if (function_exists('__')) { echo __('pricing.coming_soon'); } else { echo 'Coming Soon'; } ?></span>
                         </div>
                         <p class="text-body-secondary">
-                            <?php echo function_exists('__') ? __('pricing.tier_enterprise_desc') : 'For organisations with advanced needs.'; ?>
+                            <?php if (function_exists('__')) { echo __('pricing.tier_enterprise_desc'); } else { echo 'For organisations with advanced needs.'; } ?>
                         </p>
                         <ul class="list-unstyled text-start mb-4">
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php echo function_exists('__') ? __('pricing.enterprise_feature_1') : 'Everything in Pro'; ?></li>
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php echo function_exists('__') ? __('pricing.enterprise_feature_2') : 'SSO / SAML integration'; ?></li>
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php echo function_exists('__') ? __('pricing.enterprise_feature_3') : 'Dedicated support'; ?></li>
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php echo function_exists('__') ? __('pricing.enterprise_feature_4') : 'Custom SLA'; ?></li>
+                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.enterprise_feature_1'); } else { echo 'Everything in Pro'; } ?></li>
+                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.enterprise_feature_2'); } else { echo 'SSO / SAML integration'; } ?></li>
+                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.enterprise_feature_3'); } else { echo 'Dedicated support'; } ?></li>
+                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.enterprise_feature_4'); } else { echo 'Custom SLA'; } ?></li>
                         </ul>
                         <a href="/contact" class="btn btn-outline-primary">
-                            <?php echo function_exists('__') ? __('pricing.contact_sales') : 'Contact Sales'; ?>
+                            <?php if (function_exists('__')) { echo __('pricing.contact_sales'); } else { echo 'Contact Sales'; } ?>
                         </a>
                     </div>
                 </div>
@@ -118,7 +126,7 @@ $pageDesc  = function_exists('__') ? __('pricing.description') : 'Go2My.Link pri
             <div class="col-lg-8 text-center">
                 <div class="alert alert-info" role="status">
                     <i class="fas fa-info-circle" aria-hidden="true"></i>
-                    <?php echo function_exists('__') ? __('pricing.phase9_notice') : 'Detailed pricing and subscription management are coming in a future update. Anonymous URL shortening is free and unlimited (rate limits apply).'; ?>
+                    <?php if (function_exists('__')) { echo __('pricing.phase9_notice'); } else { echo 'Detailed pricing and subscription management are coming in a future update. Anonymous URL shortening is free and unlimited (rate limits apply).'; } ?>
                 </div>
             </div>
         </div>

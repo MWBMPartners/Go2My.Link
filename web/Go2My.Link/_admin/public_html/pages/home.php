@@ -14,8 +14,16 @@
  * ============================================================================
  */
 
-$pageTitle = function_exists('__') ? __('dashboard.title') : 'Dashboard';
-$pageDesc  = function_exists('__') ? __('dashboard.description') : 'Overview of your short links and activity.';
+if (function_exists('__')) {
+    $pageTitle = __('dashboard.title');
+} else {
+    $pageTitle = 'Dashboard';
+}
+if (function_exists('__')) {
+    $pageDesc = __('dashboard.description');
+} else {
+    $pageDesc = 'Overview of your short links and activity.';
+}
 
 $currentUser = getCurrentUser();
 $userUID     = $currentUser['userUID'];
@@ -30,7 +38,11 @@ $linkCountRow = dbSelectOne(
     'i',
     [$userUID]
 );
-$totalLinks = ($linkCountRow !== null && $linkCountRow !== false) ? (int) $linkCountRow['cnt'] : 0;
+if (($linkCountRow !== null && $linkCountRow !== false)) {
+    $totalLinks = (int) $linkCountRow['cnt'];
+} else {
+    $totalLinks = 0;
+}
 
 // Total clicks across all user's links
 $clickCountRow = dbSelectOne(
@@ -38,7 +50,11 @@ $clickCountRow = dbSelectOne(
     'i',
     [$userUID]
 );
-$totalClicks = ($clickCountRow !== null && $clickCountRow !== false) ? (int) $clickCountRow['total'] : 0;
+if (($clickCountRow !== null && $clickCountRow !== false)) {
+    $totalClicks = (int) $clickCountRow['total'];
+} else {
+    $totalClicks = 0;
+}
 
 // Active links
 $activeCountRow = dbSelectOne(
@@ -46,7 +62,11 @@ $activeCountRow = dbSelectOne(
     'i',
     [$userUID]
 );
-$activeLinks = ($activeCountRow !== null && $activeCountRow !== false) ? (int) $activeCountRow['cnt'] : 0;
+if (($activeCountRow !== null && $activeCountRow !== false)) {
+    $activeLinks = (int) $activeCountRow['cnt'];
+} else {
+    $activeLinks = 0;
+}
 
 // Recent links (last 5)
 $recentLinks = dbSelect(
@@ -65,9 +85,11 @@ if ($recentLinks === false)
 }
 
 // Get default short domain for building full URLs
-$shortDomain = function_exists('getDefaultShortDomain')
-    ? getDefaultShortDomain($currentUser['orgHandle'])
-    : 'g2my.link';
+if (function_exists('getDefaultShortDomain')) {
+    $shortDomain = getDefaultShortDomain($currentUser['orgHandle']);
+} else {
+    $shortDomain = 'g2my.link';
+}
 ?>
 
 <!-- ====================================================================== -->
@@ -79,17 +101,15 @@ $shortDomain = function_exists('getDefaultShortDomain')
             <div>
                 <h1 id="dashboard-heading" class="h2 mb-1">
                     <i class="fas fa-tachometer-alt" aria-hidden="true"></i>
-                    <?php echo function_exists('__') ? __('dashboard.heading') : 'Dashboard'; ?>
+                    <?php if (function_exists('__')) { echo __('dashboard.heading'); } else { echo 'Dashboard'; } ?>
                 </h1>
                 <p class="text-body-secondary mb-0">
-                    <?php echo function_exists('__')
-                        ? __('dashboard.welcome')
-                        : 'Welcome back, ' . g2ml_sanitiseOutput($currentUser['firstName']) . '!'; ?>
+                    <?php if (function_exists('__')) { echo __('dashboard.welcome'); } else { echo 'Welcome back, ' . g2ml_sanitiseOutput($currentUser['firstName']) . '!'; } ?>
                 </p>
             </div>
             <a href="/links/create" class="btn btn-primary">
                 <i class="fas fa-plus" aria-hidden="true"></i>
-                <?php echo function_exists('__') ? __('dashboard.create_link') : 'Create Link'; ?>
+                <?php if (function_exists('__')) { echo __('dashboard.create_link'); } else { echo 'Create Link'; } ?>
             </a>
         </div>
 
@@ -103,7 +123,7 @@ $shortDomain = function_exists('getDefaultShortDomain')
                         <i class="fas fa-link fa-2x text-primary mb-2" aria-hidden="true"></i>
                         <p class="display-6 fw-bold mb-0"><?php echo number_format($totalLinks); ?></p>
                         <p class="text-body-secondary mb-0">
-                            <?php echo function_exists('__') ? __('dashboard.stat_total_links') : 'Total Links'; ?>
+                            <?php if (function_exists('__')) { echo __('dashboard.stat_total_links'); } else { echo 'Total Links'; } ?>
                         </p>
                     </div>
                 </div>
@@ -114,7 +134,7 @@ $shortDomain = function_exists('getDefaultShortDomain')
                         <i class="fas fa-mouse-pointer fa-2x text-success mb-2" aria-hidden="true"></i>
                         <p class="display-6 fw-bold mb-0"><?php echo number_format($totalClicks); ?></p>
                         <p class="text-body-secondary mb-0">
-                            <?php echo function_exists('__') ? __('dashboard.stat_total_clicks') : 'Total Clicks'; ?>
+                            <?php if (function_exists('__')) { echo __('dashboard.stat_total_clicks'); } else { echo 'Total Clicks'; } ?>
                         </p>
                     </div>
                 </div>
@@ -125,7 +145,7 @@ $shortDomain = function_exists('getDefaultShortDomain')
                         <i class="fas fa-check-circle fa-2x text-info mb-2" aria-hidden="true"></i>
                         <p class="display-6 fw-bold mb-0"><?php echo number_format($activeLinks); ?></p>
                         <p class="text-body-secondary mb-0">
-                            <?php echo function_exists('__') ? __('dashboard.stat_active_links') : 'Active Links'; ?>
+                            <?php if (function_exists('__')) { echo __('dashboard.stat_active_links'); } else { echo 'Active Links'; } ?>
                         </p>
                     </div>
                 </div>
@@ -139,32 +159,32 @@ $shortDomain = function_exists('getDefaultShortDomain')
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h2 class="h5 mb-0">
                     <i class="fas fa-clock" aria-hidden="true"></i>
-                    <?php echo function_exists('__') ? __('dashboard.recent_links') : 'Recent Links'; ?>
+                    <?php if (function_exists('__')) { echo __('dashboard.recent_links'); } else { echo 'Recent Links'; } ?>
                 </h2>
                 <a href="/links" class="btn btn-sm btn-outline-primary">
-                    <?php echo function_exists('__') ? __('dashboard.view_all') : 'View All'; ?>
+                    <?php if (function_exists('__')) { echo __('dashboard.view_all'); } else { echo 'View All'; } ?>
                 </a>
             </div>
             <div class="card-body p-0">
                 <?php if (count($recentLinks) === 0) { ?>
                 <div class="p-4 text-center text-body-secondary">
                     <i class="fas fa-link fa-2x mb-2" aria-hidden="true"></i>
-                    <p class="mb-2"><?php echo function_exists('__') ? __('dashboard.no_links') : 'No links yet.'; ?></p>
+                    <p class="mb-2"><?php if (function_exists('__')) { echo __('dashboard.no_links'); } else { echo 'No links yet.'; } ?></p>
                     <a href="/links/create" class="btn btn-primary btn-sm">
                         <i class="fas fa-plus" aria-hidden="true"></i>
-                        <?php echo function_exists('__') ? __('dashboard.create_first') : 'Create Your First Link'; ?>
+                        <?php if (function_exists('__')) { echo __('dashboard.create_first'); } else { echo 'Create Your First Link'; } ?>
                     </a>
                 </div>
                 <?php } else { ?>
                 <div class="table-responsive">
-                    <table class="table table-hover mb-0" aria-label="<?php echo function_exists('__') ? __('dashboard.recent_links') : 'Recent Links'; ?>">
+                    <table class="table table-hover mb-0" aria-label="<?php if (function_exists('__')) { echo __('dashboard.recent_links'); } else { echo 'Recent Links'; } ?>">
                         <thead>
                             <tr>
-                                <th scope="col"><?php echo function_exists('__') ? __('dashboard.col_short_url') : 'Short URL'; ?></th>
-                                <th scope="col"><?php echo function_exists('__') ? __('dashboard.col_destination') : 'Destination'; ?></th>
-                                <th scope="col" class="text-center"><?php echo function_exists('__') ? __('dashboard.col_clicks') : 'Clicks'; ?></th>
-                                <th scope="col"><?php echo function_exists('__') ? __('dashboard.col_status') : 'Status'; ?></th>
-                                <th scope="col"><?php echo function_exists('__') ? __('dashboard.col_created') : 'Created'; ?></th>
+                                <th scope="col"><?php if (function_exists('__')) { echo __('dashboard.col_short_url'); } else { echo 'Short URL'; } ?></th>
+                                <th scope="col"><?php if (function_exists('__')) { echo __('dashboard.col_destination'); } else { echo 'Destination'; } ?></th>
+                                <th scope="col" class="text-center"><?php if (function_exists('__')) { echo __('dashboard.col_clicks'); } else { echo 'Clicks'; } ?></th>
+                                <th scope="col"><?php if (function_exists('__')) { echo __('dashboard.col_status'); } else { echo 'Status'; } ?></th>
+                                <th scope="col"><?php if (function_exists('__')) { echo __('dashboard.col_created'); } else { echo 'Created'; } ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -184,9 +204,9 @@ $shortDomain = function_exists('getDefaultShortDomain')
                                 </td>
                                 <td>
                                     <?php if ((int) $link['isActive']) { ?>
-                                    <span class="badge bg-success"><?php echo function_exists('__') ? __('dashboard.active') : 'Active'; ?></span>
+                                    <span class="badge bg-success"><?php if (function_exists('__')) { echo __('dashboard.active'); } else { echo 'Active'; } ?></span>
                                     <?php } else { ?>
-                                    <span class="badge bg-secondary"><?php echo function_exists('__') ? __('dashboard.inactive') : 'Inactive'; ?></span>
+                                    <span class="badge bg-secondary"><?php if (function_exists('__')) { echo __('dashboard.inactive'); } else { echo 'Inactive'; } ?></span>
                                     <?php } ?>
                                 </td>
                                 <td>

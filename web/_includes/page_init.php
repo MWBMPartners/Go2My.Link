@@ -193,7 +193,11 @@ if (session_status() === PHP_SESSION_NONE)
     // Domain is set to .go2my.link in production for cross-subdomain sharing
     // (go2my.link ↔ admin.go2my.link). In local/dev, left empty.
     // 📖 Reference: https://www.php.net/manual/en/function.session-set-cookie-params.php
-    $sessionDomain = (G2ML_ENVIRONMENT === 'production') ? '.go2my.link' : '';
+    if ((G2ML_ENVIRONMENT === 'production')) {
+        $sessionDomain = '.go2my.link';
+    } else {
+        $sessionDomain = '';
+    }
 
     session_set_cookie_params([
         'lifetime' => 0,                                   // Session cookie (expires when browser closes)
@@ -276,10 +280,21 @@ detectLocale();
  */
 function g2ml_getDebugInfo(): array
 {
+    if (defined('G2ML_COMPONENT')) {
+        $debugComponent = G2ML_COMPONENT;
+    } else {
+        $debugComponent = 'unknown';
+    }
+    if (defined('G2ML_COMPONENT_NAME')) {
+        $debugComponentName = G2ML_COMPONENT_NAME;
+    } else {
+        $debugComponentName = 'unknown';
+    }
+
     return [
         'environment'    => G2ML_ENVIRONMENT,
-        'component'      => defined('G2ML_COMPONENT') ? G2ML_COMPONENT : 'unknown',
-        'componentName'  => defined('G2ML_COMPONENT_NAME') ? G2ML_COMPONENT_NAME : 'unknown',
+        'component'      => $debugComponent,
+        'componentName'  => $debugComponentName,
         'locale'         => getLocale(),
         'textDirection'  => getTextDirection(),
         'phpVersion'     => PHP_VERSION,

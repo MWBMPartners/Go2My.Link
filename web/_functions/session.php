@@ -65,14 +65,20 @@ function createUserSession(int $userUID): string|false
     $tokenHash = hash('sha256', $plainToken);
 
     // Gather request metadata
-    $ipAddress = function_exists('g2ml_getClientIP') ? g2ml_getClientIP() : ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
+    if (function_exists('g2ml_getClientIP')) {
+        $ipAddress = g2ml_getClientIP();
+    } else {
+        $ipAddress = ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
+    }
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     $deviceInfo = parseDeviceInfo($userAgent);
 
     // Get session lifetime from settings (default 24 hours)
-    $lifetime = function_exists('getSetting')
-        ? (int) getSetting('security.session_lifetime', 86400)
-        : 86400;
+    if (function_exists('getSetting')) {
+        $lifetime = (int) getSetting('security.session_lifetime', 86400);
+    } else {
+        $lifetime = 86400;
+    }
 
     // Calculate expiry timestamp
     // 📖 Reference: https://www.php.net/manual/en/function.date.php
@@ -357,7 +363,11 @@ function revokeAllOtherSessions(int $userUID, string $currentToken): int
         [$userUID, $currentHash]
     );
 
-    return ($result !== false) ? $result : 0;
+    if (($result !== false)) {
+        return $result;
+    } else {
+        return 0;
+    }
 }
 
 // ============================================================================
@@ -386,7 +396,11 @@ function cleanExpiredSessions(): int
         []
     );
 
-    return ($result !== false) ? $result : 0;
+    if (($result !== false)) {
+        return $result;
+    } else {
+        return 0;
+    }
 }
 
 // ============================================================================
