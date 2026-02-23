@@ -18,7 +18,7 @@
  * @subpackage Includes
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.7.0
- * @since      Phase 2 (dark mode Phase 3, CSRF meta Phase 6)
+ * @since      Phase 2 (dark mode Phase 3, CSRF meta Phase 6, PWA Phase 6)
  * ============================================================================
  */
 
@@ -92,6 +92,17 @@ $initialTheme = ($themePref === 'auto') ? 'light' : $themePref;
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
 
     <!-- ================================================================== -->
+    <!-- PWA Manifest & Apple Touch Icon                                    -->
+    <!-- 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/Manifest -->
+    <!-- ================================================================== -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#1E88E5">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="<?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png">
+
+    <!-- ================================================================== -->
     <!-- Bootstrap 5.3 CSS (CDN + Local Fallback)                           -->
     <!-- 📖 Reference: https://getbootstrap.com/docs/5.3/getting-started/   -->
     <!-- ================================================================== -->
@@ -145,6 +156,16 @@ $initialTheme = ($themePref === 'auto') ? 'light' : $themePref;
 
     <!-- Theme Controller (loaded deferred — full toggle/persistence logic) -->
     <script src="/js/theme.js" defer></script>
+
+    <!-- 📱 PWA: Service Worker Registration -->
+    <!-- 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerContainer/register -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').catch(function() {});
+            });
+        }
+    </script>
 </head>
 <body class="<?php echo htmlspecialchars(trim('g2ml-' . (defined('G2ML_COMPONENT') ? G2ML_COMPONENT : 'unknown') . ' ' . $bodyClass), ENT_QUOTES, 'UTF-8'); ?>">
 

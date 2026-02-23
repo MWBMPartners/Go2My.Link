@@ -111,13 +111,21 @@ The application detects its environment from the hostname:
 
 ### 🔄 Migration (from MWlink)
 
+> 📋 **See [MIGRATION_PLAN.md](MIGRATION_PLAN.md) for the comprehensive step-by-step migration execution plan**, including pre-migration checklist, DNS cutover, rollback procedures, and post-launch monitoring.
+
+**Summary of migration steps:**
+
 1. 🗄️ Create new database alongside existing `mwtools_mwlink`
-2. 📋 Import new schema
-3. ▶️ Run migration scripts from `web/_sql/migrations/` in order (1-6)
-4. ✅ Verify all 480 URLs resolve correctly
-5. ✅ Verify organisation domain mappings
-6. 🔀 Switch application to new database
-7. 🗑️ Decommission old database after verification period
+2. 📋 Import schema files in order (`000` through `035`)
+3. 🔧 Import stored procedures (`sp_lookupShortURL`, `sp_logActivity`, `sp_generateShortCode`)
+4. 🌱 Import seed data in order (`001` through `010`)
+5. 🧪 Run dry-run verification: `web/_sql/dry_run.sql`
+6. ▶️ Run migration scripts from `web/_sql/migrations/` in order (`001` through `006`)
+7. ⏳ Optional: Run activity log migration (`007`) in batches
+8. ✅ Verify all 480 URLs resolve correctly
+9. ✅ Verify organisation domain mappings
+10. 🔀 Switch application to new database
+11. 🗑️ Decommission old database after 30-day verification period
 
 ## 🔑 Credentials Setup
 
@@ -189,3 +197,6 @@ Content Security Policy (CSP) is configured per-component to allow required CDN 
 - 📋 [ARCHITECTURE.md](ARCHITECTURE.md) — System architecture overview
 - 🗄️ [DATABASE.md](DATABASE.md) — Database schema reference
 - 📡 [API.md](API.md) — API endpoint reference
+- 🚀 [MIGRATION_PLAN.md](MIGRATION_PLAN.md) — Migration execution plan & launch checklist
+- 🌍 [TRANSLATION.md](TRANSLATION.md) — Translation guide
+- ♿ [ACCESSIBILITY.md](ACCESSIBILITY.md) — Accessibility standards

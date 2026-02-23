@@ -169,6 +169,7 @@ AddDefaultCharset UTF-8
     ExpiresByType text/css "access plus 1 week"
     ExpiresByType text/javascript "access plus 1 week"
     ExpiresByType application/javascript "access plus 1 week"
+    ExpiresByType application/manifest+json "access plus 1 week"
     ExpiresByType font/woff2 "access plus 1 month"
     ExpiresByType font/woff "access plus 1 month"
 </IfModule>
