@@ -11,8 +11,8 @@
  * @package    GoToMyLink
  * @subpackage ComponentA
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.3.0
- * @since      Phase 2
+ * @version    0.4.0
+ * @since      Phase 2 (updated Phase 3)
  * ============================================================================
  */
 
@@ -64,6 +64,29 @@ require_once G2ML_ROOT
 // Load accessibility helpers
 require_once G2ML_INCLUDES
     . DIRECTORY_SEPARATOR . 'accessibility.php';
+
+// ============================================================================
+// 📦 Step 3b: Load Component A Function Files
+// ============================================================================
+// Component-specific functions for URL creation, etc.
+// ============================================================================
+
+$componentFunctionsDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . '_functions';
+
+if (is_dir($componentFunctionsDir))
+{
+    $componentFunctionFiles = glob(
+        $componentFunctionsDir . DIRECTORY_SEPARATOR . '*.php'
+    );
+
+    if ($componentFunctionFiles !== false)
+    {
+        foreach ($componentFunctionFiles as $funcFile)
+        {
+            require_once $funcFile;
+        }
+    }
+}
 
 // ============================================================================
 // 🔀 Step 4: Route the Request

@@ -80,8 +80,10 @@ Options -Indexes
 #   g2my.link/my-link    → index.php?code=my-link
 # =============================================================================
 
-# Allow direct access to robots.txt and favicon.ico
-RewriteRule ^(robots\.txt|favicon\.ico)$ - [L]
+# Route robots.txt and favicon.ico to dynamic PHP handlers (Phase 3)
+# 📖 Reference: web/G2My.Link/public_html/robots.php, favicon.php
+RewriteRule ^robots\.txt$ robots.php [L]
+RewriteRule ^favicon\.ico$ favicon.php [L]
 
 # Route everything else as a short code
 RewriteCond %{REQUEST_FILENAME} !-f

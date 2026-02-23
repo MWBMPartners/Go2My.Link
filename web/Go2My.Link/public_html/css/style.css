@@ -126,3 +126,47 @@ main {
 #g2ml-theme-toggle:hover {
     opacity: 0.8;
 }
+
+/* ========================================================================== */
+/* URL Shortening Form                                                        */
+/* ========================================================================== */
+#shorten-form .btn-lg {
+    padding: 0.75rem 2rem;
+}
+
+#shorten-result .alert {
+    border-left: 4px solid var(--g2ml-brand-success);
+}
+
+#copy-url-btn {
+    white-space: nowrap;
+}
+
+/* ========================================================================== */
+/* Static Page Layouts                                                        */
+/* ========================================================================== */
+.page-header {
+    padding: 3rem 0 2rem;
+}
+
+.feature-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 4rem;
+    height: 4rem;
+    border-radius: 0.75rem;
+    font-size: 1.5rem;
+}
+
+/* Legal page placeholder boxes */
+.legal-placeholder {
+    border: 2px dashed var(--bs-border-color);
+    border-radius: 0.5rem;
+    padding: 2rem;
+}
+
+/* Contact form */
+.contact-card {
+    max-width: 640px;
+}

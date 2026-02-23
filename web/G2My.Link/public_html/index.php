@@ -12,15 +12,16 @@
  *
  * Flow:
  *   1. Extract short code from ?code= (set by .htaccess)
- *   2. Call sp_lookupShortURL to resolve the destination
- *   3. Log the activity
- *   4. Issue 302 redirect (or show error page)
+ *   2. Resolve the short code via resolver functions (→ sp_lookupShortURL)
+ *   3. Optionally validate destination URL accessibility
+ *   4. Log the activity (respecting DNT and analytics setting)
+ *   5. Issue 302 redirect (or show branded error page)
  *
  * @package    GoToMyLink
  * @subpackage ComponentB
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.3.0
- * @since      Phase 2
+ * @version    0.4.0
+ * @since      Phase 2 (refactored Phase 3)
  * ============================================================================
  */
 
@@ -61,112 +62,184 @@ require_once G2ML_ROOT
     . DIRECTORY_SEPARATOR . 'page_init.php';
 
 // ============================================================================
-// 🔀 Step 4: Extract Short Code and Resolve
+// 📦 Step 4: Load Component B Function Files
 // ============================================================================
 
-$shortCode = $_GET['code'] ?? '';
-$shortCode = trim($shortCode);
+$componentFunctionsDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . '_functions';
+
+require_once $componentFunctionsDir
+    . DIRECTORY_SEPARATOR . 'domain_resolver.php';
+
+require_once $componentFunctionsDir
+    . DIRECTORY_SEPARATOR . 'redirect_resolver.php';
+
+// ============================================================================
+// 🔒 Step 5: Determine Logging Behaviour
+// ============================================================================
+// Respect the Do Not Track (DNT) header when the analytics.respect_dnt
+// setting is enabled. Click counts are still updated (aggregate, not PII).
+//
+// 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/DNT
+// ============================================================================
+
+$shouldLog = getSetting('analytics.log_activity', true);
+$respectDNT = getSetting('analytics.respect_dnt', true);
+$isDNT = (isset($_SERVER['HTTP_DNT']) && $_SERVER['HTTP_DNT'] === '1');
+
+if ($respectDNT && $isDNT)
+{
+    $shouldLog = false;
+}
+
+// ============================================================================
+// 🔀 Step 6: Extract Short Code
+// ============================================================================
+
+$shortCode = trim($_GET['code'] ?? '');
 
 // No short code provided — redirect to main website
 if ($shortCode === '')
 {
     $fallbackURL = getSetting('redirect.fallback_url', 'https://go2my.link');
 
-    logActivity('redirect', 'no_code', 302, [
-        'logData' => ['reason' => 'Empty short code'],
-    ]);
+    if ($shouldLog)
+    {
+        logActivity('redirect', 'no_code', 302, [
+            'logData' => ['reason' => 'Empty short code'],
+        ]);
+    }
 
-    header('Location: ' . $fallbackURL, true, 302);
-    exit;
+    buildRedirectResponse($fallbackURL, 302);
+    // buildRedirectResponse calls exit — execution stops here
 }
 
-// Get the requesting domain (for custom org domain resolution)
+// ============================================================================
+// 🌐 Step 7: Determine Requesting Domain
+// ============================================================================
+// Custom org domains (camsda.link, tyney.link, etc.) are resolved to their
+// org handle by the sp_lookupShortURL stored procedure.
+// ============================================================================
+
 $requestDomain = $_SERVER['HTTP_HOST'] ?? 'g2my.link';
 
-// Strip port number if present
+// Strip port number if present (e.g., localhost:8080)
+// 📖 Reference: https://www.php.net/manual/en/function.strpos.php
 if (strpos($requestDomain, ':') !== false)
 {
     $requestDomain = explode(':', $requestDomain)[0];
 }
 
 // ============================================================================
-// 📞 Step 5: Call sp_lookupShortURL
+// 📞 Step 8: Resolve the Short Code
 // ============================================================================
-// The stored procedure handles:
+// The resolveShortCode() function wraps sp_lookupShortURL which handles:
 //   - Domain-to-org mapping
 //   - Alias chain resolution (max 3 hops)
-//   - Date range validation
-//   - Active status check
+//   - Date range validation (startDate / endDate)
+//   - Active status check (isActive flag)
 //   - Fallback URL provision
 //
+// 📖 Reference: web/G2My.Link/_functions/redirect_resolver.php
 // 📖 Reference: web/_sql/procedures/sp_lookupShortURL.sql
 // ============================================================================
 
-$result = dbCallProcedure(
-    'sp_lookupShortURL',
-    [$requestDomain, $shortCode],
-    'ss',
-    ['@outputDestination', '@outputStatus', '@outputOrgHandle']
-);
+$result = resolveShortCode($requestDomain, $shortCode);
 
-if ($result === false)
+$destination = $result['destination'];
+$status      = $result['status'];
+$orgHandle   = $result['orgHandle'];
+
+// ============================================================================
+// ❌ Handle SP Error (database failure)
+// ============================================================================
+
+if ($status === 'error')
 {
-    // Database error — fall back gracefully
-    error_log('[GoToMyLink] ERROR: sp_lookupShortURL call failed for code: ' . $shortCode);
-
-    logActivity('redirect', 'error', 500, [
-        'shortCode' => $shortCode,
-        'logData'   => ['reason' => 'SP call failed'],
-    ]);
+    if ($shouldLog)
+    {
+        logActivity('redirect', 'error', 500, [
+            'shortCode' => $shortCode,
+            'logData'   => ['reason' => 'SP call failed'],
+        ]);
+    }
 
     http_response_code(500);
-    echo '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Error</title></head>';
-    echo '<body><h1>Service Temporarily Unavailable</h1>';
-    echo '<p>Please try again in a few moments.</p></body></html>';
+    $errorTitle   = 'Service Temporarily Unavailable';
+    $errorMessage = 'Please try again in a few moments.';
+    require __DIR__ . DIRECTORY_SEPARATOR . '404.php';
     exit;
 }
 
-$destination = $result['@outputDestination'] ?? null;
-$status      = $result['@outputStatus'] ?? 'not_found';
-$orgHandle   = $result['@outputOrgHandle'] ?? null;
-
 // ============================================================================
-// 📊 Step 6: Log Activity and Issue Redirect
+// ✅ Step 9: Handle Successful Resolution
 // ============================================================================
-
-$redirectCode = (int) getSetting('redirect.default_code', 302);
 
 if ($status === 'success' && $destination !== null && $destination !== '')
 {
-    // ✅ Successful redirect
-    logActivity('redirect', 'success', $redirectCode, [
-        'orgHandle'      => $orgHandle,
-        'shortCode'      => $shortCode,
-        'destinationURL' => $destination,
-    ]);
+    // 🔍 Optional: Validate destination URL accessibility
+    // Gated behind setting — OFF by default for performance
+    // 📖 Reference: web/G2My.Link/_functions/redirect_resolver.php — validateDestination()
+    $shouldValidate = getSetting('redirect.validate_destination', false);
 
-    // Update click count (fire-and-forget)
+    if ($shouldValidate)
+    {
+        $validation = validateDestination($destination);
+
+        if (!$validation['valid'])
+        {
+            if ($shouldLog)
+            {
+                logActivity('redirect', 'validation_failed', 503, [
+                    'orgHandle'      => $orgHandle,
+                    'shortCode'      => $shortCode,
+                    'destinationURL' => $destination,
+                    'logData'        => [
+                        'validationError' => $validation['error'],
+                        'statusCode'      => $validation['statusCode'],
+                    ],
+                ]);
+            }
+
+            // Show the validation page with countdown to fallback
+            require __DIR__ . DIRECTORY_SEPARATOR . 'validating.php';
+            exit;
+        }
+    }
+
+    // 📊 Log the successful redirect
+    $redirectCode = (int) getSetting('redirect.default_code', 302);
+
+    if ($shouldLog)
+    {
+        logActivity('redirect', 'success', $redirectCode, [
+            'orgHandle'      => $orgHandle,
+            'shortCode'      => $shortCode,
+            'destinationURL' => $destination,
+        ]);
+    }
+
+    // 📈 Update click count and last click timestamp (fire-and-forget)
+    // This is aggregate data (not PII) so it runs even when DNT is set
     dbUpdate(
-        "UPDATE tblShortURLs SET clickCount = clickCount + 1 WHERE shortCode = ? AND orgHandle = ?",
+        "UPDATE tblShortURLs
+         SET clickCount = clickCount + 1,
+             lastClickAt = NOW()
+         WHERE shortCode = ?
+           AND orgHandle = ?",
         'ss',
         [$shortCode, $orgHandle]
     );
 
-    header('Location: ' . $destination, true, $redirectCode);
-    exit;
+    // 🚀 Issue the redirect
+    buildRedirectResponse($destination, $redirectCode);
+    // buildRedirectResponse calls exit — execution stops here
 }
 
 // ============================================================================
-// ❌ Error States
+// ❌ Step 10: Handle Error States
 // ============================================================================
 
-logActivity('redirect', $status, 404, [
-    'orgHandle' => $orgHandle,
-    'shortCode' => $shortCode,
-    'logData'   => ['spStatus' => $status],
-]);
-
-// Determine what to show the user
+// Determine HTTP status code and error messaging
 switch ($status)
 {
     case 'not_found':
@@ -199,6 +272,12 @@ switch ($status)
         $errorMessage = 'This link could not be resolved due to a configuration issue.';
         break;
 
+    case 'no_destination':
+        http_response_code(404);
+        $errorTitle   = 'Link Not Configured';
+        $errorMessage = 'This short link has no destination URL configured.';
+        break;
+
     default:
         http_response_code(404);
         $errorTitle   = 'Link Not Found';
@@ -206,29 +285,36 @@ switch ($status)
         break;
 }
 
-// If there's a fallback destination from the SP, redirect to it
-if ($destination !== null && $destination !== '')
+// Log the error
+if ($shouldLog)
 {
-    header('Location: ' . $destination, true, 302);
-    exit;
+    $httpCode = http_response_code();
+    logActivity('redirect', $status, $httpCode, [
+        'orgHandle' => $orgHandle,
+        'shortCode' => $shortCode,
+        'logData'   => ['spStatus' => $status],
+    ]);
 }
 
-// Otherwise show a minimal error page
-// (Branded error pages will be built in Phase 3)
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo htmlspecialchars($errorTitle, ENT_QUOTES, 'UTF-8'); ?> — GoToMyLink</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" crossorigin="anonymous">
-</head>
-<body class="bg-light">
-    <div class="container py-5 text-center">
-        <h1 class="display-4 text-muted"><?php echo htmlspecialchars($errorTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
-        <p class="lead"><?php echo htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8'); ?></p>
-        <a href="https://go2my.link" class="btn btn-primary mt-3">Go to GoToMyLink</a>
-    </div>
-</body>
-</html>
+// If the SP returned a fallback destination, redirect to it
+if ($destination !== null && $destination !== '')
+{
+    buildRedirectResponse($destination, 302);
+    // buildRedirectResponse calls exit
+}
+
+// Show the appropriate branded error page
+// Variables $errorTitle, $errorMessage, $orgHandle, $status are available
+// to the included error page templates
+switch ($status)
+{
+    case 'expired':
+    case 'not_yet_active':
+        require __DIR__ . DIRECTORY_SEPARATOR . 'expired.php';
+        break;
+
+    default:
+        require __DIR__ . DIRECTORY_SEPARATOR . '404.php';
+        break;
+}
+exit;

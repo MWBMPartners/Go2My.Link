@@ -9,7 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Added
 
-- 🎨 Dark/light mode theme system using Bootstrap 5.3 colour modes (`data-bs-theme`) (Phase 3 prep)
+- 🔀 **Redirect resolver functions** — `resolveShortCode()`, `validateDestination()`, `buildRedirectResponse()` for Component B (#10)
+- 🌐 **Domain resolver functions** — `getOrgByDomain()`, `getDomainFallbackURL()`, `getOrgFavicon()` for multi-domain org support (#10)
+- 🚫 **Branded error pages** for Component B — self-contained 404, expired/scheduled, and destination validation pages with countdown timers and ARIA live regions (#11)
+- 🤖 **Dynamic robots.txt** — settings-based, with optional suspicious bot blocking (#13)
+- 🎨 **Dynamic favicon handler** — org-specific favicons from `_uploads/`, fallback to default (#13)
+- ✨ **Short URL creation** — `createShortURL()` with URL validation, self-reference blocking, SP-based code generation, activity logging (#16)
+- ⏱️ **Anonymous rate limiting** — IP-based hourly/daily limits via `tblActivityLog` indexes (no Redis) (#16)
+- 🤖 **Bot protection** — Conditional Cloudflare Turnstile / Google reCAPTCHA with server-side verification (#16)
+- 📡 **Internal API endpoint** — `POST /api/create/` with CSRF, CAPTCHA, rate limiting, JSON response, no-JS fallback (#18)
+- 🏠 **Functional homepage** — URL shortening form with AJAX submission, copy-to-clipboard, conditional CAPTCHA widget, no-JS fallback via query params (#15)
+- 📝 **Static pages** — About, Features, Pricing (placeholder), Contact (with email sending), Legal placeholders (Terms, Privacy, Cookies) (#20)
+- 🔍 **URL info/preview page** — Look up short codes, see destination domain (masked path), status, creation date, category (#23)
+- 🔗 `.htaccess` rewrite for `/info/SHORTCODE` route on Component A (#23)
+- 🌱 **Phase 3 settings seed** — 14 new settings: indexer, analytics, redirect, CAPTCHA, rate limiting, short code, contact (#23)
+- 🎨 Dark/light mode theme system using Bootstrap 5.3 colour modes (`data-bs-theme`) (#74)
   - CSS custom properties (`--g2ml-*`) for all brand colours with light/dark variants
   - `theme.js` client-side controller: auto/light/dark states, localStorage + cookie persistence
   - FOUC-prevention inline script in `<head>` for instant theme application
@@ -20,6 +34,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🔄 Changed
 
+- 🔀 **Redirect processor refactored** — Component B `index.php` now uses resolver functions instead of direct SP calls; added DNT respect, optional destination validation gate, `lastClickAt` tracking (#8)
+- 🔀 **Component A entry point** — `index.php` now auto-loads `_functions/*.php` files; version bumped to 0.4.0 (#15)
+- 🔀 **Component B .htaccess** — `robots.txt` and `favicon.ico` now route to PHP handlers instead of static files (#13)
+- 🔀 **Component A .htaccess** — Added `/info/SHORTCODE` rewrite rule before catch-all (#23)
+- 🎨 `app.js` — Added AJAX form handler, copy-to-clipboard, CAPTCHA callbacks (~230 lines) (#15)
+- 🎨 `style.css` — Added URL form result card, static page, legal placeholder, and contact form styles (#15)
 - 📋 **Phase restructuring** — Merged old Phase 3 (Redirect Engine) + old Phase 4 (Main Website) into **new Phase 3: Core Product** (10 issues) for a faster path to a working URL shortener
 - 📋 **Phase restructuring** — Split old Phase 5 (User System, 9 issues) into **new Phase 4: User System — Auth & Basic Dashboard** (4 issues) and **new Phase 5: Organisations, Admin & Advanced Auth** (5 issues)
 - 🏗️ GitHub milestones renamed: v0.4.0 → Core Product, v0.5.0 → User System: Auth & Dashboard, v0.6.0 → Orgs/Admin/Advanced Auth

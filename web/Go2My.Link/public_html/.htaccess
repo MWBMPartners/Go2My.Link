@@ -110,6 +110,13 @@ RewriteCond %{REQUEST_FILENAME}.php -f
 RewriteRule ^(.+)$ $1.php [L]
 
 # =============================================================================
+# Info Page — /info/SHORTCODE route
+# Maps /info/abc123 to the router with route=info and code=abc123.
+# Must come before the catch-all route below.
+# =============================================================================
+RewriteRule ^info/([a-zA-Z0-9]+)$ index.php?route=info&code=$1 [QSA,L]
+
+# =============================================================================
 # URL Routing — Route to index.php
 # Catches all remaining requests and routes them via the ?route= parameter.
 # Actual files and directories are served directly (handled by conditions above).

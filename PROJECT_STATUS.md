@@ -4,7 +4,7 @@
 
 ## 🏗️ Current Phase
 
-**Phase 2: Core PHP Framework & Shared Infrastructure** — ✅ Complete
+**Phase 3: Core Product** — ✅ Complete
 
 ## 📋 Build Progress
 
@@ -13,7 +13,7 @@
 | Phase 0 | v0.1.0 — Scaffolding | ✅ **Complete** | 7 issues |
 | Phase 1 | v0.2.0 — Database | ✅ **Complete** | 5 issues |
 | Phase 2 | v0.3.0 — PHP Framework | ✅ **Complete** | 11 issues |
-| Phase 3 | v0.4.0 — Core Product | 🔜 Not Started | 10 issues |
+| Phase 3 | v0.4.0 — Core Product | ✅ **Complete** | 10 issues |
 | Phase 4 | v0.5.0 — User System: Auth & Dashboard | 🔜 Not Started | 4 issues |
 | Phase 5 | v0.6.0 — Orgs, Admin & Advanced Auth | 🔜 Not Started | 5 issues |
 | Phase 6 | v0.7.0 — API & Analytics | 🔜 Not Started | 7 issues |
@@ -23,6 +23,19 @@
 | Phase 10 | v1.0.0 — Legal & Launch | 🔜 Not Started | 8 issues |
 
 ## ✅ Completed Milestones
+
+### v0.4.0 — 🚀 Core Product (Phase 3)
+
+- [x] 3.1 — 🔀 Redirect resolver & domain resolver functions: `resolveShortCode()`, `validateDestination()`, `getOrgByDomain()`, `getDomainFallbackURL()` (#10)
+- [x] 3.2 — 🔀 Redirect processor refactor: resolver-based flow, DNT respect, destination validation gate, `lastClickAt` tracking (#8)
+- [x] 3.3 — 🚫 Branded error/fallback pages: 404, expired/scheduled, validation failure — self-contained HTML with countdown timers (#11)
+- [x] 3.4 — 🤖 Dynamic robots.txt & favicon handlers: settings-based, org-specific favicon support (#13)
+- [x] 3.5 — ✨ Anonymous short URL creation: `createShortURL()`, rate limiting, CAPTCHA verification (#16)
+- [x] 3.6 — 📡 Internal API endpoint: `POST /api/create/` with CSRF, CAPTCHA, rate limiting, no-JS fallback (#18)
+- [x] 3.7 — 🏠 Homepage with URL shortening form: AJAX, copy-to-clipboard, conditional CAPTCHA, no-JS fallback (#15)
+- [x] 3.8 — 📝 Static pages: About, Features, Pricing, Contact, Legal placeholders (#20)
+- [x] 3.9 — 🔍 URL info/preview page: short code lookup, masked destination, status badges (#23)
+- [x] 3.10 — 🎨 Dark/light mode theme system: Bootstrap 5.3 colour modes, theme toggle, FOUC prevention (#74)
 
 ### v0.3.0 — 🛠️ PHP Framework (Phase 2)
 
@@ -86,7 +99,7 @@ None.
 
 ## 🔜 Next Up
 
-**Phase 3: Core Product (go2my.link + g2my.link)** — Build the redirect engine for g2my.link AND the main website for go2my.link in a single phase, delivering a fully working URL shortener (create + redirect) as quickly as possible. Also includes dark/light mode theme system.
+**Phase 4: User System — Auth & Basic Dashboard** — User registration, login (email/password + social login), password reset, and a basic user dashboard for managing personal short links. 4 issues.
 
 ## 🔗 Links
 
