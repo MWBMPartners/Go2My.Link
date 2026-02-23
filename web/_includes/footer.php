@@ -43,10 +43,10 @@ $siteName    = function_exists('getSetting') ? getSetting('site.name', 'Go2My.Li
             <!-- Column 1: Brand & Copyright -->
             <div class="col-md-4 mb-3">
                 <h5><?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?></h5>
-                <p class="text-muted small">
+                <p class="text-body-secondary small">
                     <?php echo function_exists('getSetting') ? htmlspecialchars(getSetting('site.tagline', 'Shorten. Track. Manage.'), ENT_QUOTES, 'UTF-8') : 'Shorten. Track. Manage.'; ?>
                 </p>
-                <p class="text-muted small mb-0">
+                <p class="text-body-secondary small mb-0">
                     &copy; <?php echo $currentYear; ?> MWBM Partners Ltd.
                     <?php echo function_exists('__') ? __('footer.rights') : 'All rights reserved.'; ?>
                 </p>
@@ -56,10 +56,10 @@ $siteName    = function_exists('getSetting') ? getSetting('site.name', 'Go2My.Li
             <div class="col-md-4 mb-3">
                 <h6><?php echo function_exists('__') ? __('footer.quick_links') : 'Quick Links'; ?></h6>
                 <ul class="list-unstyled small">
-                    <li><a href="/about" class="text-muted text-decoration-none"><?php echo function_exists('__') ? __('nav.about') : 'About'; ?></a></li>
-                    <li><a href="/features" class="text-muted text-decoration-none"><?php echo function_exists('__') ? __('nav.features') : 'Features'; ?></a></li>
-                    <li><a href="/pricing" class="text-muted text-decoration-none"><?php echo function_exists('__') ? __('nav.pricing') : 'Pricing'; ?></a></li>
-                    <li><a href="/contact" class="text-muted text-decoration-none"><?php echo function_exists('__') ? __('footer.contact') : 'Contact'; ?></a></li>
+                    <li><a href="/about" class="text-body-secondary text-decoration-none"><?php echo function_exists('__') ? __('nav.about') : 'About'; ?></a></li>
+                    <li><a href="/features" class="text-body-secondary text-decoration-none"><?php echo function_exists('__') ? __('nav.features') : 'Features'; ?></a></li>
+                    <li><a href="/pricing" class="text-body-secondary text-decoration-none"><?php echo function_exists('__') ? __('nav.pricing') : 'Pricing'; ?></a></li>
+                    <li><a href="/contact" class="text-body-secondary text-decoration-none"><?php echo function_exists('__') ? __('footer.contact') : 'Contact'; ?></a></li>
                 </ul>
             </div>
 
@@ -67,11 +67,11 @@ $siteName    = function_exists('getSetting') ? getSetting('site.name', 'Go2My.Li
             <div class="col-md-4 mb-3">
                 <h6><?php echo function_exists('__') ? __('footer.legal') : 'Legal'; ?></h6>
                 <ul class="list-unstyled small">
-                    <li><a href="/legal/terms" class="text-muted text-decoration-none"><?php echo function_exists('__') ? __('footer.terms') : 'Terms of Use'; ?></a></li>
-                    <li><a href="/legal/privacy" class="text-muted text-decoration-none"><?php echo function_exists('__') ? __('footer.privacy') : 'Privacy Policy'; ?></a></li>
-                    <li><a href="/legal/cookies" class="text-muted text-decoration-none"><?php echo function_exists('__') ? __('footer.cookies') : 'Cookie Policy'; ?></a></li>
-                    <li><a href="/legal/acceptable-use" class="text-muted text-decoration-none"><?php echo function_exists('__') ? __('footer.aup') : 'Acceptable Use'; ?></a></li>
-                    <li><a href="/legal/copyright" class="text-muted text-decoration-none"><?php echo function_exists('__') ? __('footer.copyright') : 'Copyright'; ?></a></li>
+                    <li><a href="/legal/terms" class="text-body-secondary text-decoration-none"><?php echo function_exists('__') ? __('footer.terms') : 'Terms of Use'; ?></a></li>
+                    <li><a href="/legal/privacy" class="text-body-secondary text-decoration-none"><?php echo function_exists('__') ? __('footer.privacy') : 'Privacy Policy'; ?></a></li>
+                    <li><a href="/legal/cookies" class="text-body-secondary text-decoration-none"><?php echo function_exists('__') ? __('footer.cookies') : 'Cookie Policy'; ?></a></li>
+                    <li><a href="/legal/acceptable-use" class="text-body-secondary text-decoration-none"><?php echo function_exists('__') ? __('footer.aup') : 'Acceptable Use'; ?></a></li>
+                    <li><a href="/legal/copyright" class="text-body-secondary text-decoration-none"><?php echo function_exists('__') ? __('footer.copyright') : 'Copyright'; ?></a></li>
                 </ul>
             </div>
 
@@ -183,7 +183,7 @@ if (defined('G2ML_DEBUG') && G2ML_DEBUG === true && function_exists('g2ml_getDeb
                 <tbody>
                 <?php foreach ($debug['queries'] as $i => $q): ?>
                     <tr style="border-top:1px solid #333;">
-                        <td style="padding:2px 5px;color:#666;"><?php echo $i + 1; ?></td>
+                        <td style="padding:2px 5px;color:#999;"><?php echo $i + 1; ?></td>
                         <td style="padding:2px 5px;max-width:600px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
                             title="<?php echo htmlspecialchars($q['sql'], ENT_QUOTES, 'UTF-8'); ?>">
                             <?php echo htmlspecialchars(substr($q['sql'], 0, 120), ENT_QUOTES, 'UTF-8'); ?>

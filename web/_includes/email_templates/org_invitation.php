@@ -127,10 +127,10 @@ $currentYear  = $currentYear ?? date('Y');
                     <!-- Footer -->
                     <tr>
                         <td style="background-color:#f8f9fa; padding:20px 40px; text-align:center; border-top:1px solid #dee2e6;">
-                            <p style="margin:0; color:#6c757d; font-size:12px;">
+                            <p style="margin:0; color:#5a6268; font-size:12px;">
                                 &copy; <?php echo htmlspecialchars($currentYear, ENT_QUOTES, 'UTF-8'); ?> <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?> — MWBM Partners Ltd.
                                 <br>
-                                <a href="<?php echo htmlspecialchars($siteURL, ENT_QUOTES, 'UTF-8'); ?>" style="color:#6c757d;">
+                                <a href="<?php echo htmlspecialchars($siteURL, ENT_QUOTES, 'UTF-8'); ?>" style="color:#5a6268;">
                                     <?php echo htmlspecialchars($siteURL, ENT_QUOTES, 'UTF-8'); ?>
                                 </a>
                             </p>

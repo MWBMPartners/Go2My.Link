@@ -140,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                                    aria-label="<?php echo function_exists('__') ? __('create_link.result_url') : 'Created short URL'; ?>">
                             <button class="btn btn-primary" type="button" id="copy-btn"
                                     aria-label="<?php echo function_exists('__') ? __('create_link.copy_url') : 'Copy short URL to clipboard'; ?>"
-                                    onclick="navigator.clipboard.writeText(document.getElementById('result-url').value).then(function(){var b=document.getElementById('copy-btn');b.innerHTML='<i class=\'fas fa-check\' aria-hidden=\'true\'></i> Copied!';var s=document.getElementById('global-status');if(s){s.textContent='URL copied to clipboard';}})">
+                                    onclick="navigator.clipboard.writeText(document.getElementById('result-url').value).then(function(){var b=document.getElementById('copy-btn');b.textContent='\u2713 Copied!';var s=document.getElementById('global-status');if(s){s.textContent='URL copied to clipboard';}}).catch(function(){var s=document.getElementById('global-status');if(s){s.textContent='Failed to copy. Please select and copy manually.';}})">
                                 <i class="fas fa-copy" aria-hidden="true"></i> Copy
                             </button>
                         </div>

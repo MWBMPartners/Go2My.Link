@@ -408,9 +408,16 @@ function dbCallProcedure(string $procedureName, array $inParams = [], string $in
             $allPlaceholders[] = '?';
         }
 
-        // OUT parameters use session variables
+        // OUT parameters use session variables (validated to prevent injection)
         foreach ($outParams as $outParam)
         {
+            // Validate OUT parameter names follow MySQL session variable naming convention
+            if (!preg_match('/^@[a-zA-Z_][a-zA-Z0-9_]*$/', $outParam))
+            {
+                error_log('[Go2My.Link] ERROR: Invalid OUT parameter name: ' . $outParam);
+                return false;
+            }
+
             $allPlaceholders[] = $outParam;
         }
 

@@ -131,7 +131,7 @@ $statusIcon = ($status ?? 'expired') === 'not_yet_active'
         <!-- ⏱️ Countdown -->
         <div class="mb-4">
             <p class="text-body-secondary">
-                Redirecting in <span id="countdown" class="countdown-number" aria-live="polite"><?php echo $countdownDelay; ?></span> seconds...
+                Redirecting in <span id="countdown" class="countdown-number" aria-live="assertive"><?php echo $countdownDelay; ?></span> seconds...
             </p>
             <div class="progress" role="progressbar" aria-label="Redirect countdown"
                  aria-valuenow="<?php echo $countdownDelay; ?>" aria-valuemin="0" aria-valuemax="<?php echo $countdownDelay; ?>"

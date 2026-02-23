@@ -140,7 +140,7 @@ $isAdmin     = canManageOrg($orgHandle);
                             <?php if (!empty($org['orgURL'])): ?>
                             <dt class="col-sm-4">Website</dt>
                             <dd class="col-sm-8">
-                                <a href="<?php echo g2ml_sanitiseOutput($org['orgURL']); ?>" target="_blank" rel="noopener">
+                                <a href="<?php echo g2ml_sanitiseOutput($org['orgURL']); ?>" target="_blank" rel="noopener noreferrer">
                                     <?php echo g2ml_sanitiseOutput($org['orgURL']); ?>
                                 </a>
                             </dd>

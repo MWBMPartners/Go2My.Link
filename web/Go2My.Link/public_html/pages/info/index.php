@@ -294,7 +294,7 @@ if ($linkData !== null)
                             </dt>
                             <dd class="col-sm-8">
                                 <a href="<?php echo g2ml_sanitiseOutput($shortURL); ?>"
-                                   target="_blank" rel="noopener"
+                                   target="_blank" rel="noopener noreferrer"
                                    class="fw-bold">
                                     <?php echo g2ml_sanitiseOutput($shortURL); ?>
                                 </a>
@@ -375,7 +375,7 @@ if ($linkData !== null)
                     <div class="card-footer bg-transparent text-center py-3">
                         <a href="<?php echo g2ml_sanitiseOutput($shortURL); ?>"
                            class="btn btn-primary"
-                           target="_blank" rel="noopener">
+                           target="_blank" rel="noopener noreferrer">
                             <i class="fas fa-external-link-alt" aria-hidden="true"></i>
                             <?php echo function_exists('__') ? __('info.visit_link') : 'Visit Link'; ?>
                         </a>

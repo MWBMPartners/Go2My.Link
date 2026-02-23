@@ -226,7 +226,7 @@ $shortDomain = function_exists('getDefaultShortDomain')
                             <tr>
                                 <td>
                                     <a href="https://<?php echo g2ml_sanitiseOutput($shortDomain . '/' . $link['shortCode']); ?>"
-                                       target="_blank" rel="noopener" class="fw-bold text-decoration-none">
+                                       target="_blank" rel="noopener noreferrer" class="fw-bold text-decoration-none">
                                         <?php echo g2ml_sanitiseOutput($link['shortCode']); ?>
                                     </a>
                                     <?php if (!empty($link['title'])): ?>

@@ -57,7 +57,7 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
                 data-bs-toggle="collapse" data-bs-target="#mainNavbar"
                 aria-controls="mainNavbar" aria-expanded="false"
                 aria-label="<?php echo function_exists('__') ? __('nav.toggle') : 'Toggle navigation'; ?>">
-            <span class="navbar-toggler-icon"></span>
+            <span class="navbar-toggler-icon" aria-hidden="true"></span>
         </button>
 
         <!-- Collapsible content -->

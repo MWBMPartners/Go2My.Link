@@ -78,7 +78,7 @@ $errorMsg   = isset($_GET['error']) ? g2ml_sanitiseInput($_GET['error']) : '';
                                     <strong><?php echo function_exists('__') ? __('home.result_success') : 'Your short URL is ready!'; ?></strong>
                                     <div class="mt-1">
                                         <a href="<?php echo g2ml_sanitiseOutput($createdURL); ?>"
-                                           target="_blank" rel="noopener"
+                                           target="_blank" rel="noopener noreferrer"
                                            class="fw-bold fs-5">
                                             <?php echo g2ml_sanitiseOutput($createdURL); ?>
                                         </a>
@@ -150,7 +150,7 @@ $errorMsg   = isset($_GET['error']) ? g2ml_sanitiseInput($_GET['error']) : '';
                                     <div>
                                         <strong><?php echo function_exists('__') ? __('home.result_success') : 'Your short URL is ready!'; ?></strong>
                                         <div class="mt-1">
-                                            <a id="result-url" href="#" target="_blank" rel="noopener"
+                                            <a id="result-url" href="#" target="_blank" rel="noopener noreferrer"
                                                class="fw-bold fs-5"></a>
                                         </div>
                                     </div>

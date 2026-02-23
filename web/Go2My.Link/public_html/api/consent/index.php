@@ -146,7 +146,15 @@ if ($isJSON)
     exit;
 }
 
-// Form POST fallback — redirect back to previous page
-$referer = $_SERVER['HTTP_REFERER'] ?? '/';
+// Form POST fallback — redirect back to previous page (validated to same origin)
+$referer      = $_SERVER['HTTP_REFERER'] ?? '/';
+$refererHost  = parse_url($referer, PHP_URL_HOST);
+$allowedHosts = ['go2my.link', 'www.go2my.link', 'admin.go2my.link', 'g2my.link', 'lnks.page'];
+
+if ($refererHost !== null && !in_array(strtolower($refererHost), $allowedHosts, true))
+{
+    $referer = '/'; // Fall back to homepage for unrecognised origins
+}
+
 header('Location: ' . $referer);
 exit;

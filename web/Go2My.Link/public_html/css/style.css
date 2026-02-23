@@ -183,6 +183,7 @@ main {
 /* ========================================================================== */
 footer a:hover,
 footer a:focus {
+    color: var(--bs-light) !important;
     text-decoration: underline !important;
 }
 
