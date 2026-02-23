@@ -23,6 +23,7 @@ $siteName       = function_exists('getSetting') ? getSetting('site.name', 'Go2My
 $companyName    = 'MWBM Partners Ltd';
 $companyTrading = 'MWservices';
 $contactEmail   = function_exists('getSetting') ? getSetting('site.contact_email', 'hello@go2my.link') : 'hello@go2my.link';
+$hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hide_review_placeholders', '0') === '1';
 ?>
 
 <!-- ====================================================================== -->
@@ -458,11 +459,13 @@ $contactEmail   = function_exists('getSetting') ? getSetting('site.contact_email
                     <?php echo function_exists('__') ? __('legal.privacy_s5_business_desc') : 'In the event of a merger, acquisition, reorganisation, or sale of assets, your personal data may be transferred as part of the transaction. We will notify you before your data becomes subject to a different privacy policy.'; ?>
                 </p>
 
+                <?php if (!$hideReviewPlaceholders): ?>
                 <div class="alert alert-warning" role="alert">
                     <i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i>
                     <strong>{{LEGAL_REVIEW_NEEDED}}</strong>
                     <?php echo function_exists('__') ? __('legal.privacy_s5_review') : 'This section should be reviewed by a qualified legal professional to ensure all data sharing arrangements are accurately disclosed, and that appropriate Data Processing Agreements (DPAs) are in place with all third-party providers.'; ?>
                 </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -493,11 +496,13 @@ $contactEmail   = function_exists('getSetting') ? getSetting('site.contact_email
                     <li><?php echo function_exists('__') ? __('legal.privacy_s6_measures') : 'Supplementary technical and organisational measures to ensure your data remains protected'; ?></li>
                 </ul>
 
+                <?php if (!$hideReviewPlaceholders): ?>
                 <div class="alert alert-warning" role="alert">
                     <i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i>
                     <strong>{{LEGAL_REVIEW_NEEDED}}</strong>
                     <?php echo function_exists('__') ? __('legal.privacy_s6_review') : 'A legal professional should review the specific transfer mechanisms in use (e.g., UK International Data Transfer Agreement, EU SCCs, or adequacy decisions) and confirm that a Transfer Impact Assessment (TIA) has been conducted for US transfers, particularly in light of the UK-US Data Bridge and EU-US Data Privacy Framework.'; ?>
                 </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -785,11 +790,13 @@ $contactEmail   = function_exists('getSetting') ? getSetting('site.contact_email
                     <?php echo function_exists('__') ? __('legal.privacy_s10_disclaimer') : 'While we strive to protect your personal data, no method of transmission over the Internet or method of electronic storage is 100% secure. We cannot guarantee absolute security, but we are committed to maintaining a high standard of protection.'; ?>
                 </p>
 
+                <?php if (!$hideReviewPlaceholders): ?>
                 <div class="alert alert-warning" role="alert">
                     <i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i>
                     <strong>{{LEGAL_REVIEW_NEEDED}}</strong>
                     <?php echo function_exists('__') ? __('legal.privacy_s10_review') : 'A security professional and legal counsel should review this section to ensure all technical and organisational measures are accurately described, and that the disclaimer language is appropriate for the jurisdictions in which the Service operates.'; ?>
                 </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>

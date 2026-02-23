@@ -154,3 +154,14 @@ INSERT INTO `tblSettings` (
  'string', 0, 1)
 ON DUPLICATE KEY UPDATE
     `settingDescription` = VALUES(`settingDescription`);
+
+INSERT INTO `tblSettings` (
+    `settingID`, `settingScope`, `settingScopeRef`,
+    `settingValue`, `settingDefault`, `settingDescription`,
+    `settingDataType`, `isSensitive`, `isEditable`
+) VALUES
+('legal.hide_review_placeholders', 'System', NULL,
+ '0', '0', 'Hide {{LEGAL_REVIEW_NEEDED}} placeholder alerts from legal pages (0=show, 1=hide)',
+ 'boolean', 0, 1)
+ON DUPLICATE KEY UPDATE
+    `settingDescription` = VALUES(`settingDescription`);
