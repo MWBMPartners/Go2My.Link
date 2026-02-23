@@ -123,6 +123,34 @@ A comprehensive accessibility audit was performed across all components. Key fix
 
 The en-GB baseline translation seed contains ~1,075 keys in `web/_sql/seeds/010_phase6_translations.sql`. Keys follow dot-notation (`page.section_element`). 10 languages are registered in `tblLanguages` but only `en-GB` is active. The 9 additional locales are deferred to post-launch — the interim Google Translate widget provides machine translation coverage. See `docs/TRANSLATION.md` for the full guide.
 
+#### 🔄 Locale Resolution & Language-Family Fallback
+
+The i18n system (`web/_functions/i18n.php`) uses a **language-family fallback** strategy via `_g2ml_resolveLocale()`. This means users can request a base language code (e.g., `?lang=en`) and receive the best available regional variant, without needing every locale to have its own complete translation set.
+
+**Locale resolution order** (applied to URL params, session, cookie, Accept-Language header):
+
+1. **Exact match** — `en-GB` → `en-GB` (active locale found directly)
+2. **Base language → regional** — `en` → `en-GB` (no exact `en`, but `en-GB` is an active `en-*` variant)
+3. **Inactive regional → sibling** — `en-US` (inactive) → `en-GB` (first active `en-*` variant; prefers the site default if it shares the same base language)
+
+**Translation lookup fallback** (`__()` function):
+
+1. **Current locale** — e.g., look up key in `en-US` translations
+2. **Language-family sibling** — e.g., try `en-GB` translations (shares the `en` base)
+3. **Default locale** — `en-GB` (site-wide fallback)
+4. **Key itself** — returns the dot-notation key (makes missing translations visible in the UI)
+
+**Practical effect:** When adding a new regional variant (e.g., `en-US`), you only need to seed the strings that differ from the existing variant (e.g., "colour" → "color"). All other keys automatically fall through to the family sibling. This applies to all language families, not just English:
+
+| Request | Resolves To | Reason |
+| --- | --- | --- |
+| `en-GB` | `en-GB` | Exact match |
+| `en` | `en-GB` | Base language → first active `en-*` |
+| `en-US` (inactive) | `en-GB` | Sibling fallback (default preferred) |
+| `pt` | `pt-BR` | Base language → first active `pt-*` |
+| `zh` | `zh-CN` | Base language → first active `zh-*` |
+| `fr` (inactive) | `null` → site default | No active `fr-*` variant yet |
+
 ### 🗄️ Data Migration (Phase 6)
 
 `docs/MIGRATION_PLAN.md` documents the 7-step migration from the legacy MWlink database. `web/_sql/dry_run.sql` provides a non-destructive read-only validation script. Key decisions: all passwords force-reset (legacy is plaintext), `tblLicenses` skipped, activity log migrated in 10K-row batches (429K total). See the migration plan for rollback procedures.

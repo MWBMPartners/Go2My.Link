@@ -85,31 +85,37 @@ function detectLocale(): string
     $locale = null;
 
     // 1. Check URL parameter
+    // Supports both full locale codes (?lang=en-GB) and base language codes (?lang=en)
     if (isset($_GET['lang']) && is_string($_GET['lang']))
     {
         $requested = g2ml_sanitiseInput($_GET['lang']);
+        $resolved  = _g2ml_resolveLocale($requested);
 
-        if (_g2ml_isValidLocale($requested))
+        if ($resolved !== null)
         {
-            $locale = $requested;
+            $locale = $resolved;
         }
     }
 
     // 2. Check session
     if ($locale === null && isset($_SESSION['locale']) && is_string($_SESSION['locale']))
     {
-        if (_g2ml_isValidLocale($_SESSION['locale']))
+        $resolved = _g2ml_resolveLocale($_SESSION['locale']);
+
+        if ($resolved !== null)
         {
-            $locale = $_SESSION['locale'];
+            $locale = $resolved;
         }
     }
 
     // 3. Check cookie
     if ($locale === null && isset($_COOKIE['g2ml_locale']) && is_string($_COOKIE['g2ml_locale']))
     {
-        if (_g2ml_isValidLocale($_COOKIE['g2ml_locale']))
+        $resolved = _g2ml_resolveLocale($_COOKIE['g2ml_locale']);
+
+        if ($resolved !== null)
         {
-            $locale = $_COOKIE['g2ml_locale'];
+            $locale = $resolved;
         }
     }
 
@@ -148,11 +154,10 @@ function g2ml_setLocale(string $locale): void
         _g2ml_loadLanguages();
     }
 
-    // Validate the locale exists and is active
-    if (!_g2ml_isValidLocale($locale))
-    {
-        $locale = $GLOBALS['_g2ml_default_locale'];
-    }
+    // Resolve the locale using language-family fallback
+    // e.g., 'en' → 'en-GB', 'pt' → 'pt-BR', 'en-US' (inactive) → 'en-GB'
+    $resolved = _g2ml_resolveLocale($locale);
+    $locale   = $resolved ?? $GLOBALS['_g2ml_default_locale'];
 
     $GLOBALS['_g2ml_locale'] = $locale;
 
@@ -249,7 +254,38 @@ function __(string $key, array $replacements = [], ?string $locale = null): stri
     // Look up the key in the current locale
     $value = $GLOBALS['_g2ml_translations'][$locale][$key] ?? null;
 
-    // Fall back to default locale if not found
+    // Fall back to a sibling locale in the same language family
+    // e.g., if 'en-US' has no translation for this key, try 'en-GB'
+    // This ensures regional variants share translations within a language family
+    // before falling all the way back to the site default locale
+    if ($value === null)
+    {
+        $baseLanguage = strtolower(explode('-', $locale)[0]);
+
+        foreach (array_keys($GLOBALS['_g2ml_languages'] ?? []) as $sibling)
+        {
+            // Skip the locale we already checked
+            if ($sibling === $locale)
+            {
+                continue;
+            }
+
+            $siblingBase = strtolower(explode('-', $sibling)[0]);
+
+            if ($siblingBase === $baseLanguage)
+            {
+                _g2ml_loadTranslations($sibling);
+                $value = $GLOBALS['_g2ml_translations'][$sibling][$key] ?? null;
+
+                if ($value !== null)
+                {
+                    break;
+                }
+            }
+        }
+    }
+
+    // Fall back to default locale if still not found
     if ($value === null && $locale !== $GLOBALS['_g2ml_default_locale'])
     {
         _g2ml_loadTranslations($GLOBALS['_g2ml_default_locale']);
@@ -438,7 +474,68 @@ function _g2ml_isValidLocale(string $locale): bool
 }
 
 /**
+ * Resolve a requested locale to the best available active locale.
+ *
+ * Uses a three-step resolution strategy:
+ *   1. Exact match — 'en-GB' matches 'en-GB' directly
+ *   2. Base language → regional — 'en' resolves to the first active 'en-*' variant (e.g., 'en-GB')
+ *   3. Regional → sibling — 'en-US' (inactive) resolves to the first active 'en-*' variant (e.g., 'en-GB')
+ *
+ * This allows users to request a base language code (e.g., ?lang=en, ?lang=pt)
+ * and receive the best available regional variant, and ensures that inactive
+ * regional variants gracefully fall back within their language family before
+ * falling back to the site default.
+ *
+ * @param  string $requested  The requested locale code (e.g., 'en', 'en-US', 'pt', 'zh-CN')
+ * @return string|null        The best matching active locale code, or null if no match
+ *
+ * 📖 Reference: https://www.rfc-editor.org/info/bcp47
+ */
+function _g2ml_resolveLocale(string $requested): ?string
+{
+    // 1. Exact match — requested locale is active
+    if (_g2ml_isValidLocale($requested))
+    {
+        return $requested;
+    }
+
+    // Extract the base language subtag (e.g., 'en' from 'en-GB', 'zh' from 'zh-CN')
+    // 📖 Reference: https://www.php.net/manual/en/function.explode.php
+    $baseLanguage = strtolower(explode('-', $requested)[0]);
+
+    // 2 & 3. Find the first active locale in the same language family
+    // Prefers the default locale if it shares the same base language, otherwise
+    // takes the first match by sort order (as loaded from tblLanguages.sortOrder)
+    $familyMatch = null;
+
+    foreach (array_keys($GLOBALS['_g2ml_languages']) as $available)
+    {
+        $availableBase = strtolower(explode('-', $available)[0]);
+
+        if ($availableBase === $baseLanguage)
+        {
+            // If this family member is the site default, prefer it immediately
+            if ($available === $GLOBALS['_g2ml_default_locale'])
+            {
+                return $available;
+            }
+
+            // Otherwise, keep the first family match (by sort order)
+            if ($familyMatch === null)
+            {
+                $familyMatch = $available;
+            }
+        }
+    }
+
+    return $familyMatch;
+}
+
+/**
  * Parse the Accept-Language header and find the best matching active locale.
+ *
+ * Uses _g2ml_resolveLocale() for each candidate to support base language
+ * and language-family fallback resolution.
  *
  * @param  string $header  The Accept-Language header value
  * @return string|null     Best matching locale code, or null if no match
@@ -464,24 +561,14 @@ function _g2ml_parseAcceptLanguage(string $header): ?string
     // Sort by quality (highest first)
     arsort($locales);
 
-    // Find the first matching active locale
+    // Find the first matching active locale using the resolution strategy
     foreach ($locales as $requested => $quality)
     {
-        // Try exact match first
-        if (_g2ml_isValidLocale($requested))
-        {
-            return $requested;
-        }
+        $resolved = _g2ml_resolveLocale($requested);
 
-        // Try language-only match (e.g., 'en' matches 'en-GB')
-        $languageOnly = explode('-', $requested)[0];
-
-        foreach (array_keys($GLOBALS['_g2ml_languages']) as $available)
+        if ($resolved !== null)
         {
-            if (stripos($available, $languageOnly) === 0)
-            {
-                return $available;
-            }
+            return $resolved;
         }
     }
 
