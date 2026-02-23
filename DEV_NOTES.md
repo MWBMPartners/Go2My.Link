@@ -88,6 +88,18 @@ Organisations are the multi-tenancy layer. Each user belongs to ONE org via `tbl
 
 **Dashboard pages:** All under `web/Go2My.Link/_admin/public_html/pages/org/` — overview, create, settings, members, members/invite, domains, short-domains.
 
+### ⚖️ Compliance & Privacy (Phase 6)
+
+**DNT/GPC Detection:** `web/_functions/dnt.php` checks both `HTTP_DNT` and `HTTP_SEC_GPC` headers. `g2ml_shouldTrack()` combines DNT detection with the `analytics.respect_dnt` and `compliance.always_assume_dnt` settings. When tracking is disabled, `activity_logger.php` skips non-critical logging but ALWAYS logs security events (`login_failed`, `csrf_failure`, `rate_limited`, `consent_recorded`, etc.).
+
+**Cookie Consent:** `web/_functions/cookie_consent.php` implements jurisdiction-aware consent. `g2ml_detectJurisdiction()` maps Accept-Language headers to jurisdictions. EU/UK/BR/KR/JP require opt-in (explicit consent before non-essential cookies); US/CA/AU default to opt-out model. Consent records go to `tblConsentRecords` with full audit trail (IP, user agent, method, consent version).
+
+**Data Subject Rights:** `web/_functions/data_rights.php` provides GDPR Article 15-22 compliance. Data exports collect from `tblUsers`, `tblShortURLs`, `tblConsentRecords`, `tblUserSessions` → JSON file at `_uploads/exports/`. Deletion requests have a configurable grace period (default 30 days via `compliance.data_deletion_grace_days`). Anonymisation replaces PII with `[DELETED]` / `deleted_{uid}@anonymised.invalid` patterns in a transaction.
+
+**Legal Documents:** All 5 legal pages use structured PHP templates with `{{LEGAL_REVIEW_NEEDED}}` placeholders in `alert alert-warning` blocks. Each has a TOC with jump links, version badge from settings, and last-updated date. Ready for professional legal review before launch.
+
+**CSP Headers:** Content-Security-Policy is set in `.htaccess` files. Component B (redirect engine) has a very tight policy (`default-src 'none'`). Components A/Admin/C allow CDN sources for Bootstrap, jQuery, and Font Awesome. `'unsafe-inline'` is required for the FOUC-prevention inline script in `header.php`.
+
 ## 🚀 Release Process
 
 Releases are managed via the **"🚀 Create Release"** GitHub Actions workflow (`.github/workflows/release.yml`). Each component can be released independently, allowing separate deployment cycles.

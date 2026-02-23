@@ -24,8 +24,8 @@
  * @package    Go2My.Link
  * @subpackage Includes
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.5.0
- * @since      Phase 2 (updated Phase 4)
+ * @version    0.7.0
+ * @since      Phase 2 (updated Phase 4, Phase 6)
  * ============================================================================
  */
 
@@ -148,6 +148,7 @@ require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'db_query.php';
 // Layer 2 — Core services (depend on Layer 1)
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'error_handler.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'settings.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'dnt.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'activity_logger.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'i18n.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'router.php';
@@ -157,6 +158,10 @@ require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'email.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'session.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'auth.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'org.php';
+
+// Layer 4 — Compliance & Privacy (depend on Layers 1+2+3)
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'cookie_consent.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'data_rights.php';
 
 // ============================================================================
 // ⚠️ Step 6: Register Error/Exception/Shutdown Handlers

@@ -17,8 +17,8 @@
  * @package    Go2My.Link
  * @subpackage Includes
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.4.0
- * @since      Phase 2 (dark mode added Phase 3)
+ * @version    0.7.0
+ * @since      Phase 2 (dark mode Phase 3, CSRF meta Phase 6)
  * ============================================================================
  */
 
@@ -74,6 +74,9 @@ $initialTheme = ($themePref === 'auto') ? 'light' : $themePref;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="<?php echo htmlspecialchars($pageDesc, ENT_QUOTES, 'UTF-8'); ?>">
     <meta name="robots" content="index, follow">
+    <?php if (function_exists('g2ml_generateCSRFToken')): ?>
+    <meta name="csrf-token" content="<?php echo htmlspecialchars(g2ml_generateCSRFToken('ajax'), ENT_QUOTES, 'UTF-8'); ?>">
+    <?php endif; ?>
 
     <!-- Open Graph / Social Sharing -->
     <meta property="og:type" content="website">

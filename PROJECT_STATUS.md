@@ -4,7 +4,7 @@
 
 ## 🏗️ Current Phase
 
-**Phase 5: Organisation Management** — ✅ Complete
+**Phase 6: Compliance, Legal & Pre-Launch** — 🔄 In Progress (Batch 1 of 2 complete)
 
 ## 📋 Build Progress
 
@@ -16,13 +16,26 @@
 | Phase 3 | v0.4.0 — Core Product | ✅ **Complete** | 10 issues | — |
 | Phase 4 | v0.5.0 — User System: Auth & Dashboard | ✅ **Complete** | 4 issues | — |
 | **Phase 5** | **v0.6.0 — Organisation Management** | ✅ **Complete** | **1 issue** | **20h** |
-| **Phase 6** | **v0.7.0 — Compliance, Legal & Pre-Launch** | 🔜 Not Started | **8 issues** | **99h** |
+| **Phase 6** | **v0.7.0 — Compliance, Legal & Pre-Launch** | 🔄 **In Progress** | **8 issues** | **99h** |
 | — | **v1.0.0-rc — PRE-RELEASE CANDIDATE** | — | — | — |
 | Phase 7 | v1.1.0 — Advanced Authentication | 🔜 Not Started | 4 issues | 68h |
 | Phase 8 | v1.2.0 — API & Analytics | 🔜 Not Started | 8 issues | 116h |
 | Phase 9 | v1.3.0 — LinksPage | 🔜 Not Started | 6 issues | 84h |
 | Phase 10 | v1.4.0 — Advanced Redirects | 🔜 Not Started | 6 issues | 70h |
 | Phase 11 | v1.5.0 — Payments & Subscriptions | 🔜 Not Started | 4 issues | 60h |
+
+## 🔄 In Progress
+
+### v0.7.0 — ⚖️ Compliance, Legal & Pre-Launch (Phase 6) — Batch 1 Complete
+
+- [x] 6.1 — 🛡️ DNT/GPC support & production hardening: `dnt.php` (3 functions), CSP headers on all 4 .htaccess files, HSTS enabled, custom error pages (400/403/500), 12 new compliance settings (#64)
+- [x] 6.2 — 🍪 Cookie consent system: `cookie_consent.php` (7 functions), cookie banner + customise modal, `cookie-consent.js`, consent API endpoint, GDPR opt-in/opt-out jurisdiction detection (#62)
+- [x] 6.3 — 🔐 Data subject rights (GDPR/CCPA/LGPD): `data_rights.php` (6 functions), data export, deletion requests with grace period, anonymisation, privacy dashboard (4 pages), email templates (#63)
+- [x] 6.4 — 📜 Legal document templates: Terms of Use (14 sections), Privacy Policy (14 sections), Cookie Policy (7 sections), Copyright Notice (6 sections), Acceptable Use Policy (9 sections) — all with `{{LEGAL_REVIEW_NEEDED}}` placeholders (#61)
+- [ ] 6.5 — 📱 PWA manifest & service worker (#65)
+- [ ] 6.6 — ♿ WCAG 2.1 AA audit & fixes (#66)
+- [ ] 6.7 — 🌍 Seed key translations (#71)
+- [ ] 6.8 — 🗄️ Data migration plan & dry-run (#67)
 
 ## ✅ Completed Milestones
 
@@ -124,9 +137,9 @@ None.
 
 ## 🔜 Next Up
 
-**Phase 6: Compliance, Legal & Pre-Launch** — GDPR/CCPA legal documents, cookie consent, data subject rights, DNT support, PWA, WCAG audit, migration plan, translations. 8 issues. Target: 2026-04-04.
+**Phase 6 Batch 2** — PWA manifest, WCAG audit, seed translations, migration plan. 4 remaining issues.
 
-**v1.0.0-rc Pre-Release** — After Phase 6, the product is legally compliant and functionally complete for public launch. Target: 2026-04-11.
+**v1.0.0-rc Pre-Release** — After Phase 6 is fully complete, the product is legally compliant and functionally complete for public launch.
 
 **Post-launch enhancements:** Phase 7 (Advanced Auth), Phase 8 (API & Analytics + Swagger #75), Phase 9 (LinksPage), Phase 10 (Advanced Redirects), Phase 11 (Payments).
 

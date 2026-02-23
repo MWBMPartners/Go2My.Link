@@ -36,8 +36,12 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
     Header set Referrer-Policy "strict-origin-when-cross-origin"
     Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
 
-    # HSTS (enable after confirming HTTPS works)
-    # Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    # Content Security Policy (tight — redirect engine serves minimal HTML)
+    # 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
+    Header set Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'"
+
+    # HSTS — enforce HTTPS for 1 year
+    Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 </IfModule>
 
 # =============================================================================

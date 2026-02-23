@@ -15,8 +15,8 @@
  * @package    Go2My.Link
  * @subpackage Functions
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.3.0
- * @since      Phase 2
+ * @version    0.7.0
+ * @since      Phase 2 (DNT support added Phase 6)
  *
  * 📖 References:
  *     - tblActivityLog schema: web/_sql/schema/030_analytics.sql
@@ -71,6 +71,23 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
         if ($loggingEnabled === false)
         {
             return true; // Logging disabled — silently succeed
+        }
+    }
+
+    // DNT/GPC check — skip non-critical logging if user has opted out of tracking.
+    // Critical security actions are always logged regardless of DNT preference.
+    // 📖 Reference: web/_functions/dnt.php
+    if (function_exists('g2ml_shouldTrack') && !g2ml_shouldTrack())
+    {
+        $alwaysLogActions = [
+            'login_failed', 'login_blocked', 'csrf_failure',
+            'rate_limited', 'consent_recorded', 'account_locked',
+            'password_reset_requested', 'data_deletion_requested',
+        ];
+
+        if (!in_array($action, $alwaysLogActions, true))
+        {
+            return true; // DNT active — skip non-critical logging
         }
     }
 

@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ✨ Added (Phase 6 — Compliance, Legal & Pre-Launch — Batch 1)
+
+- 🛡️ **DNT/GPC privacy support** — `web/_functions/dnt.php` with 3 functions: `g2ml_detectDNT()`, `g2ml_shouldTrack()`, `g2ml_isCookieAllowed()` — respects Do Not Track and Global Privacy Control browser signals (#64)
+- 🔒 **Content Security Policy headers** — CSP added to all 4 component `.htaccess` files; tight policy for Component B (redirect engine), standard policy for A/Admin/C with CDN allowlists (#64)
+- 🔒 **HSTS enabled** — Strict-Transport-Security headers active across all 4 components (#64)
+- 🚫 **Custom error pages** — Branded 400, 403, 500 error pages at `/pages/errors/` routed through `index.php` for full template (#64)
+- 🌱 **Phase 6 settings seed** — 12 new settings in `009_phase6_settings.sql`: compliance (DNT, consent, jurisdiction, deletion grace, export expiry) and legal versioning (terms, privacy, cookies, AUP) (#64)
+- 🍪 **Cookie consent system** — `web/_functions/cookie_consent.php` with 7 functions: consent status, recording, revocation, summary, validation, jurisdiction detection, opt-in model check (#62)
+- 🍪 **Cookie consent banner** — `web/_includes/cookie_banner.php` with Bootstrap fixed-bottom banner + customise modal, 4 category toggles (essential/analytics/functional/marketing), WCAG accessible (#62)
+- 🍪 **Cookie consent JS** — `web/Go2My.Link/public_html/js/cookie-consent.js` — vanilla JS with AJAX consent recording and fallback form POST (#62)
+- 📡 **Consent API endpoint** — `POST /api/consent/` — CSRF-protected, records all 4 consent categories, supports JSON and form-encoded requests (#62)
+- 🔐 **Data subject rights** — `web/_functions/data_rights.php` with 6 functions: data export (JSON), deletion request (grace period), anonymisation (PII replacement), admin processing, consent history, request listing (#63)
+- 📧 **Privacy email templates** — `data_export_ready.php` (download link + expiry) and `data_deletion_requested.php` (grace period + cancel link) (#63)
+- 🖥️ **Privacy dashboard** — 4 pages at `admin.go2my.link/privacy/`: overview, cookie consent preferences, data export, account deletion (#63)
+- 📜 **Terms of Use** — 14-section structured template replacing placeholder, with TOC navigation and `{{LEGAL_REVIEW_NEEDED}}` placeholders for lawyer review (#61)
+- 📜 **Privacy Policy** — 14-section GDPR/CCPA/LGPD-compliant template with legal basis table, rights breakdown per jurisdiction, ICO complaint reference (#61)
+- 📜 **Cookie Policy** — 7-section template with complete cookie inventory tables, manage preferences button, DNT/GPC cross-reference (#61)
+- 📜 **Copyright Notice** — 6-section template with DMCA takedown procedure, counter-notification process, repeat infringer policy (#61)
+- 📜 **Acceptable Use Policy** — 9-section template with prohibited content/activities lists, enforcement tier table, API usage limits (#61)
+
+### 🔄 Changed (Phase 6 — Batch 1)
+
+- 🔀 **page_init.php** — Added `dnt.php` to Layer 2; added Layer 4 with `cookie_consent.php` + `data_rights.php`; session validation refreshes user data
+- 🔀 **activity_logger.php** — Added DNT check: non-critical logging skipped when DNT active; critical security actions always logged regardless
+- 🔀 **header.php** — Added CSRF meta tag for AJAX requests
+- 🔀 **footer.php** — Added cookie banner include, cookie-consent.js, and Acceptable Use/Copyright legal links
+- 🔀 **nav.php** — Added "Privacy & Data" link to logged-in user dropdown (between Organisation and Profile)
+- 📋 Version bumped to 0.7.0 across modified files
+
 ### ✨ Added (Phase 5 — Organisation Management)
 
 - 🏢 **Organisation management functions** — 18+ functions in `web/_functions/org.php`: `createOrganisation()`, `getOrganisation()`, `updateOrganisation()`, `canManageOrg()`, member/invitation/domain management (#32)

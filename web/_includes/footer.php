@@ -13,8 +13,8 @@
  * @package    Go2My.Link
  * @subpackage Includes
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.4.0
- * @since      Phase 2 (theme support added Phase 3)
+ * @version    0.7.0
+ * @since      Phase 2 (theme support Phase 3, cookie consent Phase 6)
  * ============================================================================
  */
 
@@ -70,6 +70,8 @@ $siteName    = function_exists('getSetting') ? getSetting('site.name', 'Go2My.Li
                     <li><a href="/legal/terms" class="text-muted text-decoration-none"><?php echo function_exists('__') ? __('footer.terms') : 'Terms of Use'; ?></a></li>
                     <li><a href="/legal/privacy" class="text-muted text-decoration-none"><?php echo function_exists('__') ? __('footer.privacy') : 'Privacy Policy'; ?></a></li>
                     <li><a href="/legal/cookies" class="text-muted text-decoration-none"><?php echo function_exists('__') ? __('footer.cookies') : 'Cookie Policy'; ?></a></li>
+                    <li><a href="/legal/acceptable-use" class="text-muted text-decoration-none"><?php echo function_exists('__') ? __('footer.aup') : 'Acceptable Use'; ?></a></li>
+                    <li><a href="/legal/copyright" class="text-muted text-decoration-none"><?php echo function_exists('__') ? __('footer.copyright') : 'Copyright'; ?></a></li>
                 </ul>
             </div>
 
@@ -78,9 +80,14 @@ $siteName    = function_exists('getSetting') ? getSetting('site.name', 'Go2My.Li
 </footer>
 
 <!-- ====================================================================== -->
-<!-- Cookie Consent Placeholder (Phase 10)                                  -->
+<!-- 🍪 Cookie Consent Banner                                               -->
 <!-- ====================================================================== -->
-<!-- Cookie consent banner will be implemented in Phase 10 (Legal & Launch) -->
+<?php
+if (file_exists(G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'cookie_banner.php'))
+{
+    require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'cookie_banner.php';
+}
+?>
 
 <!-- ====================================================================== -->
 <!-- ARIA Live Region for Dynamic Status Updates                            -->
@@ -129,6 +136,7 @@ if (file_exists(G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'translate_widget.php'))
 <!-- Custom JavaScript (Component-specific, loaded if exists)               -->
 <!-- ====================================================================== -->
 <script src="/js/app.js" defer></script>
+<script src="/js/cookie-consent.js" defer></script>
 
 <?php
 // ========================================================================
