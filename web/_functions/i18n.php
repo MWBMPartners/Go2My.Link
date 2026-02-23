@@ -128,7 +128,7 @@ function detectLocale(): string
             : 'en-GB';
     }
 
-    setLocale($locale);
+    g2ml_setLocale($locale);
 
     return $locale;
 }
@@ -141,7 +141,7 @@ function detectLocale(): string
  * @param  string $locale  BCP 47 locale code (e.g., 'en-GB', 'es', 'ar')
  * @return void
  */
-function setLocale(string $locale): void
+function g2ml_setLocale(string $locale): void
 {
     if (empty($GLOBALS['_g2ml_languages']))
     {

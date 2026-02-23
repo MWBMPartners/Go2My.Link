@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 📋 **Issue templates** — Added 3 YAML-based issue forms: Bug Report, Feature Request, Phase Task
 - 📋 **Issue chooser config** — Links to Project Board, Project Status, and Dev Notes
 - 📋 **PR template** — Standardised pull request template with summary, changes, component checkboxes, testing checklist
+- 📋 **Phase restructuring** — Renumbered Phases 5-11, prioritised org management + compliance before pre-release; advanced auth/API/LinksPage/payments moved to post-launch
+- 📊 **Timeline estimates** — Added milestone due dates and per-issue hour estimates (512h total) to GitHub Project
+- 📊 **Project board fields** — Added "Target Date" and "Estimated Hours" custom fields
+- 📋 **Retrospective issue updates** — Checked all task boxes and added commit-link comments on all 42 completed issues
+- 🔍 **PHP lint fix** — Renamed `setLocale()` → `g2ml_setLocale()` to resolve conflict with PHP built-in `setlocale()`
+- 🔍 **PHPStan + PHPCS** — Created `phpstan.neon` (level 5) and `phpcs.xml` (PSR-12 adapted) configs; enhanced CI workflow
+- 🌐 **W3C fix** — Replaced broken Bootstrap CSS fallback script in `header.php` with `onerror` attribute
+- 📐 **JSON Schemas** — Created 5 JSON Schema files (draft 2020-12) in `web/_schemas/` for API responses, database columns, and external CAPTCHA responses
+- 📐 **JSON validator** — Created `g2ml_validateJSON()` pure-PHP validator (no Composer) for server-side schema validation
 
 ### ✨ Added
 

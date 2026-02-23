@@ -4,23 +4,25 @@
 
 ## 🏗️ Current Phase
 
-**Phase 4: User System — Auth & Dashboard** — ✅ Complete — preparing for Phase 5
+**Phase 5: Organisation Management** — 🔜 Next — preparing to start
 
 ## 📋 Build Progress
 
-| Phase | Milestone | Status | Issues |
-| --- | --- | --- | --- |
-| Phase 0 | v0.1.0 — Scaffolding | ✅ **Complete** | 7 issues |
-| Phase 1 | v0.2.0 — Database | ✅ **Complete** | 5 issues |
-| Phase 2 | v0.3.0 — PHP Framework | ✅ **Complete** | 11 issues |
-| Phase 3 | v0.4.0 — Core Product | ✅ **Complete** | 10 issues |
-| Phase 4 | v0.5.0 — User System: Auth & Dashboard | ✅ **Complete** | 4 issues |
-| Phase 5 | v0.6.0 — Orgs, Admin & Advanced Auth | 🔜 Not Started | 5 issues |
-| Phase 6 | v0.7.0 — API & Analytics | 🔜 Not Started | 8 issues |
-| Phase 7 | v0.8.0 — LinksPage | 🔜 Not Started | 6 issues |
-| Phase 8 | v0.9.0 — Advanced Redirects | 🔜 Not Started | 6 issues |
-| Phase 9 | v0.10.0 — Payments | 🔜 Not Started | 4 issues |
-| Phase 10 | v1.0.0 — Legal & Launch | 🔜 Not Started | 8 issues |
+| Phase | Milestone | Status | Issues | Est. Hours |
+| --- | --- | --- | --- | --- |
+| Phase 0 | v0.1.0 — Scaffolding | ✅ **Complete** | 7 issues | — |
+| Phase 1 | v0.2.0 — Database | ✅ **Complete** | 5 issues | — |
+| Phase 2 | v0.3.0 — PHP Framework | ✅ **Complete** | 11 issues | — |
+| Phase 3 | v0.4.0 — Core Product | ✅ **Complete** | 10 issues | — |
+| Phase 4 | v0.5.0 — User System: Auth & Dashboard | ✅ **Complete** | 4 issues | — |
+| **Phase 5** | **v0.6.0 — Organisation Management** | 🔜 **Next** | **1 issue** | **20h** |
+| **Phase 6** | **v0.7.0 — Compliance, Legal & Pre-Launch** | 🔜 Not Started | **8 issues** | **99h** |
+| — | **v1.0.0-rc — PRE-RELEASE CANDIDATE** | — | — | — |
+| Phase 7 | v1.1.0 — Advanced Authentication | 🔜 Not Started | 4 issues | 68h |
+| Phase 8 | v1.2.0 — API & Analytics | 🔜 Not Started | 8 issues | 116h |
+| Phase 9 | v1.3.0 — LinksPage | 🔜 Not Started | 6 issues | 84h |
+| Phase 10 | v1.4.0 — Advanced Redirects | 🔜 Not Started | 6 issues | 70h |
+| Phase 11 | v1.5.0 — Payments & Subscriptions | 🔜 Not Started | 4 issues | 60h |
 
 ## ✅ Completed Milestones
 
@@ -93,9 +95,13 @@ None.
 - 🛡️ **Email enumeration prevention** — Generic errors on registration, login, and forgot-password; timing-safe dummy hash on user-not-found
 - 🔐 **Account lockout** — After 5 failed login attempts, account locked for 15 minutes (configurable via settings)
 - 🎨 **Dark/light mode** required for all web UI — manual toggle + automatic system preference detection (Bootstrap 5.3 `data-bs-theme`)
-- 📋 **Phase restructuring** — Merged old Phases 3+4 into new Phase 3 (Core Product); split old Phase 5 into new Phases 4+5 (basic auth vs org/admin)
+- 📋 **Phase restructuring (Feb 2026)** — Merged old Phases 3+4 into new Phase 3; split old Phase 5 into Phases 4+5
+- 📋 **Phase restructuring (Feb 2026)** — Prioritised org management (Phase 5) + compliance (Phase 6, was Phase 10) before pre-release; advanced auth, API, LinksPage, advanced redirects, payments become post-launch Phases 7-11
+- 🚀 **Pre-release marker** — v1.0.0-rc after Phase 6 (compliance); sufficient for minimum launchable product
+- 📊 **Code quality baseline** — PHP lint (60 files clean), JSON Schemas (5 schema files + validator), W3C compliance verified, CI enhanced with PHPStan + PHPCS
+- 🔍 **JSON Schema validation** — All JSON structures have matching schemas in `web/_schemas/`; pure-PHP validator `g2ml_validateJSON()` for Dreamhost
 - ♿ Accessibility (WCAG 2.1 AA) is a foundational requirement from Phase 2 onwards
-- 🌍 i18n infrastructure built into Phase 2; formal translations in Phase 10
+- 🌍 i18n infrastructure built into Phase 2; formal translations in Phase 6
 - 🌍 Interim Google/Bing/AI translation widget until formal translations are ready
 - 🎨 Branding/logo design included in Phase 0
 - 🔒 All passwords from existing database will be force-reset during migration (currently plaintext)
@@ -114,9 +120,13 @@ None.
 
 ## 🔜 Next Up
 
-**Phase 5: Organisations, Admin & Advanced Auth** — Organisation management, admin panel, social login (Google/GitHub), 2FA (TOTP), passkeys, and advanced user management. 5 issues.
+**Phase 5: Organisation Management** — Create/edit organisations, member roles, domain management, invitation system. 1 issue (#32). Target: 2026-03-07.
 
-**Also planned for Phase 6:** OpenAPI/Swagger interactive API documentation (#75).
+**Phase 6: Compliance, Legal & Pre-Launch** — GDPR/CCPA legal documents, cookie consent, data subject rights, DNT support, PWA, WCAG audit, migration plan, translations. 8 issues. Target: 2026-04-04.
+
+**v1.0.0-rc Pre-Release** — After Phase 6, the product is legally compliant and functionally complete for public launch. Target: 2026-04-11.
+
+**Post-launch enhancements:** Phase 7 (Advanced Auth), Phase 8 (API & Analytics + Swagger #75), Phase 9 (LinksPage), Phase 10 (Advanced Redirects), Phase 11 (Payments).
 
 ## 🔗 Links
 

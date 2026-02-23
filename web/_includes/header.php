@@ -96,23 +96,8 @@ $initialTheme = ($themePref === 'auto') ? 'light' : $themePref;
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
           integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YcnS/1RETi5cBu9ApG1MKOp/4xLHCRG4PKoV"
           crossorigin="anonymous"
-          id="bootstrap-css">
-    <script>
-        // Bootstrap CSS local fallback
-        // 📖 Reference: https://getbootstrap.com/docs/5.3/getting-started/download/
-        (function() {
-            var testEl = document.createElement('div');
-            testEl.className = 'd-none';
-            document.body.appendChild(testEl);
-            if (window.getComputedStyle(testEl).display !== 'none') {
-                var link = document.createElement('link');
-                link.rel = 'stylesheet';
-                link.href = '<?php echo htmlspecialchars(defined('G2ML_LIBRARIES') ? '/_libraries/bootstrap/css/bootstrap.min.css' : '/_libraries/bootstrap/css/bootstrap.min.css', ENT_QUOTES, 'UTF-8'); ?>';
-                document.head.appendChild(link);
-            }
-            document.body.removeChild(testEl);
-        })();
-    </script>
+          id="bootstrap-css"
+          onerror="var l=document.createElement('link');l.rel='stylesheet';l.href='/_libraries/bootstrap/css/bootstrap.min.css';document.head.appendChild(l);">
 
     <!-- ================================================================== -->
     <!-- Font Awesome 6 (CDN + Local Fallback)                              -->

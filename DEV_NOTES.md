@@ -113,6 +113,42 @@ Releases are managed via the **"🚀 Create Release"** GitHub Actions workflow (
 
 > 💡 **Tip:** Concurrent releases are prevented — only one release can run at a time. The workflow uses `actions/checkout@v6` and runs PHP lint with `php-parallel-lint` on PHP 8.4.
 
+## 📋 Issue Closure Protocol
+
+Every time a GitHub issue is closed, the following must be done:
+
+1. ✅ **Check all task boxes** — All `- [ ]` checkboxes in the issue body must be marked `- [x]`
+2. 💬 **Add a closing comment** — Include links to the specific commit(s) and/or PR that completed the work
+3. 📊 **Update project board** — Set the issue status to "Done" on the org-level project (#4)
+4. 🏗️ **Update milestone** — Verify the milestone reflects the closure
+
+### Comment Template
+
+```markdown
+## ✅ Retrospective Completion Notes
+
+All tasks completed as part of Phase X work.
+
+**Relevant commits:**
+- [`abc1234`](https://github.com/MWBMPartners/Go2My.Link/commit/abc1234) — Commit message
+```
+
+## 📐 JSON Schema Validation
+
+All JSON structures in the project have corresponding JSON Schema files (draft 2020-12) in `web/_schemas/`:
+
+| Schema | File | Purpose |
+| --- | --- | --- |
+| API Create Response | `api/create-response.schema.json` | Success/error responses from POST /api/create/ |
+| Activity Log Data | `database/activity-log-data.schema.json` | tblActivityLog.logData column |
+| Error Log Headers | `database/error-log-headers.schema.json` | tblErrorLog.requestHeaders column |
+| Settings Value | `database/settings-value.schema.json` | tblSettings JSON values |
+| CAPTCHA Response | `external/captcha-response.schema.json` | Turnstile/reCAPTCHA siteverify response |
+
+**Validator:** `web/_functions/json_validator.php` provides `g2ml_validateJSON($data, $schemaPath)` — pure PHP, no Composer.
+
+**Rule:** All new JSON structures MUST have a corresponding schema file. Add schemas before or alongside the code that produces/consumes the JSON.
+
 ## 💡 Gotchas & Tips
 
 ### ⚠️ PHP 8.5 vs 8.4

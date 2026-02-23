@@ -1,0 +1,41 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://go2my.link/schemas/database/activity-log-data.schema.json",
+    "title": "Activity Log — Extra Data",
+    "description": "Schema for the tblActivityLog.logData JSON column. Contains context-specific metadata for the logged event.",
+    "type": "object",
+    "properties": {
+        "page": {
+            "type": "string",
+            "description": "Page or route that generated the activity"
+        },
+        "hourlyCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Current hourly request count (rate limiting context)"
+        },
+        "dailyCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Current daily request count (rate limiting context)"
+        },
+        "reason": {
+            "type": "string",
+            "description": "Reason for the activity (e.g., validation failure message)"
+        },
+        "shortCode": {
+            "type": "string",
+            "description": "Short code involved in the activity"
+        },
+        "orgHandle": {
+            "type": "string",
+            "description": "Organisation handle involved in the activity"
+        },
+        "destination": {
+            "type": "string",
+            "format": "uri",
+            "description": "Destination URL (for redirect activities)"
+        }
+    },
+    "additionalProperties": true
+}

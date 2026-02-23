@@ -43,3 +43,21 @@ jobs:
       - name: Run PHP Lint
         run: |
           php-parallel-lint --exclude vendor --exclude _libraries --exclude .git web/
+
+      - name: Install PHPStan
+        run: |
+          curl -sL https://github.com/phpstan/phpstan/releases/latest/download/phpstan.phar -o phpstan.phar
+          chmod +x phpstan.phar
+
+      - name: Run PHPStan (advisory)
+        run: php phpstan.phar analyse --configuration=phpstan.neon --no-progress
+        continue-on-error: true
+
+      - name: Install PHP_CodeSniffer
+        run: |
+          curl -sOL https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar
+          chmod +x phpcs.phar
+
+      - name: Run PHPCS (advisory)
+        run: php phpcs.phar --standard=phpcs.xml --report=summary
+        continue-on-error: true

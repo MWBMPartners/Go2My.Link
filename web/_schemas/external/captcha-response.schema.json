@@ -1,0 +1,39 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://go2my.link/schemas/external/captcha-response.schema.json",
+    "title": "CAPTCHA Verification — External API Response",
+    "description": "Schema for the response from Cloudflare Turnstile or Google reCAPTCHA siteverify API. Used to validate CAPTCHA tokens server-side.",
+    "type": "object",
+    "properties": {
+        "success": {
+            "type": "boolean",
+            "description": "Whether the CAPTCHA verification passed"
+        },
+        "challenge_ts": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of the challenge (ISO 8601)"
+        },
+        "hostname": {
+            "type": "string",
+            "description": "Hostname of the site where the CAPTCHA was solved"
+        },
+        "error-codes": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "Error codes if verification failed"
+        },
+        "action": {
+            "type": "string",
+            "description": "Action name (Turnstile only)"
+        },
+        "cdata": {
+            "type": "string",
+            "description": "Custom data (Turnstile only)"
+        }
+    },
+    "required": ["success"],
+    "additionalProperties": true
+}

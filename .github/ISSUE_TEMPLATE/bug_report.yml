@@ -84,12 +84,13 @@ body:
         - "Phase 2 — PHP Framework (v0.3.0)"
         - "Phase 3 — Core Product (v0.4.0)"
         - "Phase 4 — Auth & Dashboard (v0.5.0)"
-        - "Phase 5 — Orgs & Advanced Auth (v0.6.0)"
-        - "Phase 6 — API & Analytics (v0.7.0)"
-        - "Phase 7 — LinksPage (v0.8.0)"
-        - "Phase 8 — Advanced Redirects (v0.9.0)"
-        - "Phase 9 — Payments (v0.10.0)"
-        - "Phase 10 — Legal & Launch (v1.0.0)"
+        - "Phase 5 — Organisation Management (v0.6.0)"
+        - "Phase 6 — Compliance, Legal & Pre-Launch (v0.7.0)"
+        - "Phase 7 — Advanced Authentication (v1.1.0)"
+        - "Phase 8 — API & Analytics (v1.2.0)"
+        - "Phase 9 — LinksPage (v1.3.0)"
+        - "Phase 10 — Advanced Redirects (v1.4.0)"
+        - "Phase 11 — Payments & Subscriptions (v1.5.0)"
     validations:
       required: false
 

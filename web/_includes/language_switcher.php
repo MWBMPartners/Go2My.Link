@@ -7,7 +7,7 @@
  * Renders a Bootstrap dropdown for switching between active languages.
  * Designed to be included within the navbar (nav.php).
  *
- * Persists the language choice via cookie and session (handled by setLocale()).
+ * Persists the language choice via cookie and session (handled by g2ml_setLocale()).
  *
  * Dependencies: i18n.php (getActiveLanguages(), getLocale())
  *

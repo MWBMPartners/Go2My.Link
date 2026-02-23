@@ -1,0 +1,53 @@
+<?xml version="1.0"?>
+<!-- ========================================================================
+     Go2My.Link — PHP_CodeSniffer Configuration
+     ========================================================================
+
+     Code style standard based on PSR-12 with project-specific adaptations.
+     Runs in CI (GitHub Actions) only — Dreamhost shared hosting has no
+     CLI access for local tooling.
+
+     @package    Go2My.Link
+     @author     MWBM Partners Ltd (MWservices)
+     @since      Phase 5
+     ======================================================================== -->
+
+<ruleset name="Go2MyLink">
+    <description>Go2My.Link coding standard (PSR-12 adapted)</description>
+
+    <!-- Base standard -->
+    <rule ref="PSR12"/>
+
+    <!-- Scan paths -->
+    <file>web/_functions</file>
+    <file>web/_includes</file>
+    <file>web/Go2My.Link</file>
+    <file>web/G2My.Link</file>
+    <file>web/Lnks.page</file>
+
+    <!-- Exclude paths -->
+    <exclude-pattern>web/_libraries/*</exclude-pattern>
+    <exclude-pattern>web/_auth_keys/*</exclude-pattern>
+
+    <!-- Project uses Allman (BSD) brace style, not K&R -->
+    <rule ref="PSR12.Classes.OpeningBraceSpace">
+        <severity>0</severity>
+    </rule>
+    <rule ref="Squiz.Functions.MultiLineFunctionDeclaration.BraceOnSameLine">
+        <severity>0</severity>
+    </rule>
+    <rule ref="PSR2.Classes.ClassDeclaration.OpenBraceNewLine">
+        <severity>0</severity>
+    </rule>
+
+    <!-- Allow longer lines for SQL queries and URLs in comments -->
+    <rule ref="Generic.Files.LineLength">
+        <properties>
+            <property name="lineLimit" value="120"/>
+            <property name="absoluteLineLimit" value="200"/>
+        </properties>
+    </rule>
+
+    <!-- Allow closing PHP tag omission (already PSR-12 default) -->
+    <rule ref="PSR2.Files.ClosingTag"/>
+</ruleset>

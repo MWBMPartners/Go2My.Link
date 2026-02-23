@@ -1,0 +1,30 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://go2my.link/schemas/database/settings-value.schema.json",
+    "title": "Settings — JSON Value",
+    "description": "Schema for tblSettings.settingValue when dataType is 'json'. The value is a JSON-encoded string stored in the database that can contain any valid JSON structure (object, array, or primitive).",
+    "oneOf": [
+        {
+            "type": "object",
+            "description": "Object value (e.g., configuration map)",
+            "additionalProperties": true
+        },
+        {
+            "type": "array",
+            "description": "Array value (e.g., list of allowed values)",
+            "items": {}
+        },
+        {
+            "type": "string",
+            "description": "String value stored as JSON"
+        },
+        {
+            "type": "number",
+            "description": "Numeric value stored as JSON"
+        },
+        {
+            "type": "boolean",
+            "description": "Boolean value stored as JSON"
+        }
+    ]
+}

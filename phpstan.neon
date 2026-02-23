@@ -1,0 +1,35 @@
+# =============================================================================
+# Go2My.Link — PHPStan Static Analysis Configuration
+# =============================================================================
+#
+# Static analysis for catching type errors, undefined methods, and other
+# issues that php -l won't detect. Runs in CI (GitHub Actions) only —
+# Dreamhost shared hosting has no CLI access for local tooling.
+#
+# Level 5 = moderate strictness (type checks, return types, method existence)
+#
+# @package    Go2My.Link
+# @author     MWBM Partners Ltd (MWservices)
+# @since      Phase 5
+# =============================================================================
+
+parameters:
+    level: 5
+
+    paths:
+        - web/_functions
+        - web/_includes
+        - web/Go2My.Link
+        - web/G2My.Link
+        - web/Lnks.page
+
+    excludePaths:
+        - web/_libraries
+        - web/_auth_keys
+
+    # Relaxations for shared-hosting PHP without strict typing
+    checkMissingIterableValueType: false
+    checkGenericClassInNonGenericObjectType: false
+
+    # Allow superglobals and dynamic variables common in legacy PHP
+    checkDynamicProperties: false

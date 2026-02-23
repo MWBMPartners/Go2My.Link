@@ -1,0 +1,53 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://go2my.link/schemas/api/create-response.schema.json",
+    "title": "Create Short URL — API Response",
+    "description": "Response schema for POST /api/create/ endpoint. Returns either a success object with the new short URL or an error object.",
+    "type": "object",
+    "oneOf": [
+        {
+            "title": "Success Response (201)",
+            "properties": {
+                "success": {
+                    "type": "boolean",
+                    "const": true
+                },
+                "shortURL": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "Full short URL (e.g., https://g2my.link/abc123)"
+                },
+                "shortCode": {
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 20,
+                    "pattern": "^[a-zA-Z0-9_-]+$",
+                    "description": "Short code portion of the URL"
+                }
+            },
+            "required": ["success", "shortURL", "shortCode"],
+            "additionalProperties": false
+        },
+        {
+            "title": "Error Response (4xx)",
+            "properties": {
+                "success": {
+                    "type": "boolean",
+                    "const": false
+                },
+                "error": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Human-readable error message"
+                },
+                "remaining": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Remaining rate limit allowance (only present on 429 responses)"
+                }
+            },
+            "required": ["success", "error"],
+            "additionalProperties": false
+        }
+    ]
+}

@@ -35,6 +35,7 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 - 📧 **Transactional Email** — Verification, password reset, password change notifications, new login alerts
 - 📝 **Static Pages** — About, Features, Pricing, Contact (with email), Legal (Terms, Privacy, Cookies)
 - 🔍 **URL Info** — Public short code lookup with masked destination, status badges
+- 📐 **JSON Schema Validation** — Schema definitions (draft 2020-12) with pure-PHP validator for API responses and database JSON
 
 ### 🔜 Planned
 
@@ -71,14 +72,16 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 | ✅ | 2 | v0.3.0 | PHP Framework | 11 | **Complete** |
 | ✅ | 3 | v0.4.0 | Core Product | 10 | **Complete** |
 | ✅ | 4 | v0.5.0 | User System: Auth & Dashboard | 4 | **Complete** |
-| 🔜 | 5 | v0.6.0 | Orgs, Admin & Advanced Auth | 5 | Next Up |
-| 📋 | 6 | v0.7.0 | API & Analytics | 8 | Planned |
-| 📋 | 7 | v0.8.0 | LinksPage | 6 | Planned |
-| 📋 | 8 | v0.9.0 | Advanced Redirects | 6 | Planned |
-| 📋 | 9 | v0.10.0 | Payments | 4 | Planned |
-| 📋 | 10 | v1.0.0 | Legal & Launch | 8 | Planned |
+| 🔜 | 5 | v0.6.0 | Organisation Management | 1 | Next Up |
+| 📋 | 6 | v0.7.0 | Compliance, Legal & Pre-Launch | 8 | Planned |
+| 🏁 | — | v1.0.0-rc | **PRE-RELEASE CANDIDATE** | — | — |
+| 📋 | 7 | v1.1.0 | Advanced Authentication | 4 | Post-Launch |
+| 📋 | 8 | v1.2.0 | API & Analytics | 8 | Post-Launch |
+| 📋 | 9 | v1.3.0 | LinksPage | 6 | Post-Launch |
+| 📋 | 10 | v1.4.0 | Advanced Redirects | 6 | Post-Launch |
+| 📋 | 11 | v1.5.0 | Payments & Subscriptions | 4 | Post-Launch |
 
-> **37 of 75 issues complete (49%)** — tracked on the [GitHub Project Board](https://github.com/orgs/MWBMPartners/projects/4)
+> **42 of 78 issues complete (54%)** — tracked on the [GitHub Project Board](https://github.com/orgs/MWBMPartners/projects/4)
 
 ### ✅ Phase 0 — Scaffolding (v0.1.0)
 
@@ -126,27 +129,30 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 - 🖥️ Admin dashboard: stats overview, link CRUD, profile + password change, session management
 - 🌱 14 database settings for auth, security, email, and password policy
 
-### 🔜 Phase 5 — Orgs, Admin & Advanced Auth (v0.6.0)
+### 🔜 Phase 5 — Organisation Management (v0.6.0)
 
-- 🏢 Organisation management (#32)
-- 🔐 Two-factor authentication / TOTP (#34)
-- 🌐 Social login / OAuth 2.0 (#35)
-- 🔗 SSO providers (#36)
-- 🔑 PassKey / WebAuthn support (#37)
+- 🏢 Organisation management, team accounts, custom short domains (#32)
 
-### 📋 Phase 6 — API & Analytics (v0.7.0)
+### 📋 Phase 6 — Compliance, Legal & Pre-Launch (v0.7.0)
 
-- 📡 REST API framework + endpoints (#38–#42)
-- 📡 **OpenAPI/Swagger documentation** (#75) — Interactive API docs at `/api/docs`
-- 🔑 API key management (#43)
-- 📊 Analytics dashboard + data export (#44)
+- ⚖️ Cookie consent banner (#61)
+- 🔒 GDPR compliance tools (#62)
+- 🕵️ DNT/GPC hardening (#63)
+- 📱 Progressive Web App (#64)
+- ♿ WCAG audit (#65)
+- 🌍 User-facing translations (#66)
+- 🔧 Production hardening (#67)
+- 📋 Pre-launch checklist (#71)
 
-### 📋 Phases 7–10
+> 🏁 **v1.0.0-rc — Pre-Release Candidate** after Phase 6
 
-- **Phase 7** — LinksPage: renderer, templates, WYSIWYG editor, custom domains
-- **Phase 8** — Advanced Redirects: scheduled, device, geo, age gates
-- **Phase 9** — Payments: subscription tiers, payment integrations, billing UI
-- **Phase 10** — Legal & Launch: cookie consent, GDPR, PWA, WCAG audit, translations
+### 📋 Phases 7–11 (Post-Launch Enhancements)
+
+- **Phase 7** — Advanced Authentication: 2FA/TOTP, social login, SSO, passkeys
+- **Phase 8** — API & Analytics: REST API, OpenAPI/Swagger docs, API keys, analytics dashboard
+- **Phase 9** — LinksPage: renderer, templates, WYSIWYG editor, custom domains
+- **Phase 10** — Advanced Redirects: scheduled, device, geo, age gates
+- **Phase 11** — Payments & Subscriptions: tiers, PayPal, Apple Pay, Google Pay, crypto
 
 ---
 
@@ -160,9 +166,10 @@ Go2My.Link/
 ├── ⚙️ .github/workflows/        ← CI/CD (PHP lint, release, SFTP deploy)
 ├── 📚 docs/                     ← ARCHITECTURE, DATABASE, API, DEPLOYMENT
 ├── 🌐 web/
-│   ├── ⚙️ _functions/           ← Shared PHP functions (8 files)
+│   ├── ⚙️ _functions/           ← Shared PHP functions (10 files)
 │   ├── 📦 _includes/            ← Shared templates + email templates
 │   ├── 📦 _libraries/           ← Local fallback libraries (Bootstrap, jQuery, FA, Chart.js)
+│   ├── 📐 _schemas/             ← JSON Schema definitions (api, database, external)
 │   ├── 🗄️ _sql/                 ← Schema, migrations, seeds, stored procedures
 │   ├── 🏠 Go2My.Link/           ← Component A (Main Website + Admin Dashboard)
 │   │   ├── public_html/         ← go2my.link web root
@@ -242,8 +249,8 @@ Releases are managed via GitHub Actions. Each component can be released independ
 ## 📋 Project Management
 
 - 📌 **GitHub Project:** [Go2My.Link Development](https://github.com/orgs/MWBMPartners/projects/4)
-- 🐛 **Issues:** 75 issues tracked with phase labels (`phase-0` through `phase-10`)
-- 🏁 **Milestones:** v0.1.0 (Scaffold) through v1.0.0 (Launch)
+- 🐛 **Issues:** 78 issues tracked with phase labels (`phase-0` through `phase-11`)
+- 🏁 **Milestones:** v0.1.0 (Scaffold) through v1.5.0 (Payments), with v1.0.0-rc pre-release marker
 
 ---
 

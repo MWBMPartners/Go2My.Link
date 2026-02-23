@@ -1,0 +1,38 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://go2my.link/schemas/database/error-log-headers.schema.json",
+    "title": "Error Log — Request Headers",
+    "description": "Schema for the tblErrorLog.requestHeaders JSON column. Contains sanitised HTTP request headers (only safe, non-sensitive headers).",
+    "type": "object",
+    "properties": {
+        "HTTP_HOST": {
+            "type": "string",
+            "description": "Request host header"
+        },
+        "HTTP_USER_AGENT": {
+            "type": "string",
+            "description": "Client user agent string"
+        },
+        "HTTP_REFERER": {
+            "type": "string",
+            "description": "Referring URL"
+        },
+        "HTTP_ACCEPT": {
+            "type": "string",
+            "description": "Accepted content types"
+        },
+        "HTTP_ACCEPT_LANGUAGE": {
+            "type": "string",
+            "description": "Accepted languages"
+        },
+        "CONTENT_TYPE": {
+            "type": "string",
+            "description": "Request content type"
+        },
+        "CONTENT_LENGTH": {
+            "type": "string",
+            "description": "Request content length"
+        }
+    },
+    "additionalProperties": false
+}
