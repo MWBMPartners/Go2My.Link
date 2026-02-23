@@ -1,12 +1,12 @@
 {
   "name": "Go2My.link",
   "short_name": "Go2My.link",
-  "description": "Go2My.link \u2014 fast branded short links with analytics.",
+  "description": "Go2My.link \u2014 premium branded short links with analytics.",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0A0E14",
-  "theme_color": "#1E88E5",
+  "theme_color": "#0C6AD6",
   "icons": [
     {
       "src": "icons/icon-72x72.png",

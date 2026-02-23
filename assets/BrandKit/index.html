@@ -1,0 +1,151 @@
+<!doctype html>
+<!--
+File: /BrandKit/index.html
+Purpose: Preview gallery for Go2My.link BrandKit (TRUE ORIGINALS)
+(C) 2025–present MWBM Partners Ltd (d/b/a MW Services)
+Version: 1.0
+Generated: 2026-02-23T20:47:26.306899Z
+-->
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Go2My.link BrandKit Preview (Originals)</title>
+<style>
+:root{--bg:#0A0E14;--bg2:rgba(255,255,255,.06);--bd:rgba(255,255,255,.12);--tx:rgba(255,255,255,.92);--mut:rgba(255,255,255,.70);--code:rgba(255,255,255,.08);}
+[data-theme="light"]{--bg:#F4F6FA;--bg2:rgba(0,0,0,.04);--bd:rgba(0,0,0,.10);--tx:rgba(0,0,0,.86);--mut:rgba(0,0,0,.62);--code:rgba(0,0,0,.06);}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--tx);}
+header{position:sticky;top:0;backdrop-filter:blur(10px);background:color-mix(in srgb,var(--bg) 85%,transparent);border-bottom:1px solid var(--bd);z-index:50;}
+.wrap{width:min(1200px,92vw);margin:0 auto;padding:18px 0;}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+h1{margin:0;font-size:20px;}
+.sub{color:var(--mut);font-size:13px;line-height:1.4;}
+.btns{display:flex;gap:10px;flex-wrap:wrap;}
+button{border:1px solid var(--bd);background:var(--bg2);color:var(--tx);border-radius:14px;padding:10px 12px;cursor:pointer;font-weight:800}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px;}
+#search{flex:1;min-width:260px;border:1px solid var(--bd);background:var(--bg2);color:var(--tx);border-radius:14px;padding:10px 12px;font-weight:700;outline:none;}
+.chip{border:1px solid var(--bd);background:var(--bg2);color:var(--tx);border-radius:999px;padding:9px 12px;cursor:pointer;font-weight:900}
+.chip.active{background:color-mix(in srgb,var(--bg2) 60%, #1E88E5 40%);border-color:color-mix(in srgb,var(--bd) 40%, #1E88E5 60%)}
+main .wrap{padding:22px 0 60px 0;}
+.card{background:var(--bg2);border:1px solid var(--bd);border-radius:22px;padding:16px;margin:14px 0;box-shadow:0 16px 50px rgba(0,0,0,.22);}
+.card-h{font-weight:900;font-size:15px;margin:2px 0 14px 0;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;}
+.tile{border:1px solid var(--bd);border-radius:18px;overflow:hidden;background:color-mix(in srgb,var(--bg2) 60%,transparent);cursor:zoom-in}
+.thumb{height:180px;display:grid;place-items:center;padding:12px;background:linear-gradient(135deg,color-mix(in srgb,var(--bg) 92%, #1E88E5 8%),color-mix(in srgb,var(--bg) 92%, #43A047 8%));}
+[data-theme="light"] .thumb{background:linear-gradient(135deg,rgba(30,136,229,.10),rgba(67,160,71,.10));}
+.thumb img{max-width:100%;max-height:100%;object-fit:contain;}
+.thumb.svg object{width:100%;height:100%;}
+.cap{padding:10px 12px;font-size:12px;color:var(--mut);border-top:1px solid var(--bd);}
+code{background:var(--code);padding:2px 6px;border-radius:10px;word-break:break-all;}
+/* Modal */
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:9999;background:rgba(0,0,0,.55);backdrop-filter:blur(10px)}
+.modal.open{display:flex}
+.modal-card{width:min(1100px,92vw);height:min(84vh,820px);background:var(--bg);border:1px solid var(--bd);border-radius:22px;box-shadow:0 26px 90px rgba(0,0,0,.45);overflow:hidden;display:flex;flex-direction:column}
+.modal-top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-bottom:1px solid var(--bd);background:color-mix(in srgb,var(--bg) 88%,transparent)}
+.modal-title{font-weight:900;font-size:13px;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.modal-actions{display:flex;gap:8px;flex-wrap:wrap}
+.modal-btn{border:1px solid var(--bd);background:var(--bg2);color:var(--tx);border-radius:14px;padding:8px 10px;cursor:pointer;font-weight:900}
+.modal-body{flex:1;display:grid;place-items:center;padding:14px;background:linear-gradient(135deg,color-mix(in srgb,var(--bg) 92%, #1E88E5 8%),color-mix(in srgb,var(--bg) 92%, #43A047 8%));}
+[data-theme="light"] .modal-body{background:linear-gradient(135deg,rgba(30,136,229,.08),rgba(67,160,71,.08));}
+.modal-body img,.modal-body object{max-width:100%;max-height:100%;object-fit:contain}
+.modal-meta{padding:12px 14px;border-top:1px solid var(--bd);color:var(--mut);font-size:12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+</style></head>
+<body data-theme="dark">
+<header><div class="wrap">
+  <div class="top">
+    <div><h1>Go2My.link BrandKit Preview</h1><div class="sub">This pack uses the <strong>approved original</strong> (Logo3) PNG set. The SVG includes an embedded original for perfect fidelity + a vector fallback.</div></div>
+    <div class="btns"><button id="toggleTheme">Toggle light/dark</button><button id="scrollTop">Back to top</button></div>
+  </div>
+  <div class="controls">
+    <input id="search" type="search" placeholder="Search assets…" />
+    <div class="chips">
+      <button class="chip" data-filter="all">All</button>
+      <button class="chip" data-filter="logos">Logos</button>
+      <button class="chip" data-filter="icons">Icons</button>
+      <button class="chip" data-filter="pwa">PWA</button>
+    </div>
+  </div>
+</div></header>
+<main><div class="wrap">
+<section class="card" data-section="logos"><div class="card-h">Logos (SVG)</div><div class="card-b"><div class="grid"><div class="tile"><div class="thumb svg"><object data="logos/svg/Go2My.link-Logo-ORIGINAL-Embedded.svg" type="image/svg+xml"></object></div>
+        <div class="cap"><code>logos/svg/Go2My.link-Logo-ORIGINAL-Embedded.svg</code></div></div><div class="tile"><div class="thumb svg"><object data="logos/svg/Go2My.link-Logo-VECTOR-Fallback.svg" type="image/svg+xml"></object></div>
+        <div class="cap"><code>logos/svg/Go2My.link-Logo-VECTOR-Fallback.svg</code></div></div></div></div></section>
+<section class="card" data-section="logos"><div class="card-h">Logos (PNG)</div><div class="card-b"><div class="grid"><div class="tile"><div class="thumb"><img src="_preview/thumbs/logos_png_Go2My.link-Logo-ORIGINAL-DarkBoost.png" data-full="logos/png/Go2My.link-Logo-ORIGINAL-DarkBoost.png" loading="lazy"/></div>
+        <div class="cap"><code>logos/png/Go2My.link-Logo-ORIGINAL-DarkBoost.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/logos_png_Go2My.link-Logo-ORIGINAL.png" data-full="logos/png/Go2My.link-Logo-ORIGINAL.png" loading="lazy"/></div>
+        <div class="cap"><code>logos/png/Go2My.link-Logo-ORIGINAL.png</code></div></div></div></div></section>
+<section class="card" data-section="icons"><div class="card-h">App Icons (PNG)</div><div class="card-b"><div class="grid"><div class="tile"><div class="thumb"><img src="_preview/thumbs/icons_app_Go2My.link-AppIcon-1024.png" data-full="icons/app/Go2My.link-AppIcon-1024.png" loading="lazy"/></div>
+        <div class="cap"><code>icons/app/Go2My.link-AppIcon-1024.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/icons_app_Go2My.link-AppIcon-128.png" data-full="icons/app/Go2My.link-AppIcon-128.png" loading="lazy"/></div>
+        <div class="cap"><code>icons/app/Go2My.link-AppIcon-128.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/icons_app_Go2My.link-AppIcon-144.png" data-full="icons/app/Go2My.link-AppIcon-144.png" loading="lazy"/></div>
+        <div class="cap"><code>icons/app/Go2My.link-AppIcon-144.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/icons_app_Go2My.link-AppIcon-152.png" data-full="icons/app/Go2My.link-AppIcon-152.png" loading="lazy"/></div>
+        <div class="cap"><code>icons/app/Go2My.link-AppIcon-152.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/icons_app_Go2My.link-AppIcon-16.png" data-full="icons/app/Go2My.link-AppIcon-16.png" loading="lazy"/></div>
+        <div class="cap"><code>icons/app/Go2My.link-AppIcon-16.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/icons_app_Go2My.link-AppIcon-167.png" data-full="icons/app/Go2My.link-AppIcon-167.png" loading="lazy"/></div>
+        <div class="cap"><code>icons/app/Go2My.link-AppIcon-167.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/icons_app_Go2My.link-AppIcon-180.png" data-full="icons/app/Go2My.link-AppIcon-180.png" loading="lazy"/></div>
+        <div class="cap"><code>icons/app/Go2My.link-AppIcon-180.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/icons_app_Go2My.link-AppIcon-192.png" data-full="icons/app/Go2My.link-AppIcon-192.png" loading="lazy"/></div>
+        <div class="cap"><code>icons/app/Go2My.link-AppIcon-192.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/icons_app_Go2My.link-AppIcon-256.png" data-full="icons/app/Go2My.link-AppIcon-256.png" loading="lazy"/></div>
+        <div class="cap"><code>icons/app/Go2My.link-AppIcon-256.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/icons_app_Go2My.link-AppIcon-32.png" data-full="icons/app/Go2My.link-AppIcon-32.png" loading="lazy"/></div>
+        <div class="cap"><code>icons/app/Go2My.link-AppIcon-32.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/icons_app_Go2My.link-AppIcon-512.png" data-full="icons/app/Go2My.link-AppIcon-512.png" loading="lazy"/></div>
+        <div class="cap"><code>icons/app/Go2My.link-AppIcon-512.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/icons_app_Go2My.link-AppIcon-64.png" data-full="icons/app/Go2My.link-AppIcon-64.png" loading="lazy"/></div>
+        <div class="cap"><code>icons/app/Go2My.link-AppIcon-64.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/icons_app_Go2My.link-AppIcon-96.png" data-full="icons/app/Go2My.link-AppIcon-96.png" loading="lazy"/></div>
+        <div class="cap"><code>icons/app/Go2My.link-AppIcon-96.png</code></div></div></div></div></section>
+<section class="card" data-section="icons"><div class="card-h">Favicons</div><div class="card-b"><div class="grid"><div class="tile"><div class="thumb"><img src="_preview/thumbs/icons_favicon_Go2My.link-Favicon-32.png" data-full="icons/favicon/Go2My.link-Favicon-32.png" loading="lazy"/></div>
+        <div class="cap"><code>icons/favicon/Go2My.link-Favicon-32.png</code></div></div><div class="tile"><div class="thumb"><img src="icons/favicon/Go2My.link-Favicon.ico" data-full="icons/favicon/Go2My.link-Favicon.ico" loading="lazy"/></div>
+        <div class="cap"><code>icons/favicon/Go2My.link-Favicon.ico</code></div></div></div></div></section>
+<section class="card" data-section="pwa"><div class="card-h">PWA Icons</div><div class="card-b"><div class="grid"><div class="tile"><div class="thumb"><img src="_preview/thumbs/pwa_icons_icon-128x128.png" data-full="pwa/icons/icon-128x128.png" loading="lazy"/></div>
+        <div class="cap"><code>pwa/icons/icon-128x128.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/pwa_icons_icon-144x144.png" data-full="pwa/icons/icon-144x144.png" loading="lazy"/></div>
+        <div class="cap"><code>pwa/icons/icon-144x144.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/pwa_icons_icon-152x152.png" data-full="pwa/icons/icon-152x152.png" loading="lazy"/></div>
+        <div class="cap"><code>pwa/icons/icon-152x152.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/pwa_icons_icon-192x192.png" data-full="pwa/icons/icon-192x192.png" loading="lazy"/></div>
+        <div class="cap"><code>pwa/icons/icon-192x192.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/pwa_icons_icon-256x256.png" data-full="pwa/icons/icon-256x256.png" loading="lazy"/></div>
+        <div class="cap"><code>pwa/icons/icon-256x256.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/pwa_icons_icon-384x384.png" data-full="pwa/icons/icon-384x384.png" loading="lazy"/></div>
+        <div class="cap"><code>pwa/icons/icon-384x384.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/pwa_icons_icon-512x512.png" data-full="pwa/icons/icon-512x512.png" loading="lazy"/></div>
+        <div class="cap"><code>pwa/icons/icon-512x512.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/pwa_icons_icon-72x72.png" data-full="pwa/icons/icon-72x72.png" loading="lazy"/></div>
+        <div class="cap"><code>pwa/icons/icon-72x72.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/pwa_icons_icon-96x96.png" data-full="pwa/icons/icon-96x96.png" loading="lazy"/></div>
+        <div class="cap"><code>pwa/icons/icon-96x96.png</code></div></div><div class="tile"><div class="thumb"><img src="_preview/thumbs/pwa_icons_icon-maskable-512x512.png" data-full="pwa/icons/icon-maskable-512x512.png" loading="lazy"/></div>
+        <div class="cap"><code>pwa/icons/icon-maskable-512x512.png</code></div></div></div></div></section>
+<footer class="sub" style="margin-top:22px;"><strong>(C) 2025–present MWBM Partners Ltd (d/b/a MW Services)</strong></footer>
+</div></main>
+<div class="modal" id="modal" aria-hidden="true">
+  <div class="modal-card" role="dialog" aria-modal="true">
+    <div class="modal-top"><div class="modal-title" id="modalTitle">Asset</div>
+      <div class="modal-actions"><button class="modal-btn" id="openFile">Open file</button>
+        <button class="modal-btn" id="copyPath">Copy path</button><button class="modal-btn" id="closeModal">Close</button></div>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-meta"><div>Path: <code id="modalPath">—</code></div><div>Esc • click outside</div></div>
+  </div>
+</div>
+<script>
+const root=document.body;
+document.getElementById('toggleTheme').addEventListener('click',()=>{root.dataset.theme=(root.dataset.theme==='dark')?'light':'dark';});
+document.getElementById('scrollTop').addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+const search=document.getElementById('search');
+const chips=Array.from(document.querySelectorAll('.chip'));
+const cards=Array.from(document.querySelectorAll('section.card[data-section]'));
+let activeFilter='all';
+function applyFilters(){const q=(search.value||'').trim().toLowerCase();
+  cards.forEach(card=>{const sec=card.getAttribute('data-section')||'all';
+    const ok=(activeFilter==='all')||(sec===activeFilter);
+    const s=card.innerText.toLowerCase();
+    const ok2=!q||s.includes(q);
+    card.style.display=(ok&&ok2)?'':'none';
+  });
+}
+chips.forEach(btn=>btn.addEventListener('click',()=>{chips.forEach(b=>b.classList.remove('active'));btn.classList.add('active');activeFilter=btn.dataset.filter||'all';applyFilters();}));
+chips.find(b=>b.dataset.filter==='all')?.classList.add('active');
+search.addEventListener('input',applyFilters);
+const modal=document.getElementById('modal'), modalBody=document.getElementById('modalBody'),
+  modalTitle=document.getElementById('modalTitle'), modalPath=document.getElementById('modalPath'),
+  btnOpen=document.getElementById('openFile'), btnCopy=document.getElementById('copyPath'), btnClose=document.getElementById('closeModal');
+let current=null;
+function openModal(path){current=path;modalTitle.textContent=path.split('/').slice(-1)[0];modalPath.textContent=path;modalBody.innerHTML='';
+  const ext=(path.split('.').pop()||'').toLowerCase();
+  if(ext==='svg'){const o=document.createElement('object');o.type='image/svg+xml';o.data=path;o.style.width='100%';o.style.height='100%';modalBody.appendChild(o);}
+  else {const i=document.createElement('img');i.src=path;i.alt=modalTitle.textContent;modalBody.appendChild(i);}
+  modal.classList.add('open');modal.setAttribute('aria-hidden','false');
+}
+function closeModal(){modal.classList.remove('open');modal.setAttribute('aria-hidden','true');modalBody.innerHTML='';current=null;}
+btnClose.addEventListener('click',closeModal);
+modal.addEventListener('click',(e)=>{if(e.target===modal)closeModal();});
+window.addEventListener('keydown',(e)=>{if(e.key==='Escape')closeModal();});
+btnOpen.addEventListener('click',()=>{if(current)window.open(current,'_blank');});
+btnCopy.addEventListener('click',async()=>{if(!current)return;try{await navigator.clipboard.writeText(current);btnCopy.textContent='Copied!';setTimeout(()=>btnCopy.textContent='Copy path',900);}
+catch{btnCopy.textContent='Copy failed';setTimeout(()=>btnCopy.textContent='Copy path',900);}});
+document.querySelectorAll('.tile').forEach(t=>t.addEventListener('click',()=>{const c=t.querySelector('code');if(!c)return;let path=c.textContent.trim();const img=t.querySelector('img[data-full]');if(img&&img.dataset.full)path=img.dataset.full;openModal(path);}));
+applyFilters();
+</script></body></html>

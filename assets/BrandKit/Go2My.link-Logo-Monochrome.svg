@@ -1,8 +1,0 @@
-<svg viewBox="0 0 1200 400" xmlns="http://www.w3.org/2000/svg">
-<g transform="translate(80,90) rotate(-25)">
-<rect x="0" y="0" width="180" height="90" rx="45" fill="black"/>
-<rect x="110" y="60" width="180" height="90" rx="45" fill="black"/>
-</g>
-<polygon points="180,170 260,200 180,230 200,200" fill="white"/>
-<text x="350" y="230" font-family="Arial" font-size="110" font-weight="bold" fill="black">Go2My.link</text>
-</svg>

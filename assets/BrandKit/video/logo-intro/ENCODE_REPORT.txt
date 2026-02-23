@@ -1,8 +1,0 @@
-Go2My.link Logo Intro Encoding Report
-====================================
-
-H.264 MP4: OK (—)
-VP9 WebM:  OK (—)
-H.265 MP4: OK (—)
-
-If any codec failed, use the PNG frames in logo-intro/frames to re-encode locally.
