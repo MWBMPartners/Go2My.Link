@@ -177,18 +177,18 @@ if ($isGlobalAdmin)
                     </div>
                     <div class="card-body">
 
-                        <?php if ($basicSuccess): ?>
+                        <?php if ($basicSuccess) { ?>
                         <div class="alert alert-success" role="status">
                             <i class="fas fa-check-circle" aria-hidden="true"></i> Organisation updated.
                         </div>
-                        <?php endif; ?>
+                        <?php } ?>
 
-                        <?php if ($basicError !== ''): ?>
+                        <?php if ($basicError !== '') { ?>
                         <div class="alert alert-danger" role="alert">
                             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
                             <?php echo g2ml_sanitiseOutput($basicError); ?>
                         </div>
-                        <?php endif; ?>
+                        <?php } ?>
 
                         <form action="/org/settings" method="POST" novalidate>
                             <?php echo g2ml_csrfField('org_basic_settings'); ?>
@@ -247,7 +247,7 @@ if ($isGlobalAdmin)
                 </div>
             </div>
 
-            <?php if ($isGlobalAdmin): ?>
+            <?php if ($isGlobalAdmin) { ?>
             <!-- ============================================================ -->
             <!-- Admin Settings (GlobalAdmin only)                             -->
             <!-- ============================================================ -->
@@ -261,18 +261,18 @@ if ($isGlobalAdmin)
                     </div>
                     <div class="card-body">
 
-                        <?php if ($adminSuccess): ?>
+                        <?php if ($adminSuccess) { ?>
                         <div class="alert alert-success" role="status">
                             <i class="fas fa-check-circle" aria-hidden="true"></i> Admin settings updated.
                         </div>
-                        <?php endif; ?>
+                        <?php } ?>
 
-                        <?php if ($adminError !== ''): ?>
+                        <?php if ($adminError !== '') { ?>
                         <div class="alert alert-danger" role="alert">
                             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
                             <?php echo g2ml_sanitiseOutput($adminError); ?>
                         </div>
-                        <?php endif; ?>
+                        <?php } ?>
 
                         <form action="/org/settings" method="POST" novalidate>
                             <?php echo g2ml_csrfField('org_admin_settings'); ?>
@@ -282,12 +282,12 @@ if ($isGlobalAdmin)
                             <div class="mb-3">
                                 <label for="tier-id" class="form-label">Subscription Tier</label>
                                 <select class="form-select" id="tier-id" name="tier_id">
-                                    <?php foreach ($tiers as $tier): ?>
+                                    <?php foreach ($tiers as $tier) { ?>
                                     <option value="<?php echo g2ml_sanitiseOutput($tier['tierID']); ?>"
                                         <?php echo ($org['tierID'] === $tier['tierID']) ? 'selected' : ''; ?>>
                                         <?php echo g2ml_sanitiseOutput($tier['tierName']); ?>
                                     </option>
-                                    <?php endforeach; ?>
+                                    <?php } ?>
                                 </select>
                             </div>
 
@@ -324,7 +324,7 @@ if ($isGlobalAdmin)
                     </div>
                 </div>
             </div>
-            <?php endif; ?>
+            <?php } ?>
         </div>
 
     </div>

@@ -85,9 +85,9 @@ $currentYear  = $currentYear ?? date('Y');
                                         <p style="margin:0; color:#6c757d; font-size:14px;">
                                             <strong>Invited By:</strong>
                                             <?php echo htmlspecialchars($inviterName, ENT_QUOTES, 'UTF-8'); ?>
-                                            <?php if ($inviterEmail !== ''): ?>
+                                            <?php if ($inviterEmail !== '') { ?>
                                             (<?php echo htmlspecialchars($inviterEmail, ENT_QUOTES, 'UTF-8'); ?>)
-                                            <?php endif; ?>
+                                            <?php } ?>
                                         </p>
                                     </td>
                                 </tr>

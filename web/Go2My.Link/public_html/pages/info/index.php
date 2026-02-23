@@ -254,7 +254,7 @@ if ($linkData !== null)
     </div>
 </section>
 
-<?php if ($infoError !== ''): ?>
+<?php if ($infoError !== '') { ?>
 <!-- ====================================================================== -->
 <!-- Error Message                                                           -->
 <!-- ====================================================================== -->
@@ -270,9 +270,9 @@ if ($linkData !== null)
         </div>
     </div>
 </section>
-<?php endif; ?>
+<?php } ?>
 
-<?php if ($linkData !== null): ?>
+<?php if ($linkData !== null) { ?>
 <!-- ====================================================================== -->
 <!-- Link Information Card                                                   -->
 <!-- ====================================================================== -->
@@ -320,24 +320,24 @@ if ($linkData !== null)
                             </dd>
 
                             <!-- Title (if set) -->
-                            <?php if (!empty($linkData['title'])): ?>
+                            <?php if (!empty($linkData['title'])) { ?>
                             <dt class="col-sm-4 text-body-secondary">
                                 <?php echo function_exists('__') ? __('info.label_title') : 'Title'; ?>
                             </dt>
                             <dd class="col-sm-8">
                                 <?php echo g2ml_sanitiseOutput($linkData['title']); ?>
                             </dd>
-                            <?php endif; ?>
+                            <?php } ?>
 
                             <!-- Category (if set) -->
-                            <?php if (!empty($linkData['categoryName'])): ?>
+                            <?php if (!empty($linkData['categoryName'])) { ?>
                             <dt class="col-sm-4 text-body-secondary">
                                 <?php echo function_exists('__') ? __('info.label_category') : 'Category'; ?>
                             </dt>
                             <dd class="col-sm-8">
                                 <?php echo g2ml_sanitiseOutput($linkData['categoryName']); ?>
                             </dd>
-                            <?php endif; ?>
+                            <?php } ?>
 
                             <!-- Created Date -->
                             <dt class="col-sm-4 text-body-secondary">
@@ -352,7 +352,7 @@ if ($linkData !== null)
                             </dd>
 
                             <!-- Date Range (if set) -->
-                            <?php if (!empty($linkData['startDate']) || !empty($linkData['endDate'])): ?>
+                            <?php if (!empty($linkData['startDate']) || !empty($linkData['endDate'])) { ?>
                             <dt class="col-sm-4 text-body-secondary">
                                 <?php echo function_exists('__') ? __('info.label_active_period') : 'Active Period'; ?>
                             </dt>
@@ -367,7 +367,7 @@ if ($linkData !== null)
                                 echo g2ml_sanitiseOutput($start . ' — ' . $end);
                                 ?>
                             </dd>
-                            <?php endif; ?>
+                            <?php } ?>
                         </dl>
                     </div>
 
@@ -389,9 +389,9 @@ if ($linkData !== null)
         </div>
     </div>
 </section>
-<?php endif; ?>
+<?php } ?>
 
-<?php if ($shortCode === '' && $infoError === ''): ?>
+<?php if ($shortCode === '' && $infoError === '') { ?>
 <!-- ====================================================================== -->
 <!-- How It Works (shown when no search has been performed)                   -->
 <!-- ====================================================================== -->
@@ -431,4 +431,4 @@ if ($linkData !== null)
         </div>
     </div>
 </section>
-<?php endif; ?>
+<?php } ?>

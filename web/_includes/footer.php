@@ -168,7 +168,7 @@ if (defined('G2ML_DEBUG') && G2ML_DEBUG === true && function_exists('g2ml_getDeb
                     aria-label="Close debug panel">&times;</button>
         </div>
 
-        <?php if (!empty($debug['queries'])): ?>
+        <?php if (!empty($debug['queries'])) { ?>
         <details>
             <summary style="cursor:pointer;color:#0abde3;">Queries (<?php echo $debug['queryCount']; ?>)</summary>
             <table style="width:100%;border-collapse:collapse;margin-top:5px;">
@@ -181,7 +181,7 @@ if (defined('G2ML_DEBUG') && G2ML_DEBUG === true && function_exists('g2ml_getDeb
                     </tr>
                 </thead>
                 <tbody>
-                <?php foreach ($debug['queries'] as $i => $q): ?>
+                <?php foreach ($debug['queries'] as $i => $q) { ?>
                     <tr style="border-top:1px solid #333;">
                         <td style="padding:2px 5px;color:#999;"><?php echo $i + 1; ?></td>
                         <td style="padding:2px 5px;max-width:600px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
@@ -191,11 +191,11 @@ if (defined('G2ML_DEBUG') && G2ML_DEBUG === true && function_exists('g2ml_getDeb
                         <td style="padding:2px 5px;text-align:right;"><?php echo $q['duration']; ?>ms</td>
                         <td style="padding:2px 5px;text-align:center;"><?php echo $q['success'] ? '✅' : '❌'; ?></td>
                     </tr>
-                <?php endforeach; ?>
+                <?php } ?>
                 </tbody>
             </table>
         </details>
-        <?php endif; ?>
+        <?php } ?>
     </div>
     <?php
 }

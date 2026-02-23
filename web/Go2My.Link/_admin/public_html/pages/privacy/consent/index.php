@@ -128,21 +128,21 @@ $consentHistory = function_exists('g2ml_getConsentHistory') ? g2ml_getConsentHis
         </p>
 
         <!-- Alerts -->
-        <?php if ($actionSuccess !== ''): ?>
+        <?php if ($actionSuccess !== '') { ?>
         <div class="alert alert-success alert-dismissible fade show" role="status">
             <i class="fas fa-check-circle" aria-hidden="true"></i>
             <?php echo g2ml_sanitiseOutput($actionSuccess); ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<?php echo function_exists('__') ? __('consent.close') : 'Close'; ?>"></button>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
-        <?php if ($actionError !== ''): ?>
+        <?php if ($actionError !== '') { ?>
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
             <?php echo g2ml_sanitiseOutput($actionError); ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<?php echo function_exists('__') ? __('consent.close') : 'Close'; ?>"></button>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
         <!-- ============================================================== -->
         <!-- Consent Preferences Form                                        -->
@@ -247,7 +247,7 @@ $consentHistory = function_exists('g2ml_getConsentHistory') ? g2ml_getConsentHis
                 </h2>
             </div>
             <div class="card-body p-0">
-                <?php if (empty($consentHistory)): ?>
+                <?php if (empty($consentHistory)) { ?>
                 <div class="p-4 text-center text-body-secondary">
                     <i class="fas fa-inbox fa-2x mb-2" aria-hidden="true"></i>
                     <p class="mb-0">
@@ -256,7 +256,7 @@ $consentHistory = function_exists('g2ml_getConsentHistory') ? g2ml_getConsentHis
                             : 'No consent history recorded yet.'; ?>
                     </p>
                 </div>
-                <?php else: ?>
+                <?php } else { ?>
                 <div class="table-responsive">
                     <table class="table table-hover table-sm mb-0" aria-label="<?php echo function_exists('__') ? __('consent.history_table_label') : 'Consent history'; ?>">
                         <thead>
@@ -268,42 +268,42 @@ $consentHistory = function_exists('g2ml_getConsentHistory') ? g2ml_getConsentHis
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($consentHistory as $record): ?>
+                            <?php foreach ($consentHistory as $record) { ?>
                             <tr>
                                 <td>
                                     <?php echo g2ml_sanitiseOutput(ucfirst($record['consentType'] ?? '')); ?>
                                 </td>
                                 <td>
-                                    <?php if ((int) ($record['consentGiven'] ?? 0) === 1): ?>
+                                    <?php if ((int) ($record['consentGiven'] ?? 0) === 1) { ?>
                                     <span class="badge bg-success">
                                         <i class="fas fa-check" aria-hidden="true"></i>
                                         <?php echo function_exists('__') ? __('consent.granted') : 'Granted'; ?>
                                     </span>
-                                    <?php else: ?>
+                                    <?php } else { ?>
                                     <span class="badge bg-secondary">
                                         <i class="fas fa-times" aria-hidden="true"></i>
                                         <?php echo function_exists('__') ? __('consent.refused') : 'Refused'; ?>
                                     </span>
-                                    <?php endif; ?>
+                                    <?php } ?>
                                 </td>
                                 <td>
                                     <?php echo g2ml_sanitiseOutput(ucfirst($record['consentMethod'] ?? '')); ?>
                                 </td>
                                 <td>
-                                    <?php if (!empty($record['createdAt'])): ?>
+                                    <?php if (!empty($record['createdAt'])) { ?>
                                     <time datetime="<?php echo g2ml_sanitiseOutput($record['createdAt']); ?>">
                                         <?php echo date('j M Y, H:i', strtotime($record['createdAt'])); ?>
                                     </time>
-                                    <?php else: ?>
+                                    <?php } else { ?>
                                     &mdash;
-                                    <?php endif; ?>
+                                    <?php } ?>
                                 </td>
                             </tr>
-                            <?php endforeach; ?>
+                            <?php } ?>
                         </tbody>
                     </table>
                 </div>
-                <?php endif; ?>
+                <?php } ?>
             </div>
         </div>
 

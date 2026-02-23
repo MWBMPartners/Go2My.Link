@@ -63,7 +63,7 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
         <!-- Collapsible content -->
         <div class="collapse navbar-collapse" id="mainNavbar">
 
-            <?php if ($component === 'A' || $component === 'Admin'): ?>
+            <?php if ($component === 'A' || $component === 'Admin') { ?>
             <!-- ========================================================== -->
             <!-- Component A (Main Website) + Admin Navigation              -->
             <!-- ========================================================== -->
@@ -101,7 +101,7 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
                     </a>
                 </li>
             </ul>
-            <?php endif; ?>
+            <?php } ?>
 
             <!-- Right-aligned items -->
             <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
@@ -129,7 +129,7 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
                 }
                 ?>
 
-                <?php if ($isLoggedIn): ?>
+                <?php if ($isLoggedIn) { ?>
                 <!-- ====================================================== -->
                 <!-- 👤 Logged-in User Dropdown                             -->
                 <!-- ====================================================== -->
@@ -141,22 +141,22 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userMenuDropdown"
                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <?php if ($userAvatar !== ''): ?>
+                        <?php if ($userAvatar !== '') { ?>
                         <img src="<?php echo g2ml_sanitiseOutput($userAvatar); ?>"
                              alt="" class="rounded-circle me-1" width="24" height="24"
                              style="object-fit:cover;">
-                        <?php else: ?>
+                        <?php } else { ?>
                         <i class="fas fa-user-circle me-1" aria-hidden="true"></i>
-                        <?php endif; ?>
+                        <?php } ?>
                         <?php echo htmlspecialchars($userDisplayName, ENT_QUOTES, 'UTF-8'); ?>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuDropdown">
                         <!-- User info header -->
                         <li class="dropdown-header">
                             <strong><?php echo htmlspecialchars($userDisplayName, ENT_QUOTES, 'UTF-8'); ?></strong>
-                            <?php if ($userEmail !== ''): ?>
+                            <?php if ($userEmail !== '') { ?>
                             <br><small class="text-body-secondary"><?php echo htmlspecialchars($userEmail, ENT_QUOTES, 'UTF-8'); ?></small>
-                            <?php endif; ?>
+                            <?php } ?>
                         </li>
                         <li><hr class="dropdown-divider"></li>
 
@@ -199,7 +199,7 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
                         </a></li>
                     </ul>
                 </li>
-                <?php else: ?>
+                <?php } else { ?>
                 <!-- ====================================================== -->
                 <!-- 🔐 Login / Register Links                              -->
                 <!-- ====================================================== -->
@@ -214,7 +214,7 @@ $currentRoute = function_exists('getCurrentRoute') ? getCurrentRoute() : '';
                         <?php echo function_exists('__') ? __('nav.register') : 'Sign Up'; ?>
                     </a>
                 </li>
-                <?php endif; ?>
+                <?php } ?>
             </ul>
         </div>
     </div>

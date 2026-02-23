@@ -99,19 +99,19 @@ $invitations = getPendingInvitations($orgHandle);
             </a>
         </div>
 
-        <?php if ($actionSuccess !== ''): ?>
+        <?php if ($actionSuccess !== '') { ?>
         <div class="alert alert-success" role="status">
             <i class="fas fa-check-circle" aria-hidden="true"></i>
             <?php echo g2ml_sanitiseOutput($actionSuccess); ?>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
-        <?php if ($actionError !== ''): ?>
+        <?php if ($actionError !== '') { ?>
         <div class="alert alert-danger" role="alert">
             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
             <?php echo g2ml_sanitiseOutput($actionError); ?>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
         <!-- ================================================================ -->
         <!-- Members Table                                                     -->
@@ -124,12 +124,12 @@ $invitations = getPendingInvitations($orgHandle);
                 </h2>
             </div>
 
-            <?php if (empty($members)): ?>
+            <?php if (empty($members)) { ?>
             <div class="card-body text-center text-body-secondary py-4">
                 <i class="fas fa-user-slash fa-2x mb-2" aria-hidden="true"></i>
                 <p class="mb-0">No members found.</p>
             </div>
-            <?php else: ?>
+            <?php } else { ?>
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
                     <thead>
@@ -142,16 +142,16 @@ $invitations = getPendingInvitations($orgHandle);
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($members as $member): ?>
+                        <?php foreach ($members as $member) { ?>
                         <tr>
                             <td>
                                 <?php echo g2ml_sanitiseOutput($member['displayName'] ?? ($member['firstName'] . ' ' . $member['lastName'])); ?>
-                                <?php if ((int) $member['userUID'] === $currentUser['userUID']): ?>
+                                <?php if ((int) $member['userUID'] === $currentUser['userUID']) { ?>
                                 <span class="badge bg-info">You</span>
-                                <?php endif; ?>
-                                <?php if ((int) $member['isSuspended']): ?>
+                                <?php } ?>
+                                <?php if ((int) $member['isSuspended']) { ?>
                                 <span class="badge bg-danger">Suspended</span>
-                                <?php endif; ?>
+                                <?php } ?>
                             </td>
                             <td><?php echo g2ml_sanitiseOutput($member['email']); ?></td>
                             <td>
@@ -165,16 +165,16 @@ $invitations = getPendingInvitations($orgHandle);
                                 <span class="badge <?php echo $roleBadge; ?>"><?php echo g2ml_sanitiseOutput($member['role']); ?></span>
                             </td>
                             <td>
-                                <?php if ($member['lastLoginAt']): ?>
+                                <?php if ($member['lastLoginAt']) { ?>
                                 <time datetime="<?php echo g2ml_sanitiseOutput($member['lastLoginAt']); ?>">
                                     <?php echo date('j M Y', strtotime($member['lastLoginAt'])); ?>
                                 </time>
-                                <?php else: ?>
+                                <?php } else { ?>
                                 <span class="text-body-secondary">Never</span>
-                                <?php endif; ?>
+                                <?php } ?>
                             </td>
                             <td>
-                                <?php if ((int) $member['userUID'] !== $currentUser['userUID'] && $member['role'] !== 'GlobalAdmin'): ?>
+                                <?php if ((int) $member['userUID'] !== $currentUser['userUID'] && $member['role'] !== 'GlobalAdmin') { ?>
                                 <div class="d-flex gap-1">
                                     <!-- Role Change -->
                                     <form action="/org/members" method="POST" class="d-inline">
@@ -201,16 +201,16 @@ $invitations = getPendingInvitations($orgHandle);
                                         </button>
                                     </form>
                                 </div>
-                                <?php else: ?>
+                                <?php } else { ?>
                                 <span class="text-body-secondary">—</span>
-                                <?php endif; ?>
+                                <?php } ?>
                             </td>
                         </tr>
-                        <?php endforeach; ?>
+                        <?php } ?>
                     </tbody>
                 </table>
             </div>
-            <?php endif; ?>
+            <?php } ?>
         </div>
 
         <!-- ================================================================ -->
@@ -224,11 +224,11 @@ $invitations = getPendingInvitations($orgHandle);
                 </h2>
             </div>
 
-            <?php if (empty($invitations)): ?>
+            <?php if (empty($invitations)) { ?>
             <div class="card-body text-center text-body-secondary py-4">
                 <p class="mb-0">No pending invitations.</p>
             </div>
-            <?php else: ?>
+            <?php } else { ?>
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
                     <thead>
@@ -241,7 +241,7 @@ $invitations = getPendingInvitations($orgHandle);
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($invitations as $inv): ?>
+                        <?php foreach ($invitations as $inv) { ?>
                         <tr>
                             <td><?php echo g2ml_sanitiseOutput($inv['email']); ?></td>
                             <td><span class="badge bg-secondary"><?php echo g2ml_sanitiseOutput($inv['role']); ?></span></td>
@@ -263,11 +263,11 @@ $invitations = getPendingInvitations($orgHandle);
                                 </form>
                             </td>
                         </tr>
-                        <?php endforeach; ?>
+                        <?php } ?>
                     </tbody>
                 </table>
             </div>
-            <?php endif; ?>
+            <?php } ?>
         </div>
 
     </div>

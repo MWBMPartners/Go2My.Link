@@ -89,7 +89,7 @@ if ($error === '' && $isLoggedIn)
 <section class="py-5" aria-labelledby="invite-heading">
     <div class="container" style="max-width:600px;">
 
-        <?php if ($success): ?>
+        <?php if ($success) { ?>
         <!-- ================================================================ -->
         <!-- Success State                                                     -->
         <!-- ================================================================ -->
@@ -111,7 +111,7 @@ if ($error === '' && $isLoggedIn)
             </div>
         </div>
 
-        <?php else: ?>
+        <?php } else { ?>
         <!-- ================================================================ -->
         <!-- Error State                                                       -->
         <!-- ================================================================ -->
@@ -131,15 +131,15 @@ if ($error === '' && $isLoggedIn)
                     <a href="/" class="btn btn-primary">
                         <i class="fas fa-home" aria-hidden="true"></i> Go Home
                     </a>
-                    <?php if (!$isLoggedIn): ?>
+                    <?php if (!$isLoggedIn) { ?>
                     <a href="/login" class="btn btn-outline-secondary">
                         <i class="fas fa-sign-in-alt" aria-hidden="true"></i> Log In
                     </a>
-                    <?php endif; ?>
+                    <?php } ?>
                 </div>
             </div>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
     </div>
 </section>

@@ -335,13 +335,13 @@ $hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hid
                         <?php echo function_exists('__') ? __('legal.cookies_s4_browser_warning') : 'Please note that blocking or deleting essential cookies may prevent you from using certain features of our service, such as staying logged in or maintaining your session.'; ?>
                     </div>
 
-                    <?php if (!$hideReviewPlaceholders): ?>
+                    <?php if (!$hideReviewPlaceholders) { ?>
                     <div class="alert alert-warning" role="alert">
                         <i class="fas fa-balance-scale" aria-hidden="true"></i>
                         <strong>{{LEGAL_REVIEW_NEEDED}}</strong> —
                         <?php echo function_exists('__') ? __('legal.cookies_s4_review_note') : 'Cookie consent mechanism details (banner behaviour, granularity of controls, re-consent intervals) should be reviewed for compliance with UK GDPR, the Privacy and Electronic Communications Regulations 2003 (PECR), and ePrivacy requirements.'; ?>
                     </div>
-                    <?php endif; ?>
+                    <?php } ?>
                 </section>
 
                 <!-- ============================================================ -->
@@ -365,13 +365,13 @@ $hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hid
                         <a href="/legal/privacy#dnt"><?php echo function_exists('__') ? __('legal.cookies_s5_privacy_link') : 'Privacy Policy (Do Not Track section)'; ?></a>.
                     </p>
 
-                    <?php if (!$hideReviewPlaceholders): ?>
+                    <?php if (!$hideReviewPlaceholders) { ?>
                     <div class="alert alert-warning" role="alert">
                         <i class="fas fa-balance-scale" aria-hidden="true"></i>
                         <strong>{{LEGAL_REVIEW_NEEDED}}</strong> —
                         <?php echo function_exists('__') ? __('legal.cookies_s5_review_note') : 'DNT/GPC implementation details and the legal effect of these signals under UK GDPR and applicable regulations should be confirmed by legal counsel.'; ?>
                     </div>
-                    <?php endif; ?>
+                    <?php } ?>
                 </section>
 
                 <!-- ============================================================ -->
@@ -394,13 +394,13 @@ $hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hid
                         <?php echo function_exists('__') ? __('legal.cookies_s6_p3') : 'We encourage you to review this page periodically to stay informed about our use of cookies.'; ?>
                     </p>
 
-                    <?php if (!$hideReviewPlaceholders): ?>
+                    <?php if (!$hideReviewPlaceholders) { ?>
                     <div class="alert alert-warning" role="alert">
                         <i class="fas fa-balance-scale" aria-hidden="true"></i>
                         <strong>{{LEGAL_REVIEW_NEEDED}}</strong> —
                         <?php echo function_exists('__') ? __('legal.cookies_s6_review_note') : 'Notification and re-consent requirements for material cookie policy changes should be reviewed for UK GDPR and PECR compliance.'; ?>
                     </div>
-                    <?php endif; ?>
+                    <?php } ?>
                 </section>
 
                 <!-- ============================================================ -->
@@ -436,13 +436,13 @@ $hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hid
                         </li>
                     </ul>
 
-                    <?php if (!$hideReviewPlaceholders): ?>
+                    <?php if (!$hideReviewPlaceholders) { ?>
                     <div class="alert alert-warning" role="alert">
                         <i class="fas fa-balance-scale" aria-hidden="true"></i>
                         <strong>{{LEGAL_REVIEW_NEEDED}}</strong> —
                         <?php echo function_exists('__') ? __('legal.cookies_s7_review_note') : 'Contact information, registered address, and data protection officer details (if applicable) should be confirmed. Consider whether an ICO registration number should be included.'; ?>
                     </div>
-                    <?php endif; ?>
+                    <?php } ?>
                 </section>
 
                 <!-- ============================================================ -->

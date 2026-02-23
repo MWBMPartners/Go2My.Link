@@ -184,13 +184,13 @@ $hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hid
                         <?php echo function_exists('__') ? __('legal.copyright_s3_p1') : 'MWBM Partners Ltd respects the intellectual property rights of others and expects users of the GoToMyLink service to do the same. If you believe that content available through our service infringes your copyright, you may submit a takedown notice to our designated agent.'; ?>
                     </p>
 
-                    <?php if (!$hideReviewPlaceholders): ?>
+                    <?php if (!$hideReviewPlaceholders) { ?>
                     <div class="alert alert-warning" role="alert">
                         <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
                         <strong>{{LEGAL_REVIEW_NEEDED}}</strong> &mdash;
                         <?php echo function_exists('__') ? __('legal.copyright_s3_review_note') : 'Formal DMCA agent designation and registration details require professional legal review and must be filed with the U.S. Copyright Office if applicable.'; ?>
                     </div>
-                    <?php endif; ?>
+                    <?php } ?>
 
                     <h3 class="h5 mt-4 mb-3">
                         <?php echo function_exists('__') ? __('legal.copyright_s3_notice_heading') : 'Filing a Takedown Notice'; ?>
@@ -285,13 +285,13 @@ $hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hid
                         <?php echo function_exists('__') ? __('legal.copyright_s4_p2') : 'We reserve the right to disable any short link, LinksPage profile, or user account at any time if we reasonably believe that the content infringes the intellectual property rights of others, regardless of whether a formal takedown notice has been received.'; ?>
                     </p>
 
-                    <?php if (!$hideReviewPlaceholders): ?>
+                    <?php if (!$hideReviewPlaceholders) { ?>
                     <div class="alert alert-warning" role="alert">
                         <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
                         <strong>{{LEGAL_REVIEW_NEEDED}}</strong> &mdash;
                         <?php echo function_exists('__') ? __('legal.copyright_s4_review_note') : 'Repeat infringer policy thresholds, appeals processes, and specific procedural details require professional legal review to ensure compliance with applicable safe harbour provisions.'; ?>
                     </div>
-                    <?php endif; ?>
+                    <?php } ?>
                 </section>
 
                 <!-- ============================================================ -->

@@ -165,18 +165,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
                     </div>
                     <div class="card-body">
 
-                        <?php if ($infoSuccess): ?>
+                        <?php if ($infoSuccess) { ?>
                         <div class="alert alert-success" role="status">
                             <i class="fas fa-check-circle" aria-hidden="true"></i> Profile updated.
                         </div>
-                        <?php endif; ?>
+                        <?php } ?>
 
-                        <?php if ($infoError !== ''): ?>
+                        <?php if ($infoError !== '') { ?>
                         <div class="alert alert-danger" role="alert">
                             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
                             <?php echo g2ml_sanitiseOutput($infoError); ?>
                         </div>
-                        <?php endif; ?>
+                        <?php } ?>
 
                         <form action="/profile" method="POST" novalidate>
                             <?php echo g2ml_csrfField('profile_info_form'); ?>
@@ -227,11 +227,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
                             <div class="mb-3">
                                 <label for="email-address" class="form-label">Email Address</label>
                                 <input type="email" class="form-control" id="email-address" value="<?php echo g2ml_sanitiseOutput($userData['email']); ?>" readonly disabled>
-                                <?php if ((int) $userData['emailVerified']): ?>
+                                <?php if ((int) $userData['emailVerified']) { ?>
                                 <small class="text-success"><i class="fas fa-check-circle" aria-hidden="true"></i> Verified</small>
-                                <?php else: ?>
+                                <?php } else { ?>
                                 <small class="text-warning"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i> Not verified</small>
-                                <?php endif; ?>
+                                <?php } ?>
                             </div>
 
                             <!-- Timezone -->
@@ -243,12 +243,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
                                                   'America/New_York', 'America/Chicago', 'America/Denver',
                                                   'America/Los_Angeles', 'Asia/Tokyo', 'Asia/Shanghai',
                                                   'Australia/Sydney', 'Pacific/Auckland'];
-                                    foreach ($timezones as $tz):
+                                    foreach ($timezones as $tz) {
                                     ?>
                                     <option value="<?php echo $tz; ?>" <?php echo ($userData['timezone'] === $tz) ? 'selected' : ''; ?>>
                                         <?php echo $tz; ?>
                                     </option>
-                                    <?php endforeach; ?>
+                                    <?php } ?>
                                 </select>
                             </div>
 
@@ -272,18 +272,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
                     </div>
                     <div class="card-body">
 
-                        <?php if ($pwSuccess): ?>
+                        <?php if ($pwSuccess) { ?>
                         <div class="alert alert-success" role="status">
                             <i class="fas fa-check-circle" aria-hidden="true"></i> Password changed. Other sessions have been signed out.
                         </div>
-                        <?php endif; ?>
+                        <?php } ?>
 
-                        <?php if ($pwError !== ''): ?>
+                        <?php if ($pwError !== '') { ?>
                         <div class="alert alert-danger" role="alert">
                             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
                             <?php echo g2ml_sanitiseOutput($pwError); ?>
                         </div>
-                        <?php endif; ?>
+                        <?php } ?>
 
                         <form action="/profile" method="POST" novalidate>
                             <?php echo g2ml_csrfField('change_password_form'); ?>

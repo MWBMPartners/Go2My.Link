@@ -122,21 +122,21 @@ foreach ($exportRequests as $req)
         </p>
 
         <!-- Alerts -->
-        <?php if ($actionSuccess !== ''): ?>
+        <?php if ($actionSuccess !== '') { ?>
         <div class="alert alert-success alert-dismissible fade show" role="status">
             <i class="fas fa-check-circle" aria-hidden="true"></i>
             <?php echo g2ml_sanitiseOutput($actionSuccess); ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<?php echo function_exists('__') ? __('export.close') : 'Close'; ?>"></button>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
-        <?php if ($actionError !== ''): ?>
+        <?php if ($actionError !== '') { ?>
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
             <?php echo $actionError; ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<?php echo function_exists('__') ? __('export.close') : 'Close'; ?>"></button>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
         <!-- ============================================================== -->
         <!-- What's Included                                                 -->
@@ -176,7 +176,7 @@ foreach ($exportRequests as $req)
             </div>
             <div class="card-body">
 
-                <?php if ($pendingExport !== null): ?>
+                <?php if ($pendingExport !== null) { ?>
                 <!-- Pending export -->
                 <div class="alert alert-info mb-0" role="status">
                     <i class="fas fa-spinner fa-spin" aria-hidden="true"></i>
@@ -186,15 +186,15 @@ foreach ($exportRequests as $req)
                     <br>
                     <small class="text-body-secondary">
                         <?php echo function_exists('__') ? __('export.requested_at') : 'Requested'; ?>:
-                        <?php if (!empty($pendingExport['createdAt'])): ?>
+                        <?php if (!empty($pendingExport['createdAt'])) { ?>
                         <time datetime="<?php echo g2ml_sanitiseOutput($pendingExport['createdAt']); ?>">
                             <?php echo date('j M Y, H:i', strtotime($pendingExport['createdAt'])); ?>
                         </time>
-                        <?php endif; ?>
+                        <?php } ?>
                     </small>
                 </div>
 
-                <?php elseif ($downloadableExport !== null): ?>
+                <?php } elseif ($downloadableExport !== null) { ?>
                 <!-- Download available -->
                 <div class="alert alert-success mb-3" role="status">
                     <i class="fas fa-check-circle" aria-hidden="true"></i>
@@ -212,11 +212,11 @@ foreach ($exportRequests as $req)
                     <div class="text-body-secondary small">
                         <p class="mb-1">
                             <strong><?php echo function_exists('__') ? __('export.generated') : 'Generated'; ?>:</strong>
-                            <?php if (!empty($downloadableExport['processedAt'])): ?>
+                            <?php if (!empty($downloadableExport['processedAt'])) { ?>
                             <time datetime="<?php echo g2ml_sanitiseOutput($downloadableExport['processedAt']); ?>">
                                 <?php echo date('j M Y, H:i', strtotime($downloadableExport['processedAt'])); ?>
                             </time>
-                            <?php endif; ?>
+                            <?php } ?>
                         </p>
                         <p class="mb-0">
                             <i class="fas fa-clock" aria-hidden="true"></i>
@@ -244,7 +244,7 @@ foreach ($exportRequests as $req)
                     </button>
                 </form>
 
-                <?php else: ?>
+                <?php } else { ?>
                 <!-- No export — show request button -->
                 <p class="mb-3">
                     <?php echo function_exists('__')
@@ -258,7 +258,7 @@ foreach ($exportRequests as $req)
                         <?php echo function_exists('__') ? __('export.request_button') : 'Request Export'; ?>
                     </button>
                 </form>
-                <?php endif; ?>
+                <?php } ?>
 
             </div>
         </div>
@@ -274,7 +274,7 @@ foreach ($exportRequests as $req)
                 </h2>
             </div>
             <div class="card-body p-0">
-                <?php if (empty($exportRequests)): ?>
+                <?php if (empty($exportRequests)) { ?>
                 <div class="p-4 text-center text-body-secondary">
                     <i class="fas fa-inbox fa-2x mb-2" aria-hidden="true"></i>
                     <p class="mb-0">
@@ -283,7 +283,7 @@ foreach ($exportRequests as $req)
                             : 'No export requests yet.'; ?>
                     </p>
                 </div>
-                <?php else: ?>
+                <?php } else { ?>
                 <div class="table-responsive">
                     <table class="table table-hover table-sm mb-0" aria-label="<?php echo function_exists('__') ? __('export.history_table_label') : 'Export request history'; ?>">
                         <thead>
@@ -295,7 +295,7 @@ foreach ($exportRequests as $req)
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($exportRequests as $request): ?>
+                            <?php foreach ($exportRequests as $request) { ?>
                             <tr>
                                 <td>
                                     <?php
@@ -309,25 +309,25 @@ foreach ($exportRequests as $req)
                                     ?>
                                 </td>
                                 <td>
-                                    <?php if (!empty($request['createdAt'])): ?>
+                                    <?php if (!empty($request['createdAt'])) { ?>
                                     <time datetime="<?php echo g2ml_sanitiseOutput($request['createdAt']); ?>">
                                         <?php echo date('j M Y, H:i', strtotime($request['createdAt'])); ?>
                                     </time>
-                                    <?php else: ?>
+                                    <?php } else { ?>
                                     &mdash;
-                                    <?php endif; ?>
+                                    <?php } ?>
                                 </td>
                                 <td>
-                                    <?php if (!empty($request['processedAt'])): ?>
+                                    <?php if (!empty($request['processedAt'])) { ?>
                                     <time datetime="<?php echo g2ml_sanitiseOutput($request['processedAt']); ?>">
                                         <?php echo date('j M Y, H:i', strtotime($request['processedAt'])); ?>
                                     </time>
-                                    <?php else: ?>
+                                    <?php } else { ?>
                                     &mdash;
-                                    <?php endif; ?>
+                                    <?php } ?>
                                 </td>
                                 <td>
-                                    <?php if (!empty($request['exportExpiresAt'])): ?>
+                                    <?php if (!empty($request['exportExpiresAt'])) { ?>
                                     <?php
                                     $isExpired = strtotime($request['exportExpiresAt']) < time();
                                     ?>
@@ -335,19 +335,19 @@ foreach ($exportRequests as $req)
                                           class="<?php echo $isExpired ? 'text-body-secondary text-decoration-line-through' : ''; ?>">
                                         <?php echo date('j M Y, H:i', strtotime($request['exportExpiresAt'])); ?>
                                     </time>
-                                    <?php if ($isExpired): ?>
+                                    <?php if ($isExpired) { ?>
                                     <span class="badge bg-secondary ms-1"><?php echo function_exists('__') ? __('export.expired') : 'Expired'; ?></span>
-                                    <?php endif; ?>
-                                    <?php else: ?>
+                                    <?php } ?>
+                                    <?php } else { ?>
                                     &mdash;
-                                    <?php endif; ?>
+                                    <?php } ?>
                                 </td>
                             </tr>
-                            <?php endforeach; ?>
+                            <?php } ?>
                         </tbody>
                     </table>
                 </div>
-                <?php endif; ?>
+                <?php } ?>
             </div>
         </div>
 

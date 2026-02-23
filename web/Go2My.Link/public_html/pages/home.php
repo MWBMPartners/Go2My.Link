@@ -70,7 +70,7 @@ $errorMsg   = isset($_GET['error']) ? g2ml_sanitiseInput($_GET['error']) : '';
 
                         <?php
                         // ♿ No-JS fallback: display server-side results from API redirect
-                        if ($createdURL !== ''):
+                        if ($createdURL !== '') {
                         ?>
                         <div class="alert alert-success" role="status">
                             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -86,14 +86,14 @@ $errorMsg   = isset($_GET['error']) ? g2ml_sanitiseInput($_GET['error']) : '';
                                 </div>
                             </div>
                         </div>
-                        <?php endif; ?>
+                        <?php } ?>
 
-                        <?php if ($errorMsg !== ''): ?>
+                        <?php if ($errorMsg !== '') { ?>
                         <div class="alert alert-danger" role="alert">
                             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
                             <?php echo g2ml_sanitiseOutput($errorMsg); ?>
                         </div>
-                        <?php endif; ?>
+                        <?php } ?>
 
                         <!-- 📝 URL Shortening Form -->
                         <form action="/api/create/" method="POST"
@@ -115,7 +115,7 @@ $errorMsg   = isset($_GET['error']) ? g2ml_sanitiseInput($_GET['error']) : '';
                             ]);
                             ?>
 
-                            <?php if ($captchaType === 'turnstile'): ?>
+                            <?php if ($captchaType === 'turnstile') { ?>
                             <!-- ☁️ Cloudflare Turnstile Widget -->
                             <div class="cf-turnstile mb-3"
                                  data-sitekey="<?php echo g2ml_sanitiseOutput($turnstileSiteKey); ?>"
@@ -123,14 +123,14 @@ $errorMsg   = isset($_GET['error']) ? g2ml_sanitiseInput($_GET['error']) : '';
                                  data-callback="onCaptchaSuccess"
                                  data-expired-callback="onCaptchaExpired">
                             </div>
-                            <?php elseif ($captchaType === 'recaptcha'): ?>
+                            <?php } elseif ($captchaType === 'recaptcha') { ?>
                             <!-- 🤖 Google reCAPTCHA v2 Widget -->
                             <div class="g-recaptcha mb-3"
                                  data-sitekey="<?php echo g2ml_sanitiseOutput($recaptchaSiteKey); ?>"
                                  data-callback="onCaptchaSuccess"
                                  data-expired-callback="onCaptchaExpired">
                             </div>
-                            <?php endif; ?>
+                            <?php } ?>
 
                             <div class="d-grid">
                                 <button type="submit" class="btn btn-primary btn-lg"
@@ -211,9 +211,9 @@ $errorMsg   = isset($_GET['error']) ? g2ml_sanitiseInput($_GET['error']) : '';
 // ============================================================================
 // 📦 Load CAPTCHA JavaScript SDK (conditional)
 // ============================================================================
-if ($captchaType === 'turnstile'):
+if ($captchaType === 'turnstile') {
 ?>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-<?php elseif ($captchaType === 'recaptcha'): ?>
+<?php } elseif ($captchaType === 'recaptcha') { ?>
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-<?php endif; ?>
+<?php } ?>

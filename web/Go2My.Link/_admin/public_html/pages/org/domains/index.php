@@ -114,19 +114,19 @@ $dnsPrefix  = getSetting('org.dns_verify_prefix', '_g2ml-verify');
             <i class="fas fa-globe" aria-hidden="true"></i> Custom Domains
         </h1>
 
-        <?php if ($actionSuccess !== ''): ?>
+        <?php if ($actionSuccess !== '') { ?>
         <div class="alert alert-success" role="status">
             <i class="fas fa-check-circle" aria-hidden="true"></i>
             <?php echo g2ml_sanitiseOutput($actionSuccess); ?>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
-        <?php if ($actionError !== ''): ?>
+        <?php if ($actionError !== '') { ?>
         <div class="alert alert-danger" role="alert">
             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
             <?php echo g2ml_sanitiseOutput($actionError); ?>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
         <!-- ================================================================ -->
         <!-- DNS Instructions                                                  -->
@@ -156,12 +156,12 @@ $dnsPrefix  = getSetting('org.dns_verify_prefix', '_g2ml-verify');
                 <h2 class="h5 mb-0">Your Domains (<?php echo count($domains); ?>)</h2>
             </div>
 
-            <?php if (empty($domains)): ?>
+            <?php if (empty($domains)) { ?>
             <div class="card-body text-center text-body-secondary py-4">
                 <i class="fas fa-globe fa-2x mb-2" aria-hidden="true"></i>
                 <p class="mb-0">No custom domains added yet.</p>
             </div>
-            <?php else: ?>
+            <?php } else { ?>
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
                     <thead>
@@ -174,7 +174,7 @@ $dnsPrefix  = getSetting('org.dns_verify_prefix', '_g2ml-verify');
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($domains as $d): ?>
+                        <?php foreach ($domains as $d) { ?>
                         <tr>
                             <td><strong><?php echo g2ml_sanitiseOutput($d['domainName']); ?></strong></td>
                             <td><span class="badge bg-info text-dark"><?php echo g2ml_sanitiseOutput($d['domainType']); ?></span></td>
@@ -196,7 +196,7 @@ $dnsPrefix  = getSetting('org.dns_verify_prefix', '_g2ml-verify');
                             </td>
                             <td>
                                 <div class="d-flex gap-1">
-                                    <?php if ($d['verificationStatus'] !== 'verified'): ?>
+                                    <?php if ($d['verificationStatus'] !== 'verified') { ?>
                                     <form action="/org/domains" method="POST" class="d-inline">
                                         <?php echo g2ml_csrfField('org_domains_form'); ?>
                                         <input type="hidden" name="action_type" value="verify_domain">
@@ -205,7 +205,7 @@ $dnsPrefix  = getSetting('org.dns_verify_prefix', '_g2ml-verify');
                                             <i class="fas fa-check" aria-hidden="true"></i> Verify
                                         </button>
                                     </form>
-                                    <?php endif; ?>
+                                    <?php } ?>
 
                                     <form action="/org/domains" method="POST" class="d-inline"
                                           onsubmit="return confirm('Remove this domain?');">
@@ -220,11 +220,11 @@ $dnsPrefix  = getSetting('org.dns_verify_prefix', '_g2ml-verify');
                                 </div>
                             </td>
                         </tr>
-                        <?php endforeach; ?>
+                        <?php } ?>
                     </tbody>
                 </table>
             </div>
-            <?php endif; ?>
+            <?php } ?>
         </div>
 
         <!-- ================================================================ -->

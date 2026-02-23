@@ -196,35 +196,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                             <?php echo function_exists('__') ? __('login.form_heading') : 'Sign In'; ?>
                         </h2>
 
-                        <?php if ($flashMessage !== ''): ?>
+                        <?php if ($flashMessage !== '') { ?>
                         <div class="alert alert-success" role="status">
                             <i class="fas fa-check-circle" aria-hidden="true"></i>
                             <?php echo g2ml_sanitiseOutput($flashMessage); ?>
                         </div>
-                        <?php endif; ?>
+                        <?php } ?>
 
-                        <?php if ($formError !== ''): ?>
+                        <?php if ($formError !== '') { ?>
                         <div class="alert alert-danger" role="alert">
                             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
                             <?php echo g2ml_sanitiseOutput($formError); ?>
                         </div>
-                        <?php endif; ?>
+                        <?php } ?>
 
-                        <?php if ($isLocked): ?>
+                        <?php if ($isLocked) { ?>
                         <div class="alert alert-warning" role="alert">
                             <i class="fas fa-lock" aria-hidden="true"></i>
                             <?php echo function_exists('__')
                                 ? __('login.locked_message')
                                 : 'Account temporarily locked. Please try again later or reset your password.'; ?>
                         </div>
-                        <?php endif; ?>
+                        <?php } ?>
 
                         <form action="/login<?php echo $redirectURL !== '' ? '?redirect=' . urlencode($redirectURL) : ''; ?>" method="POST" id="login-form" novalidate>
                             <?php echo g2ml_csrfField('login_form'); ?>
 
-                            <?php if ($redirectURL !== ''): ?>
+                            <?php if ($redirectURL !== '') { ?>
                             <input type="hidden" name="redirect" value="<?php echo g2ml_sanitiseOutput($redirectURL); ?>">
-                            <?php endif; ?>
+                            <?php } ?>
 
                             <?php
                             echo formField([
@@ -261,16 +261,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                                 </a>
                             </div>
 
-                            <?php if ($captchaType === 'turnstile'): ?>
+                            <?php if ($captchaType === 'turnstile') { ?>
                             <div class="cf-turnstile mb-3"
                                  data-sitekey="<?php echo g2ml_sanitiseOutput($turnstileSiteKey); ?>"
                                  data-theme="auto">
                             </div>
-                            <?php elseif ($captchaType === 'recaptcha'): ?>
+                            <?php } elseif ($captchaType === 'recaptcha') { ?>
                             <div class="g-recaptcha mb-3"
                                  data-sitekey="<?php echo g2ml_sanitiseOutput($recaptchaSiteKey); ?>">
                             </div>
-                            <?php endif; ?>
+                            <?php } ?>
 
                             <div class="d-grid mb-3">
                                 <button type="submit" class="btn btn-primary btn-lg" <?php echo $isLocked ? 'disabled' : ''; ?>>
@@ -293,9 +293,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
 <?php
 // Load CAPTCHA JS SDK if needed
-if ($captchaType === 'turnstile'):
+if ($captchaType === 'turnstile') {
 ?>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-<?php elseif ($captchaType === 'recaptcha'): ?>
+<?php } elseif ($captchaType === 'recaptcha') { ?>
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-<?php endif; ?>
+<?php } ?>

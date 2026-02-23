@@ -164,29 +164,29 @@ $shortDomain = function_exists('getDefaultShortDomain')
             </a>
         </div>
 
-        <?php if ($loadError !== ''): ?>
+        <?php if ($loadError !== '') { ?>
         <div class="alert alert-danger" role="alert">
             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
             <?php echo g2ml_sanitiseOutput($loadError); ?>
         </div>
 
-        <?php elseif ($linkData !== null): ?>
+        <?php } elseif ($linkData !== null) { ?>
         <div class="row justify-content-center">
             <div class="col-lg-8">
 
-                <?php if ($formSuccess): ?>
+                <?php if ($formSuccess) { ?>
                 <div class="alert alert-success" role="status">
                     <i class="fas fa-check-circle" aria-hidden="true"></i>
                     Link updated successfully.
                 </div>
-                <?php endif; ?>
+                <?php } ?>
 
-                <?php if ($formError !== ''): ?>
+                <?php if ($formError !== '') { ?>
                 <div class="alert alert-danger" role="alert">
                     <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
                     <?php echo g2ml_sanitiseOutput($formError); ?>
                 </div>
-                <?php endif; ?>
+                <?php } ?>
 
                 <div class="card shadow-sm">
                     <div class="card-body p-4">
@@ -243,12 +243,12 @@ $shortDomain = function_exists('getDefaultShortDomain')
                                 <label for="category-id" class="form-label">Category (Optional)</label>
                                 <select class="form-select" id="category-id" name="category_id">
                                     <option value="">No category</option>
-                                    <?php foreach ($categories as $cat): ?>
+                                    <?php foreach ($categories as $cat) { ?>
                                     <option value="<?php echo g2ml_sanitiseOutput($cat['categoryID']); ?>"
                                         <?php echo ($linkData['categoryID'] === $cat['categoryID']) ? 'selected' : ''; ?>>
                                         <?php echo g2ml_sanitiseOutput($cat['categoryName']); ?>
                                     </option>
-                                    <?php endforeach; ?>
+                                    <?php } ?>
                                 </select>
                             </div>
 
@@ -299,6 +299,6 @@ $shortDomain = function_exists('getDefaultShortDomain')
                 </div>
             </div>
         </div>
-        <?php endif; ?>
+        <?php } ?>
     </div>
 </section>

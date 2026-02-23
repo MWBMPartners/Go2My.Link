@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             Invite Member
         </h1>
 
-        <?php if ($formSuccess): ?>
+        <?php if ($formSuccess) { ?>
         <!-- Success -->
         <div class="card shadow-sm border-success">
             <div class="card-body text-center py-5">
@@ -109,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             </div>
         </div>
 
-        <?php else: ?>
+        <?php } else { ?>
         <!-- Form -->
         <div class="card shadow-sm">
             <div class="card-body">
@@ -119,12 +119,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                     The invitee will receive an email with a link to accept.
                 </p>
 
-                <?php if ($formError !== ''): ?>
+                <?php if ($formError !== '') { ?>
                 <div class="alert alert-danger" role="alert">
                     <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
                     <?php echo g2ml_sanitiseOutput($formError); ?>
                 </div>
-                <?php endif; ?>
+                <?php } ?>
 
                 <form action="/org/members/invite" method="POST" novalidate>
                     <?php echo g2ml_csrfField('invite_member_form'); ?>
@@ -163,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                 </form>
             </div>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
     </div>
 </section>

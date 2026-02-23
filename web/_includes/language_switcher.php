@@ -36,7 +36,7 @@ $activeLanguages = function_exists('getActiveLanguages') ? getActiveLanguages() 
 $currentLocale   = function_exists('getLocale') ? getLocale() : 'en-GB';
 
 // Only show the switcher if there are multiple active languages
-if (count($activeLanguages) > 1):
+if (count($activeLanguages) > 1) {
     $currentLang = $activeLanguages[$currentLocale] ?? ['nativeName' => 'English', 'name' => 'English (UK)'];
 ?>
 <li class="nav-item dropdown">
@@ -47,7 +47,7 @@ if (count($activeLanguages) > 1):
         <span class="d-none d-lg-inline"><?php echo htmlspecialchars($currentLang['nativeName'], ENT_QUOTES, 'UTF-8'); ?></span>
     </a>
     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="languageSwitcher">
-        <?php foreach ($activeLanguages as $localeCode => $langInfo): ?>
+        <?php foreach ($activeLanguages as $localeCode => $langInfo) { ?>
             <?php
             // Build the URL with the lang parameter
             $currentURL = $_SERVER['REQUEST_URI'] ?? '/';
@@ -68,7 +68,7 @@ if (count($activeLanguages) > 1):
                     <small class="text-muted ms-1">(<?php echo htmlspecialchars($langInfo['name'], ENT_QUOTES, 'UTF-8'); ?>)</small>
                 </a>
             </li>
-        <?php endforeach; ?>
+        <?php } ?>
     </ul>
 </li>
-<?php endif; ?>
+<?php } ?>

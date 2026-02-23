@@ -125,7 +125,7 @@ if ($tokenValid && $_SERVER['REQUEST_METHOD'] === 'POST')
                             <?php echo function_exists('__') ? __('reset_password.form_heading') : 'New Password'; ?>
                         </h2>
 
-                        <?php if ($tokenError !== ''): ?>
+                        <?php if ($tokenError !== '') { ?>
                         <!-- Invalid/expired token -->
                         <div class="alert alert-danger" role="alert">
                             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
@@ -138,7 +138,7 @@ if ($tokenValid && $_SERVER['REQUEST_METHOD'] === 'POST')
                             </a>
                         </div>
 
-                        <?php elseif ($formSuccess): ?>
+                        <?php } elseif ($formSuccess) { ?>
                         <!-- Password reset successful -->
                         <div class="alert alert-success" role="status">
                             <i class="fas fa-check-circle" aria-hidden="true"></i>
@@ -153,15 +153,15 @@ if ($tokenValid && $_SERVER['REQUEST_METHOD'] === 'POST')
                             </a>
                         </div>
 
-                        <?php else: ?>
+                        <?php } else { ?>
                         <!-- Reset form -->
 
-                            <?php if ($formError !== ''): ?>
+                            <?php if ($formError !== '') { ?>
                             <div class="alert alert-danger" role="alert">
                                 <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
                                 <?php echo g2ml_sanitiseOutput($formError); ?>
                             </div>
-                            <?php endif; ?>
+                            <?php } ?>
 
                             <form action="/reset-password?token=<?php echo urlencode($token); ?>" method="POST" id="reset-password-form" novalidate>
                                 <?php echo g2ml_csrfField('reset_password_form'); ?>
@@ -196,7 +196,7 @@ if ($tokenValid && $_SERVER['REQUEST_METHOD'] === 'POST')
                                     </button>
                                 </div>
                             </form>
-                        <?php endif; ?>
+                        <?php } ?>
                     </div>
                 </div>
             </div>

@@ -67,7 +67,7 @@ else
                 <div class="card shadow-sm">
                     <div class="card-body p-4 text-center">
 
-                        <?php if ($verified): ?>
+                        <?php if ($verified) { ?>
                         <!-- Success -->
                         <div class="py-3">
                             <i class="fas fa-check-circle fa-4x text-success mb-3" aria-hidden="true"></i>
@@ -80,20 +80,20 @@ else
                                     : 'Your email address has been verified successfully. You can now log in and access all features.'; ?>
                             </p>
 
-                            <?php if (function_exists('isAuthenticated') && isAuthenticated()): ?>
+                            <?php if (function_exists('isAuthenticated') && isAuthenticated()) { ?>
                             <a href="https://admin.go2my.link/" class="btn btn-primary">
                                 <i class="fas fa-tachometer-alt" aria-hidden="true"></i>
                                 <?php echo function_exists('__') ? __('verify_email.go_to_dashboard') : 'Go to Dashboard'; ?>
                             </a>
-                            <?php else: ?>
+                            <?php } else { ?>
                             <a href="/login?verified=1" class="btn btn-primary">
                                 <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
                                 <?php echo function_exists('__') ? __('verify_email.go_to_login') : 'Log In'; ?>
                             </a>
-                            <?php endif; ?>
+                            <?php } ?>
                         </div>
 
-                        <?php else: ?>
+                        <?php } else { ?>
                         <!-- Error -->
                         <div class="py-3">
                             <i class="fas fa-exclamation-circle fa-4x text-danger mb-3" aria-hidden="true"></i>
@@ -115,7 +115,7 @@ else
                                 </a>
                             </div>
                         </div>
-                        <?php endif; ?>
+                        <?php } ?>
 
                     </div>
                 </div>

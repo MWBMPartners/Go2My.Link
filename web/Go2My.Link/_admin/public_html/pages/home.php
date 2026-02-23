@@ -146,7 +146,7 @@ $shortDomain = function_exists('getDefaultShortDomain')
                 </a>
             </div>
             <div class="card-body p-0">
-                <?php if (count($recentLinks) === 0): ?>
+                <?php if (count($recentLinks) === 0) { ?>
                 <div class="p-4 text-center text-body-secondary">
                     <i class="fas fa-link fa-2x mb-2" aria-hidden="true"></i>
                     <p class="mb-2"><?php echo function_exists('__') ? __('dashboard.no_links') : 'No links yet.'; ?></p>
@@ -155,7 +155,7 @@ $shortDomain = function_exists('getDefaultShortDomain')
                         <?php echo function_exists('__') ? __('dashboard.create_first') : 'Create Your First Link'; ?>
                     </a>
                 </div>
-                <?php else: ?>
+                <?php } else { ?>
                 <div class="table-responsive">
                     <table class="table table-hover mb-0" aria-label="<?php echo function_exists('__') ? __('dashboard.recent_links') : 'Recent Links'; ?>">
                         <thead>
@@ -168,7 +168,7 @@ $shortDomain = function_exists('getDefaultShortDomain')
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($recentLinks as $link): ?>
+                            <?php foreach ($recentLinks as $link) { ?>
                             <tr>
                                 <td>
                                     <a href="https://<?php echo g2ml_sanitiseOutput($shortDomain . '/' . $link['shortCode']); ?>"
@@ -183,11 +183,11 @@ $shortDomain = function_exists('getDefaultShortDomain')
                                     <span class="badge bg-secondary"><?php echo number_format((int) $link['clickCount']); ?></span>
                                 </td>
                                 <td>
-                                    <?php if ((int) $link['isActive']): ?>
+                                    <?php if ((int) $link['isActive']) { ?>
                                     <span class="badge bg-success"><?php echo function_exists('__') ? __('dashboard.active') : 'Active'; ?></span>
-                                    <?php else: ?>
+                                    <?php } else { ?>
                                     <span class="badge bg-secondary"><?php echo function_exists('__') ? __('dashboard.inactive') : 'Inactive'; ?></span>
-                                    <?php endif; ?>
+                                    <?php } ?>
                                 </td>
                                 <td>
                                     <time datetime="<?php echo g2ml_sanitiseOutput($link['createdAt']); ?>">
@@ -195,11 +195,11 @@ $shortDomain = function_exists('getDefaultShortDomain')
                                     </time>
                                 </td>
                             </tr>
-                            <?php endforeach; ?>
+                            <?php } ?>
                         </tbody>
                     </table>
                 </div>
-                <?php endif; ?>
+                <?php } ?>
             </div>
         </div>
     </div>

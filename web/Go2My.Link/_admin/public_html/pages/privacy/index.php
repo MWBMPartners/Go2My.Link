@@ -107,7 +107,7 @@ function _privacyRequestStatusBadge(string $status): string
                                 : 'Control which types of cookies you allow on this site.'; ?>
                         </p>
 
-                        <?php if (!empty($consentSummary)): ?>
+                        <?php if (!empty($consentSummary)) { ?>
                         <ul class="list-unstyled small mb-3">
                             <li class="mb-1">
                                 <strong><?php echo function_exists('__') ? __('privacy.essential') : 'Essential'; ?>:</strong>
@@ -126,7 +126,7 @@ function _privacyRequestStatusBadge(string $status): string
                                 <?php echo _privacyConsentBadge($consentSummary['marketing'] ?? null); ?>
                             </li>
                         </ul>
-                        <?php endif; ?>
+                        <?php } ?>
 
                         <a href="/privacy/consent" class="btn btn-outline-primary btn-sm">
                             <?php echo function_exists('__') ? __('privacy.manage_cookies') : 'Manage Cookies'; ?>
@@ -190,7 +190,7 @@ function _privacyRequestStatusBadge(string $status): string
                 </h2>
             </div>
             <div class="card-body p-0">
-                <?php if (empty($dataRequests)): ?>
+                <?php if (empty($dataRequests)) { ?>
                 <div class="p-4 text-center text-body-secondary">
                     <i class="fas fa-inbox fa-2x mb-2" aria-hidden="true"></i>
                     <p class="mb-0">
@@ -199,7 +199,7 @@ function _privacyRequestStatusBadge(string $status): string
                             : 'You have not made any data requests yet.'; ?>
                     </p>
                 </div>
-                <?php else: ?>
+                <?php } else { ?>
                 <div class="table-responsive">
                     <table class="table table-hover mb-0" aria-label="<?php echo function_exists('__') ? __('privacy.requests_table_label') : 'Data requests'; ?>">
                         <thead>
@@ -211,7 +211,7 @@ function _privacyRequestStatusBadge(string $status): string
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($dataRequests as $request): ?>
+                            <?php foreach ($dataRequests as $request) { ?>
                             <tr>
                                 <td>
                                     <?php
@@ -225,29 +225,29 @@ function _privacyRequestStatusBadge(string $status): string
                                 </td>
                                 <td><?php echo _privacyRequestStatusBadge($request['status'] ?? 'unknown'); ?></td>
                                 <td>
-                                    <?php if (!empty($request['createdAt'])): ?>
+                                    <?php if (!empty($request['createdAt'])) { ?>
                                     <time datetime="<?php echo g2ml_sanitiseOutput($request['createdAt']); ?>">
                                         <?php echo date('j M Y, H:i', strtotime($request['createdAt'])); ?>
                                     </time>
-                                    <?php else: ?>
+                                    <?php } else { ?>
                                     &mdash;
-                                    <?php endif; ?>
+                                    <?php } ?>
                                 </td>
                                 <td>
-                                    <?php if (!empty($request['processedAt'])): ?>
+                                    <?php if (!empty($request['processedAt'])) { ?>
                                     <time datetime="<?php echo g2ml_sanitiseOutput($request['processedAt']); ?>">
                                         <?php echo date('j M Y, H:i', strtotime($request['processedAt'])); ?>
                                     </time>
-                                    <?php else: ?>
+                                    <?php } else { ?>
                                     &mdash;
-                                    <?php endif; ?>
+                                    <?php } ?>
                                 </td>
                             </tr>
-                            <?php endforeach; ?>
+                            <?php } ?>
                         </tbody>
                     </table>
                 </div>
-                <?php endif; ?>
+                <?php } ?>
             </div>
         </div>
 

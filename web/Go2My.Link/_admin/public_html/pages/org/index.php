@@ -26,7 +26,7 @@ $isAdmin     = canManageOrg($orgHandle);
 <section class="py-4" aria-labelledby="org-heading">
     <div class="container">
 
-        <?php if ($isDefault): ?>
+        <?php if ($isDefault) { ?>
         <!-- ================================================================ -->
         <!-- No Organisation — Create CTA                                      -->
         <!-- ================================================================ -->
@@ -44,7 +44,7 @@ $isAdmin     = canManageOrg($orgHandle);
             </a>
         </div>
 
-        <?php else: ?>
+        <?php } else { ?>
         <!-- ================================================================ -->
         <!-- Organisation Overview                                             -->
         <!-- ================================================================ -->
@@ -121,11 +121,11 @@ $isAdmin     = canManageOrg($orgHandle);
                         <h2 class="h5 mb-0">
                             <i class="fas fa-info-circle" aria-hidden="true"></i> Details
                         </h2>
-                        <?php if ($isAdmin): ?>
+                        <?php if ($isAdmin) { ?>
                         <a href="/org/settings" class="btn btn-outline-primary btn-sm">
                             <i class="fas fa-cog" aria-hidden="true"></i> Settings
                         </a>
-                        <?php endif; ?>
+                        <?php } ?>
                     </div>
                     <div class="card-body">
                         <dl class="row mb-0">
@@ -137,19 +137,19 @@ $isAdmin     = canManageOrg($orgHandle);
                                 <span class="badge bg-secondary"><?php echo g2ml_sanitiseOutput($org['tierName'] ?? $org['tierID']); ?></span>
                             </dd>
 
-                            <?php if (!empty($org['orgURL'])): ?>
+                            <?php if (!empty($org['orgURL'])) { ?>
                             <dt class="col-sm-4">Website</dt>
                             <dd class="col-sm-8">
                                 <a href="<?php echo g2ml_sanitiseOutput($org['orgURL']); ?>" target="_blank" rel="noopener noreferrer">
                                     <?php echo g2ml_sanitiseOutput($org['orgURL']); ?>
                                 </a>
                             </dd>
-                            <?php endif; ?>
+                            <?php } ?>
 
-                            <?php if (!empty($org['orgDescription'])): ?>
+                            <?php if (!empty($org['orgDescription'])) { ?>
                             <dt class="col-sm-4">Description</dt>
                             <dd class="col-sm-8"><?php echo g2ml_sanitiseOutput($org['orgDescription']); ?></dd>
-                            <?php endif; ?>
+                            <?php } ?>
 
                             <dt class="col-sm-4">Created</dt>
                             <dd class="col-sm-8">
@@ -171,7 +171,7 @@ $isAdmin     = canManageOrg($orgHandle);
                         </h2>
                     </div>
                     <div class="list-group list-group-flush">
-                        <?php if ($isAdmin): ?>
+                        <?php if ($isAdmin) { ?>
                         <a href="/org/members" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                             <span><i class="fas fa-users fa-fw" aria-hidden="true"></i> Members</span>
                             <span class="badge bg-primary rounded-pill"><?php echo number_format($memberCount); ?></span>
@@ -187,18 +187,18 @@ $isAdmin     = canManageOrg($orgHandle);
                         <a href="/org/settings" class="list-group-item list-group-item-action">
                             <i class="fas fa-cog fa-fw" aria-hidden="true"></i> Organisation Settings
                         </a>
-                        <?php else: ?>
+                        <?php } else { ?>
                         <div class="list-group-item text-body-secondary">
                             <i class="fas fa-lock fa-fw" aria-hidden="true"></i>
                             Organisation management requires Admin permissions.
                         </div>
-                        <?php endif; ?>
+                        <?php } ?>
                     </div>
                 </div>
             </div>
         </div>
 
-        <?php endif; ?>
+        <?php } ?>
 
     </div>
 </section>

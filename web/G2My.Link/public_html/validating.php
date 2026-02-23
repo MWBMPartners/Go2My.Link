@@ -134,11 +134,11 @@ if ($destination !== '')
             We could not verify the safety of the destination for this short link.
         </p>
 
-        <?php if ($destinationDomain !== ''): ?>
+        <?php if ($destinationDomain !== '') { ?>
         <p class="text-body-secondary mb-4">
             Destination: <span class="destination-domain"><?php echo htmlspecialchars($destinationDomain, ENT_QUOTES, 'UTF-8'); ?></span>
         </p>
-        <?php endif; ?>
+        <?php } ?>
 
         <!-- ⚠️ Warning -->
         <div class="alert alert-warning text-start mb-4" role="alert">
@@ -162,14 +162,14 @@ if ($destination !== '')
 
         <!-- 🔗 Action Buttons -->
         <div class="d-flex justify-content-center gap-3 mb-4">
-            <?php if ($destination !== ''): ?>
+            <?php if ($destination !== '') { ?>
             <a href="<?php echo htmlspecialchars($destination, ENT_QUOTES, 'UTF-8'); ?>"
                class="btn btn-warning text-dark"
                rel="noopener noreferrer">
                 <i class="fas fa-external-link-alt" aria-hidden="true"></i>
                 Proceed Anyway
             </a>
-            <?php endif; ?>
+            <?php } ?>
 
             <a href="<?php echo htmlspecialchars($fallbackURL, ENT_QUOTES, 'UTF-8'); ?>"
                class="btn btn-primary">

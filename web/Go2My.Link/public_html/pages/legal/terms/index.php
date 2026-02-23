@@ -349,7 +349,7 @@ $contactEmail   = function_exists('getSetting') ? getSetting('site.contact_email
                         <?php echo function_exists('__') ? __('legal.terms_s9_p2') : 'We do not guarantee any specific level of uptime or availability. While we make reasonable efforts to maintain the Service, scheduled and unscheduled maintenance, technical issues, or circumstances beyond our control may result in temporary unavailability.'; ?>
                     </p>
 
-                    <?php if (!$hideReviewPlaceholders): ?>
+                    <?php if (!$hideReviewPlaceholders) { ?>
                     <div class="alert alert-warning" role="alert">
                         <i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i>
                         <strong>{{LEGAL_REVIEW_NEEDED}}</strong>
@@ -357,7 +357,7 @@ $contactEmail   = function_exists('getSetting') ? getSetting('site.contact_email
                             <?php echo function_exists('__') ? __('legal.terms_s9_review') : 'This section requires professional legal review to include specific statutory disclaimer language applicable under the laws of England and Wales, including but not limited to disclaimers of implied warranties of merchantability, fitness for a particular purpose, and non-infringement.'; ?>
                         </p>
                     </div>
-                    <?php endif; ?>
+                    <?php } ?>
                 </section>
 
                 <!-- ============================================================ -->
@@ -380,7 +380,7 @@ $contactEmail   = function_exists('getSetting') ? getSetting('site.contact_email
                         <?php echo function_exists('__') ? __('legal.terms_s10_p3') : 'Nothing in these Terms shall exclude or limit our liability for death or personal injury caused by our negligence, fraud or fraudulent misrepresentation, or any other liability that cannot be excluded or limited by the laws of England and Wales.'; ?>
                     </p>
 
-                    <?php if (!$hideReviewPlaceholders): ?>
+                    <?php if (!$hideReviewPlaceholders) { ?>
                     <div class="alert alert-warning" role="alert">
                         <i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i>
                         <strong>{{LEGAL_REVIEW_NEEDED}}</strong>
@@ -388,7 +388,7 @@ $contactEmail   = function_exists('getSetting') ? getSetting('site.contact_email
                             <?php echo function_exists('__') ? __('legal.terms_s10_review') : 'This section requires professional legal review to ensure the limitation of liability provisions are enforceable under the laws of England and Wales, comply with the Consumer Rights Act 2015 and the Unfair Contract Terms Act 1977, and appropriately address both consumer and business users.'; ?>
                         </p>
                     </div>
-                    <?php endif; ?>
+                    <?php } ?>
                 </section>
 
                 <!-- ============================================================ -->
@@ -410,7 +410,7 @@ $contactEmail   = function_exists('getSetting') ? getSetting('site.contact_email
                         <li><?php echo function_exists('__') ? __('legal.terms_s11_li4') : 'Any content you submit, post, or transmit through the Service.'; ?></li>
                     </ol>
 
-                    <?php if (!$hideReviewPlaceholders): ?>
+                    <?php if (!$hideReviewPlaceholders) { ?>
                     <div class="alert alert-warning" role="alert">
                         <i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i>
                         <strong>{{LEGAL_REVIEW_NEEDED}}</strong>
@@ -418,7 +418,7 @@ $contactEmail   = function_exists('getSetting') ? getSetting('site.contact_email
                             <?php echo function_exists('__') ? __('legal.terms_s11_review') : 'This section requires professional legal review to ensure the indemnification clause is reasonable and enforceable under the laws of England and Wales, particularly with respect to consumer users where such clauses may be considered unfair terms.'; ?>
                         </p>
                     </div>
-                    <?php endif; ?>
+                    <?php } ?>
                 </section>
 
                 <!-- ============================================================ -->

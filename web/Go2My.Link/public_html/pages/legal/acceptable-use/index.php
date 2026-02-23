@@ -326,7 +326,7 @@ $hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hid
                         <?php echo function_exists('__') ? __('legal.aup_s6_p2') : 'We may report any content we believe to be illegal to the appropriate law enforcement authorities, including but not limited to the National Crime Agency (NCA), the Internet Watch Foundation (IWF), and Action Fraud. We will cooperate fully with law enforcement investigations.'; ?>
                     </p>
 
-                    <?php if (!$hideReviewPlaceholders): ?>
+                    <?php if (!$hideReviewPlaceholders) { ?>
                     <div class="alert alert-warning" role="alert">
                         <i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i>
                         <strong>{{LEGAL_REVIEW_NEEDED}}</strong>
@@ -334,7 +334,7 @@ $hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hid
                             <?php echo function_exists('__') ? __('legal.aup_s6_review') : 'This section requires professional legal review to ensure enforcement discretion language is appropriately drafted. In particular, legal counsel should review: (a) the extent of discretion reserved by the Company in determining violation severity, (b) whether the enforcement tiers create any binding obligations or implied commitments, and (c) compliance with the Online Safety Act 2023 reporting requirements.'; ?>
                         </p>
                     </div>
-                    <?php endif; ?>
+                    <?php } ?>
                 </section>
 
                 <!-- ============================================================ -->

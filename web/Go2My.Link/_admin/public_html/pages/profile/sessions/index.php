@@ -128,7 +128,7 @@ $sessions = listUserSessions($userUID);
                 <?php echo function_exists('__') ? __('sessions.heading') : 'Active Sessions'; ?>
             </h1>
 
-            <?php if (count($sessions) > 1): ?>
+            <?php if (count($sessions) > 1) { ?>
             <!-- Revoke All Others button -->
             <form action="/profile/sessions" method="POST" class="d-inline"
                   onsubmit="return confirm('Sign out of all other devices? You will remain signed in on this device.');">
@@ -138,7 +138,7 @@ $sessions = listUserSessions($userUID);
                     <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Sign Out All Others
                 </button>
             </form>
-            <?php endif; ?>
+            <?php } ?>
         </div>
 
         <p class="text-body-secondary mb-4">
@@ -148,32 +148,32 @@ $sessions = listUserSessions($userUID);
         </p>
 
         <!-- Alerts -->
-        <?php if ($actionSuccess !== ''): ?>
+        <?php if ($actionSuccess !== '') { ?>
         <div class="alert alert-success" role="status">
             <i class="fas fa-check-circle" aria-hidden="true"></i>
             <?php echo g2ml_sanitiseOutput($actionSuccess); ?>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
-        <?php if ($actionError !== ''): ?>
+        <?php if ($actionError !== '') { ?>
         <div class="alert alert-danger" role="alert">
             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
             <?php echo g2ml_sanitiseOutput($actionError); ?>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
         <!-- ============================================================== -->
         <!-- Sessions List                                                   -->
         <!-- ============================================================== -->
 
-        <?php if (empty($sessions)): ?>
+        <?php if (empty($sessions)) { ?>
         <div class="alert alert-info">
             <i class="fas fa-info-circle" aria-hidden="true"></i> No active sessions found.
         </div>
 
-        <?php else: ?>
+        <?php } else { ?>
         <div class="row g-3">
-            <?php foreach ($sessions as $session): ?>
+            <?php foreach ($sessions as $session) { ?>
             <div class="col-12">
                 <div class="card shadow-sm <?php echo $session['isCurrent'] ? 'border-primary' : ''; ?>">
                     <div class="card-body">
@@ -202,9 +202,9 @@ $sessions = listUserSessions($userUID);
                                     <div>
                                         <h2 class="h6 mb-1">
                                             <?php echo g2ml_sanitiseOutput($deviceInfo ?: 'Unknown device'); ?>
-                                            <?php if ($session['isCurrent']): ?>
+                                            <?php if ($session['isCurrent']) { ?>
                                             <span class="badge bg-primary ms-1">This device</span>
-                                            <?php endif; ?>
+                                            <?php } ?>
                                         </h2>
                                         <p class="text-body-secondary small mb-0">
                                             <i class="fas fa-map-marker-alt fa-fw" aria-hidden="true"></i>
@@ -255,11 +255,11 @@ $sessions = listUserSessions($userUID);
 
                             <!-- Actions -->
                             <div class="col-md-3 text-md-end mt-2 mt-md-0">
-                                <?php if ($session['isCurrent']): ?>
+                                <?php if ($session['isCurrent']) { ?>
                                 <span class="text-body-secondary small">
                                     <i class="fas fa-check-circle text-success" aria-hidden="true"></i> Current session
                                 </span>
-                                <?php else: ?>
+                                <?php } else { ?>
                                 <form action="/profile/sessions" method="POST" class="d-inline"
                                       onsubmit="return confirm('Revoke this session? The device will be signed out.');">
                                     <?php echo g2ml_csrfField('sessions_form'); ?>
@@ -269,13 +269,13 @@ $sessions = listUserSessions($userUID);
                                         <i class="fas fa-times" aria-hidden="true"></i> Revoke
                                     </button>
                                 </form>
-                                <?php endif; ?>
+                                <?php } ?>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            <?php endforeach; ?>
+            <?php } ?>
         </div>
 
         <p class="text-body-secondary small mt-3">
@@ -283,7 +283,7 @@ $sessions = listUserSessions($userUID);
             Showing <?php echo count($sessions); ?> active session(s).
             Sessions expire automatically after inactivity.
         </p>
-        <?php endif; ?>
+        <?php } ?>
 
         <!-- Back to profile -->
         <div class="mt-4">

@@ -153,21 +153,21 @@ $shortDomain = function_exists('getDefaultShortDomain')
             </a>
         </div>
 
-        <?php if ($deleteMessage !== ''): ?>
+        <?php if ($deleteMessage !== '') { ?>
         <div class="alert alert-success alert-dismissible fade show" role="status">
             <i class="fas fa-check-circle" aria-hidden="true"></i>
             <?php echo g2ml_sanitiseOutput($deleteMessage); ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
-        <?php if ($deleteError !== ''): ?>
+        <?php if ($deleteError !== '') { ?>
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
             <?php echo g2ml_sanitiseOutput($deleteError); ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
         <!-- ============================================================== -->
         <!-- Search & Filter Bar                                             -->
@@ -203,12 +203,12 @@ $shortDomain = function_exists('getDefaultShortDomain')
         <!-- ============================================================== -->
         <div class="card shadow-sm">
             <div class="card-body p-0">
-                <?php if (count($links) === 0): ?>
+                <?php if (count($links) === 0) { ?>
                 <div class="p-4 text-center text-body-secondary">
                     <i class="fas fa-link fa-2x mb-2" aria-hidden="true"></i>
                     <p class="mb-0"><?php echo function_exists('__') ? __('links.no_links') : 'No links found.'; ?></p>
                 </div>
-                <?php else: ?>
+                <?php } else { ?>
                 <div class="table-responsive">
                     <table class="table table-hover mb-0" aria-label="<?php echo function_exists('__') ? __('links.heading') : 'My Links'; ?>">
                         <thead>
@@ -222,16 +222,16 @@ $shortDomain = function_exists('getDefaultShortDomain')
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($links as $link): ?>
+                            <?php foreach ($links as $link) { ?>
                             <tr>
                                 <td>
                                     <a href="https://<?php echo g2ml_sanitiseOutput($shortDomain . '/' . $link['shortCode']); ?>"
                                        target="_blank" rel="noopener noreferrer" class="fw-bold text-decoration-none">
                                         <?php echo g2ml_sanitiseOutput($link['shortCode']); ?>
                                     </a>
-                                    <?php if (!empty($link['title'])): ?>
+                                    <?php if (!empty($link['title'])) { ?>
                                     <br><small class="text-body-secondary"><?php echo g2ml_sanitiseOutput($link['title']); ?></small>
-                                    <?php endif; ?>
+                                    <?php } ?>
                                 </td>
                                 <td class="text-truncate" style="max-width:200px;" title="<?php echo g2ml_sanitiseOutput($link['destinationURL']); ?>">
                                     <?php echo g2ml_sanitiseOutput($link['destinationURL']); ?>
@@ -240,11 +240,11 @@ $shortDomain = function_exists('getDefaultShortDomain')
                                     <span class="badge bg-secondary"><?php echo number_format((int) $link['clickCount']); ?></span>
                                 </td>
                                 <td>
-                                    <?php if ((int) $link['isActive']): ?>
+                                    <?php if ((int) $link['isActive']) { ?>
                                     <span class="badge bg-success">Active</span>
-                                    <?php else: ?>
+                                    <?php } else { ?>
                                     <span class="badge bg-secondary">Inactive</span>
-                                    <?php endif; ?>
+                                    <?php } ?>
                                 </td>
                                 <td>
                                     <time datetime="<?php echo g2ml_sanitiseOutput($link['createdAt']); ?>">
@@ -269,14 +269,14 @@ $shortDomain = function_exists('getDefaultShortDomain')
                                     </form>
                                 </td>
                             </tr>
-                            <?php endforeach; ?>
+                            <?php } ?>
                         </tbody>
                     </table>
                 </div>
-                <?php endif; ?>
+                <?php } ?>
             </div>
 
-            <?php if ($totalPages > 1): ?>
+            <?php if ($totalPages > 1) { ?>
             <!-- Pagination -->
             <div class="card-footer">
                 <nav aria-label="Links pagination">
@@ -287,13 +287,13 @@ $shortDomain = function_exists('getDefaultShortDomain')
                             </a>
                         </li>
 
-                        <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
+                        <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++) { ?>
                         <li class="page-item <?php echo $i === $page ? 'active' : ''; ?>">
                             <a class="page-link" href="?page=<?php echo $i; ?>&search=<?php echo urlencode($search); ?>&filter=<?php echo urlencode($filter); ?>">
                                 <?php echo $i; ?>
                             </a>
                         </li>
-                        <?php endfor; ?>
+                        <?php } ?>
 
                         <li class="page-item <?php echo $page >= $totalPages ? 'disabled' : ''; ?>">
                             <a class="page-link" href="?page=<?php echo $page + 1; ?>&search=<?php echo urlencode($search); ?>&filter=<?php echo urlencode($filter); ?>">
@@ -303,7 +303,7 @@ $shortDomain = function_exists('getDefaultShortDomain')
                     </ul>
                 </nav>
             </div>
-            <?php endif; ?>
+            <?php } ?>
         </div>
     </div>
 </section>

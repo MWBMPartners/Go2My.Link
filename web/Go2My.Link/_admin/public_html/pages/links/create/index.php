@@ -128,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         <div class="row justify-content-center">
             <div class="col-lg-8">
 
-                <?php if ($formSuccess): ?>
+                <?php if ($formSuccess) { ?>
                 <!-- Success Result -->
                 <div class="card shadow-sm border-success">
                     <div class="card-body p-4 text-center">
@@ -155,17 +155,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                     </div>
                 </div>
 
-                <?php else: ?>
+                <?php } else { ?>
                 <!-- Create Form -->
                 <div class="card shadow-sm">
                     <div class="card-body p-4">
 
-                        <?php if ($formError !== ''): ?>
+                        <?php if ($formError !== '') { ?>
                         <div class="alert alert-danger" role="alert">
                             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
                             <?php echo g2ml_sanitiseOutput($formError); ?>
                         </div>
-                        <?php endif; ?>
+                        <?php } ?>
 
                         <form action="/links/create" method="POST" id="create-link-form" novalidate>
                             <?php echo g2ml_csrfField('create_link_form'); ?>
@@ -209,12 +209,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                                 <label for="category-id" class="form-label">Category (Optional)</label>
                                 <select class="form-select" id="category-id" name="category_id">
                                     <option value="">No category</option>
-                                    <?php foreach ($categories as $cat): ?>
+                                    <?php foreach ($categories as $cat) { ?>
                                     <option value="<?php echo g2ml_sanitiseOutput($cat['categoryID']); ?>"
                                         <?php echo (isset($_POST['category_id']) && $_POST['category_id'] === $cat['categoryID']) ? 'selected' : ''; ?>>
                                         <?php echo g2ml_sanitiseOutput($cat['categoryName']); ?>
                                     </option>
-                                    <?php endforeach; ?>
+                                    <?php } ?>
                                 </select>
                             </div>
 
@@ -260,7 +260,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                         </form>
                     </div>
                 </div>
-                <?php endif; ?>
+                <?php } ?>
 
             </div>
         </div>

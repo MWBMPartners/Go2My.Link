@@ -156,7 +156,7 @@ elseif ($recaptchaSiteKey !== '')
                             <?php echo function_exists('__') ? __('register.form_heading') : 'Sign Up'; ?>
                         </h2>
 
-                        <?php if ($formSuccess): ?>
+                        <?php if ($formSuccess) { ?>
                         <div class="alert alert-success" role="status">
                             <i class="fas fa-check-circle" aria-hidden="true"></i>
                             <?php echo function_exists('__') ? __('register.success') : 'Account created! Please check your email to verify your address, then log in.'; ?>
@@ -167,14 +167,14 @@ elseif ($recaptchaSiteKey !== '')
                                 <?php echo function_exists('__') ? __('register.go_to_login') : 'Go to Login'; ?>
                             </a>
                         </div>
-                        <?php else: ?>
+                        <?php } else { ?>
 
-                            <?php if ($formError !== ''): ?>
+                            <?php if ($formError !== '') { ?>
                             <div class="alert alert-danger" role="alert">
                                 <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
                                 <?php echo g2ml_sanitiseOutput($formError); ?>
                             </div>
-                            <?php endif; ?>
+                            <?php } ?>
 
                             <form action="/register" method="POST" id="register-form" novalidate>
                                 <?php echo g2ml_csrfField('register_form'); ?>
@@ -244,16 +244,16 @@ elseif ($recaptchaSiteKey !== '')
                                 ]);
                                 ?>
 
-                                <?php if ($captchaType === 'turnstile'): ?>
+                                <?php if ($captchaType === 'turnstile') { ?>
                                 <div class="cf-turnstile mb-3"
                                      data-sitekey="<?php echo g2ml_sanitiseOutput($turnstileSiteKey); ?>"
                                      data-theme="auto">
                                 </div>
-                                <?php elseif ($captchaType === 'recaptcha'): ?>
+                                <?php } elseif ($captchaType === 'recaptcha') { ?>
                                 <div class="g-recaptcha mb-3"
                                      data-sitekey="<?php echo g2ml_sanitiseOutput($recaptchaSiteKey); ?>">
                                 </div>
-                                <?php endif; ?>
+                                <?php } ?>
 
                                 <div class="d-grid mb-3">
                                     <button type="submit" class="btn btn-primary btn-lg">
@@ -267,7 +267,7 @@ elseif ($recaptchaSiteKey !== '')
                                     <a href="/login"><?php echo function_exists('__') ? __('register.login_link') : 'Log in'; ?></a>
                                 </p>
                             </form>
-                        <?php endif; ?>
+                        <?php } ?>
                     </div>
                 </div>
             </div>
@@ -377,9 +377,9 @@ function _g2ml_verifyRecaptcha(string $response): bool
 }
 
 // Load CAPTCHA JS SDK if needed
-if ($captchaType === 'turnstile'):
+if ($captchaType === 'turnstile') {
 ?>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-<?php elseif ($captchaType === 'recaptcha'): ?>
+<?php } elseif ($captchaType === 'recaptcha') { ?>
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-<?php endif; ?>
+<?php } ?>

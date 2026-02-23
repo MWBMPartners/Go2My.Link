@@ -206,23 +206,23 @@ foreach ($allRequests as $req)
         </h1>
 
         <!-- Alerts -->
-        <?php if ($actionSuccess !== ''): ?>
+        <?php if ($actionSuccess !== '') { ?>
         <div class="alert alert-success alert-dismissible fade show" role="status">
             <i class="fas fa-check-circle" aria-hidden="true"></i>
             <?php echo g2ml_sanitiseOutput($actionSuccess); ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<?php echo function_exists('__') ? __('delete.close') : 'Close'; ?>"></button>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
-        <?php if ($actionError !== ''): ?>
+        <?php if ($actionError !== '') { ?>
         <div class="alert alert-danger alert-dismissible fade show" role="alert">
             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
             <?php echo g2ml_sanitiseOutput($actionError); ?>
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<?php echo function_exists('__') ? __('delete.close') : 'Close'; ?>"></button>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
-        <?php if ($pendingDeletion !== null): ?>
+        <?php if ($pendingDeletion !== null) { ?>
         <!-- ============================================================== -->
         <!-- Pending Deletion Status                                         -->
         <!-- ============================================================== -->
@@ -242,11 +242,11 @@ foreach ($allRequests as $req)
                 <ul class="mb-3">
                     <li>
                         <strong><?php echo function_exists('__') ? __('delete.requested_on') : 'Requested on'; ?>:</strong>
-                        <?php if (!empty($pendingDeletion['createdAt'])): ?>
+                        <?php if (!empty($pendingDeletion['createdAt'])) { ?>
                         <time datetime="<?php echo g2ml_sanitiseOutput($pendingDeletion['createdAt']); ?>">
                             <?php echo date('j M Y, H:i', strtotime($pendingDeletion['createdAt'])); ?>
                         </time>
-                        <?php endif; ?>
+                        <?php } ?>
                     </li>
                     <li>
                         <strong><?php echo function_exists('__') ? __('delete.grace_period') : 'Grace period'; ?>:</strong>
@@ -263,7 +263,7 @@ foreach ($allRequests as $req)
             </div>
         </div>
 
-        <?php else: ?>
+        <?php } else { ?>
         <!-- ============================================================== -->
         <!-- Warning Card                                                    -->
         <!-- ============================================================== -->
@@ -382,7 +382,7 @@ foreach ($allRequests as $req)
                 </form>
             </div>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
         <!-- Back link -->
         <div class="mt-4">

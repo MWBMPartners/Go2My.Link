@@ -74,9 +74,9 @@ $initialTheme = ($themePref === 'auto') ? 'light' : $themePref;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="<?php echo htmlspecialchars($pageDesc, ENT_QUOTES, 'UTF-8'); ?>">
     <meta name="robots" content="index, follow">
-    <?php if (function_exists('g2ml_generateCSRFToken')): ?>
+    <?php if (function_exists('g2ml_generateCSRFToken')) { ?>
     <meta name="csrf-token" content="<?php echo htmlspecialchars(g2ml_generateCSRFToken('ajax'), ENT_QUOTES, 'UTF-8'); ?>">
-    <?php endif; ?>
+    <?php } ?>
 
     <!-- Open Graph / Social Sharing -->
     <meta property="og:type" content="website">

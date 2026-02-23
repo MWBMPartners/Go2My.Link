@@ -97,7 +97,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             <?php echo function_exists('__') ? __('org.create_heading') : 'Create Organisation'; ?>
         </h1>
 
-        <?php if ($formSuccess): ?>
+        <?php if ($formSuccess) { ?>
         <!-- Success -->
         <div class="card shadow-sm border-success">
             <div class="card-body text-center py-5">
@@ -112,17 +112,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             </div>
         </div>
 
-        <?php else: ?>
+        <?php } else { ?>
         <!-- Form -->
         <div class="card shadow-sm">
             <div class="card-body">
 
-                <?php if ($formError !== ''): ?>
+                <?php if ($formError !== '') { ?>
                 <div class="alert alert-danger" role="alert">
                     <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
                     <?php echo g2ml_sanitiseOutput($formError); ?>
                 </div>
-                <?php endif; ?>
+                <?php } ?>
 
                 <form action="/org/create" method="POST" novalidate>
                     <?php echo g2ml_csrfField('create_org_form'); ?>
@@ -178,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                 </form>
             </div>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
     </div>
 </section>

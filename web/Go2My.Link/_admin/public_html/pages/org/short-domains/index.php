@@ -91,19 +91,19 @@ $shortDomains = getOrgShortDomains($orgHandle);
             <i class="fas fa-bolt" aria-hidden="true"></i> Short Domains
         </h1>
 
-        <?php if ($actionSuccess !== ''): ?>
+        <?php if ($actionSuccess !== '') { ?>
         <div class="alert alert-success" role="status">
             <i class="fas fa-check-circle" aria-hidden="true"></i>
             <?php echo g2ml_sanitiseOutput($actionSuccess); ?>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
-        <?php if ($actionError !== ''): ?>
+        <?php if ($actionError !== '') { ?>
         <div class="alert alert-danger" role="alert">
             <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
             <?php echo g2ml_sanitiseOutput($actionError); ?>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
         <!-- Info -->
         <div class="alert alert-info mb-4">
@@ -120,12 +120,12 @@ $shortDomains = getOrgShortDomains($orgHandle);
                 <h2 class="h5 mb-0">Your Short Domains (<?php echo count($shortDomains); ?>)</h2>
             </div>
 
-            <?php if (empty($shortDomains)): ?>
+            <?php if (empty($shortDomains)) { ?>
             <div class="card-body text-center text-body-secondary py-4">
                 <i class="fas fa-bolt fa-2x mb-2" aria-hidden="true"></i>
                 <p class="mb-0">No short domains configured yet.</p>
             </div>
-            <?php else: ?>
+            <?php } else { ?>
             <div class="table-responsive">
                 <table class="table table-hover mb-0">
                     <thead>
@@ -136,24 +136,24 @@ $shortDomains = getOrgShortDomains($orgHandle);
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($shortDomains as $sd): ?>
+                        <?php foreach ($shortDomains as $sd) { ?>
                         <tr>
                             <td>
                                 <strong><?php echo g2ml_sanitiseOutput($sd['shortDomain']); ?></strong>
-                                <?php if ((int) $sd['isDefault']): ?>
+                                <?php if ((int) $sd['isDefault']) { ?>
                                 <span class="badge bg-primary ms-1">Default</span>
-                                <?php endif; ?>
+                                <?php } ?>
                             </td>
                             <td>
-                                <?php if ((int) $sd['isActive']): ?>
+                                <?php if ((int) $sd['isActive']) { ?>
                                 <span class="badge bg-success">Active</span>
-                                <?php else: ?>
+                                <?php } else { ?>
                                 <span class="badge bg-secondary">Inactive</span>
-                                <?php endif; ?>
+                                <?php } ?>
                             </td>
                             <td>
                                 <div class="d-flex gap-1">
-                                    <?php if (!(int) $sd['isDefault']): ?>
+                                    <?php if (!(int) $sd['isDefault']) { ?>
                                     <form action="/org/short-domains" method="POST" class="d-inline">
                                         <?php echo g2ml_csrfField('org_short_domains_form'); ?>
                                         <input type="hidden" name="action_type" value="set_default">
@@ -173,15 +173,15 @@ $shortDomains = getOrgShortDomains($orgHandle);
                                             <i class="fas fa-trash" aria-hidden="true"></i>
                                         </button>
                                     </form>
-                                    <?php endif; ?>
+                                    <?php } ?>
                                 </div>
                             </td>
                         </tr>
-                        <?php endforeach; ?>
+                        <?php } ?>
                     </tbody>
                 </table>
             </div>
-            <?php endif; ?>
+            <?php } ?>
         </div>
 
         <!-- ================================================================ -->
