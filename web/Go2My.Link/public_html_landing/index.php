@@ -107,6 +107,8 @@
             max-width: 600px;
             width: 100%;
             text-align: center;
+            margin-top: auto;
+            margin-bottom: auto;
         }
 
         /* Logo */
@@ -225,9 +227,10 @@
             transform: translateY(0);
         }
 
-        /* Footer */
+        /* Footer — pinned to bottom */
         footer {
-            margin-top: 3rem;
+            margin-top: auto;
+            padding-top: 2rem;
             font-size: 0.8rem;
             color: var(--text-secondary);
         }

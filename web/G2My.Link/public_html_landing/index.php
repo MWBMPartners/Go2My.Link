@@ -91,6 +91,8 @@
             max-width: 500px;
             width: 100%;
             text-align: center;
+            margin-top: auto;
+            margin-bottom: auto;
         }
 
         /* Minimal logo — icon only for redirect domain */
@@ -151,8 +153,10 @@
             outline-offset: 2px;
         }
 
+        /* Footer — pinned to bottom */
         footer {
-            margin-top: 3rem;
+            margin-top: auto;
+            padding-top: 2rem;
             font-size: 0.8rem;
             color: var(--text-secondary);
         }
