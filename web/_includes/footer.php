@@ -54,7 +54,15 @@ if (function_exists('getSetting')) {
 
             <!-- Column 1: Brand & Copyright -->
             <div class="col-md-4 mb-3">
-                <h5><?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?></h5>
+                <picture>
+                    <source srcset="https://go2my.link/img/logo.svg" type="image/svg+xml">
+                    <img src="https://go2my.link/img/logo.png"
+                         alt="<?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>"
+                         height="32"
+                         width="auto"
+                         class="mb-2"
+                         loading="lazy">
+                </picture>
                 <p class="text-body-secondary small">
                     <?php if (function_exists('getSetting')) { echo htmlspecialchars(getSetting('site.tagline', 'Shorten. Track. Manage.'), ENT_QUOTES, 'UTF-8'); } else { echo 'Shorten. Track. Manage.'; } ?>
                 </p>

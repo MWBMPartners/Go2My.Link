@@ -24,6 +24,9 @@
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
 
+    <!-- Auto-refresh every 15 minutes (900 seconds) -->
+    <meta http-equiv="refresh" content="900">
+
     <style>
         /* =================================================================
            Go2My.Link — Coming Soon Landing Page Styles
@@ -111,9 +114,9 @@
             margin-bottom: 2rem;
         }
 
-        .logo svg {
+        .logo img {
+            max-width: 300px;
             width: 100%;
-            max-width: 400px;
             height: auto;
         }
 
@@ -275,6 +278,26 @@
             border: 0;
         }
 
+        /* Countdown ring — bottom-right, large screens only */
+        #countdown-ring {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            opacity: 0.4;
+            transition: opacity 0.3s;
+        }
+
+        #countdown-ring:hover {
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            #countdown-ring {
+                display: none;
+            }
+        }
+
         /* Reduced motion */
         @media (prefers-reduced-motion: reduce) {
             * {
@@ -290,26 +313,15 @@
     <main id="main" class="container" role="main">
         <!-- Logo -->
         <div class="logo" aria-label="Go2My.link logo">
-            <svg viewBox="0 0 1200 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
-                <defs>
-                    <linearGradient id="blue-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#4FC3F7"/>
-                        <stop offset="100%" stop-color="#1565C0"/>
-                    </linearGradient>
-                    <linearGradient id="green-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#81C784"/>
-                        <stop offset="100%" stop-color="#2E7D32"/>
-                    </linearGradient>
-                </defs>
-                <g transform="translate(80,90) rotate(-25)">
-                    <rect x="0" y="0" width="180" height="90" rx="45" fill="url(#blue-grad)"/>
-                    <rect x="110" y="60" width="180" height="90" rx="45" fill="url(#green-grad)"/>
-                </g>
-                <polygon points="180,170 260,200 180,230 200,200" fill="white"/>
-                <text x="350" y="230" font-family="Arial, Helvetica, sans-serif" font-size="110" font-weight="bold" fill="url(#blue-grad)">Go</text>
-                <text x="500" y="230" font-family="Arial, Helvetica, sans-serif" font-size="110" font-weight="bold" fill="url(#green-grad)">2My</text>
-                <text x="760" y="230" font-family="Arial, Helvetica, sans-serif" font-size="110" font-weight="bold" fill="#555555">.link</text>
-            </svg>
+            <picture>
+                <source srcset="https://go2my.link/img/logo.svg" type="image/svg+xml">
+                <img src="https://go2my.link/img/logo.png"
+                     alt="<?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>"
+                     height="150"
+                     width="auto"
+                     class="mb-2"
+                     loading="lazy">
+            </picture>
         </div>
 
         <!-- Heading -->
@@ -322,9 +334,6 @@
             echo "<span class=\"feature\">URL Shortening</span>";
             echo "<span class=\"feature\">Custom Domains</span>";
             echo "<span class=\"feature\">Click Analytics</span>";
-            echo "<span class=\"feature\">QR Codes</span>";
-            echo "<span class=\"feature\">API Access</span>";
-            echo "<span class=\"feature\">LinksPage</span>";
             echo "</div>";
         ?>
 
@@ -350,5 +359,31 @@
     <footer>
         <p>&copy; 2026 <a href="https://www.MWBMPartners.ltd">MWBM Partners Ltd</a> (trading as MWservices). All rights reserved.</p>
     </footer>
+<!-- Countdown ring (large screens only) -->
+<div id="countdown-ring" aria-hidden="true">
+    <svg width="28" height="28" viewBox="0 0 28 28">
+        <circle cx="14" cy="14" r="12" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="2.5"/>
+        <circle id="countdown-progress" cx="14" cy="14" r="12" fill="none" stroke="var(--brand-blue)" stroke-width="2.5"
+                stroke-dasharray="75.398" stroke-dashoffset="75.398"
+                stroke-linecap="round" transform="rotate(-90 14 14)"/>
+    </svg>
+</div>
+<script>
+    (function () {
+        var meta = document.querySelector('meta[http-equiv="refresh"]');
+        var duration = meta ? parseInt(meta.getAttribute('content'), 10) || 900 : 900;
+        var circle = document.getElementById('countdown-progress');
+        if (!circle) return;
+        var circumference = 75.398;
+        var start = Date.now();
+        function tick() {
+            var progress = Math.min((Date.now() - start) / (duration * 1000), 1);
+            circle.style.strokeDashoffset = circumference * (1 - progress);
+            if (progress >= 1) { window.location.reload(); }
+            else { requestAnimationFrame(tick); }
+        }
+        requestAnimationFrame(tick);
+    })();
+</script>
 </body>
 </html>

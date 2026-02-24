@@ -18,6 +18,9 @@
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
 
+    <!-- Auto-refresh every 15 minutes (900 seconds) -->
+    <meta http-equiv="refresh" content="900">
+
     <style>
         /* =================================================================
            G2My.Link — Coming Soon Landing Page
@@ -95,7 +98,7 @@
             margin-bottom: 2rem;
         }
 
-        .logo svg {
+        .logo img {
             width: 120px;
             height: auto;
         }
@@ -169,6 +172,26 @@
             }
         }
 
+        /* Countdown ring — bottom-right, large screens only */
+        #countdown-ring {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            opacity: 0.4;
+            transition: opacity 0.3s;
+        }
+
+        #countdown-ring:hover {
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            #countdown-ring {
+                display: none;
+            }
+        }
+
         @media (prefers-reduced-motion: reduce) {
             * {
                 transition: none !important;
@@ -180,25 +203,16 @@
     <a href="#main" class="skip-link">Skip to main content</a>
 
     <main id="main" class="container" role="main">
-        <!-- Icon-only logo for redirect domain -->
+        <!-- Logo -->
         <div class="logo" aria-label="G2My.link logo">
-            <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true" focusable="false">
-                <defs>
-                    <linearGradient id="blue-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#4FC3F7"/>
-                        <stop offset="100%" stop-color="#1565C0"/>
-                    </linearGradient>
-                    <linearGradient id="green-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#81C784"/>
-                        <stop offset="100%" stop-color="#2E7D32"/>
-                    </linearGradient>
-                </defs>
-                <g transform="translate(30,40) rotate(-25)">
-                    <rect x="0" y="0" width="140" height="70" rx="35" fill="url(#blue-grad)"/>
-                    <rect x="80" y="50" width="140" height="70" rx="35" fill="url(#green-grad)"/>
-                </g>
-                <polygon points="105,115 155,135 105,155 118,135" fill="white"/>
-            </svg>
+            <picture>
+                <source srcset="https://go2my.link/img/logo.svg" type="image/svg+xml">
+                <img src="https://go2my.link/img/logo.png"
+                     alt="Go2My.Link"
+                     width="120"
+                     height="auto"
+                     loading="eager">
+            </picture>
         </div>
 
         <h1>G2My.link</h1>
@@ -213,5 +227,32 @@
     <footer>
         <p>&copy; 2026 <a href="https://www.MWBMpartners.LTD">MWBM Partners Ltd</a> (MWservices)</p>
     </footer>
+
+<!-- Countdown ring (large screens only) -->
+<div id="countdown-ring" aria-hidden="true">
+    <svg width="28" height="28" viewBox="0 0 28 28">
+        <circle cx="14" cy="14" r="12" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="2.5"/>
+        <circle id="countdown-progress" cx="14" cy="14" r="12" fill="none" stroke="var(--brand-blue)" stroke-width="2.5"
+                stroke-dasharray="75.398" stroke-dashoffset="75.398"
+                stroke-linecap="round" transform="rotate(-90 14 14)"/>
+    </svg>
+</div>
+<script>
+    (function () {
+        var meta = document.querySelector('meta[http-equiv="refresh"]');
+        var duration = meta ? parseInt(meta.getAttribute('content'), 10) || 900 : 900;
+        var circle = document.getElementById('countdown-progress');
+        if (!circle) return;
+        var circumference = 75.398;
+        var start = Date.now();
+        function tick() {
+            var progress = Math.min((Date.now() - start) / (duration * 1000), 1);
+            circle.style.strokeDashoffset = circumference * (1 - progress);
+            if (progress >= 1) { window.location.reload(); }
+            else { requestAnimationFrame(tick); }
+        }
+        requestAnimationFrame(tick);
+    })();
+</script>
 </body>
 </html>

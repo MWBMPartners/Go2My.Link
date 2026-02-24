@@ -68,8 +68,16 @@ if (function_exists('getCurrentRoute')) {
     <div class="container">
 
         <!-- Brand -->
-        <a class="navbar-brand" href="/">
-            <strong><?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?></strong>
+        <a class="navbar-brand d-flex align-items-center" href="/">
+            <picture>
+                <source srcset="https://go2my.link/img/logo.svg" type="image/svg+xml">
+                <img src="https://go2my.link/img/logo.png"
+                     alt="<?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>"
+                     height="36"
+                     width="auto"
+                     class="d-inline-block"
+                     loading="eager">
+            </picture>
         </a>
 
         <!-- Mobile toggle button -->

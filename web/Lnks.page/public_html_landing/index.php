@@ -24,6 +24,9 @@
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
 
+    <!-- Auto-refresh every 15 minutes (900 seconds) -->
+    <meta http-equiv="refresh" content="900">
+
     <style>
         /* =================================================================
            Lnks.page — Coming Soon Landing Page
@@ -100,6 +103,12 @@
         /* Logo area */
         .logo {
             margin-bottom: 1.5rem;
+        }
+
+        .logo img {
+            width: 150px;
+            height: auto;
+            margin-bottom: 0.5rem;
         }
 
         .logo-text {
@@ -285,6 +294,26 @@
             border: 0;
         }
 
+        /* Countdown ring — bottom-right, large screens only */
+        #countdown-ring {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            z-index: 1000;
+            opacity: 0.4;
+            transition: opacity 0.3s;
+        }
+
+        #countdown-ring:hover {
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            #countdown-ring {
+                display: none;
+            }
+        }
+
         @media (prefers-reduced-motion: reduce) {
             * {
                 transition: none !important;
@@ -298,6 +327,14 @@
     <main id="main" class="container" role="main">
         <!-- Logo -->
         <div class="logo" aria-label="Lnks.page logo">
+            <picture>
+                <source srcset="https://go2my.link/img/logo.svg" type="image/svg+xml">
+                <img src="https://go2my.link/img/logo.png"
+                     alt="Go2My.Link"
+                     width="150"
+                     height="auto"
+                     loading="eager">
+            </picture>
             <div class="logo-text">
                 <span class="lnks">Lnks</span><span class="page">.page</span>
             </div>
@@ -339,5 +376,32 @@
     <footer>
         <p>&copy; 2026 <a href="https://www.MWBMpartners.LTD">MWBM Partners Ltd</a> (MWservices)</p>
     </footer>
+
+<!-- Countdown ring (large screens only) -->
+<div id="countdown-ring" aria-hidden="true">
+    <svg width="28" height="28" viewBox="0 0 28 28">
+        <circle cx="14" cy="14" r="12" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="2.5"/>
+        <circle id="countdown-progress" cx="14" cy="14" r="12" fill="none" stroke="var(--brand-green)" stroke-width="2.5"
+                stroke-dasharray="75.398" stroke-dashoffset="75.398"
+                stroke-linecap="round" transform="rotate(-90 14 14)"/>
+    </svg>
+</div>
+<script>
+    (function () {
+        var meta = document.querySelector('meta[http-equiv="refresh"]');
+        var duration = meta ? parseInt(meta.getAttribute('content'), 10) || 900 : 900;
+        var circle = document.getElementById('countdown-progress');
+        if (!circle) return;
+        var circumference = 75.398;
+        var start = Date.now();
+        function tick() {
+            var progress = Math.min((Date.now() - start) / (duration * 1000), 1);
+            circle.style.strokeDashoffset = circumference * (1 - progress);
+            if (progress >= 1) { window.location.reload(); }
+            else { requestAnimationFrame(tick); }
+        }
+        requestAnimationFrame(tick);
+    })();
+</script>
 </body>
 </html>
