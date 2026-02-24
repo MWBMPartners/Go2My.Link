@@ -404,4 +404,9 @@ As this project will be hosted on a GitHub Repo (https://github.com/MWBMPartners
 
  Any other suggested GitHub features
 
+ Can we create GitHub Issues of type 'Issue" for all issues we identify including through through lint/security checks, and update each as we fix them
+Can we do the same going forward for all changes/dev work?
+
+Can we then also ensure GitHub Issues, GitHub Project, GitHub Wiki and all .md files (eg, but not limited to, README.md, CHANGELOG.md, DEV_NOTES.md, Project_Status.md, and .claude/ prompt, memory and context info/files are fully up to date!)
+
 Before we start, can you summarise the current platform and a summary/build plan ahead of starting dev. I'd like to keep a track of build progress at each stage, therefore can we also run through the progress/checklist after each "stage"/step.
