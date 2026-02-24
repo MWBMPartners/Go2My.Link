@@ -337,7 +337,7 @@
     </main>
 
     <footer>
-        <p>&copy; 2026 <a href="https://github.com/MWBMPartners">MWBM Partners Ltd</a> (MWservices)</p>
+        <p>&copy; 2026 <a href="https://www.MWBMpartners.LTD">MWBM Partners Ltd</a> (MWservices)</p>
     </footer>
 </body>
 </html>

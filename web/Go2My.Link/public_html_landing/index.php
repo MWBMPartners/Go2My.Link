@@ -317,17 +317,19 @@
         <p class="tagline">A powerful URL shortening platform by MWservices</p>
 
         <!-- Features preview -->
-        <div class="features" aria-label="Upcoming features">
-            <span class="feature">URL Shortening</span>
-            <span class="feature">Custom Domains</span>
-            <span class="feature">Click Analytics</span>
-            <span class="feature">QR Codes</span>
-            <span class="feature">API Access</span>
-            <span class="feature">LinksPage</span>
-        </div>
+        <?php
+            echo "<div class=\"features\" aria-label=\"Upcoming features\">";
+            echo "<span class=\"feature\">URL Shortening</span>";
+            echo "<span class=\"feature\">Custom Domains</span>";
+            echo "<span class=\"feature\">Click Analytics</span>";
+            echo "<span class=\"feature\">QR Codes</span>";
+            echo "<span class=\"feature\">API Access</span>";
+            echo "<span class=\"feature\">LinksPage</span>";
+            echo "</div>";
+        ?>
 
         <!-- Email capture -->
-        <section class="notify-section" aria-label="Email notification signup">
+        <!--<section class="notify-section" aria-label="Email notification signup">
             <p>Be the first to know when we launch.</p>
             <form class="email-form" action="#" method="post" aria-label="Notification signup form">
                 <label for="email" class="visually-hidden">Email address</label>
@@ -342,11 +344,11 @@
                 >
                 <button type="submit">Notify Me</button>
             </form>
-        </section>
+        </section>-->
     </main>
 
     <footer>
-        <p>&copy; 2026 <a href="https://github.com/MWBMPartners">MWBM Partners Ltd</a> (trading as MWservices). All rights reserved.</p>
+        <p>&copy; 2026 <a href="https://www.MWBMPartners.ltd">MWBM Partners Ltd</a> (trading as MWservices). All rights reserved.</p>
     </footer>
 </body>
 </html>
