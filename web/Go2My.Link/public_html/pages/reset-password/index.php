@@ -49,6 +49,15 @@ $tokenValid  = false;
 $tokenError  = '';
 $formError   = '';
 $formSuccess = false;
+$isForced    = isset($_GET['forced']);
+
+// 🛡️ For forced password resets, retrieve token from session (not URL) to prevent leakage
+if ($token === '' && $isForced && !empty($_SESSION['forced_reset_token']))
+{
+    $token = $_SESSION['forced_reset_token'];
+    // Clear from session after reading (one-time use)
+    unset($_SESSION['forced_reset_token']);
+}
 
 if ($token === '')
 {

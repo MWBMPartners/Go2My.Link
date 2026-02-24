@@ -190,6 +190,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                 header('Location: ' . $postLoginRedirect);
                 exit;
             }
+            elseif (!empty($result['forcePasswordReset']))
+            {
+                // Forced password reset (e.g., after breach response)
+                // 🛡️ Token is stored in $_SESSION['forced_reset_token'] by loginUser()
+                // Redirect without token in URL to prevent leakage via Referer/logs/history
+                header('Location: https://go2my.link/reset-password?forced=1');
+                exit;
+            }
             else
             {
                 $formError   = $result['error'];
@@ -269,7 +277,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                                     $fieldPlaceholder = 'you@example.com';
                                 }
                                 if (isset($_POST['email'])) {
-                                    $fieldValue = g2ml_sanitiseOutput($_POST['email']);
+                                    $fieldValue = $_POST['email'];
                                 } else {
                                     $fieldValue = '';
                                 }

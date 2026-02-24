@@ -216,7 +216,8 @@ function loginUser(string $email, string $password): array
     $user = dbSelectOne(
         "SELECT userUID, orgHandle, email, passwordHash, firstName, lastName,
                 displayName, role, emailVerified, isActive, isSuspended,
-                failedLoginAttempts, lockedUntil, avatarURL, timezone
+                failedLoginAttempts, lockedUntil, avatarURL, timezone,
+                forcePasswordReset
          FROM tblUsers
          WHERE email = ?
          LIMIT 1",
@@ -333,6 +334,40 @@ function loginUser(string $email, string $password): array
     }
 
     // === Password is correct — login successful ===
+
+    // Check if forced password reset is required (e.g., after a breach response)
+    if ((int) ($user['forcePasswordReset'] ?? 0) === 1)
+    {
+        // Generate a fresh reset token so the user can set a new password
+        $token     = g2ml_generateToken(32);
+        $tokenHash = hash('sha256', $token);
+        $expiry    = date('Y-m-d H:i:s', time() + (int) getSetting('auth.password_reset_expiry', 3600));
+
+        dbUpdate(
+            "UPDATE tblUsers SET passwordResetToken = ?, passwordResetExpiry = ? WHERE userUID = ?",
+            'ssi',
+            [$tokenHash, $expiry, $user['userUID']]
+        );
+
+        logActivity('login', 'force_password_reset', 403, [
+            'userUID' => $user['userUID'],
+            'logData' => ['email' => $email],
+        ]);
+
+        // 🛡️ Store token in session to avoid leaking it via URL/Referer/logs
+        if (session_status() === PHP_SESSION_ACTIVE)
+        {
+            $_SESSION['forced_reset_token'] = $token;
+        }
+
+        return [
+            'success'            => false,
+            'error'              => 'A password reset is required for your account. Please check your email or use the link below.',
+            'locked'             => false,
+            'lockSeconds'        => 0,
+            'forcePasswordReset' => true,
+        ];
+    }
 
     // Reset failed login attempts and update login metadata
     if (function_exists('g2ml_getClientIP')) {
@@ -846,9 +881,9 @@ function resetPassword(string $token, string $newPassword): array
     // Hash the new password
     $passwordHash = g2ml_hashPassword($newPassword);
 
-    // Update password and clear reset token
+    // Update password, clear reset token, and clear forcePasswordReset flag
     dbUpdate(
-        "UPDATE tblUsers SET passwordHash = ?, passwordResetToken = NULL, passwordResetExpiry = NULL, failedLoginAttempts = 0, lockedUntil = NULL WHERE userUID = ?",
+        "UPDATE tblUsers SET passwordHash = ?, passwordResetToken = NULL, passwordResetExpiry = NULL, failedLoginAttempts = 0, lockedUntil = NULL, forcePasswordReset = 0 WHERE userUID = ?",
         'si',
         [$passwordHash, $userUID]
     );

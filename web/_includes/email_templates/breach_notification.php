@@ -9,30 +9,35 @@
 
 /**
  * ============================================================================
- * 📧 Go2My.Link — Email Template: Data Export Ready
+ * 📧 Go2My.Link — Email Template: Breach Notification
  * ============================================================================
  *
- * Sent when a user's data export has been generated and is ready to download.
+ * Sent to all users during a mass credential reset (breach response).
+ * Informs users their password has been invalidated and provides a
+ * unique reset link.
  *
  * Available variables (from $data):
- *   $displayName  — User's display name
- *   $downloadURL  — Full download link
- *   $expiryHours  — Hours until download expires
- *   $siteName     — Site name (auto-injected)
- *   $siteURL      — Site URL (auto-injected)
- *   $currentYear  — Current year (auto-injected)
- *   $preheader    — Optional preview text (auto-injected)
+ *   $firstName  — User's first name
+ *   $reason     — Admin-provided reason for the breach response
+ *   $resetURL   — Individual password reset link with token
+ *   $breachAt   — Date/time the breach response was triggered
+ *   $siteName   — Site name (auto-injected)
+ *   $siteURL    — Site URL (auto-injected)
+ *   $currentYear — Current year (auto-injected)
+ *   $preheader  — Optional preview text (auto-injected)
  *
  * @package    Go2My.Link
  * @subpackage EmailTemplates
  * @version    1.0.0
- * @since      Phase 6
+ * @since      Phase 7
  * ============================================================================
  */
 
-$displayName = $displayName ?? 'User';
-$downloadURL = $downloadURL ?? '#';
-$expiryHours = $expiryHours ?? 48;
+// 🛡️ Ensure variables exist
+$firstName   = $firstName ?? 'User';
+$reason      = $reason ?? 'a security precaution';
+$resetURL    = $resetURL ?? '#';
+$breachAt    = $breachAt ?? date('j M Y, H:i T');
 $siteName    = $siteName ?? 'Go2My.Link';
 $siteURL     = $siteURL ?? 'https://go2my.link';
 $currentYear = $currentYear ?? date('Y');
@@ -43,13 +48,13 @@ $preheader   = $preheader ?? '';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Export Ready — <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?></title>
+    <title>Security Notice — <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?></title>
     <!--[if !mso]><!-->
     <style>
         @media (prefers-color-scheme: dark) {
             body, .g2ml-body { background-color: #1a1a2e !important; }
             .g2ml-card { background-color: #2d2d44 !important; }
-            .g2ml-header { background-color: #0a58ca !important; }
+            .g2ml-header { background-color: #b02a37 !important; }
             .g2ml-heading { color: #e0e0e0 !important; }
             .g2ml-text { color: #b0b0c0 !important; }
             .g2ml-text-secondary { color: #8890a0 !important; }
@@ -78,9 +83,9 @@ $preheader   = $preheader ?? '';
             <td align="center">
                 <table role="presentation" width="600" cellpadding="0" cellspacing="0" class="g2ml-card" style="background-color:#ffffff; border-radius:8px; overflow:hidden; box-shadow:0 2px 4px rgba(0,0,0,0.1);">
 
-                    <!-- Header -->
+                    <!-- Header (Red — urgent/security) -->
                     <tr>
-                        <td class="g2ml-header" style="background-color:#0d6efd; padding:30px 40px; text-align:center;">
+                        <td class="g2ml-header" style="background-color:#dc3545; padding:30px 40px; text-align:center;">
                             <h1 style="margin:0; color:#ffffff; font-size:24px; font-weight:700;">
                                 <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>
                             </h1>
@@ -91,45 +96,68 @@ $preheader   = $preheader ?? '';
                     <tr>
                         <td style="padding:40px;">
                             <h2 class="g2ml-heading" style="margin:0 0 20px; color:#212529; font-size:20px;">
-                                Your Data Export is Ready
+                                Security Notice — Password Reset Required
                             </h2>
 
                             <p class="g2ml-text" style="margin:0 0 20px; color:#495057; font-size:16px; line-height:1.6;">
-                                Hi <?php echo htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?>,
+                                Hi <?php echo htmlspecialchars($firstName, ENT_QUOTES, 'UTF-8'); ?>,
                             </p>
 
                             <p class="g2ml-text" style="margin:0 0 20px; color:#495057; font-size:16px; line-height:1.6;">
-                                Your data export has been generated and is ready for download. This file contains
-                                all personal data we hold about your account in JSON format.
+                                As a security precaution, we have reset all user passwords on
+                                <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>.
+                                Your previous password has been invalidated and all active sessions
+                                have been terminated.
                             </p>
 
-                            <!-- CTA Button -->
-                            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:30px 0;">
-                                <tr>
-                                    <td style="background-color:#0d6efd; border-radius:6px;">
-                                        <a href="<?php echo htmlspecialchars($downloadURL, ENT_QUOTES, 'UTF-8'); ?>"
-                                           style="display:inline-block; padding:14px 32px; color:#ffffff; text-decoration:none; font-size:16px; font-weight:600;">
-                                            Download Your Data
-                                        </a>
-                                    </td>
-                                </tr>
-                            </table>
-
-                            <table role="presentation" cellpadding="0" cellspacing="0" class="g2ml-alert-warning" style="margin:0 0 20px; background-color:#fff3cd; border-radius:6px; width:100%;">
+                            <!-- Alert Box -->
+                            <table role="presentation" cellpadding="0" cellspacing="0" class="g2ml-alert-danger" style="margin:0 0 20px; background-color:#f8d7da; border-radius:6px; width:100%;">
                                 <tr>
                                     <td style="padding:16px 20px;">
-                                        <p style="margin:0; color:#856404; font-size:14px;">
-                                            <strong>Important:</strong> This download link expires in
-                                            <?php echo (int) $expiryHours; ?> hours. After that, you'll need
-                                            to request a new export.
+                                        <p style="margin:0 0 8px; color:#842029; font-size:14px;">
+                                            <strong>Reason:</strong>
+                                            <?php echo htmlspecialchars($reason, ENT_QUOTES, 'UTF-8'); ?>
+                                        </p>
+                                        <p style="margin:0; color:#842029; font-size:14px;">
+                                            <strong>When:</strong>
+                                            <?php echo htmlspecialchars($breachAt, ENT_QUOTES, 'UTF-8'); ?>
                                         </p>
                                     </td>
                                 </tr>
                             </table>
 
+                            <p class="g2ml-text" style="margin:0 0 20px; color:#495057; font-size:16px; line-height:1.6;">
+                                <strong>Please reset your password as soon as possible</strong> by clicking
+                                the button below. You will not be able to log in until you set a new password.
+                            </p>
+
+                            <!-- CTA Button -->
+                            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:30px 0;">
+                                <tr>
+                                    <td style="background-color:#dc3545; border-radius:6px;">
+                                        <a href="<?php echo htmlspecialchars($resetURL, ENT_QUOTES, 'UTF-8'); ?>"
+                                           style="display:inline-block; padding:14px 32px; color:#ffffff; text-decoration:none; font-size:16px; font-weight:600;">
+                                            Reset Your Password
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p class="g2ml-text-secondary" style="margin:0 0 20px; color:#6c757d; font-size:14px; line-height:1.6;">
+                                If the button doesn't work, copy and paste this link into your browser:
+                            </p>
+                            <p class="g2ml-link" style="margin:0 0 20px; color:#0d6efd; font-size:14px; word-break:break-all;">
+                                <?php echo htmlspecialchars($resetURL, ENT_QUOTES, 'UTF-8'); ?>
+                            </p>
+
+                            <p class="g2ml-text-secondary" style="margin:0 0 10px; color:#6c757d; font-size:14px; line-height:1.6;">
+                                When choosing a new password, please use a unique password that you don't
+                                use on any other website. We recommend using a password manager.
+                            </p>
+
                             <p class="g2ml-text-secondary" style="margin:0; color:#6c757d; font-size:14px; line-height:1.6;">
-                                If you didn't request this export, please secure your account immediately
-                                by changing your password.
+                                If you have any questions or concerns, please contact our support team
+                                at <a href="mailto:support@go2my.link" style="color:#0d6efd;">support@go2my.link</a>.
                             </p>
                         </td>
                     </tr>

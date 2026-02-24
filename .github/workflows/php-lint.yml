@@ -44,11 +44,11 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
-          tools: php-parallel-lint/php-parallel-lint
+          tools: parallel-lint
 
       - name: Run PHP Lint
         run: |
-          php-parallel-lint --exclude vendor --exclude _libraries --exclude .git web/
+          parallel-lint --exclude vendor --exclude _libraries --exclude .git web/
 
       - name: Install PHPStan
         run: |

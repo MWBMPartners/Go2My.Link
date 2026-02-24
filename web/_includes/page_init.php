@@ -183,9 +183,10 @@ require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'auth.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'org.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'account_types.php';
 
-// Layer 4 — Compliance & Privacy (depend on Layers 1+2+3)
+// Layer 4 — Compliance, Privacy & Security Response (depend on Layers 1+2+3)
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'cookie_consent.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'data_rights.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'breach_response.php';
 
 // ============================================================================
 // ⚠️ Step 6: Register Error/Exception/Shutdown Handlers
