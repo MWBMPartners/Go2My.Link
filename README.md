@@ -32,7 +32,8 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 - ♿ **Accessibility** — WCAG 2.1 AA compliant, screen reader support, skip-to-content, ARIA live regions
 - 🌍 **i18n** — Translation-ready `__()` function, locale detection, interim Google Translate widget
 - 🔒 **Security** — Argon2id hashing, SHA-256 token storage, CSRF protection, account lockout, rate limiting
-- 📧 **Transactional Email** — Verification, password reset, password change notifications, new login alerts
+- 📧 **Transactional Email** — Multipart MIME (text/plain + AMP + HTML), dark mode, preheader text, modern headers
+- 🚨 **Breach Response** — GlobalAdmin mass credential reset, session revocation, ENCRYPTION_SALT rotation, batch notification emails
 - 📝 **Static Pages** — About, Features, Pricing, Contact (with email), Legal (Terms, Privacy, Cookies)
 - 🔍 **URL Info** — Public short code lookup with masked destination, status badges
 - 📐 **JSON Schema Validation** — Schema definitions (draft 2020-12) with pure-PHP validator for API responses and database JSON
@@ -81,13 +82,13 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 | ✅ | 5 | v0.6.0 | Organisation Management | 1 | **Complete** |
 | ✅ | 6 | v0.7.0 | Compliance, Legal & Pre-Launch | 7/8 | **Complete** |
 | ✅ | — | v1.0.0-rc | **PRE-RELEASE CANDIDATE** | — | **Tagged** |
-| 📋 | 7 | v1.1.0 | API & Analytics | 8 | Post-Launch |
+| ⏳ | 7 | v1.1.0 | API & Analytics | 8 | In Progress |
 | 📋 | 8 | v1.2.0 | LinksPage | 6 | Post-Launch |
 | 📋 | 9 | v1.3.0 | Advanced Redirects | 6 | Post-Launch |
 | 📋 | 10 | v1.4.0 | Advanced Authentication (SIGNula) | 4 | Post-Launch |
 | 📋 | 11 | v1.5.0 | Payments & Subscriptions (SIGNula) | 4 | Post-Launch |
 
-> **50 of 78 issues complete (64%)** — tracked on the [GitHub Project Board](https://github.com/orgs/MWBMPartners/projects/4)
+> **59 of 89 issues complete (66%)** — tracked on the [GitHub Project Board](https://github.com/orgs/MWBMPartners/projects/4)
 
 ### ✅ Phase 0 — Scaffolding (v0.1.0)
 
@@ -178,7 +179,7 @@ Go2My.Link/
 ├── ⚙️ .github/workflows/        ← CI/CD (PHP lint, release, SFTP deploy)
 ├── 📚 docs/                     ← ARCHITECTURE, DATABASE, API, DEPLOYMENT
 ├── 🌐 web/
-│   ├── ⚙️ _functions/           ← Shared PHP functions (11 files)
+│   ├── ⚙️ _functions/           ← Shared PHP functions (12 files)
 │   ├── 📦 _includes/            ← Shared templates + email templates
 │   ├── 📦 _libraries/           ← Local fallback libraries (Bootstrap, jQuery, FA, Chart.js)
 │   ├── 📐 _schemas/             ← JSON Schema definitions (api, database, external)
@@ -261,7 +262,7 @@ Releases are managed via GitHub Actions. Each component can be released independ
 ## 📋 Project Management
 
 - 📌 **GitHub Project:** [Go2My.Link Development](https://github.com/orgs/MWBMPartners/projects/4)
-- 🐛 **Issues:** 78 issues tracked with phase labels (`phase-0` through `phase-11`)
+- 🐛 **Issues:** 89 issues tracked with phase labels (`phase-0` through `phase-11`)
 - 🏁 **Milestones:** v0.1.0 (Scaffold) through v1.5.0 (Payments), with v1.0.0-rc pre-release marker
 
 ---

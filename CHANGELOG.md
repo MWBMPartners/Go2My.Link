@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Added
 
+- 📧 **Multipart MIME email system** — Rewrote `g2ml_sendEmail()` to produce RFC 2046 multipart/alternative emails with three MIME parts: text/plain (auto-generated from HTML), text/x-amp-html (AMP for Email), and text/html (#88)
+  - New `g2ml_htmlToPlainText()` — intelligent HTML-to-plaintext converter preserving structure (headings → UPPERCASE, links → `text [url]`, lists → `- item`, tables → tab-separated)
+  - New `g2ml_renderAmpTemplate()` — renders AMP4Email templates with graceful fallback
+  - New `g2ml_buildMultipartBody()` — assembles multipart/alternative body with correct MIME part order per AMP spec
+  - New `g2ml_generateMimeBoundary()` — generates unique MIME boundary strings
+  - Preheader text support via hidden `<div>` in all HTML templates
+  - Modern email headers: `List-Unsubscribe`, `List-Unsubscribe-Post`, `X-Entity-Ref-ID`, `Precedence: bulk`, `Auto-Submitted: auto-generated`
+  - Dark mode CSS via `@media (prefers-color-scheme: dark)` with `g2ml-*` class selectors in all 7 HTML templates
+  - 8 AMP4Email templates in `web/_includes/email_templates/amp/` (one per existing template + breach notification)
+  - New email + security settings seed: `web/_sql/seeds/012_email_settings.sql` (7 new settings)
+- 🚨 **Mass credential reset (breach response)** — GlobalAdmin-only emergency system to invalidate all passwords, revoke all sessions, and send mass notification emails in the event of a security breach (#89)
+  - New `web/_functions/breach_response.php` with 6 functions: `g2ml_breachResponse()`, `g2ml_invalidateAllPasswords()`, `g2ml_revokeAllSessions()`, `g2ml_sendMassResetEmails()`, `g2ml_rotateEncryptionSalt()`, `g2ml_logBreachResponse()`
+  - New admin page at `admin.go2my.link/security/breach-response` with confirmation form, CSRF protection, and result display
+  - `forcePasswordReset` flag in `tblUsers` now wired into login flow — forced users get session-based reset token and redirect to `/reset-password?forced=1`
+  - ENCRYPTION_SALT rotation: re-encrypts all sensitive settings with new key in a database transaction
+  - Breach notification email template (HTML + AMP) with red header styling and individual reset links
+  - Batch email processing (50 users per batch) with progress tracking and configurable cooldown
+  - Dedicated audit log file (`web/_uploads/logs/breach_response.log`) with UTC timestamps
 - 🏷️ **Multi-account-type support** — Users can now hold multiple account types simultaneously (e.g. Admin + API User). New `tblAccountTypes` reference table and `tblUserAccountTypes` junction table replace the single-role model while maintaining full backward compatibility via `tblUsers.role` as a cached "effective role"
   - New PHP library `web/_functions/account_types.php` with 9 functions: `getUserAccountTypes()`, `hasAccountType()`, `getEffectiveRole()`, `assignAccountType()`, `revokeAccountType()`, `syncEffectiveRole()`, `refreshSessionAccountTypes()`, `getAllAccountTypes()`, `getAccountType()`
   - Admin members page updated to display multiple type badges per user
@@ -18,6 +36,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Migration script backfills existing users from `tblUsers.role` into the junction table
   - JSON schemas for both new tables (`account-type.schema.json`, `user-account-type.schema.json`)
 - ⚙️ **Legal review placeholder flag** — New `legal.hide_review_placeholders` setting to temporarily hide `{{LEGAL_REVIEW_NEEDED}}` alert blocks from all 5 legal pages (Terms, Privacy, Cookies, Copyright, AUP) while keeping content visible
+
+### 🔒 Fixed (Security Hardening — Email, Breach Response, Auth)
+
+- 🔒 **CRLF header injection prevention** — Validated `$to` with `FILTER_VALIDATE_EMAIL` + regex, stripped CRLF from `$subject`, `$fromAddress`, `$fromName`, `$replyTo`, `$unsubscribeURL`, and all extra headers; blocked sensitive header overrides (`From`, `To`, `Cc`, `Bcc`, `Content-Type`, etc.) (#79, #80)
+- 🔒 **Path traversal prevention** — Added `^[a-zA-Z0-9_-]+$` validation on template names in `g2ml_sendEmail()`, `g2ml_renderEmailTemplate()`, and `g2ml_renderAmpTemplate()` (#81)
+- 🔒 **Transaction wrapping for salt rotation** — Wrapped `g2ml_rotateEncryptionSalt()` in `dbBeginTransaction()`/`dbCommit()`/`dbRollback()` to prevent irrecoverable mixed-key encryption on partial failure (#82)
+- 🔒 **TOCTOU race condition** — Breach response cooldown timestamp now set at START of execution via `setSetting()` before operations begin (#83)
+- 🔒 **Session-based token transport** — Forced password reset token stored in `$_SESSION['forced_reset_token']` instead of URL query parameter (prevents Referer/log leakage) (#84)
+- 🔒 **Control character sanitisation** — Strip `[\x00-\x1F\x7F]` from breach reason before storage and email (#85)
+- 🔒 **Memory clearing** — Plaintext overwritten with null bytes (`str_repeat("\0", ...)`) after re-encryption during salt rotation (#82)
+- 🔒 **UTC timestamps** — All `date()` calls in breach response replaced with `gmdate()` for consistent UTC audit logging (#85)
+- 🔒 **Error suppression removal** — Removed `@` from `mail()`, `mkdir()`, and `file_put_contents()` calls for proper error visibility (#85)
+- 🔒 **Admin page caching** — Added `Cache-Control: no-store` + `Pragma: no-cache` to breach response page (#86)
+- 🔒 **Input validation** — Added `maxlength="500"` + server-side `mb_strlen()` + `g2ml_sanitiseInput()` on breach reason field; `adminUID <= 0` bounds check; token storage verification before email send (#85, #86)
+- 🔒 **Double-encoding fix** — Removed redundant `g2ml_sanitiseOutput()` on login page email field (already escaped by `formField()`) (#87)
+
+### 🔧 Fixed (CI/CD)
+
+- 🔧 **PHP Lint workflow** — Fixed `php-parallel-lint: command not found` (exit code 127) by correcting binary name from `php-parallel-lint` to `parallel-lint` in both the `tools:` input and `run:` command of `.github/workflows/php-lint.yml` (#76)
 
 ### 🏗️ Changed (Phase Reshuffling)
 

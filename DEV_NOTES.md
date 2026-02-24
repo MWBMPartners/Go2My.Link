@@ -70,9 +70,71 @@ Sessions are dual-layered: PHP session + database-backed token in `tblUserSessio
 
 Cross-subdomain session sharing uses cookie domain `.go2my.link` in production (set in `page_init.php`). This enables users to log in on go2my.link and access admin.go2my.link without re-authenticating.
 
-### 📧 Email System
+### 📧 Email System (Multipart MIME)
 
-Emails are sent via PHP `mail()` using `g2ml_sendEmail()` with HTML templates in `web/_includes/email_templates/`. Template rendering uses output buffering with `extract($data)` for variable injection. Settings for From/Reply-To are in `tblSettings` (`email.from_address`, `email.from_name`, `email.reply_to`).
+Emails are sent via PHP `mail()` using `g2ml_sendEmail()` in `web/_functions/email.php`. The system produces **RFC 2046 multipart/alternative** emails with up to three MIME parts:
+
+1. **text/plain** — Auto-generated from HTML via `g2ml_htmlToPlainText()` (headings → UPPERCASE, links → `text [url]`, lists → `- item`, tables → tab-separated)
+2. **text/x-amp-html** — AMP for Email variant (if template exists in `email_templates/amp/` and `email.amp_enabled` is on)
+3. **text/html** — Full HTML template with dark mode CSS and preheader text
+
+**Template structure:**
+
+- HTML templates: `web/_includes/email_templates/{template}.php` — output buffered with `extract($data)`
+- AMP templates: `web/_includes/email_templates/amp/{template}.php` — must be valid AMP4Email (`<html ⚡4email>`, max 75KB, no external CSS, no inline `<style>` in body)
+- Dark mode: `@media (prefers-color-scheme: dark)` in `<style>` block with `g2ml-*` class selectors
+
+**Modern headers added automatically:**
+
+- `List-Unsubscribe` / `List-Unsubscribe-Post` — one-click unsubscribe (RFC 8058)
+- `X-Entity-Ref-ID` — unique per email for threading prevention
+- `Precedence: bulk` — signals bulk mail to receiving servers
+- `Auto-Submitted: auto-generated` — identifies automated email (RFC 3834)
+
+**Security hardening:**
+
+- CRLF injection prevention on all header values (`$to`, `$subject`, From/Reply-To, extra headers)
+- Template name validated with `^[a-zA-Z0-9_-]+$` (prevents path traversal)
+- Blocked headers list prevents `$extraHeaders` from overriding `From`, `To`, `Cc`, `Bcc`, `Content-Type`, etc.
+- `@mail()` suppression removed for proper error visibility
+
+**Settings** (in `tblSettings` via `012_email_settings.sql`):
+
+- `email.from_address`, `email.from_name`, `email.reply_to` — sender configuration
+- `email.amp_enabled` (boolean) — include AMP MIME part
+- `email.plaintext_fallback` (boolean) — include text/plain part
+- `email.list_unsubscribe_url` — List-Unsubscribe header URL
+- `email.preheader_enabled` (boolean) — include preheader text in HTML templates
+
+### 🚨 Breach Response (Mass Credential Reset)
+
+`web/_functions/breach_response.php` provides a GlobalAdmin-only emergency system for security incidents. The `g2ml_breachResponse()` function orchestrates the full process:
+
+**Execution flow:**
+
+1. Validate caller is GlobalAdmin + check cooldown (configurable via `security.breach_response_cooldown`)
+2. Set cooldown timestamp **immediately** (prevents TOCTOU race condition with concurrent requests)
+3. Invalidate ALL passwords — `UPDATE tblUsers SET passwordHash = '[INVALIDATED]', forcePasswordReset = 1` (includes inactive users)
+4. Revoke ALL sessions — `UPDATE tblUserSessions SET isActive = 0`
+5. Send batch notification emails (50 users per batch) — each user gets an individual reset token
+6. Optionally rotate ENCRYPTION_SALT — re-encrypts all `isSensitive = 1` settings in a database transaction
+7. Log completion with summary stats to audit file + activity log
+
+**Security measures:**
+
+- Transaction wrapping for salt rotation (rollback on any failure prevents mixed-key state)
+- Plaintext memory clearing after re-encryption (`str_repeat("\0", strlen($plaintext))` + `unset()`)
+- Control character stripping from reason (`[\x00-\x1F\x7F]`)
+- UTC timestamps throughout (`gmdate()`)
+- `set_time_limit(3600)` (bounded, not unlimited)
+- Token storage verified before email dispatch (skips user on failure)
+- Audit logging on disabled/cooldown rejection paths (not just success)
+
+**Login flow integration:**
+
+After `loginUser()` verifies the password, it checks `forcePasswordReset`. If set, it generates a reset token, stores it in `$_SESSION['forced_reset_token']` (NOT in URL — prevents Referer/log leakage), and returns `forcePasswordReset => true`. The login page redirects to `/reset-password?forced=1`, where the reset-password page reads the token from `$_SESSION` (one-time use — immediately `unset()`).
+
+**Admin page:** `web/Go2My.Link/_admin/public_html/pages/security/breach-response.php` — no-cache headers, reason validation (`maxlength="500"` + `g2ml_sanitiseInput()`), confirmation checkbox, CSRF protection.
 
 ### 🏷️ Account Types (Multi-Type Support)
 
@@ -179,7 +241,11 @@ The i18n system (`web/_functions/i18n.php`) uses a **language-family fallback** 
 
 ### 🔒 Pre-Release Audit (Phase 6)
 
-A comprehensive security, WCAG, and W3C compliance audit was performed across all components prior to v1.0.0-rc. Six parallel audit agents covered: W3C/HTML5 standards, semantic landmarks, ARIA/forms, keyboard/focus management, colour contrast, and OWASP security. **20 files modified, 56 insertions, 40 deletions.**
+Two comprehensive security audits have been performed:
+
+**Audit 1 (Pre-Release, v1.0.0-rc):** Six parallel agents covered W3C/HTML5 standards, semantic landmarks, ARIA/forms, keyboard/focus, colour contrast, and OWASP security. **20 files modified, 56 insertions, 40 deletions.**
+
+**Audit 2 (Post-Email/Breach, commit `1ab9a50`):** Four parallel agents covered breach_response.php (20 findings: 1 CRITICAL, 3 HIGH), email.php (14 findings: 3 HIGH), admin pages + auth.php (19 findings: 3 HIGH), email templates + SQL seed (9 findings). **25 files modified** with 16 actionable fixes applied.
 
 **Security fixes:**
 
@@ -207,6 +273,16 @@ A comprehensive security, WCAG, and W3C compliance audit was performed across al
 - Replace browser `confirm()` dialogs with Bootstrap modals
 - Session cleanup probability tuning under production load
 - Professional legal review of all 5 legal documents
+
+**Audit 2 — Key fixes (email + breach response):**
+
+- 🔒 **CRITICAL:** Salt rotation transaction wrapping (prevents irrecoverable mixed-key encryption)
+- 🔒 **HIGH:** CRLF header injection (email recipient, subject, DB-sourced values, extra headers)
+- 🔒 **HIGH:** Path traversal in template loading (regex validation on template names)
+- 🔒 **HIGH:** TOCTOU race condition in breach response cooldown (timestamp set at start)
+- 🔒 **HIGH:** Reset token URL leakage (moved to `$_SESSION` transport)
+- 🔒 **MEDIUM:** Control character sanitisation, memory clearing, UTC timestamps, error suppression removal
+- 🔒 **LOW:** Double-encoding on login page, missing dark mode CSS classes, AMP preheader null check
 
 ### 🗄️ Data Migration (Phase 6)
 

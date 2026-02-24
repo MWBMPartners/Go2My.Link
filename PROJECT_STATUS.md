@@ -1,10 +1,10 @@
 # 📊 Go2My.Link — Project Status
 
-> Last updated: 2026-02-23
+> Last updated: 2026-02-24
 
 ## 🏗️ Current Phase
 
-**Phase 6: Compliance, Legal & Pre-Launch** — ✅ Complete (v0.7.0 + v1.0.0-rc tagged)
+**Phase 7: API & Analytics** — ⏳ In Progress (early work: email modernization + breach response)
 
 ## 📋 Build Progress
 
@@ -18,7 +18,7 @@
 | **Phase 5** | **v0.6.0 — Organisation Management** | ✅ **Complete** | **1 issue** | **20h** |
 | **Phase 6** | **v0.7.0 — Compliance, Legal & Pre-Launch** | ✅ **Complete** | **7/8 issues** | **99h** |
 | — | **v1.0.0-rc — PRE-RELEASE CANDIDATE** | ✅ **Tagged** | — | — |
-| Phase 7 | v1.1.0 — API & Analytics | 🔜 Not Started | 8 issues | 116h |
+| Phase 7 | v1.1.0 — API & Analytics | ⏳ **In Progress** | 8 issues | 116h |
 | Phase 8 | v1.2.0 — LinksPage | 🔜 Not Started | 6 issues | 84h |
 | Phase 9 | v1.3.0 — Advanced Redirects | 🔜 Not Started | 6 issues | 70h |
 | Phase 10 | v1.4.0 — Advanced Authentication (SIGNula) | 🔜 Not Started | 4 issues | 68h |
@@ -26,7 +26,46 @@
 
 ## 🔄 In Progress
 
-### 🏷️ Infrastructure: Multi-Account-Type Support
+### v1.1.0 — 📡 API & Analytics (Phase 7) — Early Work
+
+Cross-cutting infrastructure improvements completed ahead of main Phase 7 API work:
+
+#### 📧 Email System Modernization (#88) ✅
+
+- [x] Multipart MIME rewrite: text/plain + text/x-amp-html + text/html (RFC 2046)
+- [x] HTML-to-plaintext converter (`g2ml_htmlToPlainText()`)
+- [x] AMP for Email templates (8 templates in `email_templates/amp/`)
+- [x] Dark mode CSS in all 7 HTML email templates
+- [x] Preheader text support in all templates
+- [x] Modern headers: List-Unsubscribe, X-Entity-Ref-ID, Precedence, Auto-Submitted
+- [x] New settings seed: `012_email_settings.sql` (7 settings)
+
+#### 🚨 Mass Credential Reset / Breach Response (#89) ✅
+
+- [x] `breach_response.php` with 6 functions (invalidate passwords, revoke sessions, batch emails, salt rotation)
+- [x] Admin page at `/security/breach-response` (GlobalAdmin only)
+- [x] `forcePasswordReset` wired into `loginUser()` → session-based token redirect
+- [x] Breach notification email template (HTML + AMP)
+- [x] ENCRYPTION_SALT rotation with transaction wrapping
+- [x] Audit logging to dedicated log file (UTC timestamps)
+
+#### 🔒 Security Hardening (#79–#87) ✅
+
+- [x] CRLF header injection prevention in email system (recipient, subject, DB-sourced values, extra headers)
+- [x] Path traversal prevention via template name regex validation
+- [x] Transaction wrapping for salt rotation (prevents irrecoverable mixed-key state)
+- [x] TOCTOU race condition fix (cooldown timestamp set at start)
+- [x] Session-based forced reset token transport (prevents URL/Referer leakage)
+- [x] Control character sanitisation, memory clearing, UTC timestamps
+- [x] Error suppression removal, input bounds validation, double-encoding fix
+
+#### 🔧 CI/CD Fix (#76) ✅
+
+- [x] PHP Lint workflow: `php-parallel-lint` → `parallel-lint` binary name fix
+
+## ✅ Completed (Previous Phases)
+
+### 🏷️ Infrastructure: Multi-Account-Type Support ✅
 
 Cross-phase infrastructure improvement — enables users to hold multiple account types simultaneously:
 
@@ -40,7 +79,7 @@ Cross-phase infrastructure improvement — enables users to hold multiple accoun
 - [x] JSON schemas: `account-type.schema.json`, `user-account-type.schema.json`
 - [x] Documentation: CHANGELOG, DATABASE, DEV_NOTES, ARCHITECTURE, MEMORY
 
-### v0.7.0 — ⚖️ Compliance, Legal & Pre-Launch (Phase 6) — 7/8 Issues Done
+### v0.7.0 — ⚖️ Compliance, Legal & Pre-Launch (Phase 6) — 7/8 Issues Done ✅
 
 - [x] 6.1 — 🛡️ DNT/GPC support & production hardening: `dnt.php` (3 functions), CSP headers on all 4 .htaccess files, HSTS enabled, custom error pages (400/403/500), 12 new compliance settings (#64)
 - [x] 6.2 — 🍪 Cookie consent system: `cookie_consent.php` (7 functions), cookie banner + customise modal, `cookie-consent.js`, consent API endpoint, GDPR opt-in/opt-out jurisdiction detection (#62)
@@ -51,7 +90,7 @@ Cross-phase infrastructure improvement — enables users to hold multiple accoun
 - [ ] 6.7 — 🌍 Seed key translations: en-GB baseline complete (~1,075 keys in `010_phase6_translations.sql`), 9 additional locales deferred to post-launch (#71)
 - [x] 6.8 — 🗄️ Data migration plan & dry-run: `docs/MIGRATION_PLAN.md` + `web/_sql/dry_run.sql` — 7-step process for 480 URLs, 5 orgs, 7 users (password force-reset), 429K activity log rows (#67)
 
-### 🔒 Pre-Release Audit (Complete)
+### 🔒 Pre-Release Audit ✅
 
 Comprehensive security, WCAG, and W3C compliance audit across all components. **20 files modified** with fixes:
 
@@ -160,18 +199,18 @@ None.
 
 ## 🔜 Next Up
 
-**#71 Translations** — en-GB baseline seeded with ~1,075 keys. The 9 additional locales (en-US, es, fr, de, pt-BR, ar, zh-CN, ja, hi) are deferred to post-launch. The interim Google Translate widget covers machine translation in the meantime.
+**Phase 7 remaining work** — REST API endpoints, OpenAPI/Swagger docs (#75), API key auth, analytics dashboard, click tracking, geographic maps, device breakdown, data export.
 
-**v1.0.0-rc Pre-Release** — Phase 6 is functionally complete (7/8 issues done, remaining #71 is non-blocking). Pre-release security/WCAG/W3C audit complete with all findings fixed. The product is legally compliant and ready for pre-release candidate.
+**#71 Translations** — en-GB baseline seeded with ~1,075 keys. The 9 additional locales deferred to post-launch. Interim Google Translate widget covers machine translation.
 
-**Post-launch suggestions** (from pre-release audit, non-blocking):
+**Post-launch suggestions** (non-blocking):
 
 - 🔒 Nonce-based CSP to replace `'unsafe-inline'` for scripts (requires server-side nonce generation)
 - 🔒 Replace `confirm()` dialogs with Bootstrap modals for better UX/accessibility
 - 🔒 Session cleanup probability tuning (currently 1/100, review under production load)
 - ⚖️ Professional legal review of all 5 legal documents (`{{LEGAL_REVIEW_NEEDED}}` placeholders)
 
-**Post-launch enhancements:** Phase 7 (API & Analytics + Swagger #75), Phase 8 (LinksPage), Phase 9 (Advanced Redirects), Phase 10 (Advanced Auth via SIGNula), Phase 11 (Payments via SIGNula).
+**Future phases:** Phase 8 (LinksPage), Phase 9 (Advanced Redirects), Phase 10 (Advanced Auth via SIGNula), Phase 11 (Payments via SIGNula).
 
 ## 🔗 Links
 
