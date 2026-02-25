@@ -7,7 +7,7 @@
 # ============================================================================
 # 🚫 Go2My.Link — .gitignore
 # ============================================================================
-# Tailored for PHP/MySQL development on macOS & Windows
+# Tailored for PHP/MySQL development on macOS, Windows & Linux (incl. Debian/Raspberry Pi)
 # IDE: Visual Studio Code (with FTP Sync extension) & Xcode
 # Hosting: Dreamhost Shared Hosting
 #
@@ -58,12 +58,15 @@ $RECYCLE.BIN/
 *.msp
 *.lnk
 
-# Linux
+# Linux (including Debian-based / Raspberry Pi OS)
 *~
 .fuse_hidden*
 .directory
 .Trash-*
 .nfs*
+core
+*.core
+.crash
 
 # ============================================================================
 # 💻 IDE & Editor Files
@@ -78,6 +81,12 @@ $RECYCLE.BIN/
 !.vscode/*.code-snippets
 *.code-workspace
 .history/
+
+# VS Code on Linux / Remote Development (SSH to Raspberry Pi, etc.)
+# 📖 https://code.visualstudio.com/docs/remote/ssh
+.vscode-server/
+.vscode-oss/
+*.vsix
 
 # Visual Studio
 .vs/
