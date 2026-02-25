@@ -63,6 +63,17 @@ Cross-cutting infrastructure improvements completed ahead of main Phase 7 API wo
 
 - [x] PHP Lint workflow: `php-parallel-lint` → `parallel-lint` binary name fix
 
+#### 🎨 Branding & Landing Pages ✅
+
+- [x] SVG + PNG logo integration in navbar (`nav.php`) and footer (`footer.php`) via `<picture>` element
+- [x] Web-accessible logos deployed to `/img/logo.svg` + `/img/logo.png` in all 4 component `public_html/` dirs
+- [x] Full BrandKit assets deployed to `web/assets/BrandKit/` (logos, icons, favicons, PWA icons, press kit, docs)
+- [x] Landing pages converted from `.html` to `.php` with logo integration
+- [x] Auto-refresh (15 min) + SVG countdown ring indicator (hidden on mobile, synced to meta tag)
+- [x] Footer pinned to bottom, main content vertically centred
+- [x] Dark mode + reduced motion support on all landing pages
+- [x] Dynamic favicon PNG detection in `header.php` via `file_exists()`
+
 ## ✅ Completed (Previous Phases)
 
 ### 🏷️ Infrastructure: Multi-Account-Type Support ✅
@@ -198,6 +209,8 @@ None.
 - 📋 **Issue templates** — Added Bug Report, Feature Request, Phase Task forms + PR template
 
 ## 🔜 Next Up
+
+**#91 Custom domain integration** — Finalise client custom domain setup flow. Database schema and admin UI exist (Phase 5), but needs: redirect engine integration for `tblOrgDomains` (type: redirect), DNS verification automation, domain validation improvements (IDN/punycode, reserved list), client setup documentation (`docs/CUSTOM_DOMAINS.md`), in-app setup wizard with provider-specific DNS instructions, and REST API endpoints (ties into #38/#39).
 
 **Phase 7 remaining work** — REST API endpoints, OpenAPI/Swagger docs (#75), API key auth, analytics dashboard, click tracking, geographic maps, device breakdown, data export.
 

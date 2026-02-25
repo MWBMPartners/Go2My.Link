@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### ✨ Added
 
+- 🎨 **Logo integration** — SVG logo with PNG fallback across all components using `<picture>` element
+  - Navbar (`nav.php`): 36px logo in `navbar-brand` via `<source type="image/svg+xml">` + `<img>` fallback
+  - Footer (`footer.php`): 32px logo replacing text heading
+  - Web-accessible logos deployed to `/img/logo.svg` + `/img/logo.png` in all 4 component `public_html/` directories
+  - Absolute URLs (`https://go2my.link/img/...`) for cross-domain consistency
+- 🌐 **Landing page overhaul** — Converted all 3 "Coming Soon" pages from `.html` to `.php`
+  - SVG + PNG logo `<picture>` elements on all landing pages
+  - Auto-refresh every 15 minutes (`<meta http-equiv="refresh" content="900">`) for seamless go-live transition
+  - Countdown ring indicator: 28px SVG circle with `requestAnimationFrame` animation, brand-coloured stroke, hidden on mobile (`max-width: 768px`), dynamic duration synced from meta tag
+  - Footer pinned to bottom with flex `margin-top: auto`
+  - Main content vertically centred with `margin-top: auto; margin-bottom: auto`
+  - Reduced motion support (`prefers-reduced-motion: reduce`)
+  - Dark mode support (`prefers-color-scheme: dark`)
+- 🎨 **BrandKit assets** — Full brand asset library deployed to `web/assets/BrandKit/`
+  - Logos: SVG (editable, embedded, vector fallback) + PNG (original, dark boost)
+  - App icons: 16px–1024px standard + maskable variants
+  - Favicon: ICO + PNG
+  - PWA icons: 72px–512px + maskable 512px + manifest.json
+  - Social: OG preview image (1200×630)
+  - Documentation: BRAND_GUIDELINES.md, BRAND_LICENSE.md, EDITING_GUIDE.md, FONT_INFO.md, PRESS_KIT.md
+  - HTML preview page (`index.html`) for browsing assets
+- 🔍 **Dynamic favicon detection** — `header.php` checks for `favicon.png` via `file_exists()` and conditionally adds PNG favicon link alongside ICO
+
 - 📧 **Multipart MIME email system** — Rewrote `g2ml_sendEmail()` to produce RFC 2046 multipart/alternative emails with three MIME parts: text/plain (auto-generated from HTML), text/x-amp-html (AMP for Email), and text/html (#88)
   - New `g2ml_htmlToPlainText()` — intelligent HTML-to-plaintext converter preserving structure (headings → UPPERCASE, links → `text [url]`, lists → `- item`, tables → tab-separated)
   - New `g2ml_renderAmpTemplate()` — renders AMP4Email templates with graceful fallback

@@ -23,6 +23,8 @@
 
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png">
+    <link rel="shortcut icon" href="/favicon.ico">
 
     <!-- Auto-refresh every 15 minutes (900 seconds) -->
     <meta http-equiv="refresh" content="900">
@@ -108,23 +110,9 @@
         }
 
         .logo img {
-            width: 150px;
+            width: 300px;
             height: auto;
-            margin-bottom: 0.5rem;
-        }
-
-        .logo-text {
-            font-size: 2.5rem;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-
-        .logo-text .lnks {
-            color: var(--brand-green);
-        }
-
-        .logo-text .page {
-            color: var(--brand-grey);
+            margin-bottom: 0.25rem;
         }
 
         .powered-by {
@@ -272,8 +260,8 @@
                 font-size: 1.5rem;
             }
 
-            .logo-text {
-                font-size: 2rem;
+            .logo img {
+                width: 240px;
             }
 
             .email-form {
@@ -332,16 +320,13 @@
         <!-- Logo -->
         <div class="logo" aria-label="Lnks.page logo">
             <picture>
-                <source srcset="https://go2my.link/img/logo.svg" type="image/svg+xml">
-                <img src="https://go2my.link/img/logo.png"
-                     alt="Go2My.Link"
-                     width="150"
+                <source srcset="https://lnks.page/img/logo.svg" type="image/svg+xml">
+                <img src="https://lnks.page/img/logo.svg"
+                     alt="Lnks.page"
+                     width="300"
                      height="auto"
                      loading="eager">
             </picture>
-            <div class="logo-text">
-                <span class="lnks">Lnks</span><span class="page">.page</span>
-            </div>
             <div class="powered-by">by <a href="https://go2my.link">Go2My.link</a></div>
         </div>
 

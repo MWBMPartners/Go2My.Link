@@ -44,7 +44,7 @@ VALUES
 ('en-GB', 'about.offer_shorten_desc', 'Create clean, memorable short links from long URLs. Use our default g2my.link domain or bring your own custom domain.', 'About page', 1),
 ('en-GB', 'about.subtitle', 'Smarter links for a connected world.', 'About page', 1),
 ('en-GB', 'about.team_heading', 'Built by MWBM Partners', 'About page', 1),
-('en-GB', 'about.team_text', 'Go2My.Link is developed and maintained by MWBM Partners Ltd (trading as MWservices), a technology company focused on building practical, reliable web tools. We believe in clean architecture, strong security, and accessible design.', 'About page', 1),
+('en-GB', 'about.team_text', 'Go2My.Link is developed and maintained by MWBM Partners Ltd (t/a MWservices), a technology company focused on building practical, reliable web tools. We believe in clean architecture, strong security, and accessible design.', 'About page', 1),
 ('en-GB', 'about.title', 'About', 'About page', 1);
 
 -- ============================================================================

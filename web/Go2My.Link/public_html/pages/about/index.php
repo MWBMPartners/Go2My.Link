@@ -142,7 +142,7 @@ if (function_exists('__')) {
                     <?php if (function_exists('__')) { echo __('about.team_heading'); } else { echo 'Built by MWBM Partners'; } ?>
                 </h2>
                 <p class="text-body-secondary">
-                    <?php if (function_exists('__')) { echo __('about.team_text'); } else { echo 'Go2My.Link is developed and maintained by MWBM Partners Ltd (trading as MWservices), a technology company focused on building practical, reliable web tools. We believe in clean architecture, strong security, and accessible design.'; } ?>
+                    <?php if (function_exists('__')) { echo __('about.team_text'); } else { echo 'Go2My.Link is developed and maintained by MWBM Partners Ltd (t/a MWservices), a technology company focused on building practical, reliable web tools. We believe in clean architecture, strong security, and accessible design.'; } ?>
                 </p>
                 <a href="/contact" class="btn btn-primary mt-3">
                     <i class="fas fa-envelope" aria-hidden="true"></i>

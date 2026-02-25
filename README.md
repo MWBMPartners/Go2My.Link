@@ -1,6 +1,6 @@
 # 🔗 Go2My.Link
 
-A comprehensive URL shortening web service by **MWBM Partners Ltd** (trading as MWservices).
+A comprehensive URL shortening web service by **MWBM Partners Ltd** (t/a MWservices).
 
 > Successor to the internal "MWlink" service — now expanded into a full-featured, multi-domain platform.
 
@@ -45,9 +45,12 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 - 📱 **PWA** — Progressive Web App manifests and service workers for all 3 web properties
 - ♿ **WCAG 2.1 AA** — Full accessibility audit with 23+ files fixed: landmarks, ARIA, contrast, headings, forms
 - 🔒 **Pre-Release Audit** — Security hardening (XSS, SQLi, open redirect), WCAG refinements, W3C compliance, email template contrast
+- 🎨 **Logo Integration** — SVG + PNG `<picture>` fallback in navbar, footer, and all landing pages
+- 🌐 **Landing Pages** — Auto-refresh, countdown ring, dark mode, footer pinning, vertical centering
 
 ### 🔜 Planned
 
+- 🌐 **Custom Domain Integration** — Finalise client domain setup flow, DNS verification automation, redirect engine integration, setup documentation (#91)
 - 📡 **REST API** — JSON/XML endpoints, API key auth, OpenAPI/Swagger docs (#75)
 - 📊 **Analytics** — Click tracking, geographic maps, device breakdown, data export
 - 📑 **LinksPage** — Template system, WYSIWYG editor, custom domains, age verification
@@ -96,9 +99,9 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 - 🔒 Auth credentials templates with direct-access guards
 - 📝 Documentation framework (README, CHANGELOG, PROJECT_STATUS, DEV_NOTES, docs/)
 - 🏗️ GitHub infrastructure (issues, milestones, project board, labels, Actions)
-- 🌐 "Coming Soon" landing pages for all 3 domains
+- 🌐 "Coming Soon" landing pages for all 3 domains (auto-refresh, countdown ring, dark mode)
 - 🔀 `.htaccess` foundation (HTTPS, security headers, clean URLs, routing)
-- 🎨 Brand guidelines and logo assets
+- 🎨 Brand guidelines, logo assets, and full BrandKit (SVG/PNG logos, app icons, favicons, PWA icons)
 
 ### ✅ Phase 1 — Database (v0.2.0)
 
@@ -173,24 +176,27 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 
 ```text
 Go2My.Link/
-├── 🎨 assets/BrandKit/          ← Logos and branding (see BRAND_GUIDELINES.md)
+├── 🎨 assets/BrandKit/          ← Full brand kit: logos, icons, favicons, PWA icons, press kit
 ├── 🤖 .claude/                  ← Claude AI context (project brief, plans, memory)
 ├── 🤖 .openai/                  ← OpenAI context
 ├── ⚙️ .github/workflows/        ← CI/CD (PHP lint, release, SFTP deploy)
 ├── 📚 docs/                     ← ARCHITECTURE, DATABASE, API, DEPLOYMENT
 ├── 🌐 web/
-│   ├── ⚙️ _functions/           ← Shared PHP functions (12 files)
+│   ├── ⚙️ _functions/           ← Shared PHP functions (13 files)
 │   ├── 📦 _includes/            ← Shared templates + email templates
 │   ├── 📦 _libraries/           ← Local fallback libraries (Bootstrap, jQuery, FA, Chart.js)
 │   ├── 📐 _schemas/             ← JSON Schema definitions (api, database, external)
 │   ├── 🗄️ _sql/                 ← Schema, migrations, seeds, stored procedures
 │   ├── 🏠 Go2My.Link/           ← Component A (Main Website + Admin Dashboard)
-│   │   ├── public_html/         ← go2my.link web root
-│   │   └── _admin/public_html/  ← admin.go2my.link web root
+│   │   ├── public_html/         ← go2my.link web root (+ img/ for logos)
+│   │   ├── public_html_landing/ ← "Coming Soon" landing page
+│   │   └── _admin/public_html/  ← admin.go2my.link web root (+ img/ for logos)
 │   ├── 🔗 G2My.Link/            ← Component B (Redirect Engine)
-│   │   └── public_html/         ← g2my.link web root
+│   │   ├── public_html/         ← g2my.link web root (+ img/ for logos)
+│   │   └── public_html_landing/ ← "Coming Soon" landing page
 │   └── 📑 Lnks.page/            ← Component C (LinksPage)
-│       └── public_html/         ← lnks.page web root
+│       ├── public_html/         ← lnks.page web root (+ img/ for logos)
+│       └── public_html_landing/ ← "Coming Soon" landing page
 ├── 📝 CHANGELOG.md
 ├── 📊 PROJECT_STATUS.md
 ├── 🗒️ DEV_NOTES.md

@@ -284,6 +284,42 @@ Two comprehensive security audits have been performed:
 - 🔒 **MEDIUM:** Control character sanitisation, memory clearing, UTC timestamps, error suppression removal
 - 🔒 **LOW:** Double-encoding on login page, missing dark mode CSS classes, AMP preheader null check
 
+### 🎨 Logo & Branding Integration
+
+**Logo approach:** All components use a `<picture>` element with SVG source and PNG fallback:
+
+```html
+<picture>
+    <source srcset="https://go2my.link/img/logo.svg" type="image/svg+xml">
+    <img src="https://go2my.link/img/logo.png" alt="Go2My.Link" height="36" width="auto" loading="eager">
+</picture>
+```
+
+**Logo file locations:** Each component has its own `/img/logo.svg` + `/img/logo.png` (copied from BrandKit). Absolute URLs (`https://go2my.link/img/...`) are used in shared includes (`nav.php`, `footer.php`) for cross-domain consistency.
+
+**Source assets:** `web/assets/BrandKit/` contains the full brand kit (not web-accessible — assets are copied to component `public_html/img/` directories for serving).
+
+**Dynamic favicon:** `header.php` checks for `favicon.png` existence via `file_exists()` on `DOCUMENT_ROOT` and conditionally includes a PNG favicon link alongside the standard ICO.
+
+### 🌐 Landing Pages ("Coming Soon")
+
+Each component has a `public_html_landing/` directory with a standalone `index.php`. When ready to launch, the domain's document root is switched from `public_html_landing/` to `public_html/`.
+
+**Features:**
+
+- SVG + PNG logo via `<picture>` element
+- Auto-refresh every 15 minutes (`<meta http-equiv="refresh" content="900">`) — ensures seamless transition when going live
+- Countdown ring: 28px SVG circle in bottom-right corner, fills via `requestAnimationFrame` animation, hidden on mobile (`max-width: 768px`), duration dynamically read from the meta refresh tag
+- Dark mode via `@media (prefers-color-scheme: dark)` CSS custom properties
+- Footer pinned to bottom via flex `margin-top: auto`
+- Main content vertically centred via `margin-top: auto; margin-bottom: auto` on `.container`
+- Reduced motion support (`prefers-reduced-motion: reduce`)
+- Accessibility: skip-to-content link, semantic landmarks, `aria-hidden` on decorative elements
+
+**Brand colours:** Components A and B use `--brand-blue` (#1E88E5); Component C uses `--brand-green` (#43A047).
+
+**Domain testing:** Component B can run at any domain (e.g., `b.g2my.link` for testing) without code changes — all routing is relative and domain is read dynamically from `$_SERVER['HTTP_HOST']`.
+
 ### 🗄️ Data Migration (Phase 6)
 
 `docs/MIGRATION_PLAN.md` documents the 7-step migration from the legacy MWlink database. `web/_sql/dry_run.sql` provides a non-destructive read-only validation script. Key decisions: all passwords force-reset (legacy is plaintext), `tblLicenses` skipped, activity log migrated in 10K-row batches (429K total). See the migration plan for rollback procedures.

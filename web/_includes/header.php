@@ -75,6 +75,12 @@ if (defined('G2ML_COMPONENT_DOMAIN')) {
 } else {
     $componentDomain = 'go2my.link';
 }
+$faviconIcoHref = '/favicon.ico';
+$faviconPngHref = '/favicon.png';
+$hasFaviconPng = false;
+if (!empty($_SERVER['DOCUMENT_ROOT'])) {
+    $hasFaviconPng = file_exists(rtrim($_SERVER['DOCUMENT_ROOT'], DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'favicon.png');
+}
 
 // ============================================================================
 // 🎨 Theme Preference (Dark/Light Mode)
@@ -127,7 +133,11 @@ if (($themePref === 'auto')) {
     <!-- ================================================================== -->
     <!-- Favicon                                                            -->
     <!-- ================================================================== -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="<?php echo htmlspecialchars($faviconIcoHref, ENT_QUOTES, 'UTF-8'); ?>">
+    <?php if ($hasFaviconPng) { ?>
+    <link rel="icon" type="image/png" sizes="512x512" href="<?php echo htmlspecialchars($faviconPngHref, ENT_QUOTES, 'UTF-8'); ?>">
+    <?php } ?>
+    <link rel="shortcut icon" href="<?php echo htmlspecialchars($faviconIcoHref, ENT_QUOTES, 'UTF-8'); ?>">
 
     <!-- ================================================================== -->
     <!-- PWA Manifest & Apple Touch Icon                                    -->

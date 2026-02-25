@@ -360,7 +360,7 @@
     </main>
 
     <footer>
-        <p>&copy; 2026 <a href="https://www.MWBMPartners.ltd">MWBM Partners Ltd</a> (trading as MWservices). All rights reserved.</p>
+        <p>&copy; 2026 <a href="https://www.MWBMPartners.ltd">MWBM Partners Ltd</a> (t/a MWservices). All rights reserved.</p>
     </footer>
 <!-- Countdown ring (large screens only) -->
 <div id="countdown-ring" aria-hidden="true">
