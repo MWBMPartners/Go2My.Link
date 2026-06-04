@@ -23,6 +23,12 @@
 # ============================================================================
 **/auth_creds.php
 !**/auth_creds.example.php
+
+# Legacy MWlink config holds a plaintext DB credential — never commit it, and
+# never commit the legacy web root it lives in (it must not ship). See #93.
+**/dbConfig.php
+**/public_html_legacy/
+
 *.env
 .env.*
 *.pem

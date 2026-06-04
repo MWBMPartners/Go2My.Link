@@ -160,13 +160,13 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.4"
-          tools: php-parallel-lint/php-parallel-lint
+          tools: parallel-lint
 
       - name: "🔍 PHP Lint check"
         run: |
           COMPONENT_PATH="${{ steps.parse.outputs.component_path }}"
           echo "🔍 Linting PHP files in $COMPONENT_PATH ..."
-          php-parallel-lint --exclude vendor --exclude _libraries "$COMPONENT_PATH" || {
+          parallel-lint --exclude vendor --exclude _libraries "$COMPONENT_PATH" || {
             echo "❌ PHP syntax errors found. Fix before releasing."
             exit 1
           }

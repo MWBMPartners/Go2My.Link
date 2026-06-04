@@ -52,7 +52,7 @@ else
 {
     $linkData = dbSelectOne(
         "SELECT s.shortURLUID, s.shortCode, s.destinationURL, s.title,
-                s.notes, s.categoryID, s.startDate, s.endDate,
+                s.urlNotes AS notes, s.categoryID, s.startDate, s.endDate,
                 s.isActive, s.createdAt, s.clickCount, s.orgHandle
          FROM tblShortURLs s
          WHERE s.shortCode = ? AND s.createdByUserUID = ?
@@ -146,7 +146,7 @@ if ($linkData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
 
             $result = dbUpdate(
                 "UPDATE tblShortURLs SET
-                    destinationURL = ?, title = ?, notes = ?, categoryID = ?,
+                    destinationURL = ?, title = ?, urlNotes = ?, categoryID = ?,
                     startDate = ?, endDate = ?, isActive = ?
                  WHERE shortCode = ? AND createdByUserUID = ?",
                 'ssssssisi',

@@ -58,7 +58,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         $contactSubject = trim(g2ml_sanitiseInput($_POST['contact_subject'] ?? ''));
         $contactMessage = trim(g2ml_sanitiseInput($_POST['contact_message'] ?? ''));
 
-        if ($contactName === '' || $contactEmail === '' || $contactMessage === '')
+        // 🤖 Server-side CAPTCHA verification (mirrors api/create and register).
+        // Load the shared verifyCaptcha() helper if it is not already available.
+        if (!function_exists('verifyCaptcha'))
+        {
+            $captchaHelperPath = dirname(__DIR__, 3)
+                . DIRECTORY_SEPARATOR . '_functions'
+                . DIRECTORY_SEPARATOR . 'shorturl_create.php';
+
+            if (file_exists($captchaHelperPath))
+            {
+                require_once $captchaHelperPath;
+            }
+        }
+
+        $turnstileSecretKey = getSetting('captcha.turnstile_secret_key', '');
+        $recaptchaSecretKey = getSetting('captcha.recaptcha_secret_key', '');
+        $captchaError       = '';
+
+        if ($turnstileSecretKey !== '')
+        {
+            $captchaResponse = $_POST['cf-turnstile-response'] ?? '';
+
+            if ($captchaResponse === '' || !function_exists('verifyCaptcha') || !verifyCaptcha('turnstile', $captchaResponse, $turnstileSecretKey))
+            {
+                $captchaError = 'CAPTCHA verification failed. Please try again.';
+            }
+        }
+        elseif ($recaptchaSecretKey !== '')
+        {
+            $captchaResponse = $_POST['g-recaptcha-response'] ?? '';
+
+            if ($captchaResponse === '' || !function_exists('verifyCaptcha') || !verifyCaptcha('recaptcha', $captchaResponse, $recaptchaSecretKey))
+            {
+                $captchaError = 'CAPTCHA verification failed. Please try again.';
+            }
+        }
+
+        if ($captchaError !== '')
+        {
+            $formError = $captchaError;
+        }
+        elseif ($contactName === '' || $contactEmail === '' || $contactMessage === '')
         {
             if (function_exists('__')) {
                 $formError = __('contact.error_required');
@@ -106,8 +147,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             {
                 // Send email
                 $recipient = getSetting('contact.email_recipient', 'support@go2my.link');
-                $subject   = '[Go2My.Link Contact] '
-                    . ($contactSubject !== '' ? $contactSubject : 'New Message');
+
+                // Strip CR/LF/NUL from the subject to prevent mail header injection.
+                $safeSubject = str_replace(["\r", "\n", "\0"], '', $contactSubject);
+
+                if ($safeSubject !== '')
+                {
+                    $subject = '[Go2My.Link Contact] ' . $safeSubject;
+                }
+                else
+                {
+                    $subject = '[Go2My.Link Contact] New Message';
+                }
 
                 $body  = "Name: " . $contactName . "\r\n";
                 $body .= "Email: " . $contactEmail . "\r\n";

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🔒 Security & 🐛 Fixed — 2026-06-04 deployment-readiness audit remediation
+
+- 🔐 **`.gitignore` guards for plaintext credentials** — added `**/dbConfig.php` and `**/public_html_legacy/` so the legacy MWlink config (which held a plaintext production DB credential) can never be committed. The credential was verified never committed to git history; it must still be rotated out-of-band. (#93)
+- 🐛 **Link editing fixed** — the admin edit-link SELECT/UPDATE referenced a non-existent `notes` column; corrected to `urlNotes` (the schema column). Editing any link was silently failing. (#94)
+- 🔒 **Contact-form mail header injection fixed** — CR/LF/NUL are stripped from the email subject before it is passed to `mail()`. (#97)
+- 🔒 **Contact-form CAPTCHA now verified server-side** — reuses the shared `verifyCaptcha()` (Turnstile/reCAPTCHA), matching the create API and register flows; the widget was previously cosmetic. (#96)
+- 🐛 **Component B default favicon** — `favicon.php` now falls back to `img/logo.png` when no `.ico` is present; previously every default favicon request returned 404. (#102)
+- 🐛 **Component B branded error pages render styled** — the CSP now permits the jsDelivr/cdnjs origins and inline FOUC/countdown scripts that `404.php`/`expired.php`/`validating.php` use. (#103)
+- 🔧 **Release workflow lint tool aligned** — `release.yml` now uses `parallel-lint` (matching `php-lint.yml`) instead of `php-parallel-lint`. (#111)
+- 📋 Full audit report added at `docs/AUDIT_2026-06-04.md`; 28 follow-up issues filed (#93–#120) under the **v1.0.0 — Launch Hardening** milestone.
+
 ### ✨ Added
 
 - 🎨 **Logo integration** — SVG logo with PNG fallback across all components using `<picture>` element
