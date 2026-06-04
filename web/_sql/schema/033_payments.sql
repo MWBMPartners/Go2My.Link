@@ -10,6 +10,10 @@
 -- Subscription management, payment records, and discount rules.
 -- Note: tblSubscriptionTiers is created in 011_core_subscription_tiers.sql
 --
+-- Table order matters: tblPaymentDiscounts is created BEFORE tblPayments so the
+-- tblPayments.FK_payment_discount foreign key can resolve during a clean import
+-- (foreign_key_checks = 1).
+--
 -- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
@@ -85,6 +89,55 @@ CREATE TABLE IF NOT EXISTS `tblSubscriptions` (
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci
   COMMENT='Active subscriptions per organisation';
+
+-- =============================================================================
+-- Payment Discounts (per payment method)
+-- =============================================================================
+-- Created BEFORE tblPayments so that tblPayments.FK_payment_discount can
+-- reference it during a clean schema import.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS `tblPaymentDiscounts` (
+    `discountUID`           BIGINT UNSIGNED     NOT NULL AUTO_INCREMENT,
+
+    `discountCode`          VARCHAR(50)         DEFAULT NULL
+        COMMENT 'Promo/discount code (NULL for automatic discounts)',
+
+    `discountName`          VARCHAR(255)        NOT NULL
+        COMMENT 'Display name',
+
+    `discountType`          ENUM('percentage', 'fixed_amount')
+                            NOT NULL DEFAULT 'percentage',
+
+    `discountValue`         DECIMAL(10, 2)      NOT NULL
+        COMMENT 'Percentage or fixed amount',
+
+    `applicableProvider`    VARCHAR(50)         DEFAULT NULL
+        COMMENT 'Restrict to specific payment provider (NULL = all)',
+
+    `applicableTier`        VARCHAR(50)         DEFAULT NULL
+        COMMENT 'Restrict to specific tier (NULL = all)',
+
+    `maxUses`               INT UNSIGNED        DEFAULT NULL
+        COMMENT 'Maximum total uses (NULL = unlimited)',
+
+    `currentUses`           INT UNSIGNED        NOT NULL DEFAULT 0
+        COMMENT 'Current number of uses',
+
+    `validFrom`             DATETIME            DEFAULT NULL,
+    `validUntil`            DATETIME            DEFAULT NULL,
+
+    `isActive`              TINYINT(1) UNSIGNED NOT NULL DEFAULT 1,
+    `createdAt`             DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updatedAt`             DATETIME            DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (`discountUID`),
+    UNIQUE KEY `UQ_discount_code` (`discountCode`),
+    INDEX `IDX_discount_active` (`isActive`, `validFrom`, `validUntil`)
+
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_unicode_ci
+  COMMENT='Payment discounts per payment method or promo code';
 
 -- =============================================================================
 -- Payments (transaction records)
@@ -167,49 +220,3 @@ CREATE TABLE IF NOT EXISTS `tblPayments` (
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci
   COMMENT='Payment transaction records';
-
--- =============================================================================
--- Payment Discounts (per payment method)
--- =============================================================================
-CREATE TABLE IF NOT EXISTS `tblPaymentDiscounts` (
-    `discountUID`           BIGINT UNSIGNED     NOT NULL AUTO_INCREMENT,
-
-    `discountCode`          VARCHAR(50)         DEFAULT NULL
-        COMMENT 'Promo/discount code (NULL for automatic discounts)',
-
-    `discountName`          VARCHAR(255)        NOT NULL
-        COMMENT 'Display name',
-
-    `discountType`          ENUM('percentage', 'fixed_amount')
-                            NOT NULL DEFAULT 'percentage',
-
-    `discountValue`         DECIMAL(10, 2)      NOT NULL
-        COMMENT 'Percentage or fixed amount',
-
-    `applicableProvider`    VARCHAR(50)         DEFAULT NULL
-        COMMENT 'Restrict to specific payment provider (NULL = all)',
-
-    `applicableTier`        VARCHAR(50)         DEFAULT NULL
-        COMMENT 'Restrict to specific tier (NULL = all)',
-
-    `maxUses`               INT UNSIGNED        DEFAULT NULL
-        COMMENT 'Maximum total uses (NULL = unlimited)',
-
-    `currentUses`           INT UNSIGNED        NOT NULL DEFAULT 0
-        COMMENT 'Current number of uses',
-
-    `validFrom`             DATETIME            DEFAULT NULL,
-    `validUntil`            DATETIME            DEFAULT NULL,
-
-    `isActive`              TINYINT(1) UNSIGNED NOT NULL DEFAULT 1,
-    `createdAt`             DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updatedAt`             DATETIME            DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-    PRIMARY KEY (`discountUID`),
-    UNIQUE KEY `UQ_discount_code` (`discountCode`),
-    INDEX `IDX_discount_active` (`isActive`, `validFrom`, `validUntil`)
-
-) ENGINE=InnoDB
-  DEFAULT CHARSET=utf8mb4
-  COLLATE=utf8mb4_unicode_ci
-  COMMENT='Payment discounts per payment method or promo code';

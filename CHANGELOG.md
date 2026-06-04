@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🔧 **Release workflow lint tool aligned** — `release.yml` now uses `parallel-lint` (matching `php-lint.yml`) instead of `php-parallel-lint`. (#111)
 - 📋 Full audit report added at `docs/AUDIT_2026-06-04.md`; 28 follow-up issues filed (#93–#120) under the **v1.0.0 — Launch Hardening** milestone.
 
+### 🧰 Added — Installer, schema fixes & CueRCode (2026-06-04)
+
+- 🧰 **Web installer** at `web/Go2My.Link/public_html/install/` — a self-locking, HTTPS-required, proof-of-control-token-gated full-bootstrap wizard for all three components: tests the database, imports schema + stored procedures + seeds, writes the shared `web/_auth_keys/auth_creds.php` (generating fresh encryption keys, 0600), ensures each component includes it, and creates the system-wide GlobalAdmin. Adds `docs/INSTALL.md`.
+- 🐛 **Schema launch blockers fixed (empirically verified on MySQL 9.6):**
+  - `sp_lookupShortURL` declared its `EXIT HANDLER` before the variable `DECLARE`s (illegal MySQL ordering) — `CREATE PROCEDURE` failed, so every Component B redirect would error. Handler moved after the variables.
+  - `033_payments.sql` defined `tblPayments` with an FK to `tblPaymentDiscounts` before that table was created, aborting a clean import under `foreign_key_checks=1`. Tables reordered.
+- 🔗 **CueRCode dynamic-QR integration (schema-ready):** additive provenance/QR columns on `tblShortURLs` (`createdVia`, `createdViaAPIKeyUID`, `qrCodeExternalID`/`qrCodeExternalUUID`, `qrCodeLinkedAt`) and scan-attribution columns on `tblActivityLog`, the deferred `FK_url_apikey` constraint, `cuercode.*` settings, migration `009_cuercode_qr_integration.sql`, seed `013_cuercode_settings.sql`, and the review `docs/SCHEMA_REVIEW_2026-06-04.md`. No local `tblQRCodes` (the QR record lives in CueRCode).
+
 ### ✨ Added
 
 - 🎨 **Logo integration** — SVG logo with PNG fallback across all components using `<picture>` element

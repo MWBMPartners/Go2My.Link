@@ -123,3 +123,18 @@ CREATE TABLE IF NOT EXISTS `tblAPIRequestLog` (
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci
   COMMENT='API request audit trail for rate limiting and analytics';
+
+-- =============================================================================
+-- Deferred foreign key: tblShortURLs.createdViaAPIKeyUID -> tblAPIKeys
+-- =============================================================================
+-- Added here (after tblAPIKeys exists) because tblShortURLs is defined in
+-- 020_shorturls_categories_tags.sql, which is imported before this file.
+-- Records which API key (e.g. the CueRCode integration) minted a short code;
+-- ON DELETE SET NULL so removing a key never deletes live links.
+-- =============================================================================
+ALTER TABLE `tblShortURLs`
+    ADD CONSTRAINT `FK_url_apikey`
+        FOREIGN KEY (`createdViaAPIKeyUID`)
+        REFERENCES `tblAPIKeys` (`apiKeyUID`)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL;

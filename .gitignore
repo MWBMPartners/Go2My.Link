@@ -29,6 +29,10 @@
 **/dbConfig.php
 **/public_html_legacy/
 
+# Installer runtime artefacts (server-local; never commit)
+**/_auth_keys/.install_token
+**/_auth_keys/.installed
+
 *.env
 .env.*
 *.pem

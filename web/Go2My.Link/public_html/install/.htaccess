@@ -1,0 +1,19 @@
+# Copyright (c) 2024–2026 MWBM Partners Ltd (MWservices).
+# All rights reserved.
+#
+# Installer directory — DELETE this entire directory after a successful install.
+
+# Serve the installer directly: disable the front-controller rewrite for this dir.
+<IfModule mod_rewrite.c>
+    RewriteEngine Off
+</IfModule>
+
+DirectoryIndex index.php
+
+# Keep the installer out of search engines.
+<IfModule mod_headers.c>
+    Header set X-Robots-Tag "noindex, nofollow, noarchive"
+</IfModule>
+
+# No directory listing.
+Options -Indexes
