@@ -117,7 +117,7 @@ if ($shortCode !== '')
                 s.startDate, s.endDate, s.orgHandle,
                 c.categoryName
          FROM tblShortURLs s
-         LEFT JOIN tblCategories c ON s.categoryID = c.categoryID
+         LEFT JOIN tblCategories c ON s.categoryID = c.categoryID AND c.orgHandle = s.orgHandle
          WHERE s.shortCode = ?
            AND s.orgHandle = '[default]'
          LIMIT 1",

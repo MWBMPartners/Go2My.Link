@@ -117,15 +117,16 @@ list; these OVERRIDE default behaviour):
 
 ## 📌 Current status
 
-- **Active stage:** 1 — DISCOVER (bootstrap complete; seeding artefacts).
+- **Active stage:** 2 — STABILIZE (cycle 2 done).
 - **Done so far:** Bootstrap complete. Codebase Map written and spot-verified
   against the tree. Backlog re-derived from the live GitHub issues (#1–#128) and
   the two 2026-06-04 audits. Confirmed via direct code inspection that commit
   `6897165` already landed several launch-hardening fixes (see Decision log).
-- **In progress / next:** Finish DISCOVER seeding (this file + `FEATURES.md`).
-  Next phase: **STABILIZE** — start with the residual launch-blockers that are
-  *not* yet fixed (#93 manual credential rotation, #95 XFF trust, #121 cross-org
-  category leak, #122/#123/#124 schema/migration bugs).
+  Cycle 2 resolved B-002 (#121 cross-org category leak) and B-005 (#123 migration
+  zero-date guards) — both MySQL-verified.
+- **In progress / next:** Phase STABILIZE in progress — cycle 2 done (B-002,
+  B-005 resolved). Remaining High correctness: B-004 (#122 org re-invite key),
+  B-006 (#124 short-code TOCTOU).
 - **Open threads:**
   - 🔴 **#93 manual action outstanding** — the plaintext legacy DB credential in
     `web/G2My.Link/public_html_legacy/dbConfig.php` is now gitignored and was
@@ -170,9 +171,32 @@ list; these OVERRIDE default behaviour):
   minimum-launchable-product framing.
 - **Revisit if:** the user expands scope to include Component C / a roadmap phase.
 
+### 2026-06-28 — STRICT-mode zero-date guard: CAST AS CHAR before NULLIF
+
+- **Decision:** When guarding legacy zero-date columns in data-migration SQL under
+  STRICT `sql_mode` (NO_ZERO_DATE active), cast the source column `AS CHAR` before
+  comparing with `NULLIF`, rather than comparing the bare date literal
+  `'0000-00-00'` or `'0000-00-00 00:00:00'` directly.
+- **Why:** Under NO_ZERO_DATE STRICT mode, the bare zero-date literal inside a
+  `NULLIF()` call is itself rejected with errno 1292 before the comparison even
+  runs. Casting to CHAR first makes the comparison a string operation, which is
+  never mode-restricted.
+- **Canonical idiom (NOT NULL target):**
+  `IFNULL(NULLIF(NULLIF(CAST(col AS CHAR),'0000-00-00 00:00:00'),'0000-00-00'),NOW())`
+- **Canonical idiom (nullable target):**
+  `NULLIF(NULLIF(CAST(col AS CHAR),'0000-00-00 00:00:00'),'0000-00-00')`
+- **Applied in:** `web/_sql/migrations/001`, `002`, `003`, `004`, `006`, `007`.
+- **Revisit if:** a future MySQL version rejects string-mode CAST — switch to
+  `STR_TO_DATE` with `%Y-%m-%d %H:%i:%s` and an explicit NULL fallback.
+
 ## ⛳ Checkpoint log
 
-_(none yet — first checkpoint will be recorded at the end of STABILIZE)_
+### Cycle 2 — 2026-06-28 — STABILIZE
+
+- **Items resolved:** B-002 (#121 cross-org category leak), B-005 (#123 migration zero-date guards).
+- **Evidence:** old JOIN returned 2 rows (cross-org leak); new JOIN returns 1 (correct org only). Unguarded INSERT → errno 1292 under STRICT; guarded INSERT succeeds. `004_migrate_shorturls.sql` ran end-to-end against a legacy stub → exit 0. Both PHP files lint clean (`php -l`).
+- **Remaining High correctness in STABILIZE:** B-004 (#122 org re-invite partial-key), B-006 (#124 short-code TOCTOU retry). Security High still open: B-003 (#95 XFF/trusted-proxy).
+- **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually).
 
 ## 🧩 Feature Specs
 
@@ -211,7 +235,7 @@ _(none yet)_
     contact, info/preview, legal/{terms,privacy,cookies,copyright,acceptable-use},
     auth pages (register/login/logout/forgot/reset/verify-email), landing page.
   - A admin (`_admin`): dashboard home, links/{index,create,edit}, profile/
-    {index,sessions}, org/*, invite/accept, privacy/* (data rights, delete),
+    {index,sessions}, `org/*`, invite/accept, `privacy/*` (data rights, delete),
     security/breach-response. Web installer at `public_html/install/`.
   - B: redirect (`/<code>`), 404.php, expired.php, validating.php, robots.php,
     favicon.php, landing page.
@@ -293,10 +317,11 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
 - **id:** B-002
   **title:** Cross-org category leak — short-URL↔category JOIN omits `orgHandle`
   **category:** security · **impact:** High · **component:** A/shared (database)
-  **source:** #121, schema-review §High · **status:** OPEN. Category IDs are only
-  per-org-unique; admin list can fan out and public info page can show another
-  org's category name. Fix: add `AND s.orgHandle = c.orgHandle`, or surrogate
-  `categoryUID` FK.
+  **source:** #121, schema-review §High · **status:** ✅ Done (fixed cycle 2; MySQL-verified).
+  Added `AND c.orgHandle = s.orgHandle` to LEFT JOIN ON-clause in
+  `pages/links/index.php:140` and `pages/info/index.php:120`; swept all other
+  `tblCategories` PHP queries — no other leaks. Old JOIN returned 2 rows (leaked
+  another org's category name); new JOIN returns exactly 1 (correct org only).
 
 - **id:** B-003
   **title:** `g2ml_getClientIP()` trusts spoofable X-Forwarded-For / X-Real-Ip with no trusted-proxy check
@@ -316,10 +341,13 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
 - **id:** B-005
   **title:** Data migration: guard zero-date / NULL legacy dates under STRICT sql_mode
   **category:** correctness · **impact:** High · **component:** database
-  **source:** #123, schema-review §High · **status:** OPEN. A single
-  `0000-00-00`/NULL legacy row aborts the whole batch (risks the 480-URL
-  migration). Fix: `IFNULL(NULLIF(old.date,'0000-00-00 00:00:00'), NOW())` +
-  post-migration row-count assertion.
+  **source:** #123, schema-review §High · **status:** ✅ Done (fixed cycle 2; MySQL-verified).
+  Wrapped legacy date columns in migrations 001–004, 006–007 with
+  `IFNULL(NULLIF(NULLIF(CAST(col AS CHAR),'0000-00-00 00:00:00'),'0000-00-00'),NOW())`
+  (nullable targets omit the outer `IFNULL`). CAST AS CHAR strategy avoids the
+  bare `'0000-00-00'` literal being rejected by STRICT mode itself. Verified:
+  unguarded INSERT errors 1292 under STRICT; guarded succeeds; real
+  004_migrate_shorturls.sql ran end-to-end → exit 0.
 
 - **id:** B-006
   **title:** Short-code generation TOCTOU — retry on unique-key collision
@@ -555,5 +583,6 @@ _(empty — feature gaps are tracked in `FEATURES.md`)_
 Baseline metrics measured at DISCOVER seed; every cycle appends a row.
 
 | Date | Cycle | Stage | Open #93–#128 | High B- open | Med B- open | Low B- open | Lint (parallel-lint) | Coverage | Notes |
-|---|---|---|---|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-06-05 | 0 | DISCOVER | 36 (all OPEN on GitHub; 8 fixed-on-branch pending close) | 8 (1 ✅) | 21 (5 ✅) | 10 (0 ✅) | not-run-this-cycle | none (no test suite) | Baseline seed; map-commit 7b67ad5 |
+| 2026-06-28 | 2 | STABILIZE | 34 (B-002 + B-005 resolved this cycle) | 6 (3 ✅) | 21 (5 ✅) | 10 (0 ✅) | clean (php -l on changed files) | none (no test suite) | Cross-org category isolation (B-002/#121) + migration zero-date guards (B-005/#123); old-vs-new JOIN row counts; STRICT-mode guarded-vs-unguarded INSERT (errno 1292); real 004 migration exit 0 — all MySQL-verified |

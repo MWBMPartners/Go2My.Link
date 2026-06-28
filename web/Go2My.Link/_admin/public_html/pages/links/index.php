@@ -137,7 +137,7 @@ $links = dbSelect(
             s.isActive, s.createdAt, s.startDate, s.endDate,
             c.categoryName
      FROM tblShortURLs s
-     LEFT JOIN tblCategories c ON s.categoryID = c.categoryID
+     LEFT JOIN tblCategories c ON s.categoryID = c.categoryID AND c.orgHandle = s.orgHandle
      WHERE " . $whereSQL . "
      ORDER BY s.createdAt DESC
      LIMIT ? OFFSET ?",

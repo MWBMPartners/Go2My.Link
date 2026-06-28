@@ -1,6 +1,6 @@
 {
   "mission": "production-ready + feature-complete (in scope) for Go2My.Link Components A+B",
-  "aim": "Go2My.Link — multi-component URL-shortening platform (A=go2my.link main+admin, B=g2my.link redirect router, C=lnks.page LinksPage [largely unbuilt]); drive A+B to a clean production launch by clearing the launch-hardening backlog and closing in-scope feature gaps.",
+  "aim": "Go2My.Link \u2014 multi-component URL-shortening platform (A=go2my.link main+admin, B=g2my.link redirect router, C=lnks.page LinksPage [largely unbuilt]); drive A+B to a clean production launch by clearing the launch-hardening backlog and closing in-scope feature gaps.",
   "definition_of_done": [
     "all launch-blocking audit/schema items (#93-#128) resolved",
     "no unresolved Critical/High security finding",
@@ -10,31 +10,78 @@
     "docs sufficient to install/run"
   ],
   "plan": [
-    {"phase": "DISCOVER",  "mode": "iterate-audit+featurefind", "exit": "work queue seeded", "status": "done"},
-    {"phase": "STABILIZE", "mode": "iterate",  "exit": "no High correctness/test gap; safety net exists", "status": "in-progress"},
-    {"phase": "SECURE",    "mode": "security", "exit": "Phase-0 done; no unresolved Critical/High finding; rounds dry", "status": "pending"},
-    {"phase": "COMPLETE",  "mode": "orchestrator(feature)", "exit": "every High in-scope gap built-or-queued", "status": "pending"},
-    {"phase": "POLISH",    "mode": "iterate",  "exit": "no High UX/perf item", "status": "pending"},
-    {"phase": "VERIFY",    "mode": "review",   "exit": "complete review pass: overall PASS @ last_commit", "status": "pending"}
+    {
+      "phase": "DISCOVER",
+      "mode": "iterate-audit+featurefind",
+      "exit": "work queue seeded",
+      "status": "done"
+    },
+    {
+      "phase": "STABILIZE",
+      "mode": "iterate",
+      "exit": "no High correctness/test gap; safety net exists",
+      "status": "in-progress"
+    },
+    {
+      "phase": "SECURE",
+      "mode": "security",
+      "exit": "Phase-0 done; no unresolved Critical/High finding; rounds dry",
+      "status": "pending"
+    },
+    {
+      "phase": "COMPLETE",
+      "mode": "orchestrator(feature)",
+      "exit": "every High in-scope gap built-or-queued",
+      "status": "pending"
+    },
+    {
+      "phase": "POLISH",
+      "mode": "iterate",
+      "exit": "no High UX/perf item",
+      "status": "pending"
+    },
+    {
+      "phase": "VERIFY",
+      "mode": "review",
+      "exit": "complete review pass: overall PASS @ last_commit",
+      "status": "pending"
+    }
   ],
   "phase_cursor": 1,
   "state": "RUNNING",
   "cursor": null,
-  "next_action": "STABILIZE cycle: fix top High correctness/data-integrity items — start with #121 cross-org category JOIN leak (B-002) and #123 migration zero-date/NULL guards (B-005); verify on the throwaway MySQL 9.6. NOTE: no automated test suite — empirical MySQL/flow verification is the safety net; before behaviour-touching changes with no characterization coverage, prefer narrowly-scoped, individually-verifiable fixes.",
-  "queue": {"backlog": "PROJECT.md#Backlog", "feature_gaps": "FEATURES.md", "findings": "SECURITY.md#Findings"},
+  "next_action": "STABILIZE cycle: B-004 (#122 org re-invite blocked by UQ_org_email_pending including status) + B-006 (#124 short-code generation TOCTOU retry on unique collision). Verify on throwaway MySQL 9.6.",
+  "queue": {
+    "backlog": "PROJECT.md#Backlog",
+    "feature_gaps": "FEATURES.md",
+    "findings": "SECURITY.md#Findings"
+  },
   "gate_ledger": [],
-  "blocked": {"is": false, "reason": null, "since": null},
-  "cycle": 1,
+  "blocked": {
+    "is": false,
+    "reason": null,
+    "since": null
+  },
+  "cycle": 2,
   "cap": 60,
   "gates": "hybrid",
   "feature_completeness": "in-scope",
-  "verify": {"commit": null, "claim_groups": [], "integration": "pending", "completeness_critic": "pending"},
+  "verify": {
+    "commit": null,
+    "claim_groups": [],
+    "integration": "pending",
+    "completeness_critic": "pending"
+  },
   "verified_at_commit": null,
-  "lock": {"holder": null, "ts": null, "stale_after_min": 90},
+  "lock": {
+    "holder": null,
+    "ts": null,
+    "stale_after_min": 90
+  },
   "branch": "autopilot/2026-06-05",
-  "last_commit": "7b67ad5",
+  "last_commit": "b6cfa8e",
   "trajectory_ref": "PROJECT.md#Trajectory-ledger",
   "terminal": false,
   "delay": 90,
-  "updated": "2026-06-28T06:35:17Z"
+  "updated": "2026-06-28T06:52:00Z"
 }
