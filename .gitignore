@@ -33,6 +33,9 @@
 **/_auth_keys/.install_token
 **/_auth_keys/.installed
 
+# dev-team autopilot loop lock (runtime only; state file autopilot.json IS tracked)
+.dev-team/loop.lock/
+
 *.env
 .env.*
 *.pem
