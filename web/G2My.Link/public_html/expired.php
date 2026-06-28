@@ -71,6 +71,40 @@ if (($status ?? 'expired') === 'not_yet_active') {
 } else {
     $statusIcon = 'fa-calendar-xmark';
 }
+
+// ============================================================================
+// 🛡️ Scheme-guard the fallback URL before it reaches an href / JS sink (F-003 / #99)
+// ============================================================================
+// The org/category fallback could be a migrated legacy URL carrying a
+// javascript:/data:/vbscript: scheme, which would become a live XSS /
+// open-redirect vector once emitted into an href or window.location.href.
+// g2ml_sanitiseURL() (loaded by page_init.php for Component B) returns false
+// for anything that is not a valid http(s) URL; on rejection we drop back to
+// the safe main site. htmlspecialchars(..., ENT_QUOTES) is still applied at
+// every sink.
+
+if (function_exists('g2ml_sanitiseURL'))
+{
+    $safeFallbackURL = g2ml_sanitiseURL($fallbackURL);
+
+    if ($safeFallbackURL === false)
+    {
+        $safeFallbackURL = $mainSiteURL;
+    }
+}
+else
+{
+    // Defensive fallback if the shared helper is ever unavailable in this
+    // include path: an http(s)-only scheme guard consistent with house style.
+    if (preg_match('#^https?://#i', $fallbackURL) === 1)
+    {
+        $safeFallbackURL = $fallbackURL;
+    }
+    else
+    {
+        $safeFallbackURL = $mainSiteURL;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en" data-bs-theme="light">
@@ -82,7 +116,7 @@ if (($status ?? 'expired') === 'not_yet_active') {
 
     <!-- ♿ No-JS fallback: meta refresh to fallback URL -->
     <noscript>
-        <meta http-equiv="refresh" content="<?php echo $countdownDelay; ?>;url=<?php echo htmlspecialchars($fallbackURL, ENT_QUOTES, 'UTF-8'); ?>">
+        <meta http-equiv="refresh" content="<?php echo $countdownDelay; ?>;url=<?php echo htmlspecialchars($safeFallbackURL, ENT_QUOTES, 'UTF-8'); ?>">
     </noscript>
 
     <!-- Bootstrap 5.3 CSS (CDN) -->
@@ -160,7 +194,7 @@ if (($status ?? 'expired') === 'not_yet_active') {
 
         <!-- 🔗 Manual Fallback Link -->
         <div class="mb-4">
-            <a href="<?php echo htmlspecialchars($fallbackURL, ENT_QUOTES, 'UTF-8'); ?>"
+            <a href="<?php echo htmlspecialchars($safeFallbackURL, ENT_QUOTES, 'UTF-8'); ?>"
                class="btn btn-primary">
                 <i class="fas fa-arrow-right" aria-hidden="true"></i>
                 Continue
@@ -170,7 +204,7 @@ if (($status ?? 'expired') === 'not_yet_active') {
         <!-- ♿ No-JS Manual Link -->
         <noscript>
             <p class="text-body-secondary">
-                <a href="<?php echo htmlspecialchars($fallbackURL, ENT_QUOTES, 'UTF-8'); ?>">
+                <a href="<?php echo htmlspecialchars($safeFallbackURL, ENT_QUOTES, 'UTF-8'); ?>">
                     Continue to <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?> if you are not redirected automatically.
                 </a>
             </p>
@@ -194,7 +228,7 @@ if (($status ?? 'expired') === 'not_yet_active') {
         (function() {
             var remaining   = <?php echo (int) $countdownDelay; ?>;
             var total       = remaining;
-            var fallbackURL = <?php echo json_encode($fallbackURL, JSON_UNESCAPED_SLASHES); ?>;
+            var fallbackURL = <?php echo json_encode($safeFallbackURL, JSON_UNESCAPED_SLASHES); ?>;
             var countdownEl = document.getElementById('countdown');
             var progressEl  = document.getElementById('countdown-bar');
             var statusEl    = document.getElementById('countdown-status');

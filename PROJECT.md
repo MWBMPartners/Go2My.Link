@@ -118,7 +118,7 @@ list; these OVERRIDE default behaviour):
 
 ## 📌 Current status
 
-- **Active stage:** 3 — SECURE (purple-team in progress; F-001/#95 fixed, 0 open High).
+- **Active stage:** 3 — SECURE (purple-team in progress; F-001/#95, F-002/#98, F-003/#99 fixed; 0 open High/Critical).
 - **Done so far:** Bootstrap complete. Codebase Map written and spot-verified
   against the tree. Backlog re-derived from the live GitHub issues (#1–#128) and
   the two 2026-06-04 audits. Confirmed via direct code inspection that commit
@@ -134,11 +134,11 @@ list; these OVERRIDE default behaviour):
   8 open findings (top = F-001/#95 spoofable client IP); 8 verified fixed-on-branch;
   no secrets or active-compromise signal; deps PASS. Cycle 6 (SECURE — purple-team):
   F-001/#95 (High) fixed — `REMOTE_ADDR` default + `TRUSTED_PROXIES` allowlist +
-  CIDR helper; rate-limit/audit spoofing closed; 53 unit tests pass (+18).
-- **In progress / next:** SECURE phase — F-001/#95 (High) fixed. **No open High
-  findings remaining.** Remaining open findings: F-003/#99 (interstitial scheme
-  guard, Med) next, then F-002/#98 (deletion-cancel CSRF, Med), F-004/#100 (SSRF,
-  Med), F-005/#101 (Low), F-006 (Low, latent), F-007 (Low), F-008 (Low).
+  CIDR helper; rate-limit/audit spoofing closed; 53 unit tests pass (+18). Cycle 7
+  (SECURE — purple-team): F-002/#98 + F-003/#99 (both Med) fixed — deletion-cancel
+  CSRF→POST; interstitial destination/fallback scheme-guarded; 8 new regression
+  tests; 61 unit tests pass.
+- **In progress / next:** SECURE phase — F-002/#98 + F-003/#99 fixed. **No open High or Critical findings remaining.** Remaining: F-004/#100 (SSRF in `validateDestination`, Med) + F-005/#100 (created-URL internal host, Low) + F-006/#101 (favicon path traversal, Low) — next cycle as a destination-safety cluster; then F-008 SRI (Low). After that SECURE exit (no Critical/High; Med/Low addressed).
 - **Open threads:**
   - 🔴 **#93 manual action outstanding** — the plaintext legacy DB credential in
     `web/G2My.Link/public_html_legacy/dbConfig.php` is now gitignored and was
@@ -244,6 +244,12 @@ list; these OVERRIDE default behaviour):
 - **Why not per-call allowlist or ini-driven config:** A single well-named constant declared alongside the credentials file is discoverable, zero-dependency, and matches the project's no-Composer constraint. A DB-driven or ini-driven list adds a fetch on every request to the hot path.
 - **Revisit if:** the app is placed behind a known proxy/CDN (e.g. Cloudflare) — define `TRUSTED_PROXIES` with the CDN's published CIDR ranges.
 
+### 2026-06-28 — Interstitial output: scheme-guard all destination/fallback sinks; deletion-cancel is a CSRF POST
+
+- **Decision:** All destination and fallback URL sinks in `validating.php` and `expired.php` (`href` attributes, JS `window.location` assignments, `meta-refresh` content, noscript text) are scheme-guarded via `g2ml_sanitiseURL()` (http(s) only) before output, with a `preg_match('#^https?://#i')` inline fallback. A rejected destination produces no link; a rejected fallback falls back to `https://go2my.link`. Account-deletion cancellation is converted to a CSRF-protected POST using a dedicated form name (`account_delete_cancel`), distinct from the deletion-request form (`account_delete`); the GET `?cancel` path is removed entirely.
+- **Why:** A legacy-migrated `javascript:` or `data:` URL stored in `tblShortURLs` would otherwise render as a clickable (or auto-followed via `window.location`) link on the interstitial pages — `htmlspecialchars` alone does not neutralise URI scheme injection. A forged GET request (e.g. via an `<img>` tag) to the cancel URL would silently cancel a victim's own pending account-deletion with no user action.
+- **Revisit if:** a future interstitial redesign introduces a new URL output sink that bypasses the guard, or if the cancellation flow gains additional steps that require re-evaluation of the form structure.
+
 ### 2026-06-28 — SECURE Phase 0: SECURITY.md is the findings register; purple-team order established
 
 - **Decision:** `SECURITY.md` is the single findings register using `F-` IDs mapped to GitHub issue numbers. Purple-team remediation order: F-001 (#95 spoofable client IP) → F-003 (#99 interstitial scheme guard) → F-002 (#98 deletion-cancel CSRF) → F-004 (#100 SSRF in validateDestination) → F-005 (#100 created-URL internal-host/userinfo) → F-006 (#101 favicon path-traversal latent). Active-compromise signal: none.
@@ -298,6 +304,14 @@ list; these OVERRIDE default behaviour):
 - **Evidence:** RED PoC (before fix): `g2ml_getClientIP()` returned forged `1.2.3.4` from a crafted `X-Forwarded-For` header; rotating IPs bypassed the per-IP rate-limit. VERIFY (after fix): genuine `203.0.113.9` (`REMOTE_ADDR`) returned; forged header ignored. Regression: `tests/unit/security_clientip_test.php` — 18 new tests covering REMOTE_ADDR baseline, XFF trusted/untrusted proxy cases, CIDR matching, fallback chain. `php tests/run.php` → 53 passed / 0 failed (was 35). `php -l` clean on all changed files. `TRUSTED_PROXIES` documented in installer creds heredoc and `docs/INSTALL.md`.
 - **Remaining open High findings:** none (F-001 was the only High; 0 open High now).
 - **Next purple-team target:** F-003 (#99 — interstitial scheme guard, Med), then F-002 (#98 — deletion-cancel CSRF, Med), then F-004 (#100 — SSRF), then F-005/#101 Low etc.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually).
+
+### Cycle 7 — 2026-06-28 — SECURE (purple-team, F-002/#98 + F-003/#99)
+
+- **Items resolved:** B-015 (#98 deletion-cancel CSRF→POST), B-012 (#99 interstitial scheme guard).
+- **Evidence:** F-002 — GET `?cancel` path removed from `privacy/delete/index.php`; cancellation now requires a CSRF-verified POST via form name `account_delete_cancel` (distinct from `account_delete`); ownership, not-cancellable, and activity-log logic preserved. F-003 — every destination/fallback URL sink in `validating.php` and `expired.php` (href, JS `window.location`, `meta-refresh`, noscript) scheme-guarded via `g2ml_sanitiseURL()` (reachable in Component B via `page_init`) plus `preg_match('#^https?://#i')` inline fallback; rejected destination → no link rendered; rejected fallback → `https://go2my.link`. Regression: `tests/unit/redirect_scheme_guard_test.php` — 8 new tests. `php tests/run.php` → 61 passed / 0 failed (was 53). `php -l` clean on all 4 changed files. Bucket 1.
+- **Remaining open Med findings:** F-004/#100 (SSRF in `validateDestination`, off by default). No open High/Critical.
+- **Next purple-team target:** F-004 + F-005 + F-006 as a destination-safety cluster, then F-008 SRI (Low). After that, SECURE exit gate.
 - **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually).
 
 ### Cycle 5 — 2026-06-28 — SECURE (Phase 0 — doc-only)
@@ -398,12 +412,13 @@ _(none yet)_
 
 - **last-run:** 2026-06-28
 - **map-commit:** `7b67ad5`
-- **cycles-done:** 6  (0=DISCOVER, 2–3=STABILIZE correctness, 4=STABILIZE test harness, 5=SECURE Phase 0, 6=SECURE purple-team F-001)
+- **cycles-done:** 7  (0=DISCOVER, 2–3=STABILIZE correctness, 4=STABILIZE test harness, 5=SECURE Phase 0, 6=SECURE purple-team F-001, 7=SECURE purple-team F-002+F-003)
 - **branch:** `autopilot/2026-06-05`
 - **working tree at seed:** clean except untracked `.claude/agents/`,
   `.claude/settings.json` (autopilot scaffolding — not production code).
 - **artifacts added (cycle 5):** `SECURITY.md` (repo root — threat model, attack-surface map, tooling sweep, multi-role fixtures plan, coverage ledger, findings register F-001–F-008 open / F-101–F-108 fixed).
 - **artifacts added (cycle 6):** `tests/unit/security_clientip_test.php` (18 regression tests for `g2ml_getClientIP`, `g2ml_isTrustedProxy`, `g2ml_ipInRange`); updated `web/_functions/security.php` (trusted-proxy allowlist); `docs/INSTALL.md` + installer heredoc (TRUSTED_PROXIES documentation).
+- **artifacts added (cycle 7):** `tests/unit/redirect_scheme_guard_test.php` (8 regression tests for interstitial scheme guard); updated `web/G2My.Link/public_html/validating.php` + `expired.php` (scheme guard on all URL sinks); updated `web/Go2My.Link/_admin/public_html/pages/privacy/delete/index.php` (deletion-cancel CSRF→POST).
 
 ## 📋 Backlog
 
@@ -519,9 +534,7 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
 - **id:** B-012
   **title:** Interstitial pages emit redirect destination into href/JS without the http(s) scheme guard
   **category:** security · **impact:** Medium · **component:** B
-  **source:** #99, audit §3.2 · **status:** OPEN. `validating.php`/`expired.php`
-  lack `buildRedirectResponse()`'s `^https?://` allowlist — defends against
-  `javascript:` schemes in migrated legacy URLs.
+  **source:** #99, audit §3.2 · **status:** ✅ Done (cycle 7). All destination/fallback sinks in `validating.php` and `expired.php` (`href`, JS `window.location`, `meta-refresh`, noscript) scheme-guarded via `g2ml_sanitiseURL()` (http(s) only) with `preg_match('#^https?://#i')` fallback; rejected destination → no link; rejected fallback → `https://go2my.link`; `htmlspecialchars` retained. 8 regression tests added; suite → 61 unit / 0 failed.
 
 - **id:** B-013
   **title:** Harden against SSRF — guard server-side destination fetch and validate created URLs against internal/private hosts
@@ -539,8 +552,7 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
 - **id:** B-015
   **title:** Account-deletion cancellation is a state-changing GET with no CSRF token
   **category:** security · **impact:** Medium · **component:** A
-  **source:** #98, audit §3.3 · **status:** OPEN. Convert to a CSRF-protected POST
-  or signed one-time token.
+  **source:** #98, audit §3.3 · **status:** ✅ Done (cycle 7). Cancellation converted to a CSRF-protected POST (form name `account_delete_cancel`, distinct from the `account_delete` request form); GET `?cancel` path removed; ownership/not-cancellable/activity-log checks preserved.
 
 - **id:** B-016
   **title:** `sp_logActivity` drifts from schema (missing cols; NOT NULL ipAddress) — sync or remove
@@ -727,3 +739,4 @@ Baseline metrics measured at DISCOVER seed; every cycle appends a row.
 | 2026-06-28 | 4 | STABILIZE → completes STABILIZE | 32 (no GitHub issues closed this cycle) | 4 (5 ✅) | 21 (5 ✅) | 10 (0 ✅) | clean (php -l on all new tests/ files) | 35 unit / 4 integration (new — all green) | Test harness + characterisation (B-041): pure-PHP harness under tests/; `php tests/run.php` → 35 passed / 0 failed exit 0; integration 4 passed (or SKIPs cleanly with no DSN). STABILIZE stage now COMPLETE; advancing to SECURE |
 | 2026-06-28 | 5 | SECURE — Phase 0 (doc-only) | 32 (unchanged) | 4 open | 21 open | 10 open | n/a (doc-only cycle) | 35 unit / 4 integration (unchanged) | Threat model + attack-surface map + tooling sweep + multi-role fixtures plan + coverage ledger + findings register → SECURITY.md written. 8 OPEN findings (1 High: F-001/#95; 3 Med: F-002/#98, F-003/#99, F-004/#100; 4 Low: F-005/#100, F-006/#101, F-007, F-008); 8 verified FIXED-on-branch (F-101..F-108). No secrets/active-compromise signal; deps PASS (jQuery 3.7.1, Bootstrap 5.3.3, FA 6.5.1 pinned & current; Chart.js unstamped — note for analytics). Evidence: SECURITY.md#Findings |
 | 2026-06-28 | 6 | SECURE — purple-team (F-001/#95) | 31 (B-003 resolved this cycle) | 0 open (3 ✅ including this cycle) | 21 open | 10 open | clean (php -l on changed files) | 53 unit / 4 integration (18 new: `tests/unit/security_clientip_test.php`) | Spoofable client IP fixed (B-003/#95) — `REMOTE_ADDR` default + `TRUSTED_PROXIES` allowlist + CIDR helper via `inet_pton`; right-most-untrusted XFF entry; covers all 13 callers. RED PoC: forged 1.2.3.4 returned before fix; VERIFY: genuine 203.0.113.9 returned after. 53 unit tests pass / 0 failed (was 35). TRUSTED_PROXIES documented in installer creds heredoc + docs/INSTALL.md. No open High findings remaining. |
+| 2026-06-28 | 7 | SECURE — purple-team (F-002/#98 + F-003/#99) | 29 (B-012 + B-015 resolved this cycle) | 0 open | 19 open | 10 open | clean (php -l on all 4 changed files) | 61 unit / 4 integration (8 new: `tests/unit/redirect_scheme_guard_test.php`) | Deletion-cancel CSRF→POST (B-015/#98) + interstitial scheme guard (B-012/#99) fixed. GET `?cancel` path removed; CSRF-protected POST form `account_delete_cancel` added. All destination/fallback sinks (`href`, JS `window.location`, `meta-refresh`, noscript) in `validating.php` + `expired.php` scheme-guarded via `g2ml_sanitiseURL()` + `preg_match('^https?://')` fallback; rejected destination → no link; rejected fallback → `https://go2my.link`. 61 tests pass / 0 failed (was 53). No open High/Critical findings. |

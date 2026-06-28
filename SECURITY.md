@@ -86,7 +86,7 @@ Every untrusted input → sensitive sink, with the controls verified present.
 | Surface | Entry / file | AuthN/Z | CSRF | Input validation | Output enc. | Rate limit |
 |---|---|---|---|---|---|---|
 | Redirect resolve | `web/G2My.Link/_functions/redirect_resolver.php`, `domain_resolver.php` | n/a (public) | n/a | shortCode bound via prepared stmt; **`^https?://` scheme guard at L273-280** | n/a (`Location:`) | n/a |
-| Interstitials | `expired.php`, `validating.php` | n/a | n/a | ⚠️ destination/fallback **not** re-checked for scheme (**F-003**) | `htmlspecialchars`+`json_encode` ✅ | n/a |
+| Interstitials | `expired.php`, `validating.php` | n/a | n/a | ✅ destination/fallback scheme-guarded via `g2ml_sanitiseURL()` + `preg_match('^https?://')` on all sinks (F-003 fixed, cycle 7) | `htmlspecialchars`+`json_encode` ✅ | n/a |
 | Create API | `public_html/api/create/index.php` + `_functions/shorturl_create.php` | public | ✅ token | `g2ml_sanitiseURL` (http/https only); ⚠️ **no private-IP/userinfo block** (**F-005**) | JSON | ✅ per-IP (IP spoofable — F-001) |
 | Consent API | `public_html/api/consent/index.php` | public | ✅ `cookie_consent` token + POST gate | JSON validated | referer host allowlisted ✅ | — |
 | Login | `pages/login/index.php`, `auth.php` | n/a | ✅ `login_form` | email/pwd | redirect allowlisted (relative-only) ✅ | account-level lockout ✅ |
@@ -98,7 +98,7 @@ Every untrusted input → sensitive sink, with the controls verified present.
 | Org / invite | `_functions/org.php`, `_admin/.../pages/org/*`, `pages/invite/index.php` | **`canManageOrg()` on every mutator** ✅ | ✅ | accept checks email match + `[default]` org | ✅ | — |
 | Admin pages | `_admin/public_html/index.php` (router gate `requireAuth('User')`) + per-page `requireAuth('GlobalAdmin')` | ✅ defence-in-depth | ✅ | — | `g2ml_sanitiseOutput` ✅ | — |
 | Breach-response | `_admin/.../security/breach-response.php` | `requireAuth('GlobalAdmin')` | ✅ `breach_response_form` + POST gate | — | escaped ✅ | — |
-| Privacy / deletion | `_admin/.../privacy/delete/index.php` | `requireAuth` + ownership | ⚠️ **cancel is state-changing GET, no CSRF** (**F-002**) | int-cast | — | — |
+| Privacy / deletion | `_admin/.../privacy/delete/index.php` | `requireAuth` + ownership | ✅ cancel is now a CSRF-protected POST (`account_delete_cancel` form; GET `?cancel` path removed — F-002 fixed, cycle 7) | int-cast | — | — |
 | Contact form | `public_html/pages/contact/index.php` | public | — | **subject stripped of `\r\n\0`** ✅; CAPTCHA server-verified ✅ | — | per-IP (spoofable) |
 | Installer | `install/index.php`, `install/.htaccess` | proof-of-control token + HTTPS-required + self-lock | — | — | — | — |
 | robots / favicon | `robots.php`, `favicon.php` | public | n/a | favicon fallback chain ✅; ⚠️ org-logo path **not** `basename()/realpath()` confined (**F-006**, latent) | n/a | n/a |
@@ -118,10 +118,10 @@ Every untrusted input → sensitive sink, with the controls verified present.
 | JWT | 347 | **N/A** | No JWT; DB-backed opaque session tokens. |
 | OAuth/SSO redirect | 601 | **N/A** | Deferred (Phase 10). |
 | XSS (stored/reflected/DOM) | 79 | **N/A — controlled** | `htmlspecialchars(ENT_QUOTES)` on output; `app.js` uses `escapeHTML()`; `document.write` is constant strings; no `eval`/`new Function`. |
-| CSRF | 352 | **partial** | Tokens on all POST handlers. ⚠️ deletion-cancel GET (**F-002**). |
+| CSRF | 352 | **N/A — controlled** | Tokens on all POST handlers. Deletion-cancel converted to CSRF-protected POST (F-002 fixed, cycle 7). |
 | Clickjacking / headers / CSP | 1021/693 | **N/A — controlled** | `frame-ancestors 'none'`; Component B CSP now allows the CDN it loads (#103 fixed). |
 | CORS | 942 | **N/A** | No `Access-Control-Allow-Origin` set anywhere. |
-| Open redirect | 601 | **partial** | Login redirect relative-only ✅; consent referer allowlisted ✅. Interstitial scheme gap is **F-003**. |
+| Open redirect | 601 | **N/A — controlled** | Login redirect relative-only ✅; consent referer allowlisted ✅. Interstitial destination/fallback scheme-guarded (F-003 fixed, cycle 7). |
 | SSRF | 918 | **investigate** | `validateDestination()` HEAD fetch has no private-IP guard (**F-004**, OFF by default); created-URL host validation lacks private-IP/userinfo block (**F-005**). |
 | Insecure deserialization | 502 | **N/A** | No `unserialize()` of untrusted input. |
 | Mass assignment | 915 | **N/A — controlled** | Explicit column allowlists in INSERT/UPDATE. |
@@ -221,8 +221,8 @@ micro-framework (`tests/bootstrap.php`); MySQL available locally.
 | AuthN / rate-limit (CWE-307) | partial | unit (hash/CSRF) | Argon2id confirmed | login lockout + spoofed-IP rate-limit (F-001) untested |
 | Session mgmt (CWE-384) | no | manual read | regenerate-id present; F-007 | no session-fixation/binding test |
 | XSS (CWE-79) | no | manual read + grep | output escaped | no DOM/stored XSS probe |
-| CSRF (CWE-352) | partial | unit token round-trip | tokens present; F-002 | no test that deletion-cancel rejects forged GET |
-| Open redirect (CWE-601) | no | manual read | login/consent guarded; F-003 | no interstitial `javascript:`-scheme test |
+| CSRF (CWE-352) | **yes** | unit token round-trip + cycle-7 fix | tokens on all POST handlers; deletion-cancel → CSRF POST (F-002 fixed) | — |
+| Open redirect (CWE-601) | **yes** | manual read + cycle-7 regression tests | login/consent guarded; interstitial scheme-guarded (F-003 fixed); 8 new tests | — |
 | SSRF (CWE-918) | no | manual read | F-004/F-005 | no private-IP/userinfo fetch test |
 | Crypto/secrets (CWE-798/327) | partial | unit (encryption) + secret scan | clean | no gitleaks history scan (tool absent) |
 | Dependencies (CWE-1035) | yes | version/SRI grep | PASS; F-008 | gitleaks/semgrep/osv-scanner not installed |
@@ -236,13 +236,13 @@ micro-framework (`tests/bootstrap.php`); MySQL available locally.
 
 Severity = impact on assets. Status reconciled against **current** branch code
 (2026-06-05/06-28), not the original audit snapshot.
-**Open:** 7 (0 High, 3 Med, 4 Low). **Fixed on branch:** 9.
+**Open:** 5 (0 High, 1 Med, 4 Low). **Fixed on branch:** 11.
 
 | ID | Title | Sev | Status | CWE | Evidence (file:line) | GH # |
 |---|---|---|---|---|---|---|
 | **F-001** | Spoofable client IP — `g2ml_getClientIP()` trusts `X-Forwarded-For`/`X-Real-IP` with no trusted-proxy allowlist; poisons activity/consent/breach logs, `lastLoginIP`, new-login heuristic, and lets anon rate-limit be evaded | **High** | ✅ **FIXED** (cycle 6, branch `autopilot/2026-06-05`) — `REMOTE_ADDR` default; XFF honoured only when `REMOTE_ADDR` is in `TRUSTED_PROXIES` allowlist; CIDR helper via `inet_pton`; 18 regression tests added (53 total) | 290/348 | `web/_functions/security.php` — `g2ml_getClientIP()`, `g2ml_isTrustedProxy()`, `g2ml_ipInRange()` | #95 |
-| **F-002** | Account-deletion **cancel** is a state-changing GET with no CSRF token — forged GET (img/link) cancels a victim's own pending deletion | **Med** | **OPEN** | 352 | `web/Go2My.Link/_admin/public_html/pages/privacy/delete/index.php:52-114` (`isset($_GET['cancel'])` → UPDATE status='rejected') | #98 |
-| **F-003** | Interstitials emit redirect destination into `href`/`window.location.href` with `htmlspecialchars` but **no `^https?://` scheme allowlist** — a migrated legacy `javascript:`/`data:` destination renders as a clickable/auto-followed link | **Med** | **OPEN** | 79/601 | `validating.php:182` (`href` of `$destination`), `validating.php:224`/`251` (JS); `expired.php:163,197,220` | #99 |
+| **F-002** | Account-deletion **cancel** is a state-changing GET with no CSRF token — forged GET (img/link) cancels a victim's own pending deletion | **Med** | ✅ **FIXED** (cycle 7) — cancellation converted to a CSRF-protected POST (form name `account_delete_cancel`, distinct from `account_delete`); GET `?cancel` path removed; ownership/not-cancellable/activity-log checks preserved | 352 | `web/Go2My.Link/_admin/public_html/pages/privacy/delete/index.php` | #98 |
+| **F-003** | Interstitials emit redirect destination into `href`/`window.location.href` with `htmlspecialchars` but **no `^https?://` scheme allowlist** — a migrated legacy `javascript:`/`data:` destination renders as a clickable/auto-followed link | **Med** | ✅ **FIXED** (cycle 7) — every destination/fallback sink (`href`, JS `window.location`, `meta-refresh`, noscript) scheme-guarded via `g2ml_sanitiseURL()` (http(s) only) with `preg_match('#^https?://#i')` fallback; rejected destination → no link; rejected fallback → `https://go2my.link`; `htmlspecialchars` retained; 8 new regression tests added | 79/601 | `web/G2My.Link/public_html/validating.php`, `expired.php` | #99 |
 | **F-004** | SSRF in `validateDestination()` server-side HEAD fetch — `get_headers()` with no private/loopback/link-local/reserved-range guard. **OFF by default** (`redirect.validate_destination=false`); becomes an authenticated SSRF oracle if enabled | **Med** | **OPEN** | 918 | `web/G2My.Link/_functions/redirect_resolver.php:117-236` (fetch ~173/181); default at `index.php:190` | #100 |
 | **F-005** | Created-URL host validation lacks private-IP/loopback/reserved-literal rejection and `user:pass@` userinfo stripping — stored destinations can point at internal hosts (feeds F-004 when fetch enabled) | **Low** | **OPEN** | 918 | `web/Go2My.Link/_functions/shorturl_create.php:88-144` (only blocks own short-domains; scheme http/https enforced in `g2ml_sanitiseURL`) | #100 |
 | **F-006** | Latent path traversal — `favicon.php` concatenates DB `orgLogoPath` into `readfile()`/`filesize()` with no `basename()`/`realpath()` containment; `getOrgFavicon()` returns the raw stored value. Latent today (no code writes `orgLogoPath`); live once org-logo upload ships | **Low** | **OPEN** | 22 | `web/G2My.Link/public_html/favicon.php:87-116`; `domain_resolver.php:161-186` | #101 |

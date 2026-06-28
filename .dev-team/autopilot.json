@@ -50,7 +50,7 @@
   "phase_cursor": 2,
   "state": "RUNNING",
   "cursor": null,
-  "next_action": "SECURE purple-team: F-003/#99 \u2014 interstitial pages (validating.php/expired.php) emit the redirect destination into href/JS without the ^https?:// scheme guard used elsewhere (javascript:/data: risk for migrated legacy URLs). RED -> BLUE (scheme allowlist + proper escaping) -> re-attack + add test. Then F-002/#98 (deletion-cancel CSRF), F-004/#100 (SSRF guard).",
+  "next_action": "SECURE purple-team destination-safety cluster: F-004/#100 (SSRF guard in validateDestination server-side HEAD fetch \u2014 block internal/link-local/private hosts) + F-005/#100 (validate created short-URL destination host against internal/private/userinfo) + F-006/#101 (favicon path-traversal: basename/realpath-confine readfile to uploads dir). RED->BLUE->re-attack + tests. Then F-008 SRI (Low). Then SECURE exit (no Critical/High; Med/Low addressed).",
   "queue": {
     "backlog": "PROJECT.md#Backlog",
     "feature_gaps": "FEATURES.md",
@@ -62,7 +62,7 @@
     "reason": null,
     "since": null
   },
-  "cycle": 6,
+  "cycle": 7,
   "cap": 60,
   "gates": "hybrid",
   "feature_completeness": "in-scope",
@@ -79,10 +79,10 @@
     "stale_after_min": 90
   },
   "branch": "autopilot/2026-06-05",
-  "last_commit": "e3d7b40",
+  "last_commit": "d84d260",
   "trajectory_ref": "PROJECT.md#Trajectory-ledger",
   "terminal": false,
   "delay": 90,
-  "updated": "2026-06-28T07:47:39Z",
+  "updated": "2026-06-28T08:00:51Z",
   "ops_note": "Release the lease with `rm -rf .dev-team/loop.lock` (a `holder` file lives inside, so `rmdir` fails and would stall the next cycle)."
 }
