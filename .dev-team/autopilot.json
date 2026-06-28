@@ -50,7 +50,7 @@
   "phase_cursor": 2,
   "state": "RUNNING",
   "cursor": null,
-  "next_action": "SECURE Phase 0 (first SECURE iteration, doc-only): security scout + tooling sweep (secret scan / SAST-style grep / dependency check) + threat model + attack-surface map + multi-role fixtures + coverage ledger -> SECURITY.md. Yields before any attack. Then per-finding purple-team cycles; first target B-003/#95 spoofable client IP (g2ml_getClientIP trusts X-Forwarded-For).",
+  "next_action": "SECURE purple-team cycle: F-001/#95 spoofable client IP \u2014 g2ml_getClientIP trusts X-Forwarded-For/X-Real-IP with no trusted-proxy allowlist. RED (forge XFF to poison activity log / evade per-IP rate-limit + contact-form limit) -> VALIDATE -> BLUE (default to REMOTE_ADDR; only honour forwarded headers from a configurable trusted-proxy allowlist) -> re-attack. Add a unit test; verify lint.",
   "queue": {
     "backlog": "PROJECT.md#Backlog",
     "feature_gaps": "FEATURES.md",
@@ -62,7 +62,7 @@
     "reason": null,
     "since": null
   },
-  "cycle": 4,
+  "cycle": 5,
   "cap": 60,
   "gates": "hybrid",
   "feature_completeness": "in-scope",
@@ -79,10 +79,10 @@
     "stale_after_min": 90
   },
   "branch": "autopilot/2026-06-05",
-  "last_commit": "1ab4a19",
+  "last_commit": "ec00fa3",
   "trajectory_ref": "PROJECT.md#Trajectory-ledger",
   "terminal": false,
   "delay": 90,
-  "updated": "2026-06-28T07:25:10Z",
+  "updated": "2026-06-28T07:36:43Z",
   "ops_note": "Release the lease with `rm -rf .dev-team/loop.lock` (a `holder` file lives inside, so `rmdir` fails and would stall the next cycle)."
 }

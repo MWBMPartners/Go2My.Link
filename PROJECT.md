@@ -118,7 +118,7 @@ list; these OVERRIDE default behaviour):
 
 ## 📌 Current status
 
-- **Active stage:** 3 — SECURE (STABILIZE complete, cycles 2–4).
+- **Active stage:** 3 — SECURE (Phase 0 done; purple-team cycles starting).
 - **Done so far:** Bootstrap complete. Codebase Map written and spot-verified
   against the tree. Backlog re-derived from the live GitHub issues (#1–#128) and
   the two 2026-06-04 audits. Confirmed via direct code inspection that commit
@@ -128,12 +128,15 @@ list; these OVERRIDE default behaviour):
   re-invite via generated-column unique key) and B-006 (#124 short-code TOCTOU
   retry) — both MySQL-verified. Cycle 4 established the project's first test
   safety net: pure-PHP no-Composer harness under `tests/` with 35 unit tests
-  (security.php) + 4 integration tests (sp_lookupShortURL), all green.
-- **In progress / next:** STABILIZE complete (cycles 2–4): High correctness
-  cleared + test safety net in place. Entering SECURE — next cycle is security
-  Phase-0 (threat model + scanner sweep + sandbox + multi-role fixtures +
-  attack-surface map + coverage ledger → SECURITY.md, doc-only, yields before
-  attacking). First purple-team target: B-003/#95 spoofable client IP.
+  (security.php) + 4 integration tests (sp_lookupShortURL), all green. Cycle 5
+  (SECURE Phase 0): `SECURITY.md` written — threat model, attack-surface map,
+  tooling sweep, multi-role fixtures plan, coverage ledger, findings register.
+  8 open findings (top = F-001/#95 spoofable client IP); 8 verified fixed-on-branch;
+  no secrets or active-compromise signal; deps PASS.
+- **In progress / next:** SECURE phase — Phase 0 complete (`SECURITY.md` written;
+  8 open findings, top = F-001/#95 spoofable client IP in `g2ml_getClientIP()`).
+  Next: purple-team cycles (red→validate→blue→re-attack), one finding/batch per
+  cycle, starting F-001 (#95 trusted-proxy allowlist fix).
 - **Open threads:**
   - 🔴 **#93 manual action outstanding** — the plaintext legacy DB credential in
     `web/G2My.Link/public_html_legacy/dbConfig.php` is now gitignored and was
@@ -233,6 +236,12 @@ list; these OVERRIDE default behaviour):
 - **Revisit if:** the project migrates off Dreamhost to a hosting environment
   with Composer/CLI, at which point PHPUnit integration becomes viable.
 
+### 2026-06-28 — SECURE Phase 0: SECURITY.md is the findings register; purple-team order established
+
+- **Decision:** `SECURITY.md` is the single findings register using `F-` IDs mapped to GitHub issue numbers. Purple-team remediation order: F-001 (#95 spoofable client IP) → F-003 (#99 interstitial scheme guard) → F-002 (#98 deletion-cancel CSRF) → F-004 (#100 SSRF in validateDestination) → F-005 (#100 created-URL internal-host/userinfo) → F-006 (#101 favicon path-traversal latent). Active-compromise signal: none.
+- **Reason:** A single authoritative register prevents the findings list fragmenting across memory files and GitHub comments; `F-` IDs give stable cross-reference anchors across SECURITY.md, PROJECT.md, and GitHub issues. Ordering by exploitability × reach puts the spoofable-IP finding (poisons logs, rate-limit, login-alert — remotely exploitable with zero auth) first.
+- **Revisit if:** a second audit produces findings that conflict with the ordering, or if the user re-prioritises the purple-team queue.
+
 ### 2026-06-28 — STRICT-mode zero-date guard: CAST AS CHAR before NULLIF
 
 - **Decision:** When guarding legacy zero-date columns in data-migration SQL under
@@ -274,6 +283,13 @@ list; these OVERRIDE default behaviour):
 - **Characterisation coverage:** `security.php` — `g2ml_hashPassword`/`verifyPassword` (Argon2id), `g2ml_sanitiseInput` (trim+strip_tags, preserves internal CRLF), `g2ml_sanitiseOutput` (htmlspecialchars), `g2ml_sanitiseURL` (scheme allowlist), CSRF token generate/validate (single-use confirmed), `g2ml_encrypt`/`g2ml_decrypt` AES-256-GCM round-trip. Integration: `sp_lookupShortURL` (active→200, expired→410, not_found→404, not_yet_active→404/pending).
 - **STABILIZE stage status:** COMPLETE. All High correctness B- items resolved (B-002, B-004, B-005, B-006 done; B-001 manual; B-003 deferred to SECURE). Test safety net in place.
 - **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually). Advancing to SECURE.
+
+### Cycle 5 — 2026-06-28 — SECURE (Phase 0 — doc-only)
+
+- **Items resolved:** SECURITY.md written — threat model, attack-surface map, tooling sweep, multi-role fixtures plan, coverage ledger, and findings register.
+- **Evidence:** SECURITY.md present in repo root. Findings register: 8 OPEN (F-001–F-008, mapped to GitHub issues #95–#101); 8 verified FIXED-on-branch (F-101–F-108, mapped to #80–#103). Dependency sweep: jQuery 3.7.1, Bootstrap 5.3.3, Font Awesome 6.5.1 — all pinned and current; Chart.js version unstamped (note for when analytics ships). No committed secret found; no active-compromise signal. Coverage gap noted: GlobalAdmin + second-org fixtures (for IDOR/BFLA testing) not yet seeded; existing tests cover `security.php` + `sp_lookupShortURL` only.
+- **Artifacts added:** `SECURITY.md` (repo root).
+- **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually). Next: purple-team cycle targeting F-001 (#95 spoofable client IP — `g2ml_getClientIP()` trusted-proxy fix).
 
 ## 🧩 Feature Specs
 
@@ -364,12 +380,13 @@ _(none yet)_
 
 ## 🏃 Run record
 
-- **last-run:** 2026-06-05
+- **last-run:** 2026-06-28
 - **map-commit:** `7b67ad5`
-- **cycles-done:** 0  (DISCOVER seeding; STABILIZE not yet started)
+- **cycles-done:** 5  (0=DISCOVER, 2–3=STABILIZE correctness, 4=STABILIZE test harness, 5=SECURE Phase 0)
 - **branch:** `autopilot/2026-06-05`
 - **working tree at seed:** clean except untracked `.claude/agents/`,
   `.claude/settings.json` (autopilot scaffolding — not production code).
+- **artifacts added (cycle 5):** `SECURITY.md` (repo root — threat model, attack-surface map, tooling sweep, multi-role fixtures plan, coverage ledger, findings register F-001–F-008 open / F-101–F-108 fixed).
 
 ## 📋 Backlog
 
@@ -689,3 +706,4 @@ Baseline metrics measured at DISCOVER seed; every cycle appends a row.
 | 2026-06-28 | 2 | STABILIZE | 34 (B-002 + B-005 resolved this cycle) | 6 (3 ✅) | 21 (5 ✅) | 10 (0 ✅) | clean (php -l on changed files) | none (no test suite) | Cross-org category isolation (B-002/#121) + migration zero-date guards (B-005/#123); old-vs-new JOIN row counts; STRICT-mode guarded-vs-unguarded INSERT (errno 1292); real 004 migration exit 0 — all MySQL-verified |
 | 2026-06-28 | 3 | STABILIZE | 32 (B-004 + B-006 resolved this cycle) | 4 (5 ✅) | 21 (5 ✅) | 10 (0 ✅) | clean (php -l on changed files) | none (no test suite) | Org re-invite via generated-column unique key (B-004/#122) + short-code TOCTOU retry (B-006/#124); cancel→re-invite SUCCESS + double-pending errno 1062; migration 010 clean; retry regenerated after 2 collisions, graceful after 5 — all MySQL-verified |
 | 2026-06-28 | 4 | STABILIZE → completes STABILIZE | 32 (no GitHub issues closed this cycle) | 4 (5 ✅) | 21 (5 ✅) | 10 (0 ✅) | clean (php -l on all new tests/ files) | 35 unit / 4 integration (new — all green) | Test harness + characterisation (B-041): pure-PHP harness under tests/; `php tests/run.php` → 35 passed / 0 failed exit 0; integration 4 passed (or SKIPs cleanly with no DSN). STABILIZE stage now COMPLETE; advancing to SECURE |
+| 2026-06-28 | 5 | SECURE — Phase 0 (doc-only) | 32 (unchanged) | 4 open | 21 open | 10 open | n/a (doc-only cycle) | 35 unit / 4 integration (unchanged) | Threat model + attack-surface map + tooling sweep + multi-role fixtures plan + coverage ledger + findings register → SECURITY.md written. 8 OPEN findings (1 High: F-001/#95; 3 Med: F-002/#98, F-003/#99, F-004/#100; 4 Low: F-005/#100, F-006/#101, F-007, F-008); 8 verified FIXED-on-branch (F-101..F-108). No secrets/active-compromise signal; deps PASS (jQuery 3.7.1, Bootstrap 5.3.3, FA 6.5.1 pinned & current; Chart.js unstamped — note for analytics). Evidence: SECURITY.md#Findings |
