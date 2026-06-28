@@ -42,13 +42,40 @@ CREATE TABLE IF NOT EXISTS `tblOrgInvitations` (
     `createdAt`         DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP   COMMENT 'When invitation was sent',
 
     -- ========================================================================
+    -- Single-Pending Guard (generated column)
+    -- ========================================================================
+    -- Holds the (orgHandle, email) pair ONLY while the invitation is pending,
+    -- otherwise NULL. Putting the UNIQUE key on this column lets MySQL/InnoDB
+    -- enforce "at most ONE pending invite per org+email" (NULLs are exempt from
+    -- UNIQUE), while any number of accepted/expired/cancelled rows may coexist
+    -- — so cancel → re-invite cycles work. The separator is a newline, which
+    -- cannot appear in a valid org handle or email address.
+    -- Size 355 ≈ 50 (handle) + 1 (separator) + 255 (email), rounded up.
+    -- 📖 Reference: https://dev.mysql.com/doc/refman/8.0/en/create-table-generated-columns.html
+    `pendingKey`        VARCHAR(355)
+                        GENERATED ALWAYS AS (
+                            CASE
+                                WHEN `status` = 'pending'
+                                THEN CONCAT(`orgHandle`, '\n', `email`)
+                                ELSE NULL
+                            END
+                        ) VIRTUAL
+                        COMMENT 'orgHandle\\nemail while pending, else NULL — enforces single pending invite',
+
+    -- ========================================================================
     -- Keys & Indexes
     -- ========================================================================
     PRIMARY KEY (`invitationUID`),
 
-    -- Prevent duplicate pending invitations for the same email+org
-    -- (allows re-inviting after cancellation/expiry)
-    UNIQUE KEY `UQ_org_email_pending` (`orgHandle`, `email`, `status`),
+    -- Prevent duplicate PENDING invitations for the same email+org
+    -- (allows re-inviting after cancellation/expiry — terminal-state rows are
+    -- exempt because pendingKey is NULL for them).
+    UNIQUE KEY `UQ_org_email_pending` (`pendingKey`),
+
+    -- Supporting index for the FK_invitation_org foreign key on orgHandle.
+    -- Previously the FK leaned on the (orgHandle, email, status) composite key;
+    -- now that the unique key is on pendingKey, orgHandle needs its own index.
+    INDEX `IDX_invitation_org` (`orgHandle`),
 
     -- Token lookup for acceptance
     INDEX `IDX_invitation_token` (`invitationToken`),

@@ -49,6 +49,27 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 /** @var array Global query log for debug panel (populated when G2ML_DEBUG is true) */
 $GLOBALS['_g2ml_query_log'] = [];
 
+/** @var int MySQLi error number from the most recent write (dbInsert/dbUpdate); 0 when none. */
+$GLOBALS['_g2ml_last_errno'] = 0;
+
+/**
+ * Return the MySQLi error number from the most recent write operation.
+ *
+ * dbInsert()/dbUpdate() return false on failure, which hides the underlying
+ * cause. Callers that need to distinguish a duplicate-key collision
+ * (errno 1062) from other failures — for example the short-code creation
+ * retry loop — can read it here immediately after a failed write.
+ *
+ * @return int  The last MySQLi errno (0 if the last write had no error)
+ *
+ * 📖 Reference: https://www.php.net/manual/en/mysqli.errno.php
+ * 📖 Reference: https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html (1062 = ER_DUP_ENTRY)
+ */
+function dbLastErrno(): int
+{
+    return (int) $GLOBALS['_g2ml_last_errno'];
+}
+
 /**
  * Log a query for the debug panel.
  *
@@ -233,12 +254,16 @@ function dbInsert(string $sql, string $types = '', array $params = []): int|bool
 
     $startTime = microtime(true);
 
+    // Reset the last-errno tracker for this write.
+    $GLOBALS['_g2ml_last_errno'] = 0;
+
     try
     {
         $stmt = $db->prepare($sql);
 
         if ($stmt === false)
         {
+            $GLOBALS['_g2ml_last_errno'] = (int) $db->errno;
             error_log('[Go2My.Link] ERROR: dbInsert prepare failed: ' . $db->error . ' | SQL: ' . $sql);
             _g2ml_logQuery($sql, $params, (microtime(true) - $startTime) * 1000, false);
             return false;
@@ -265,6 +290,7 @@ function dbInsert(string $sql, string $types = '', array $params = []): int|bool
     }
     catch (mysqli_sql_exception $e)
     {
+        $GLOBALS['_g2ml_last_errno'] = (int) $e->getCode();
         error_log('[Go2My.Link] ERROR: dbInsert exception: ' . $e->getMessage() . ' | SQL: ' . $sql);
         _g2ml_logQuery($sql, $params, (microtime(true) - $startTime) * 1000, false);
         return false;

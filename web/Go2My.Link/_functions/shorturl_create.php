@@ -160,33 +160,27 @@ function createShortURL(string $longURL, array $options = []): array
             getSetting('shortcode.default_length', 7));
 
     // ========================================================================
-    // 🎲 Step 4: Generate a unique short code
+    // 🎲 + 💾 Steps 4 & 5: Generate a unique code and insert — with retry
     // ========================================================================
+    // sp_generateShortCode checks for collisions, but between that check and the
+    // INSERT below a concurrent create can claim the same code (a time-of-check
+    // to time-of-use race). The UQ_shortcode_org unique key is the real guard:
+    // on a collision the INSERT fails with MySQL errno 1062 (ER_DUP_ENTRY). We
+    // therefore wrap generate → insert in a bounded retry loop. On a duplicate
+    // key we regenerate and retry; on any other failure, or after the cap, we
+    // fail gracefully exactly as before.
+    //
     // 📖 Reference: web/_sql/procedures/sp_generateShortCode.sql
-    $spResult = dbCallProcedure(
-        'sp_generateShortCode',
-        [$orgHandle, $codeLength],
-        'si',
-        ['@outputCode']
-    );
-
-    if ($spResult === false || empty($spResult['@outputCode']))
-    {
-        error_log('[Go2My.Link] ERROR: sp_generateShortCode failed for org: ' . $orgHandle);
-
-        return [
-            'success'   => false,
-            'shortCode' => null,
-            'shortURL'  => null,
-            'error'     => 'Failed to generate a unique short code. Please try again.',
-        ];
-    }
-
-    $shortCode = $spResult['@outputCode'];
-
+    // 📖 Reference: web/_functions/db_query.php — dbInsert(), dbLastErrno()
+    // 📖 Reference: https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html (1062 = ER_DUP_ENTRY)
     // ========================================================================
-    // 💾 Step 5: Insert the short URL record
-    // ========================================================================
+    $maxAttempts          = 5;
+    $duplicateKeyErrno    = 1062;
+    $shortCode            = null;
+    $insertResult         = false;
+    $generationFailed     = false;
+
+    // Insert SQL is static; only the bound short code changes between attempts.
     // 📖 Reference: web/_functions/db_query.php — dbInsert()
     $insertSQL = "INSERT INTO tblShortURLs
         (orgHandle, shortCode, destinationURL, destinationType,
@@ -197,48 +191,96 @@ function createShortURL(string $longURL, array $options = []): array
          ?, ?, ?, ?,
          ?, ?, 1, NOW(), NOW())";
 
-    // Build the types string and params array
-    // s = string, i = integer (nullable userUID handled as string to support NULL)
-    $types  = 'sss';
-    $params = [$orgHandle, $shortCode, $sanitisedURL];
+    for ($attempt = 1; $attempt <= $maxAttempts; $attempt++)
+    {
+        // Generate a candidate short code.
+        $spResult = dbCallProcedure(
+            'sp_generateShortCode',
+            [$orgHandle, $codeLength],
+            'si',
+            ['@outputCode']
+        );
 
-    // createdByUserUID (nullable integer)
-    if ($userUID !== null)
-    {
-        $types   .= 'i';
-        $params[] = (int) $userUID;
-    }
-    else
-    {
+        if ($spResult === false || empty($spResult['@outputCode']))
+        {
+            error_log('[Go2My.Link] ERROR: sp_generateShortCode failed for org: ' . $orgHandle . ' (attempt ' . $attempt . ')');
+            $generationFailed = true;
+            break;
+        }
+
+        $shortCode = $spResult['@outputCode'];
+
+        // Build the types string and params array for this candidate.
+        // s = string, i = integer (nullable userUID handled as string for NULL)
+        $types  = 'sss';
+        $params = [$orgHandle, $shortCode, $sanitisedURL];
+
+        // createdByUserUID (nullable integer)
+        if ($userUID !== null)
+        {
+            $types   .= 'i';
+            $params[] = (int) $userUID;
+        }
+        else
+        {
+            $types   .= 's';
+            $params[] = null;
+        }
+
+        // title (nullable string)
         $types   .= 's';
-        $params[] = null;
+        $params[] = $title;
+
+        // categoryID (nullable string)
+        $types   .= 's';
+        $params[] = $categoryID;
+
+        // urlNotes (nullable string)
+        $types   .= 's';
+        $params[] = $notes;
+
+        // startDate (nullable string)
+        $types   .= 's';
+        $params[] = $startDate;
+
+        // endDate (nullable string)
+        $types   .= 's';
+        $params[] = $endDate;
+
+        $insertResult = dbInsert($insertSQL, $types, $params);
+
+        if ($insertResult !== false)
+        {
+            // Inserted successfully — leave the loop with this short code.
+            break;
+        }
+
+        // The insert failed. If it was a duplicate-key collision on the short
+        // code, regenerate and retry; otherwise stop and fail gracefully.
+        if (dbLastErrno() === $duplicateKeyErrno)
+        {
+            error_log('[Go2My.Link] WARNING: short code collision (1062) — code: ' . $shortCode . ', org: ' . $orgHandle . ', attempt ' . $attempt . ' of ' . $maxAttempts);
+            $shortCode = null;
+            continue;
+        }
+
+        error_log('[Go2My.Link] ERROR: Failed to insert short URL (non-duplicate) — code: ' . $shortCode . ', org: ' . $orgHandle);
+        break;
     }
 
-    // title (nullable string)
-    $types   .= 's';
-    $params[] = $title;
-
-    // categoryID (nullable string)
-    $types   .= 's';
-    $params[] = $categoryID;
-
-    // urlNotes (nullable string)
-    $types   .= 's';
-    $params[] = $notes;
-
-    // startDate (nullable string)
-    $types   .= 's';
-    $params[] = $startDate;
-
-    // endDate (nullable string)
-    $types   .= 's';
-    $params[] = $endDate;
-
-    $insertResult = dbInsert($insertSQL, $types, $params);
+    if ($generationFailed === true)
+    {
+        return [
+            'success'   => false,
+            'shortCode' => null,
+            'shortURL'  => null,
+            'error'     => 'Failed to generate a unique short code. Please try again.',
+        ];
+    }
 
     if ($insertResult === false)
     {
-        error_log('[Go2My.Link] ERROR: Failed to insert short URL — code: ' . $shortCode . ', org: ' . $orgHandle);
+        error_log('[Go2My.Link] ERROR: Failed to create short URL after ' . $maxAttempts . ' attempt(s) — org: ' . $orgHandle);
 
         return [
             'success'   => false,

@@ -117,16 +117,22 @@ list; these OVERRIDE default behaviour):
 
 ## 📌 Current status
 
-- **Active stage:** 2 — STABILIZE (cycle 2 done).
+- **Active stage:** 2 — STABILIZE (cycle 3 done).
 - **Done so far:** Bootstrap complete. Codebase Map written and spot-verified
   against the tree. Backlog re-derived from the live GitHub issues (#1–#128) and
   the two 2026-06-04 audits. Confirmed via direct code inspection that commit
   `6897165` already landed several launch-hardening fixes (see Decision log).
   Cycle 2 resolved B-002 (#121 cross-org category leak) and B-005 (#123 migration
-  zero-date guards) — both MySQL-verified.
-- **In progress / next:** Phase STABILIZE in progress — cycle 2 done (B-002,
-  B-005 resolved). Remaining High correctness: B-004 (#122 org re-invite key),
-  B-006 (#124 short-code TOCTOU).
+  zero-date guards) — both MySQL-verified. Cycle 3 resolved B-004 (#122 org
+  re-invite via generated-column unique key) and B-006 (#124 short-code TOCTOU
+  retry) — both MySQL-verified.
+- **In progress / next:** Phase STABILIZE — cycle 3 done (B-004, B-006 resolved).
+  High correctness items now cleared (remaining: B-003/#95 spoofable IP → SECURE;
+  B-007/#104 landing auto-refresh → POLISH; B-001/#93 legacy-cred rotation is a
+  manual user action; B-008/#91 custom-domains is actually built → docs). Next: a
+  STABILIZE safety-net cycle to establish a lightweight pure-PHP test harness (no
+  Composer on Dreamhost) + characterisation tests for core flows, then advance to
+  SECURE (Phase-0 setup).
 - **Open threads:**
   - 🔴 **#93 manual action outstanding** — the plaintext legacy DB credential in
     `web/G2My.Link/public_html_legacy/dbConfig.php` is now gitignored and was
@@ -171,6 +177,35 @@ list; these OVERRIDE default behaviour):
   minimum-launchable-product framing.
 - **Revisit if:** the user expands scope to include Component C / a roadmap phase.
 
+### 2026-06-28 — Org re-invite: VIRTUAL generated `pendingKey` + NULL-exempt UNIQUE (not status-in-key)
+
+- **Decision:** Enforce at most one PENDING invitation per (org, email) using a
+  VIRTUAL generated column `pendingKey` that is non-NULL only when
+  `status = 'pending'`, backed by a UNIQUE index. Cancelled/expired rows store NULL
+  and are exempt from the constraint, so re-invite cycles succeed.
+- **Why not status-in-key:** Including `status` in the composite UNIQUE allowed
+  multiple active pending rows per (org, email) if the status value differed — the
+  original bug — and would silently admit a second concurrent pending invite.
+- **Index replacement required:** Dropping a composite unique index that serves as
+  the supporting index for a FK (`FK_invitation_org`) fails with MySQL errno 1553
+  unless a replacement index is added first. Added `IDX_invitation_org` before
+  dropping the old unique.
+- **Revisit if:** a future MySQL version handles generated-column NULLs differently
+  in unique indexes, or if the invitation model grows a second concurrent-pending
+  use case.
+
+### 2026-06-28 — `dbLastErrno()` added so callers can detect duplicate-key (errno 1062) for bounded retry
+
+- **Decision:** Added `dbLastErrno()` helper + `$GLOBALS['_g2ml_last_errno']` to
+  `db_query.php` so that `createShortURL()` — and any future caller — can
+  distinguish a duplicate-key failure (errno 1062) from other insert errors without
+  inspecting the raw MySQLi object.
+- **Why:** The existing `dbInsert()` return contract (affected rows / false) gives
+  no error code. Exposing errno via a thin global sidechannel is additive and does
+  not break any existing caller.
+- **Revisit if:** the project adopts an ORM or a DB-layer class that surfaces errno
+  on the return object natively.
+
 ### 2026-06-28 — STRICT-mode zero-date guard: CAST AS CHAR before NULLIF
 
 - **Decision:** When guarding legacy zero-date columns in data-migration SQL under
@@ -196,6 +231,13 @@ list; these OVERRIDE default behaviour):
 - **Items resolved:** B-002 (#121 cross-org category leak), B-005 (#123 migration zero-date guards).
 - **Evidence:** old JOIN returned 2 rows (cross-org leak); new JOIN returns 1 (correct org only). Unguarded INSERT → errno 1292 under STRICT; guarded INSERT succeeds. `004_migrate_shorturls.sql` ran end-to-end against a legacy stub → exit 0. Both PHP files lint clean (`php -l`).
 - **Remaining High correctness in STABILIZE:** B-004 (#122 org re-invite partial-key), B-006 (#124 short-code TOCTOU retry). Security High still open: B-003 (#95 XFF/trusted-proxy).
+- **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually).
+
+### Cycle 3 — 2026-06-28 — STABILIZE
+
+- **Items resolved:** B-004 (#122 org re-invite via generated-column unique key), B-006 (#124 short-code TOCTOU retry).
+- **Evidence:** B-004 — cancel→re-invite SUCCEEDS; second concurrent pending REJECTED (errno 1062); migration 010 upgrades a HEAD-schema DB cleanly. B-006 — harness: 2 collisions → regenerate → 3rd insert succeeds; 5 collisions → graceful failure. Both PHP files lint clean.
+- **Remaining in STABILIZE:** B-003 (#95 XFF/trusted-proxy, SECURE phase). B-007 (#104 landing auto-refresh, POLISH phase). B-001 (#93 legacy-cred rotation, manual user action). B-008 (#91 custom-domains, docs clarification).
 - **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually).
 
 ## 🧩 Feature Specs
@@ -334,9 +376,16 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
 - **id:** B-004
   **title:** Org invitations: re-invite blocked by `UQ_org_email_pending` including `status`
   **category:** correctness · **impact:** High · **component:** A (database)
-  **source:** #122, schema-review §High · **status:** OPEN. A second cancel/expire
-  for the same org+email collides → re-invite cycles fail. Fix: enforce one
-  PENDING per org+email via generated/partial key.
+  **source:** #122, schema-review §High · **status:** ✅ Done (fixed cycle 3; MySQL-verified).
+  Added a VIRTUAL generated column `pendingKey` (= `CONCAT(orgHandle,':',email)` while
+  `status='pending'`, else NULL) and moved `UQ_org_email_pending` onto it (NULLs are
+  exempt, so cancelled/expired rows coexist). Replaced the dropped composite unique
+  with `IDX_invitation_org` to satisfy the FK backing-index requirement (errno 1553
+  if dropped bare). Forward migration `010_org_invite_pending_key.sql` for deployed
+  DBs; documents a one-line pre-flight UPDATE if a deployed DB already has 2+
+  concurrent pendings for the same (org, email). `org.php` required no change.
+  Verified: cancel→re-invite SUCCEEDS; second concurrent pending REJECTED (errno 1062);
+  migration 010 upgrades a HEAD-schema DB cleanly.
 
 - **id:** B-005
   **title:** Data migration: guard zero-date / NULL legacy dates under STRICT sql_mode
@@ -352,9 +401,13 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
 - **id:** B-006
   **title:** Short-code generation TOCTOU — retry on unique-key collision
   **category:** correctness · **impact:** High · **component:** B/shared
-  **source:** #124, schema-review §High · **status:** OPEN. `sp_generateShortCode`
-  is check-then-insert with no retry; concurrent creates surface a generic
-  failure. Fix: catch errno 1062 in `createShortURL()` and retry bounded.
+  **source:** #124, schema-review §High · **status:** ✅ Done (fixed cycle 3; MySQL-verified).
+  `shorturl_create.php`: wrapped generate→insert in a bounded 5-attempt `for` loop
+  that regenerates on a duplicate-key collision (errno 1062). `db_query.php`: added
+  `dbLastErrno()` + `$GLOBALS['_g2ml_last_errno']` so callers can distinguish errno
+  1062 (additive; `dbInsert` return contract unchanged). Verified via a harness
+  loading the real files: 2 collisions → regenerate → 3rd insert succeeds; 5
+  collisions → graceful failure. Both PHP files lint clean.
 
 - **id:** B-007
   **title:** Landing pages auto-refresh every 15 min (`<meta refresh content="900">`) with no pause (WCAG 2.2.1 Level A)
@@ -586,3 +639,4 @@ Baseline metrics measured at DISCOVER seed; every cycle appends a row.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-06-05 | 0 | DISCOVER | 36 (all OPEN on GitHub; 8 fixed-on-branch pending close) | 8 (1 ✅) | 21 (5 ✅) | 10 (0 ✅) | not-run-this-cycle | none (no test suite) | Baseline seed; map-commit 7b67ad5 |
 | 2026-06-28 | 2 | STABILIZE | 34 (B-002 + B-005 resolved this cycle) | 6 (3 ✅) | 21 (5 ✅) | 10 (0 ✅) | clean (php -l on changed files) | none (no test suite) | Cross-org category isolation (B-002/#121) + migration zero-date guards (B-005/#123); old-vs-new JOIN row counts; STRICT-mode guarded-vs-unguarded INSERT (errno 1292); real 004 migration exit 0 — all MySQL-verified |
+| 2026-06-28 | 3 | STABILIZE | 32 (B-004 + B-006 resolved this cycle) | 4 (5 ✅) | 21 (5 ✅) | 10 (0 ✅) | clean (php -l on changed files) | none (no test suite) | Org re-invite via generated-column unique key (B-004/#122) + short-code TOCTOU retry (B-006/#124); cancel→re-invite SUCCESS + double-pending errno 1062; migration 010 clean; retry regenerated after 2 collisions, graceful after 5 — all MySQL-verified |
