@@ -118,7 +118,7 @@ list; these OVERRIDE default behaviour):
 
 ## 📌 Current status
 
-- **Active stage:** 3 — SECURE (purple-team in progress; F-001/#95, F-002/#98, F-003/#99 fixed; 0 open High/Critical).
+- **Active stage:** 3 — SECURE (purple-team in progress; F-001/#95, F-002/#98, F-003/#99, F-004/#100, F-005/#100, F-006/#101 fixed; 0 open Critical/High/Med, 2 Low remaining: F-007, F-008 missing SRI).
 - **Done so far:** Bootstrap complete. Codebase Map written and spot-verified
   against the tree. Backlog re-derived from the live GitHub issues (#1–#128) and
   the two 2026-06-04 audits. Confirmed via direct code inspection that commit
@@ -137,8 +137,13 @@ list; these OVERRIDE default behaviour):
   CIDR helper; rate-limit/audit spoofing closed; 53 unit tests pass (+18). Cycle 7
   (SECURE — purple-team): F-002/#98 + F-003/#99 (both Med) fixed — deletion-cancel
   CSRF→POST; interstitial destination/fallback scheme-guarded; 8 new regression
-  tests; 61 unit tests pass.
-- **In progress / next:** SECURE phase — F-002/#98 + F-003/#99 fixed. **No open High or Critical findings remaining.** Remaining: F-004/#100 (SSRF in `validateDestination`, Med) + F-005/#100 (created-URL internal host, Low) + F-006/#101 (favicon path traversal, Low) — next cycle as a destination-safety cluster; then F-008 SRI (Low). After that SECURE exit (no Critical/High; Med/Low addressed).
+  tests; 61 unit tests pass. Cycle 8 (SECURE — purple-team, destination/path-safety
+  cluster): F-004/F-005 (#100) + F-006 (#101) fixed — shared anti-SSRF host guard
+  (`g2ml_destinationHostIsAllowed`) on both `validateDestination` and `createShortURL`;
+  favicon `orgLogoPath` confined with `basename()`+`realpath()`; 90 unit tests pass
+  (+29). Cycle 8 was interrupted once by a monthly spend-limit; partial work discarded
+  and cycle retried cleanly.
+- **In progress / next:** SECURE phase — destination/path-safety cluster (#100/#101) fixed. **0 Critical, 0 High, 0 Med findings remaining.** 2 Low open: F-007 (`validateUserSession()` no userUID re-bind) and F-008 (missing SRI on CDN tags in `footer.php`/`header.php` and B error pages). Next: one quick cycle to clear the 2 Low (SRI on CDN tags etc.), then SECURE exit and advance to COMPLETE (feature gaps; Component C / payments / API-key auth queued for approval).
 - **Open threads:**
   - 🔴 **#93 manual action outstanding** — the plaintext legacy DB credential in
     `web/G2My.Link/public_html_legacy/dbConfig.php` is now gitignored and was
@@ -250,6 +255,12 @@ list; these OVERRIDE default behaviour):
 - **Why:** A legacy-migrated `javascript:` or `data:` URL stored in `tblShortURLs` would otherwise render as a clickable (or auto-followed via `window.location`) link on the interstitial pages — `htmlspecialchars` alone does not neutralise URI scheme injection. A forged GET request (e.g. via an `<img>` tag) to the cancel URL would silently cancel a victim's own pending account-deletion with no user action.
 - **Revisit if:** a future interstitial redesign introduces a new URL output sink that bypasses the guard, or if the cancellation flow gains additional steps that require re-evaluation of the form structure.
 
+### 2026-06-29 — Anti-SSRF: destination host validation on both create and validateDestination; fail-closed
+
+- **Decision:** Destination hosts are validated at two chokepoints via a shared helper `g2ml_destinationHostIsAllowed()` in `security.php`: (1) in `validateDestination()` in `redirect_resolver.php`, before any `get_headers()` HEAD fetch; (2) in `createShortURL()` in `shorturl_create.php`, before any row is inserted. Loopback, link-local (including `169.254.169.254` metadata), and other reserved ranges are **always** blocked with no override. RFC1918 private IPv4 and IPv6 ULA ranges are blocked by default and may be overridden per-instance via the new `redirect.allow_private_destinations` setting (default `'0'`). Userinfo components (`user:pass@`) are rejected. All resolved A/AAAA IP addresses must pass the check (all-must-pass, not any-must-pass). IPv4-mapped IPv6 addresses are unwrapped before comparison. The helper fails closed when settings or DNS are unavailable.
+- **Why not allow-list approach:** The platform is a URL shortener deployed on shared hosting — the attack surface for SSRF is the stored destination of any short URL. A block-list of always-bad ranges (loopback, metadata, reserved) plus a configurable block of RFC1918 covers the realistic risk without requiring an explicit allow-list of every legitimate destination prefix, which would be unmanageable for a public shortener.
+- **Revisit if:** the app is deployed in an environment where RFC1918 destinations are legitimately needed (e.g. an intranet shortener) — set `redirect.allow_private_destinations` = `'1'`; the always-blocked ranges (loopback/link-local/metadata/reserved) remain in force regardless.
+
 ### 2026-06-28 — SECURE Phase 0: SECURITY.md is the findings register; purple-team order established
 
 - **Decision:** `SECURITY.md` is the single findings register using `F-` IDs mapped to GitHub issue numbers. Purple-team remediation order: F-001 (#95 spoofable client IP) → F-003 (#99 interstitial scheme guard) → F-002 (#98 deletion-cancel CSRF) → F-004 (#100 SSRF in validateDestination) → F-005 (#100 created-URL internal-host/userinfo) → F-006 (#101 favicon path-traversal latent). Active-compromise signal: none.
@@ -304,6 +315,15 @@ list; these OVERRIDE default behaviour):
 - **Evidence:** RED PoC (before fix): `g2ml_getClientIP()` returned forged `1.2.3.4` from a crafted `X-Forwarded-For` header; rotating IPs bypassed the per-IP rate-limit. VERIFY (after fix): genuine `203.0.113.9` (`REMOTE_ADDR`) returned; forged header ignored. Regression: `tests/unit/security_clientip_test.php` — 18 new tests covering REMOTE_ADDR baseline, XFF trusted/untrusted proxy cases, CIDR matching, fallback chain. `php tests/run.php` → 53 passed / 0 failed (was 35). `php -l` clean on all changed files. `TRUSTED_PROXIES` documented in installer creds heredoc and `docs/INSTALL.md`.
 - **Remaining open High findings:** none (F-001 was the only High; 0 open High now).
 - **Next purple-team target:** F-003 (#99 — interstitial scheme guard, Med), then F-002 (#98 — deletion-cancel CSRF, Med), then F-004 (#100 — SSRF), then F-005/#101 Low etc.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually).
+
+### Cycle 8 — 2026-06-29 — SECURE (purple-team, destination/path-safety cluster: F-004/F-005 #100 + F-006 #101)
+
+- **Items resolved:** B-013 (#100 SSRF guard on validateDestination + createShortURL), B-014 (#101 favicon path-traversal containment).
+- **Note:** cycle 8 was interrupted once by a monthly spend-limit; partial work was discarded and the cycle retried cleanly from the cycle-7 checkpoint (no partial state carried forward).
+- **Evidence:** F-004/F-005 — `g2ml_destinationHostIsAllowed()` and `g2ml_isPrivateOrReservedIp()` added to `security.php`; `validateDestination()` calls the guard before any HEAD fetch; `createShortURL()` rejects disallowed hosts at creation time. Blocked: `169.254.169.254`, `127.0.0.1`, `10.x.x.x`, `192.168.x.x`, userinfo in URL. Allowed: public IPs. Seed `014_redirect_ssrf_settings.sql` adds `redirect.allow_private_destinations` (default `'0'`). F-006 — `favicon.php` confines `orgLogoPath` with `basename()`+`realpath()` inside the uploads dir; out-of-dir or missing paths fall through to the default favicon. Regression: `php tests/run.php` → 90 passed / 0 failed (was 61; +25 SSRF unit tests, +4 favicon traversal tests). `php -l` clean on all 4 changed PHP files. Bucket 1.
+- **Remaining open security findings:** 0 Critical, 0 High, 0 Med. 2 Low: F-007 (`validateUserSession()` no userUID re-bind), F-008 (missing SRI on CDN tags).
+- **Next purple-team target:** F-008 (SRI on CDN tags in `footer.php`, `header.php`, and B error pages) — one quick cycle to clear both Low findings and reach SECURE exit gate.
 - **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually).
 
 ### Cycle 7 — 2026-06-28 — SECURE (purple-team, F-002/#98 + F-003/#99)
@@ -539,15 +559,12 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
 - **id:** B-013
   **title:** Harden against SSRF — guard server-side destination fetch and validate created URLs against internal/private hosts
   **category:** security · **impact:** Medium · **component:** B/shared
-  **source:** #100, audit §3.3 · **status:** OPEN. `validateDestination()` HTTP
-  HEAD and `createShortURL()` accept internal/loopback/link-local hosts. OFF by
-  default today; authenticated SSRF oracle if the fetch is enabled.
+  **source:** #100, audit §3.3 · **status:** ✅ Done (cycle 8). Shared helper `g2ml_destinationHostIsAllowed()` + `g2ml_isPrivateOrReservedIp()` added to `security.php` (inet_pton-based range checks; http/https only; rejects userinfo; resolves A/AAAA, requires ALL IPs to pass; IPv4-mapped-IPv6 unwrapped; fails closed). `validateDestination()` calls the guard BEFORE the `get_headers()` HEAD fetch; disallowed → existing failure shape, no network call. `createShortURL()` rejects disallowed hosts at creation time (no row inserted). New setting `redirect.allow_private_destinations` (default '0'; overrides RFC1918/ULA only — loopback/link-local/metadata/reserved always blocked). Seed `web/_sql/seeds/014_redirect_ssrf_settings.sql`. 25 unit regression tests (`tests/unit/security_ssrf_host_guard_test.php`); suite → 90 passed / 0 failed (was 61). `php -l` clean on all changed files.
 
 - **id:** B-014
   **title:** Path-traversal latent in dynamic favicon handler — confine `readfile()` to uploads dir
   **category:** security · **impact:** Medium · **component:** B
-  **source:** #101, audit §3.2 · **status:** OPEN. DB `orgLogoPath` concatenated
-  into `readfile()` with no guard; latent until the org-logo upload feature lands.
+  **source:** #101, audit §3.2 · **status:** ✅ Done (cycle 8). `favicon.php` now confines the DB-sourced `orgLogoPath` with `basename()` + `realpath()` inside the uploads dir; paths that escape the dir or do not exist fall through to the default favicon. 4 unit regression tests (`tests/unit/favicon_path_traversal_test.php`). `php -l` clean.
 
 - **id:** B-015
   **title:** Account-deletion cancellation is a state-changing GET with no CSRF token
@@ -740,3 +757,4 @@ Baseline metrics measured at DISCOVER seed; every cycle appends a row.
 | 2026-06-28 | 5 | SECURE — Phase 0 (doc-only) | 32 (unchanged) | 4 open | 21 open | 10 open | n/a (doc-only cycle) | 35 unit / 4 integration (unchanged) | Threat model + attack-surface map + tooling sweep + multi-role fixtures plan + coverage ledger + findings register → SECURITY.md written. 8 OPEN findings (1 High: F-001/#95; 3 Med: F-002/#98, F-003/#99, F-004/#100; 4 Low: F-005/#100, F-006/#101, F-007, F-008); 8 verified FIXED-on-branch (F-101..F-108). No secrets/active-compromise signal; deps PASS (jQuery 3.7.1, Bootstrap 5.3.3, FA 6.5.1 pinned & current; Chart.js unstamped — note for analytics). Evidence: SECURITY.md#Findings |
 | 2026-06-28 | 6 | SECURE — purple-team (F-001/#95) | 31 (B-003 resolved this cycle) | 0 open (3 ✅ including this cycle) | 21 open | 10 open | clean (php -l on changed files) | 53 unit / 4 integration (18 new: `tests/unit/security_clientip_test.php`) | Spoofable client IP fixed (B-003/#95) — `REMOTE_ADDR` default + `TRUSTED_PROXIES` allowlist + CIDR helper via `inet_pton`; right-most-untrusted XFF entry; covers all 13 callers. RED PoC: forged 1.2.3.4 returned before fix; VERIFY: genuine 203.0.113.9 returned after. 53 unit tests pass / 0 failed (was 35). TRUSTED_PROXIES documented in installer creds heredoc + docs/INSTALL.md. No open High findings remaining. |
 | 2026-06-28 | 7 | SECURE — purple-team (F-002/#98 + F-003/#99) | 29 (B-012 + B-015 resolved this cycle) | 0 open | 19 open | 10 open | clean (php -l on all 4 changed files) | 61 unit / 4 integration (8 new: `tests/unit/redirect_scheme_guard_test.php`) | Deletion-cancel CSRF→POST (B-015/#98) + interstitial scheme guard (B-012/#99) fixed. GET `?cancel` path removed; CSRF-protected POST form `account_delete_cancel` added. All destination/fallback sinks (`href`, JS `window.location`, `meta-refresh`, noscript) in `validating.php` + `expired.php` scheme-guarded via `g2ml_sanitiseURL()` + `preg_match('^https?://')` fallback; rejected destination → no link; rejected fallback → `https://go2my.link`. 61 tests pass / 0 failed (was 53). No open High/Critical findings. |
+| 2026-06-29 | 8 | SECURE — purple-team (F-004/F-005 #100 + F-006 #101; destination/path-safety cluster) | 27 (B-013 + B-014 resolved this cycle) | 0 open | 17 open | 10 open | clean (php -l on all 4 changed files) | 90 unit / 4 integration (29 new: 25 in `tests/unit/security_ssrf_host_guard_test.php` + 4 in `tests/unit/favicon_path_traversal_test.php`) | Shared anti-SSRF host guard (`g2ml_destinationHostIsAllowed` + `g2ml_isPrivateOrReservedIp`) on both `validateDestination()` (before HEAD fetch) and `createShortURL()` (at creation); loopback/link-local/metadata (169.254.169.254)/reserved always blocked; RFC1918/ULA blocked by default (override `redirect.allow_private_destinations`); rejects userinfo (`user:pass@`); IPv4-mapped-IPv6 unwrapped; fails closed when settings/DNS unavailable; seed `014_redirect_ssrf_settings.sql`. Favicon `orgLogoPath` confined with `basename()`+`realpath()` inside uploads dir (F-006). 90 tests pass / 0 failed (+29). 0 Critical/High/Med findings remaining; 2 Low open (F-007 session re-bind, F-008 SRI). Note: cycle 8 was interrupted once by a monthly spend-limit; partial work was discarded and the cycle retried cleanly from the cycle-7 checkpoint. |

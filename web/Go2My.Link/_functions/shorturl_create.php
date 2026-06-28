@@ -144,6 +144,28 @@ function createShortURL(string $longURL, array $options = []): array
     }
 
     // ========================================================================
+    // 🛡️ Step 2b: Block internal / metadata / userinfo destinations (SSRF)
+    // ========================================================================
+    // F-005 / #100: a short URL whose destination resolves to a loopback,
+    // link-local, cloud-metadata, or (by default) private host turns the
+    // redirect engine into an SSRF pivot. Reject creation up front so no row
+    // is ever written. The shared guard also rejects userinfo (user:pass@)
+    // URLs. Private destinations stay blocked unless the operator opts in via
+    // redirect.allow_private_destinations.
+    //
+    // 📖 Reference: web/_functions/security.php — g2ml_destinationHostIsAllowed()
+    // ========================================================================
+    if (g2ml_destinationHostIsAllowed($sanitisedURL) === false)
+    {
+        return [
+            'success'   => false,
+            'shortCode' => null,
+            'shortURL'  => null,
+            'error'     => 'That destination is not permitted. Please enter a public HTTP or HTTPS URL.',
+        ];
+    }
+
+    // ========================================================================
     // 📋 Step 3: Extract options
     // ========================================================================
     $orgHandle  = $options['orgHandle'] ?? '[default]';
