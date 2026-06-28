@@ -100,14 +100,15 @@ list; these OVERRIDE default behaviour):
 ## 🗺️ Stage plan
 
 1. **DISCOVER** — reverse-engineer state, build the Codebase Map + scored
-   backlog, seed `PROJECT.md`/`FEATURES.md`. — status: **in-progress**
+   backlog, seed `PROJECT.md`/`FEATURES.md`. — status: **complete**
 2. **STABILIZE** — clear correctness + security launch-blockers (the High-impact
    B- items: #93 rotation, #95 XFF, #121 cross-org leak, #94/#122/#123/#124
    bugs). Verify shorten→redirect + auth + link CRUD live on MySQL. — status:
-   planned
-3. **HARDEN** — remaining security/a11y items (#96–#110, SSRF, CSRF, reduced-motion,
-   contrast), then standards/lint cleanup (#117–#119, B-024/B-025). — status:
-   planned
+   **complete** (cycles 2–4)
+3. **SECURE** — security Phase-0 (threat model + scanner sweep + attack-surface
+   map → SECURITY.md), then targeted remediations starting with B-003/#95 XFF
+   spoofing, then SSRF, CSRF, CRLF, cross-org, a11y items
+   (#96–#110). — status: **active**
 4. **FEATURE-FILL (in-scope)** — close in-scope feature gaps surfaced by audit
    §7.2/§8 and `FEATURES.md` via the conductor gate (e.g. #23 info-page auth view,
    #30 dashboard custom suffix/alias/tags, #91 custom-domain resolution). Large
@@ -117,7 +118,7 @@ list; these OVERRIDE default behaviour):
 
 ## 📌 Current status
 
-- **Active stage:** 2 — STABILIZE (cycle 3 done).
+- **Active stage:** 3 — SECURE (STABILIZE complete, cycles 2–4).
 - **Done so far:** Bootstrap complete. Codebase Map written and spot-verified
   against the tree. Backlog re-derived from the live GitHub issues (#1–#128) and
   the two 2026-06-04 audits. Confirmed via direct code inspection that commit
@@ -125,14 +126,14 @@ list; these OVERRIDE default behaviour):
   Cycle 2 resolved B-002 (#121 cross-org category leak) and B-005 (#123 migration
   zero-date guards) — both MySQL-verified. Cycle 3 resolved B-004 (#122 org
   re-invite via generated-column unique key) and B-006 (#124 short-code TOCTOU
-  retry) — both MySQL-verified.
-- **In progress / next:** Phase STABILIZE — cycle 3 done (B-004, B-006 resolved).
-  High correctness items now cleared (remaining: B-003/#95 spoofable IP → SECURE;
-  B-007/#104 landing auto-refresh → POLISH; B-001/#93 legacy-cred rotation is a
-  manual user action; B-008/#91 custom-domains is actually built → docs). Next: a
-  STABILIZE safety-net cycle to establish a lightweight pure-PHP test harness (no
-  Composer on Dreamhost) + characterisation tests for core flows, then advance to
-  SECURE (Phase-0 setup).
+  retry) — both MySQL-verified. Cycle 4 established the project's first test
+  safety net: pure-PHP no-Composer harness under `tests/` with 35 unit tests
+  (security.php) + 4 integration tests (sp_lookupShortURL), all green.
+- **In progress / next:** STABILIZE complete (cycles 2–4): High correctness
+  cleared + test safety net in place. Entering SECURE — next cycle is security
+  Phase-0 (threat model + scanner sweep + sandbox + multi-role fixtures +
+  attack-surface map + coverage ledger → SECURITY.md, doc-only, yields before
+  attacking). First purple-team target: B-003/#95 spoofable client IP.
 - **Open threads:**
   - 🔴 **#93 manual action outstanding** — the plaintext legacy DB credential in
     `web/G2My.Link/public_html_legacy/dbConfig.php` is now gitignored and was
@@ -206,6 +207,32 @@ list; these OVERRIDE default behaviour):
 - **Revisit if:** the project adopts an ORM or a DB-layer class that surfaces errno
   on the return object natively.
 
+### 2026-06-28 — Test strategy: pure-PHP harness under `tests/` (no Composer; characterisation-first)
+
+- **Decision:** Establish the test safety net as a pure-PHP micro-framework
+  (`tests/bootstrap.php` + assert helpers) with two runners: `tests/run.php`
+  (unit, DB-free, exits 1 on failure) and `tests/run_integration.php`
+  (env-DSN MySQL, skips cleanly when `G2ML_TEST_DSN` is absent). No PHPUnit or
+  Composer — Dreamhost shared hosting cannot run them. Characterisation-first
+  approach: lock current behaviour (including any quirks) before refactoring.
+- **Characterisation facts recorded as intended behaviour:**
+  - CSRF tokens are **single-use** — `g2ml_validateCsrfToken()` unsets the
+    session token on first successful validate; a second call with the same token
+    fails. Callers that need reuse must regenerate.
+  - `g2ml_sanitiseInput()` = `trim(strip_tags())` and **preserves internal
+    CR/LF** — the contact-form CRLF injection defence lives at the call site
+    (`$safeSubject` stripping), not in the sanitiser. Tests confirm this.
+  - `g2ml_sanitiseURL()` rejects `javascript:`, `data:`, `ftp:`, `mailto:`, and
+    relative/malformed URLs; allows `http://` and `https://` schemes only.
+  - AES-256-GCM round-trip uses a random IV per encrypt call; identical plaintext
+    produces different ciphertext each time (verified by the unit tests).
+- **Options considered:** PHPUnit via phar (portability concerns; no CLI on
+  Dreamhost prod); skip tests entirely (no regression net, too risky at this
+  stage); pure-PHP micro-framework (chosen — zero dependencies, runs anywhere
+  PHP 8.4 does).
+- **Revisit if:** the project migrates off Dreamhost to a hosting environment
+  with Composer/CLI, at which point PHPUnit integration becomes viable.
+
 ### 2026-06-28 — STRICT-mode zero-date guard: CAST AS CHAR before NULLIF
 
 - **Decision:** When guarding legacy zero-date columns in data-migration SQL under
@@ -239,6 +266,14 @@ list; these OVERRIDE default behaviour):
 - **Evidence:** B-004 — cancel→re-invite SUCCEEDS; second concurrent pending REJECTED (errno 1062); migration 010 upgrades a HEAD-schema DB cleanly. B-006 — harness: 2 collisions → regenerate → 3rd insert succeeds; 5 collisions → graceful failure. Both PHP files lint clean.
 - **Remaining in STABILIZE:** B-003 (#95 XFF/trusted-proxy, SECURE phase). B-007 (#104 landing auto-refresh, POLISH phase). B-001 (#93 legacy-cred rotation, manual user action). B-008 (#91 custom-domains, docs clarification).
 - **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually).
+
+### Cycle 4 — 2026-06-28 — STABILIZE (completes STABILIZE)
+
+- **Items resolved:** B-041 — pure-PHP test safety net established under `tests/`.
+- **Evidence:** `php tests/run.php` → 35 passed / 0 failed, exit 0. `php tests/run_integration.php` (no DSN) → 4 tests SKIPPED cleanly. Lint clean across all new files. Lead independently re-ran the suite: 35 passed / 0 failed, exit 0.
+- **Characterisation coverage:** `security.php` — `g2ml_hashPassword`/`verifyPassword` (Argon2id), `g2ml_sanitiseInput` (trim+strip_tags, preserves internal CRLF), `g2ml_sanitiseOutput` (htmlspecialchars), `g2ml_sanitiseURL` (scheme allowlist), CSRF token generate/validate (single-use confirmed), `g2ml_encrypt`/`g2ml_decrypt` AES-256-GCM round-trip. Integration: `sp_lookupShortURL` (active→200, expired→410, not_found→404, not_yet_active→404/pending).
+- **STABILIZE stage status:** COMPLETE. All High correctness B- items resolved (B-002, B-004, B-005, B-006 done; B-001 manual; B-003 deferred to SECURE). Test safety net in place.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually). Advancing to SECURE.
 
 ## 🧩 Feature Specs
 
@@ -623,6 +658,19 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
   corrected; verify the note is consistent and `redirect.forward_utm_params`/
   `analytics.capture_tracking_params` are not claimed as built.
 
+- **id:** B-041
+  **title:** Establish pure-PHP test safety net (no Composer/PHPUnit; Dreamhost-compatible)
+  **category:** quality (testing) · **impact:** High · **component:** shared
+  **source:** autopilot cycle 4 · **status:** ✅ Done (cycle 4).
+  Bootstrap micro-framework under `tests/` (assert helpers, `run.php` unit runner
+  exits 1 on failure, `run_integration.php` env-driven MySQL runner that SKIPs
+  cleanly with no DB, `tests/README.md`). Characterisation tests: 35 unit tests
+  covering `security.php` (`g2ml_hashPassword`/`verifyPassword`, `g2ml_sanitiseInput`,
+  `g2ml_sanitiseOutput`, `g2ml_sanitiseURL`, CSRF token generate/validate,
+  `g2ml_encrypt`/`g2ml_decrypt` AES-256-GCM round-trip) + 4 integration tests
+  (`sp_lookupShortURL` success/expired/not_found/not_yet_active). All green; lint
+  clean. Lead re-ran independently: 35 passed / 0 failed, exit 0.
+
 ## 💡 Proposed-Features ledger
 
 <!-- `propose`-disposition / spec-gate feature candidates live in FEATURES.md
@@ -640,3 +688,4 @@ Baseline metrics measured at DISCOVER seed; every cycle appends a row.
 | 2026-06-05 | 0 | DISCOVER | 36 (all OPEN on GitHub; 8 fixed-on-branch pending close) | 8 (1 ✅) | 21 (5 ✅) | 10 (0 ✅) | not-run-this-cycle | none (no test suite) | Baseline seed; map-commit 7b67ad5 |
 | 2026-06-28 | 2 | STABILIZE | 34 (B-002 + B-005 resolved this cycle) | 6 (3 ✅) | 21 (5 ✅) | 10 (0 ✅) | clean (php -l on changed files) | none (no test suite) | Cross-org category isolation (B-002/#121) + migration zero-date guards (B-005/#123); old-vs-new JOIN row counts; STRICT-mode guarded-vs-unguarded INSERT (errno 1292); real 004 migration exit 0 — all MySQL-verified |
 | 2026-06-28 | 3 | STABILIZE | 32 (B-004 + B-006 resolved this cycle) | 4 (5 ✅) | 21 (5 ✅) | 10 (0 ✅) | clean (php -l on changed files) | none (no test suite) | Org re-invite via generated-column unique key (B-004/#122) + short-code TOCTOU retry (B-006/#124); cancel→re-invite SUCCESS + double-pending errno 1062; migration 010 clean; retry regenerated after 2 collisions, graceful after 5 — all MySQL-verified |
+| 2026-06-28 | 4 | STABILIZE → completes STABILIZE | 32 (no GitHub issues closed this cycle) | 4 (5 ✅) | 21 (5 ✅) | 10 (0 ✅) | clean (php -l on all new tests/ files) | 35 unit / 4 integration (new — all green) | Test harness + characterisation (B-041): pure-PHP harness under tests/; `php tests/run.php` → 35 passed / 0 failed exit 0; integration 4 passed (or SKIPs cleanly with no DSN). STABILIZE stage now COMPLETE; advancing to SECURE |
