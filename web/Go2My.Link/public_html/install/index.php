@@ -437,6 +437,18 @@ if (!defined('ENCRYPTION_KEY_SECONDARY'))
     define('ENCRYPTION_KEY_SECONDARY', {$keyLit});
 }
 
+// 🛡️ Trusted reverse proxies (OPTIONAL — leave undefined on Dreamhost)
+// g2ml_getClientIP() returns REMOTE_ADDR and IGNORES X-Forwarded-For /
+// X-Real-Ip unless the immediate peer (REMOTE_ADDR) is listed here. Define
+// this ONLY if the app sits behind a reverse proxy / load balancer you
+// control; supply a comma-separated list of that proxy's IPs and/or CIDR
+// ranges (e.g. '10.0.0.0/8, 192.168.1.5'). Undefined or empty => trust none
+// => forged headers cannot poison the activity log or evade per-IP limits.
+// if (!defined('TRUSTED_PROXIES'))
+// {
+//     define('TRUSTED_PROXIES', '');
+// }
+
 // 🔐 Third-party service credentials (fallback; primary storage is tblSettings)
 // Populate these from the Admin → Settings UI, or define them here if needed.
 if (!defined('MS365_CLIENT_ID'))

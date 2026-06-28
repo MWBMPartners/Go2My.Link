@@ -50,6 +50,11 @@ use the same database and keys automatically.
    GlobalAdmin account you created.
 4. Configure third-party keys (Turnstile/reCAPTCHA, OAuth) from **Admin →
    Settings**, or add them to `auth_creds.php`.
+5. 🛡️ **Behind a reverse proxy?** Only then, define the OPTIONAL
+   `TRUSTED_PROXIES` constant in `auth_creds.php` (comma-separated proxy
+   IPs/CIDRs). Left undefined (the Dreamhost default), `g2ml_getClientIP()`
+   ignores forged `X-Forwarded-For` / `X-Real-Ip` headers and uses
+   `REMOTE_ADDR`, so audit logging and per-IP rate limits cannot be spoofed.
 
 > ⚠️ The installer refuses to run once `web/_auth_keys/.installed` exists. To
 > re-run it intentionally, remove that lock file first — only on a host you

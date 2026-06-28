@@ -236,10 +236,11 @@ micro-framework (`tests/bootstrap.php`); MySQL available locally.
 
 Severity = impact on assets. Status reconciled against **current** branch code
 (2026-06-05/06-28), not the original audit snapshot.
+**Open:** 7 (0 High, 3 Med, 4 Low). **Fixed on branch:** 9.
 
 | ID | Title | Sev | Status | CWE | Evidence (file:line) | GH # |
 |---|---|---|---|---|---|---|
-| **F-001** | Spoofable client IP — `g2ml_getClientIP()` trusts `X-Forwarded-For`/`X-Real-IP` with no trusted-proxy allowlist; poisons activity/consent/breach logs, `lastLoginIP`, new-login heuristic, and lets anon rate-limit be evaded | **High** | **OPEN** | 290/348 | `web/_functions/security.php:472-501` (returns first XFF hop if it parses as an IP, no `REMOTE_ADDR` proxy gate) | #95 |
+| **F-001** | Spoofable client IP — `g2ml_getClientIP()` trusts `X-Forwarded-For`/`X-Real-IP` with no trusted-proxy allowlist; poisons activity/consent/breach logs, `lastLoginIP`, new-login heuristic, and lets anon rate-limit be evaded | **High** | ✅ **FIXED** (cycle 6, branch `autopilot/2026-06-05`) — `REMOTE_ADDR` default; XFF honoured only when `REMOTE_ADDR` is in `TRUSTED_PROXIES` allowlist; CIDR helper via `inet_pton`; 18 regression tests added (53 total) | 290/348 | `web/_functions/security.php` — `g2ml_getClientIP()`, `g2ml_isTrustedProxy()`, `g2ml_ipInRange()` | #95 |
 | **F-002** | Account-deletion **cancel** is a state-changing GET with no CSRF token — forged GET (img/link) cancels a victim's own pending deletion | **Med** | **OPEN** | 352 | `web/Go2My.Link/_admin/public_html/pages/privacy/delete/index.php:52-114` (`isset($_GET['cancel'])` → UPDATE status='rejected') | #98 |
 | **F-003** | Interstitials emit redirect destination into `href`/`window.location.href` with `htmlspecialchars` but **no `^https?://` scheme allowlist** — a migrated legacy `javascript:`/`data:` destination renders as a clickable/auto-followed link | **Med** | **OPEN** | 79/601 | `validating.php:182` (`href` of `$destination`), `validating.php:224`/`251` (JS); `expired.php:163,197,220` | #99 |
 | **F-004** | SSRF in `validateDestination()` server-side HEAD fetch — `get_headers()` with no private/loopback/link-local/reserved-range guard. **OFF by default** (`redirect.validate_destination=false`); becomes an authenticated SSRF oracle if enabled | **Med** | **OPEN** | 918 | `web/G2My.Link/_functions/redirect_resolver.php:117-236` (fetch ~173/181); default at `index.php:190` | #100 |

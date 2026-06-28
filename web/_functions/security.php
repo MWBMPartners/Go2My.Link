@@ -459,11 +459,188 @@ function g2ml_sanitiseEmail(?string $email): string|false
 }
 
 /**
- * Get the client's real IP address, accounting for proxies and load balancers.
+ * Test whether an IP address falls inside a single IP or CIDR range.
  *
- * Checks X-Forwarded-For and X-Real-Ip headers (common with reverse proxies)
- * before falling back to REMOTE_ADDR. Only trusts these headers when the
- * immediate connection is from a known proxy (Dreamhost load balancer).
+ * Supports an exact IPv4/IPv6 address (no slash) or a CIDR block
+ * ("ip/prefix"). Comparison is done on the packed binary form so IPv4 and
+ * IPv6 are both handled. Address families must match: an IPv4 address never
+ * matches an IPv6 range and vice versa.
+ *
+ * @param  string $ip     The candidate IP address to test.
+ * @param  string $range  A single IP ("203.0.113.9") or a CIDR ("10.0.0.0/8").
+ * @return bool           True when $ip is the address or inside the range.
+ *
+ * 📖 Reference: https://www.php.net/manual/en/function.inet-pton.php
+ */
+function g2ml_ipInRange(string $ip, string $range): bool
+{
+    $ip    = trim($ip);
+    $range = trim($range);
+
+    if ($ip === '' || $range === '')
+    {
+        return false;
+    }
+
+    // No slash means an exact single-address comparison.
+    if (strpos($range, '/') === false)
+    {
+        $packedIp    = @inet_pton($ip);
+        $packedRange = @inet_pton($range);
+
+        if ($packedIp === false || $packedRange === false)
+        {
+            return false;
+        }
+
+        return hash_equals($packedRange, $packedIp);
+    }
+
+    // CIDR form: "subnet/prefix".
+    $parts = explode('/', $range, 2);
+    $subnet = $parts[0];
+    $prefixText = $parts[1];
+
+    if ($prefixText === '' || !ctype_digit($prefixText))
+    {
+        return false;
+    }
+
+    $packedIp     = @inet_pton($ip);
+    $packedSubnet = @inet_pton($subnet);
+
+    if ($packedIp === false || $packedSubnet === false)
+    {
+        return false;
+    }
+
+    // Address families must match (same packed length: 4 for v4, 16 for v6).
+    if (strlen($packedIp) !== strlen($packedSubnet))
+    {
+        return false;
+    }
+
+    $prefixBits = (int) $prefixText;
+    $maxBits    = strlen($packedIp) * 8;
+
+    if ($prefixBits < 0 || $prefixBits > $maxBits)
+    {
+        return false;
+    }
+
+    // A /0 matches everything within the family.
+    if ($prefixBits === 0)
+    {
+        return true;
+    }
+
+    $fullBytes      = intdiv($prefixBits, 8);
+    $remainingBits  = $prefixBits % 8;
+
+    // Compare the whole bytes covered by the prefix.
+    if ($fullBytes > 0)
+    {
+        if (hash_equals(substr($packedSubnet, 0, $fullBytes), substr($packedIp, 0, $fullBytes)) === false)
+        {
+            return false;
+        }
+    }
+
+    // Compare the partial trailing byte, if the prefix is not byte-aligned.
+    if ($remainingBits > 0)
+    {
+        $mask     = (~0 << (8 - $remainingBits)) & 0xFF;
+        $ipByte   = ord($packedIp[$fullBytes]) & $mask;
+        $netByte  = ord($packedSubnet[$fullBytes]) & $mask;
+
+        if ($ipByte !== $netByte)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Determine whether the immediate peer (REMOTE_ADDR) is a configured trusted
+ * proxy whose forwarded headers may be believed.
+ *
+ * Trust is opt-in via the OPTIONAL constant TRUSTED_PROXIES (a comma-separated
+ * list of IPs and/or CIDR ranges, normally defined in the shared
+ * auth_creds.php). When TRUSTED_PROXIES is UNDEFINED or empty, NO proxy is
+ * trusted, which is the correct default for Dreamhost where the app is served
+ * directly.
+ *
+ * @param  string $remoteAddr  The immediate peer address (REMOTE_ADDR).
+ * @return bool                 True only when $remoteAddr is in the allowlist.
+ */
+function g2ml_isTrustedProxy(string $remoteAddr): bool
+{
+    if ($remoteAddr === '')
+    {
+        return false;
+    }
+
+    if (!defined('TRUSTED_PROXIES'))
+    {
+        return false;
+    }
+
+    $configuredValue = constant('TRUSTED_PROXIES');
+
+    if (!is_string($configuredValue))
+    {
+        return false;
+    }
+
+    $configuredValue = trim($configuredValue);
+
+    if ($configuredValue === '')
+    {
+        return false;
+    }
+
+    $entries = explode(',', $configuredValue);
+
+    foreach ($entries as $entry)
+    {
+        $entry = trim($entry);
+
+        if ($entry === '')
+        {
+            continue;
+        }
+
+        if (g2ml_ipInRange($remoteAddr, $entry) === true)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Get the client's real IP address.
+ *
+ * SECURITY (F-001 / #95): forwarded headers (X-Forwarded-For, X-Real-Ip) are
+ * trivially spoofable by any client, so they are IGNORED BY DEFAULT. The
+ * function returns REMOTE_ADDR — the address of the immediate peer — unless
+ * that peer is an explicitly configured trusted proxy.
+ *
+ * Forwarded headers are honoured ONLY when REMOTE_ADDR is listed in the
+ * OPTIONAL TRUSTED_PROXIES constant (see g2ml_isTrustedProxy). When trusted,
+ * the RIGHT-most entry of X-Forwarded-For that is not itself a trusted proxy
+ * is taken — this is the standard correct choice, because each trusted hop
+ * appends the address it received the connection from, so the right-most
+ * untrusted value is the real client. The chosen value is validated with
+ * FILTER_VALIDATE_IP and the function falls back to REMOTE_ADDR if it is
+ * missing or invalid.
+ *
+ * On Dreamhost (direct-served, no TRUSTED_PROXIES) this always returns
+ * REMOTE_ADDR, so the activity log and the per-IP rate limits both see the
+ * genuine peer address and cannot be poisoned or evaded by forged headers.
  *
  * @return string  The client IP address (IPv4 or IPv6)
  *
@@ -471,33 +648,64 @@ function g2ml_sanitiseEmail(?string $email): string|false
  */
 function g2ml_getClientIP(): string
 {
-    // Check X-Forwarded-For (may contain comma-separated chain)
-    if (!empty($_SERVER['HTTP_X_FORWARDED_FOR']))
-    {
-        // Take the first (leftmost) IP — that's the original client
-        $forwardedIPs = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-        $clientIP = trim($forwardedIPs[0]);
+    $remoteAddr = $_SERVER['REMOTE_ADDR'] ?? '';
 
-        // Validate it looks like an IP address
-        if (filter_var($clientIP, FILTER_VALIDATE_IP) !== false)
+    if (!is_string($remoteAddr))
+    {
+        $remoteAddr = '';
+    }
+
+    $remoteAddr = trim($remoteAddr);
+
+    if ($remoteAddr === '')
+    {
+        $remoteAddr = '0.0.0.0';
+    }
+
+    // Default and only-safe path: trust nobody, use the immediate peer.
+    if (g2ml_isTrustedProxy($remoteAddr) === false)
+    {
+        return $remoteAddr;
+    }
+
+    // REMOTE_ADDR is a configured trusted proxy: we MAY believe X-Forwarded-For.
+    $forwardedHeader = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? '';
+
+    if (is_string($forwardedHeader) && trim($forwardedHeader) !== '')
+    {
+        $forwardedIPs = explode(',', $forwardedHeader);
+
+        // Walk RIGHT to LEFT, skipping our own trusted hops, and take the
+        // first (right-most) entry that is NOT a trusted proxy — that is the
+        // genuine client as seen by the closest hop we trust.
+        for ($index = count($forwardedIPs) - 1; $index >= 0; $index--)
         {
-            return $clientIP;
+            $candidate = trim($forwardedIPs[$index]);
+
+            if ($candidate === '')
+            {
+                continue;
+            }
+
+            if (g2ml_isTrustedProxy($candidate) === true)
+            {
+                // This hop is one of ours; keep walking left.
+                continue;
+            }
+
+            if (filter_var($candidate, FILTER_VALIDATE_IP) !== false)
+            {
+                return $candidate;
+            }
+
+            // First untrusted entry is malformed; do not trust anything left
+            // of it. Fall through to REMOTE_ADDR.
+            break;
         }
     }
 
-    // Check X-Real-Ip header
-    if (!empty($_SERVER['HTTP_X_REAL_IP']))
-    {
-        $realIP = trim($_SERVER['HTTP_X_REAL_IP']);
-
-        if (filter_var($realIP, FILTER_VALIDATE_IP) !== false)
-        {
-            return $realIP;
-        }
-    }
-
-    // Fall back to REMOTE_ADDR
-    return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    // No usable forwarded value: fall back to the trusted proxy's own address.
+    return $remoteAddr;
 }
 
 /**

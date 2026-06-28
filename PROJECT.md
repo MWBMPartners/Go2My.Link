@@ -118,7 +118,7 @@ list; these OVERRIDE default behaviour):
 
 ## 📌 Current status
 
-- **Active stage:** 3 — SECURE (Phase 0 done; purple-team cycles starting).
+- **Active stage:** 3 — SECURE (purple-team in progress; F-001/#95 fixed, 0 open High).
 - **Done so far:** Bootstrap complete. Codebase Map written and spot-verified
   against the tree. Backlog re-derived from the live GitHub issues (#1–#128) and
   the two 2026-06-04 audits. Confirmed via direct code inspection that commit
@@ -132,11 +132,13 @@ list; these OVERRIDE default behaviour):
   (SECURE Phase 0): `SECURITY.md` written — threat model, attack-surface map,
   tooling sweep, multi-role fixtures plan, coverage ledger, findings register.
   8 open findings (top = F-001/#95 spoofable client IP); 8 verified fixed-on-branch;
-  no secrets or active-compromise signal; deps PASS.
-- **In progress / next:** SECURE phase — Phase 0 complete (`SECURITY.md` written;
-  8 open findings, top = F-001/#95 spoofable client IP in `g2ml_getClientIP()`).
-  Next: purple-team cycles (red→validate→blue→re-attack), one finding/batch per
-  cycle, starting F-001 (#95 trusted-proxy allowlist fix).
+  no secrets or active-compromise signal; deps PASS. Cycle 6 (SECURE — purple-team):
+  F-001/#95 (High) fixed — `REMOTE_ADDR` default + `TRUSTED_PROXIES` allowlist +
+  CIDR helper; rate-limit/audit spoofing closed; 53 unit tests pass (+18).
+- **In progress / next:** SECURE phase — F-001/#95 (High) fixed. **No open High
+  findings remaining.** Remaining open findings: F-003/#99 (interstitial scheme
+  guard, Med) next, then F-002/#98 (deletion-cancel CSRF, Med), F-004/#100 (SSRF,
+  Med), F-005/#101 (Low), F-006 (Low, latent), F-007 (Low), F-008 (Low).
 - **Open threads:**
   - 🔴 **#93 manual action outstanding** — the plaintext legacy DB credential in
     `web/G2My.Link/public_html_legacy/dbConfig.php` is now gitignored and was
@@ -236,6 +238,12 @@ list; these OVERRIDE default behaviour):
 - **Revisit if:** the project migrates off Dreamhost to a hosting environment
   with Composer/CLI, at which point PHPUnit integration becomes viable.
 
+### 2026-06-28 — Client IP trust: REMOTE_ADDR default; XFF only from TRUSTED_PROXIES; CIDR via inet_pton
+
+- **Decision:** `g2ml_getClientIP()` returns `REMOTE_ADDR` by default. `X-Forwarded-For` and `X-Real-IP` headers are honoured **only** when `REMOTE_ADDR` is present in the optional `TRUSTED_PROXIES` constant (an array of IP addresses or CIDR ranges). If the constant is undefined or empty, all forwarded headers are ignored. When multiple XFF hops are present, the right-most untrusted entry is chosen. CIDR matching is performed via binary `inet_pton` comparison, covering both IPv4 and IPv6. Dreamhost shared hosting has no trusted upstream proxy, so the effective default is: trust none.
+- **Why not per-call allowlist or ini-driven config:** A single well-named constant declared alongside the credentials file is discoverable, zero-dependency, and matches the project's no-Composer constraint. A DB-driven or ini-driven list adds a fetch on every request to the hot path.
+- **Revisit if:** the app is placed behind a known proxy/CDN (e.g. Cloudflare) — define `TRUSTED_PROXIES` with the CDN's published CIDR ranges.
+
 ### 2026-06-28 — SECURE Phase 0: SECURITY.md is the findings register; purple-team order established
 
 - **Decision:** `SECURITY.md` is the single findings register using `F-` IDs mapped to GitHub issue numbers. Purple-team remediation order: F-001 (#95 spoofable client IP) → F-003 (#99 interstitial scheme guard) → F-002 (#98 deletion-cancel CSRF) → F-004 (#100 SSRF in validateDestination) → F-005 (#100 created-URL internal-host/userinfo) → F-006 (#101 favicon path-traversal latent). Active-compromise signal: none.
@@ -283,6 +291,14 @@ list; these OVERRIDE default behaviour):
 - **Characterisation coverage:** `security.php` — `g2ml_hashPassword`/`verifyPassword` (Argon2id), `g2ml_sanitiseInput` (trim+strip_tags, preserves internal CRLF), `g2ml_sanitiseOutput` (htmlspecialchars), `g2ml_sanitiseURL` (scheme allowlist), CSRF token generate/validate (single-use confirmed), `g2ml_encrypt`/`g2ml_decrypt` AES-256-GCM round-trip. Integration: `sp_lookupShortURL` (active→200, expired→410, not_found→404, not_yet_active→404/pending).
 - **STABILIZE stage status:** COMPLETE. All High correctness B- items resolved (B-002, B-004, B-005, B-006 done; B-001 manual; B-003 deferred to SECURE). Test safety net in place.
 - **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually). Advancing to SECURE.
+
+### Cycle 6 — 2026-06-28 — SECURE (purple-team, F-001/#95)
+
+- **Items resolved:** B-003 (#95 spoofable client IP — `g2ml_getClientIP()` trusted-proxy allowlist fix).
+- **Evidence:** RED PoC (before fix): `g2ml_getClientIP()` returned forged `1.2.3.4` from a crafted `X-Forwarded-For` header; rotating IPs bypassed the per-IP rate-limit. VERIFY (after fix): genuine `203.0.113.9` (`REMOTE_ADDR`) returned; forged header ignored. Regression: `tests/unit/security_clientip_test.php` — 18 new tests covering REMOTE_ADDR baseline, XFF trusted/untrusted proxy cases, CIDR matching, fallback chain. `php tests/run.php` → 53 passed / 0 failed (was 35). `php -l` clean on all changed files. `TRUSTED_PROXIES` documented in installer creds heredoc and `docs/INSTALL.md`.
+- **Remaining open High findings:** none (F-001 was the only High; 0 open High now).
+- **Next purple-team target:** F-003 (#99 — interstitial scheme guard, Med), then F-002 (#98 — deletion-cancel CSRF, Med), then F-004 (#100 — SSRF), then F-005/#101 Low etc.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually).
 
 ### Cycle 5 — 2026-06-28 — SECURE (Phase 0 — doc-only)
 
@@ -382,11 +398,12 @@ _(none yet)_
 
 - **last-run:** 2026-06-28
 - **map-commit:** `7b67ad5`
-- **cycles-done:** 5  (0=DISCOVER, 2–3=STABILIZE correctness, 4=STABILIZE test harness, 5=SECURE Phase 0)
+- **cycles-done:** 6  (0=DISCOVER, 2–3=STABILIZE correctness, 4=STABILIZE test harness, 5=SECURE Phase 0, 6=SECURE purple-team F-001)
 - **branch:** `autopilot/2026-06-05`
 - **working tree at seed:** clean except untracked `.claude/agents/`,
   `.claude/settings.json` (autopilot scaffolding — not production code).
 - **artifacts added (cycle 5):** `SECURITY.md` (repo root — threat model, attack-surface map, tooling sweep, multi-role fixtures plan, coverage ledger, findings register F-001–F-008 open / F-101–F-108 fixed).
+- **artifacts added (cycle 6):** `tests/unit/security_clientip_test.php` (18 regression tests for `g2ml_getClientIP`, `g2ml_isTrustedProxy`, `g2ml_ipInRange`); updated `web/_functions/security.php` (trusted-proxy allowlist); `docs/INSTALL.md` + installer heredoc (TRUSTED_PROXIES documentation).
 
 ## 📋 Backlog
 
@@ -420,10 +437,12 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
 - **id:** B-003
   **title:** `g2ml_getClientIP()` trusts spoofable X-Forwarded-For / X-Real-Ip with no trusted-proxy check
   **category:** security · **impact:** High · **component:** shared
-  **source:** #95 · **status:** OPEN. Docblock claims a trusted-proxy check the
-  code does not perform; poisons activity/consent/error/breach logs, `lastLoginIP`,
-  new-login-alert heuristic, and contact-form rate-limit. Fix: only honour XFF/XRI
-  when `REMOTE_ADDR` is in a trusted-proxy allowlist.
+  **source:** #95 · **status:** ✅ Done (cycle 6). `REMOTE_ADDR` default; XFF/XRI
+  honoured only when `REMOTE_ADDR` is in the optional `TRUSTED_PROXIES` constant
+  (undefined/empty = trust none); right-most-untrusted XFF entry chosen; CIDR match
+  via `inet_pton` (IPv4+IPv6); helpers `g2ml_isTrustedProxy()` and `g2ml_ipInRange()`
+  added. Rate-limit/audit-log spoofing closed across all 13 callers. 18 regression
+  tests added; suite now 53 unit / 0 failed. Dreamhost default = trust none.
 
 - **id:** B-004
   **title:** Org invitations: re-invite blocked by `UQ_org_email_pending` including `status`
@@ -707,3 +726,4 @@ Baseline metrics measured at DISCOVER seed; every cycle appends a row.
 | 2026-06-28 | 3 | STABILIZE | 32 (B-004 + B-006 resolved this cycle) | 4 (5 ✅) | 21 (5 ✅) | 10 (0 ✅) | clean (php -l on changed files) | none (no test suite) | Org re-invite via generated-column unique key (B-004/#122) + short-code TOCTOU retry (B-006/#124); cancel→re-invite SUCCESS + double-pending errno 1062; migration 010 clean; retry regenerated after 2 collisions, graceful after 5 — all MySQL-verified |
 | 2026-06-28 | 4 | STABILIZE → completes STABILIZE | 32 (no GitHub issues closed this cycle) | 4 (5 ✅) | 21 (5 ✅) | 10 (0 ✅) | clean (php -l on all new tests/ files) | 35 unit / 4 integration (new — all green) | Test harness + characterisation (B-041): pure-PHP harness under tests/; `php tests/run.php` → 35 passed / 0 failed exit 0; integration 4 passed (or SKIPs cleanly with no DSN). STABILIZE stage now COMPLETE; advancing to SECURE |
 | 2026-06-28 | 5 | SECURE — Phase 0 (doc-only) | 32 (unchanged) | 4 open | 21 open | 10 open | n/a (doc-only cycle) | 35 unit / 4 integration (unchanged) | Threat model + attack-surface map + tooling sweep + multi-role fixtures plan + coverage ledger + findings register → SECURITY.md written. 8 OPEN findings (1 High: F-001/#95; 3 Med: F-002/#98, F-003/#99, F-004/#100; 4 Low: F-005/#100, F-006/#101, F-007, F-008); 8 verified FIXED-on-branch (F-101..F-108). No secrets/active-compromise signal; deps PASS (jQuery 3.7.1, Bootstrap 5.3.3, FA 6.5.1 pinned & current; Chart.js unstamped — note for analytics). Evidence: SECURITY.md#Findings |
+| 2026-06-28 | 6 | SECURE — purple-team (F-001/#95) | 31 (B-003 resolved this cycle) | 0 open (3 ✅ including this cycle) | 21 open | 10 open | clean (php -l on changed files) | 53 unit / 4 integration (18 new: `tests/unit/security_clientip_test.php`) | Spoofable client IP fixed (B-003/#95) — `REMOTE_ADDR` default + `TRUSTED_PROXIES` allowlist + CIDR helper via `inet_pton`; right-most-untrusted XFF entry; covers all 13 callers. RED PoC: forged 1.2.3.4 returned before fix; VERIFY: genuine 203.0.113.9 returned after. 53 unit tests pass / 0 failed (was 35). TRUSTED_PROXIES documented in installer creds heredoc + docs/INSTALL.md. No open High findings remaining. |
