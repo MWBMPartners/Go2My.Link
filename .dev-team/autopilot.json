@@ -26,13 +26,13 @@
       "phase": "SECURE",
       "mode": "security",
       "exit": "Phase-0 done; no unresolved Critical/High finding; rounds dry",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "phase": "COMPLETE",
       "mode": "orchestrator(feature)",
       "exit": "every High in-scope gap built-or-queued",
-      "status": "pending"
+      "status": "in-progress"
     },
     {
       "phase": "POLISH",
@@ -47,22 +47,63 @@
       "status": "pending"
     }
   ],
-  "phase_cursor": 2,
+  "phase_cursor": 3,
   "state": "RUNNING",
   "cursor": null,
-  "next_action": "SECURE final Low cycle: F-008 (add SRI integrity+crossorigin to remaining CDN <link>/<script> tags) + F-007 (per SECURITY.md). Quick hardening. Then SECURE exit (no Critical/High/Med open) -> advance phase_cursor to COMPLETE: author specs + QUEUE the big gated feature gaps (Component C, payments/SIGNula, API-key auth #38/#39) and auto-build any autonomy-eligible in-scope gaps (FG-001 custom suffix, FG-002 tags, FG-003 info auth view, FG-004 XML+XSLT).",
+  "next_action": "COMPLETE phase: gated big features queued (G-001..G-005, awaiting-user, surfaced). Next cycle: auto-build the autonomy-eligible in-scope gap FG-001 (authenticated custom short-suffix/alias \u2014 data model already enforces uniqueness; the create/edit forms just never expose the input). Then FG-002 (tags), FG-003 (info-page public-vs-authenticated view), FG-004 (XML+XSLT API output).",
   "queue": {
     "backlog": "PROJECT.md#Backlog",
     "feature_gaps": "FEATURES.md",
     "findings": "SECURITY.md#Findings"
   },
-  "gate_ledger": [],
+  "gate_ledger": [
+    {
+      "id": "G-001",
+      "kind": "feature",
+      "title": "Component C \u2014 LinksPage product (lnks.page)",
+      "spec_ref": "FEATURES.md#FG-019..024",
+      "status": "awaiting-user",
+      "reservation": "Entire third product/component is unbuilt (Phase 8 #45-50): renderer, templates, management UI, HTML upload, age-gate. Large; user explicitly gated. Needs which-features + how approval."
+    },
+    {
+      "id": "G-002",
+      "kind": "feature",
+      "title": "Payments & subscriptions (SIGNula, #57-60)",
+      "spec_ref": "FEATURES.md",
+      "status": "awaiting-user",
+      "reservation": "Billing/payments + external providers (PayPal/Apple/Google/crypto) \u2014 high-risk, external-touching, explicitly deferred to SIGNula. Bucket-2/3."
+    },
+    {
+      "id": "G-003",
+      "kind": "feature",
+      "title": "Advanced authentication \u2014 2FA/social/SSO/PassKey (SIGNula, #34-37)",
+      "spec_ref": "FEATURES.md",
+      "status": "awaiting-user",
+      "reservation": "Auth subsystem expansion; risky/architectural; deferred to SIGNula."
+    },
+    {
+      "id": "G-004",
+      "kind": "feature",
+      "title": "Public REST API + API-key auth + management UI (#38/#39/#40)",
+      "spec_ref": "FEATURES.md#FG-008-009",
+      "status": "awaiting-user",
+      "reservation": "Foundational for external integrations incl. CueRCode dynamic-QR; medium-risk (key issuance/verification, scopes, rate-limit). Needs design approval."
+    },
+    {
+      "id": "G-005",
+      "kind": "feature",
+      "title": "Analytics dashboard + click tracking/geo/device/export (#41-44)",
+      "spec_ref": "FEATURES.md#FG-006-007",
+      "status": "awaiting-user",
+      "reservation": "Large Phase-7 feature set; depends on tracking-capture design. Surface for prioritisation."
+    }
+  ],
   "blocked": {
     "is": false,
     "reason": null,
     "since": null
   },
-  "cycle": 8,
+  "cycle": 9,
   "cap": 60,
   "gates": "hybrid",
   "feature_completeness": "in-scope",
@@ -79,10 +120,10 @@
     "stale_after_min": 90
   },
   "branch": "autopilot/2026-06-05",
-  "last_commit": "4fac7fc",
+  "last_commit": "299b20a",
   "trajectory_ref": "PROJECT.md#Trajectory-ledger",
   "terminal": false,
   "delay": 90,
-  "updated": "2026-06-28T23:16:30Z",
+  "updated": "2026-06-29T19:41:34Z",
   "ops_note": "Release the lease with `rm -rf .dev-team/loop.lock` (a `holder` file lives inside, so `rmdir` fails and would stall the next cycle)."
 }

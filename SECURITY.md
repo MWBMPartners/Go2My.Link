@@ -114,7 +114,7 @@ Every untrusted input → sensitive sink, with the controls verified present.
 | Broken access control (IDOR/BOLA) | 639 | **N/A — controlled** | `createdByUserUID` on link CRUD; `canManageOrg()` on org mutators; admin role re-checks. |
 | Privilege escalation / forced browsing | 269 | **N/A — controlled** | Router gate + per-page role checks. |
 | AuthN weaknesses | 287/307 | **partial** | Argon2id; account lockout; enumeration-safe. Rate-limit keyed on spoofable IP (**F-001**). |
-| Session management | 384/613 | **investigate** | `session_regenerate_id(true)` on login ✅. ⚠️ `validateUserSession()` does not re-bind DB `userUID` to `$_SESSION['user_uid']` (**F-007**, defence-in-depth). |
+| Session management | 384/613 | **N/A — controlled** | `session_regenerate_id(true)` on login ✅. `validateUserSession()` now re-binds DB `userUID` to `$_SESSION['user_uid']` (F-007 fixed, cycle 9). |
 | JWT | 347 | **N/A** | No JWT; DB-backed opaque session tokens. |
 | OAuth/SSO redirect | 601 | **N/A** | Deferred (Phase 10). |
 | XSS (stored/reflected/DOM) | 79 | **N/A — controlled** | `htmlspecialchars(ENT_QUOTES)` on output; `app.js` uses `escapeHTML()`; `document.write` is constant strings; no `eval`/`new Function`. |
@@ -132,7 +132,7 @@ Every untrusted input → sensitive sink, with the controls verified present.
 | Insecure randomness | 338 | **N/A** | `random_bytes`/`bin2hex` for tokens (security.php). |
 | Hardcoded secrets | 798 | **N/A — controlled** | Creds gitignored + untracked; none in tracked code or history (see §0). |
 | Dependency CVEs | 1035/1104 | **N/A — controlled** | All pinned & current (see §3.3). |
-| Security misconfig | 16 | **partial** | Installer well-locked. ⚠️ SRI missing on some CDN tags (**F-008**). Non-shipping `public_html_*` variants are hygiene risk. |
+| Security misconfig | 16 | **partial** | Installer well-locked. SRI corrected on all CDN tags (F-008 fixed, cycle 9 — Bootstrap CSS hash was wrong/inconsistent and would have blocked the asset). Non-shipping `public_html_*` variants remain a hygiene risk. |
 | Container/IaC | — | **N/A** | Shared hosting (Dreamhost); no Docker/k8s/Terraform. |
 | Missing rate-limit / ReDoS | 770/1333 | **partial** | Anon create + login limited (IP key spoofable — F-001). No obvious ReDoS in own regexes. |
 | API excessive exposure / inventory | 200 | **investigate (future)** | `docs/API.md` documents endpoints that don't exist (doc/code drift); `tblAPIKeys` schema-only. Re-audit when #38 ships. |
@@ -170,15 +170,16 @@ Every untrusted input → sensitive sink, with the controls verified present.
 
 | Library | Version | Pinned? | SRI on CDN tag? | CVE verdict |
 |---|---|---|---|---|
-| Bootstrap | 5.3.3 (vendored + jsdelivr) | ✅ | ⚠️ present on most, **missing on `header.php`/`footer.php` JS+CSS** (**F-008**) | No known high-sev CVE. |
-| jQuery | 3.7.1 (vendored + code.jquery.com) | ✅ | ⚠️ **missing** on `footer.php` script tag (**F-008**) | No known high-sev CVE (≥3.5 patched the prior XSS). |
-| Font Awesome | 6.5.1 (vendored + cdnjs) | ✅ | ⚠️ missing on several `<link>` tags (**F-008**) | No known high-sev CVE. |
+| Bootstrap | 5.3.3 (vendored + jsdelivr) | ✅ | ✅ **corrected (cycle 9)** — CSS SRI hash was wrong/inconsistent across 4 files (would have blocked the asset); now `sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH` verified against vendored copy + live CDN. JS re-verified correct. | No known high-sev CVE. |
+| jQuery | 3.7.1 (vendored + code.jquery.com) | ✅ | ✅ **verified correct (cycle 9)** | No known high-sev CVE (≥3.5 patched the prior XSS). |
+| Font Awesome | 6.5.1 (vendored + cdnjs) | ✅ | ✅ **verified correct (cycle 9)** | No known high-sev CVE. |
 | Chart.js | vendored `chart.umd.min.js` (version not stamped) | local-only | n/a | Verify exact version when analytics ships; no CDN tag in use. |
 
 **Dependency-CVE verdict: PASS.** All three primary libs are current, pinned
-versions with no known high-severity CVE. The only dependency-class finding is the
-**missing SRI** on a subset of CDN tags (F-008, Low). Chart.js carries no embedded
-version stamp — record its version when the analytics layer is built.
+versions with no known high-severity CVE. F-008 resolved (cycle 9) — the Bootstrap
+CSS SRI hash was incorrect across 4 files and has been corrected; all other CDN
+hashes re-verified. Chart.js carries no embedded version stamp — record its version
+when the analytics layer is built.
 
 ---
 
@@ -219,13 +220,13 @@ micro-framework (`tests/bootstrap.php`); MySQL available locally.
 | Broken access control (CWE-639) | **no** | manual read of ownership checks | looks controlled | **no userB / GlobalAdmin fixtures → IDOR untested end-to-end** |
 | Privilege escalation (CWE-269) | no | manual read | router+page gates present | no test driving adminA→orgB / user→admin route |
 | AuthN / rate-limit (CWE-307) | partial | unit (hash/CSRF) | Argon2id confirmed | login lockout + spoofed-IP rate-limit (F-001) untested |
-| Session mgmt (CWE-384) | no | manual read | regenerate-id present; F-007 | no session-fixation/binding test |
+| Session mgmt (CWE-384) | **yes** | cycle-9 DB-backed regression test | `validateUserSession()` re-binds `userUID` from DB row (F-007 fixed); `session_regenerate_id(true)` on login ✅; new `tests/integration/session_rebind_test.php` — negative-control proven | full session-fixation end-to-end probe (purple-team priority) |
 | XSS (CWE-79) | no | manual read + grep | output escaped | no DOM/stored XSS probe |
 | CSRF (CWE-352) | **yes** | unit token round-trip + cycle-7 fix | tokens on all POST handlers; deletion-cancel → CSRF POST (F-002 fixed) | — |
 | Open redirect (CWE-601) | **yes** | manual read + cycle-7 regression tests | login/consent guarded; interstitial scheme-guarded (F-003 fixed); 8 new tests | — |
 | SSRF (CWE-918) | **yes** | cycle-8 regression tests | F-004 + F-005 fixed — shared `g2ml_destinationHostIsAllowed()` guard; 25 unit tests (`tests/unit/security_ssrf_host_guard_test.php`) covering loopback/link-local/metadata/RFC1918/ULA/userinfo/IPv4-mapped and public-IP allow cases | live DNS resolution fuzz (unit tests use controlled stubs) |
 | Crypto/secrets (CWE-798/327) | partial | unit (encryption) + secret scan | clean | no gitleaks history scan (tool absent) |
-| Dependencies (CWE-1035) | yes | version/SRI grep | PASS; F-008 | gitleaks/semgrep/osv-scanner not installed |
+| Dependencies (CWE-1035) | **yes** | version/SRI grep + cycle-9 hash verification | PASS; F-008 fixed (Bootstrap CSS hash corrected — wrong hash would have blocked the asset in production; all other CDN hashes re-verified correct) | gitleaks/semgrep/osv-scanner not installed |
 | Misconfig/installer (CWE-16) | no | manual read | well-locked | no test that re-run installer refuses post-lock |
 | Container/IaC | n/a | — | shared hosting | n/a |
 | API inventory (CWE-200) | n/a (future) | — | #38 unbuilt | re-audit when API-key auth ships |
@@ -236,7 +237,9 @@ micro-framework (`tests/bootstrap.php`); MySQL available locally.
 
 Severity = impact on assets. Status reconciled against **current** branch code
 (2026-06-05/06-28), not the original audit snapshot.
-**Open:** 2 (0 High, 0 Med, 2 Low). **Fixed on branch:** 14.
+**Open:** 0 (0 Critical / 0 High / 0 Med / 0 Low). **Fixed on branch:** 16.
+
+> 🔒 **SECURE phase complete** — all 8 F- register findings (F-001 through F-008) are now either fixed or verified intact. No open findings remain. Purple-team cycles 5–9 covered: Phase-0 threat model (cycle 5), F-001 High (cycle 6), F-002/F-003 Med (cycle 7), F-004/F-005/F-006 Med/Low (cycle 8), F-007/F-008 Low (cycle 9). Register is fully closed; the run advances to COMPLETE.
 
 | ID | Title | Sev | Status | CWE | Evidence (file:line) | GH # |
 |---|---|---|---|---|---|---|
@@ -246,8 +249,8 @@ Severity = impact on assets. Status reconciled against **current** branch code
 | **F-004** | SSRF in `validateDestination()` server-side HEAD fetch — `get_headers()` with no private/loopback/link-local/reserved-range guard. **OFF by default** (`redirect.validate_destination=false`); becomes an authenticated SSRF oracle if enabled | **Med** | ✅ **FIXED** (cycle 8) — `g2ml_destinationHostIsAllowed()` + `g2ml_isPrivateOrReservedIp()` added to `security.php`; `validateDestination()` calls the guard BEFORE the `get_headers()` HEAD fetch; disallowed host → existing failure shape, no network call; loopback/link-local/metadata (169.254.169.254)/reserved always blocked; RFC1918/ULA blocked by default (override via `redirect.allow_private_destinations`); IPv4-mapped-IPv6 unwrapped; fails closed when settings/DNS unavailable; seed `014_redirect_ssrf_settings.sql`; 25 unit regression tests added | 918 | `web/G2My.Link/_functions/redirect_resolver.php` (validateDestination); `web/_functions/security.php` (g2ml_destinationHostIsAllowed, g2ml_isPrivateOrReservedIp) | #100 |
 | **F-005** | Created-URL host validation lacks private-IP/loopback/reserved-literal rejection and `user:pass@` userinfo stripping — stored destinations can point at internal hosts (feeds F-004 when fetch enabled) | **Low** | ✅ **FIXED** (cycle 8) — `shorturl_create.php` calls `g2ml_destinationHostIsAllowed()` before creating a row; disallowed host → existing return contract (no row inserted); userinfo rejection included in the shared guard | 918 | `web/Go2My.Link/_functions/shorturl_create.php` | #100 |
 | **F-006** | Latent path traversal — `favicon.php` concatenates DB `orgLogoPath` into `readfile()`/`filesize()` with no `basename()`/`realpath()` containment; `getOrgFavicon()` returns the raw stored value. Latent today (no code writes `orgLogoPath`); live once org-logo upload ships | **Low** | ✅ **FIXED** (cycle 8) — `favicon.php` now confines the DB-sourced path with `basename()` + `realpath()` inside the uploads dir; paths that escape the uploads dir or do not exist fall through to the default favicon; 4 unit regression tests added | 22 | `web/G2My.Link/public_html/favicon.php` | #101 |
-| **F-007** | `validateUserSession()` validates the DB session token but does not re-bind the session's `userUID` to `$_SESSION['user_uid']` (defence-in-depth; not exploitable today) | **Low** | **OPEN** | 384 | `web/_functions/session.php:133-165` | — (audit §3.3) |
-| **F-008** | Missing SRI on a subset of CDN tags (jQuery + Bootstrap JS in `footer.php`; Bootstrap/FA CSS in `header.php` and the 3 Component-B error pages) — CDN compromise = script/style injection | **Low** | **OPEN** | 353/494 | `web/_includes/footer.php:131,145`; `web/_includes/header.php:158,169`; `404.php:63,68`, `expired.php:89,94`, `validating.php:88,93` | — (new) |
+| **F-007** | `validateUserSession()` validates the DB session token but does not re-bind the session's `userUID` to `$_SESSION['user_uid']` (defence-in-depth; not exploitable today) | **Low** | ✅ **FIXED** (cycle 9) — `validateUserSession()` now re-binds `$_SESSION['user_uid'] = (int) $session['userUID']` from the authoritative DB session row after the token check, matching the `loginUser()`/`auth.php` convention; defence-in-depth against session confusion/fixation. New DB-backed regression test `tests/integration/session_rebind_test.php`; negative-control proven: disabling the re-bind line fails the test. | 384 | `web/_functions/session.php` | — (audit §3.3) |
+| **F-008** | Bootstrap 5.3.3 CSS SRI hash was **wrong and inconsistent** across `header.php` and the 3 Component-B error pages (two different incorrect hashes); browsers would have **blocked Bootstrap CSS in production** (broken styling). Additionally, missing SRI on jQuery + Bootstrap JS in `footer.php` and FA CSS in `header.php` and B error pages. | **Low** | ✅ **FIXED** (cycle 9) — all 4 affected files corrected to the independently verified hash `sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH` (confirmed against both the vendored copy and the live jsdelivr CDN). Other assets (Bootstrap JS, RTL, jQuery 3.7.1, FA 6.5.1) re-verified correct. `footer.php` was untouched (already correct). | 353/494 | `web/_includes/header.php`; `web/G2My.Link/public_html/404.php`, `expired.php`, `validating.php` | — (new) |
 | F-101 | Contact-form CRLF header injection | Med | **FIXED-on-branch** | 93 | subject stripped `\r\n\0` at `contact/index.php:152` | #97 |
 | F-102 | Contact form CAPTCHA not verified server-side | Med | **FIXED-on-branch** | 290 | `verifyCaptcha()` enforced `contact/index.php:83-98` | #96 |
 | F-103 | Component B CSP blocked its own error-page CDN CSS | Low | **FIXED-on-branch** | 693 | `style-src`/`font-src` now allow jsdelivr/cdnjs — `G2My.Link/public_html/.htaccess` CSP | #103 |
@@ -259,13 +262,9 @@ Severity = impact on assets. Status reconciled against **current** branch code
 
 ### 6.1 Prioritised purple-team target list (highest severity first)
 
-All High/Med/Low findings through F-006 are now fixed. Remaining open findings:
+All findings F-001 through F-008 are now fixed. **Register is fully closed — 0 open findings.**
 
-1. **F-007 — `validateUserSession()` no `userUID` re-bind** (Low, `session.php:133-165`) — defence-in-depth; not exploitable today.
-2. **F-008 — Missing SRI on CDN tags** (Low, `footer.php:131,145`, `header.php:158,169`, B error pages) — CDN compromise = script/style injection. Next purple-team cycle.
-
-> Re-confirm the FIXED-on-branch set (F-101…F-107) is not regressed, and the
-> **rotation** action behind F-108 (#93) is closed operationally.
+> The FIXED-on-branch set (F-101…F-107) remains unregressed (re-confirmed at cycle 9: 90 unit + 5 integration pass). The **rotation** action behind F-108 (#93) remains a manual operations task for the user.
 
 ---
 
@@ -283,4 +282,4 @@ All High/Med/Low findings through F-006 are now fixed. Remaining open findings:
 
 ---
 
-*Phase 0 setup only. No exploitation, no remediation, no code changes performed.*
+*SECURE phase complete (cycles 5–9). Phase 0 threat model + 8 findings fixed (F-001–F-008); findings register now 0 open. No secrets/active-compromise signal found; deps PASS. Advancing to COMPLETE.*
