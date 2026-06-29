@@ -20,7 +20,7 @@
       "phase": "STABILIZE",
       "mode": "iterate",
       "exit": "no High correctness/test gap; safety net exists",
-      "status": "done"
+      "status": "re-opened"
     },
     {
       "phase": "SECURE",
@@ -50,7 +50,7 @@
   "phase_cursor": 3,
   "state": "RUNNING",
   "cursor": null,
-  "next_action": "COMPLETE phase: gated big features queued (G-001..G-005, awaiting-user, surfaced). Next cycle: auto-build the autonomy-eligible in-scope gap FG-001 (authenticated custom short-suffix/alias \u2014 data model already enforces uniqueness; the create/edit forms just never expose the input). Then FG-002 (tags), FG-003 (info-page public-vs-authenticated view), FG-004 (XML+XSLT API output).",
+  "next_action": "SAFETY FLOOR re-open STABILIZE: fix B-042 \u2014 logActivity() (activity_logger.php) throws a mysqli bind-type-string vs params mismatch on every create; audit logging silently fails AND the per-IP rate-limit (rateLimit() counts tblActivityLog rows) is likely undermined. RED (show the exception + that rate-limit rows are missing) -> BLUE (fix the bind type string/params) -> verify on throwaway MySQL + add a regression test. THEN resume COMPLETE: FG-002 (tags), FG-003 (info-page public-vs-auth view), FG-004 (XML+XSLT API). Gated G-001..G-005 await user approval.",
   "queue": {
     "backlog": "PROJECT.md#Backlog",
     "feature_gaps": "FEATURES.md",
@@ -96,6 +96,15 @@
       "spec_ref": "FEATURES.md#FG-006-007",
       "status": "awaiting-user",
       "reservation": "Large Phase-7 feature set; depends on tracking-capture design. Surface for prioritisation."
+    },
+    {
+      "id": "G-006",
+      "kind": "feature",
+      "title": "FG-001 authenticated custom short-suffix/alias",
+      "spec_ref": "FEATURES.md#FG-001",
+      "status": "built",
+      "cleared_by": "autonomy-test",
+      "justification": "table-stakes + in-scope (brief 90-92) + risk:Low + non-destructive; built cycle 10, 110 unit + 11 integration pass."
     }
   ],
   "blocked": {
@@ -103,7 +112,7 @@
     "reason": null,
     "since": null
   },
-  "cycle": 9,
+  "cycle": 10,
   "cap": 60,
   "gates": "hybrid",
   "feature_completeness": "in-scope",
@@ -120,10 +129,10 @@
     "stale_after_min": 90
   },
   "branch": "autopilot/2026-06-05",
-  "last_commit": "299b20a",
+  "last_commit": "090fbf1",
   "trajectory_ref": "PROJECT.md#Trajectory-ledger",
   "terminal": false,
   "delay": 90,
-  "updated": "2026-06-29T19:41:34Z",
+  "updated": "2026-06-29T20:02:01Z",
   "ops_note": "Release the lease with `rm -rf .dev-team/loop.lock` (a `holder` file lives inside, so `rmdir` fails and would stall the next cycle)."
 }

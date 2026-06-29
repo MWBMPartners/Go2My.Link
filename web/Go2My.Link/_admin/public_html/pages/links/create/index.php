@@ -81,6 +81,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         $categoryID     = g2ml_sanitiseInput($_POST['category_id'] ?? '');
         $startDate      = g2ml_sanitiseInput($_POST['start_date'] ?? '');
         $endDate        = g2ml_sanitiseInput($_POST['end_date'] ?? '');
+        // FG-001: optional custom alias (authenticated dashboard only). Empty
+        // means "generate a random code"; full validation lives server-side in
+        // createShortURL().
+        $customCode     = trim(g2ml_sanitiseInput($_POST['custom_code'] ?? ''));
         if (isset($_POST['is_active'])) {
             $isActive = 1;
         } else {
@@ -112,6 +116,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         } else {
             $endDateVal = null;
         }
+        if ($customCode !== '') {
+            $customCodeVal = $customCode;
+        } else {
+            $customCodeVal = null;
+        }
 
         $options = [
             'userUID'    => $currentUser['userUID'],
@@ -121,6 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             'categoryID' => $categoryIDVal,
             'startDate'  => $startDateVal,
             'endDate'    => $endDateVal,
+            'customCode' => $customCodeVal,
         ];
 
         if (function_exists('createShortURL'))
@@ -246,6 +256,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                                 'placeholder' => 'My Link',
                                 'required'    => false,
                                 'helpText'    => 'A descriptive title for your own reference.',
+                                'value' => $fieldValue,
+                            ]);
+
+                                // FG-001: optional custom alias. Authenticated
+                                // users may pick their own short code instead of
+                                // a random one. Re-display the submitted value on
+                                // error so the user does not have to retype it.
+                                if (isset($_POST['custom_code'])) {
+                                    $fieldValue = g2ml_sanitiseOutput($_POST['custom_code']);
+                                } else {
+                                    $fieldValue = '';
+                                }
+                            echo formField([
+                                'id'          => 'custom-code',
+                                'name'        => 'custom_code',
+                                'label'       => 'Custom alias (optional)',
+                                'type'        => 'text',
+                                'placeholder' => 'my-campaign',
+                                'required'    => false,
+                                'helpText'    => 'Choose your own short code instead of a random one: 3 to 50 characters, using only letters, numbers, hyphens (-), and underscores (_). Leave blank for a random code.',
                                 'value' => $fieldValue,
                             ]);
 

@@ -42,6 +42,67 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 }
 
 // ============================================================================
+// 🔤 Custom short-code (alias) constraints — shared in one place (FG-001)
+// ============================================================================
+// The shortCode column is VARCHAR(50). A user-chosen alias is restricted to
+// letters, digits, hyphen, and underscore, with a minimum of 3 characters so
+// it cannot collide with single/double-character reserved handler segments and
+// reads as a deliberate choice. The regex is anchored and length-bounded so it
+// can never exceed the column width.
+//
+// 📖 Reference: web/_sql/schema/020_shorturls_categories_tags.sql (shortCode VARCHAR(50))
+// 📖 Reference: https://www.php.net/manual/en/function.preg-match.php
+// ============================================================================
+if (!defined('G2ML_CUSTOM_CODE_PATTERN'))
+{
+    define('G2ML_CUSTOM_CODE_PATTERN', '/^[A-Za-z0-9_-]{3,50}$/');
+}
+
+// ============================================================================
+// 🚫 g2ml_isReservedShortCode — block codes that would shadow Component B routes
+// ============================================================================
+// Component B (g2my.link) serves a small set of handler/reserved paths directly
+// (robots.txt, favicon.ico, the validating/expired/404 interstitials, the API
+// and admin trees, the installer, and the www host label). A custom alias that
+// matches one of these would shadow the real handler when resolved, so we
+// reject it at creation time. Comparison is case-insensitive.
+//
+// To extend the block list, add an entry to $reserved below — it is the single
+// source of truth. Entries are stored lowercase; the incoming code is
+// lowercased before comparison.
+//
+// 📖 Reference: web/G2My.Link/public_html/robots.php, favicon.php, 404.php,
+//               expired.php, validating.php (handler routes)
+//
+// @param  string $code  The candidate custom short code.
+// @return bool           True when the code is reserved (must be rejected).
+// ============================================================================
+function g2ml_isReservedShortCode(string $code): bool
+{
+    // Single source of truth — keep lowercase, extend as new routes are added.
+    $reserved = [
+        'robots',
+        'robots.txt',
+        'favicon',
+        'favicon.ico',
+        'index',
+        'sitemap',
+        'sitemap.xml',
+        'validating',
+        'expired',
+        '404',
+        'api',
+        'admin',
+        'install',
+        'www',
+    ];
+
+    $normalised = strtolower(trim($code));
+
+    return in_array($normalised, $reserved, true);
+}
+
+// ============================================================================
 // ✨ createShortURL — Create a new short URL
 // ============================================================================
 // Creates a new short URL record in tblShortURLs. Generates a unique random
@@ -64,6 +125,11 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 //   - startDate:   (string|null) Start date (ISO 8601 format)
 //   - endDate:     (string|null) End date (ISO 8601 format)
 //   - notes:       (string|null) Internal notes
+//   - customCode:  (string|null) Authenticated-only custom alias (FG-001). When
+//                  non-empty it is validated (format + reserved word) and used
+//                  verbatim as the short code; a duplicate alias fails with a
+//                  clear error and is NEVER silently regenerated. When empty or
+//                  absent, a random code is generated as before.
 // @return array  ['success' => bool, 'shortCode' => ?string,
 //                 'shortURL' => ?string, 'error' => ?string]
 // ============================================================================
@@ -176,31 +242,96 @@ function createShortURL(string $longURL, array $options = []): array
     $endDate    = $options['endDate'] ?? null;
     $notes      = $options['notes'] ?? null;
 
+    // Custom alias (FG-001): empty/absent means "generate a random code".
+    $customCode = trim((string) ($options['customCode'] ?? ''));
+
+    if ($customCode !== '')
+    {
+        $useCustomCode = true;
+    }
+    else
+    {
+        $useCustomCode = false;
+    }
+
     // Determine code length from options or settings
     $codeLength = $options['codeLength']
         ?? (int) getSetting('shortcode.anonymous_length',
             getSetting('shortcode.default_length', 7));
 
     // ========================================================================
-    // 🎲 + 💾 Steps 4 & 5: Generate a unique code and insert — with retry
+    // 🔤 Step 3b: Validate a supplied custom alias (FG-001)
     // ========================================================================
-    // sp_generateShortCode checks for collisions, but between that check and the
-    // INSERT below a concurrent create can claim the same code (a time-of-check
-    // to time-of-use race). The UQ_shortcode_org unique key is the real guard:
-    // on a collision the INSERT fails with MySQL errno 1062 (ER_DUP_ENTRY). We
-    // therefore wrap generate → insert in a bounded retry loop. On a duplicate
-    // key we regenerate and retry; on any other failure, or after the cap, we
-    // fail gracefully exactly as before.
+    // When the caller supplies a custom alias, it must pass server-side
+    // validation BEFORE we touch the database: the format regex (which also
+    // bounds it to the VARCHAR(50) column), then the reserved-word check that
+    // stops it shadowing a Component B handler route. A failure here returns a
+    // clear validation error and writes no row.
+    //
+    // 📖 Reference: g2ml_isReservedShortCode() above
+    // 📖 Reference: G2ML_CUSTOM_CODE_PATTERN above
+    // ========================================================================
+    if ($useCustomCode === true)
+    {
+        if (preg_match(G2ML_CUSTOM_CODE_PATTERN, $customCode) !== 1)
+        {
+            return [
+                'success'   => false,
+                'shortCode' => null,
+                'shortURL'  => null,
+                'error'     => 'Custom alias must be 3 to 50 characters using only letters, numbers, hyphens, and underscores.',
+            ];
+        }
+
+        if (g2ml_isReservedShortCode($customCode) === true)
+        {
+            return [
+                'success'   => false,
+                'shortCode' => null,
+                'shortURL'  => null,
+                'error'     => 'That alias is reserved and cannot be used. Please choose another.',
+            ];
+        }
+    }
+
+    // ========================================================================
+    // 🎲 + 💾 Steps 4 & 5: Obtain a short code and insert
+    // ========================================================================
+    // Two paths share one INSERT:
+    //
+    //   • Random (default): sp_generateShortCode checks for collisions, but
+    //     between that check and the INSERT a concurrent create can claim the
+    //     same code (a time-of-check to time-of-use race). The UQ_shortcode_org
+    //     unique key is the real guard: on a collision the INSERT fails with
+    //     MySQL errno 1062 (ER_DUP_ENTRY). We wrap generate → insert in a
+    //     bounded retry loop; on a duplicate key we regenerate and retry; on any
+    //     other failure, or after the cap, we fail gracefully.
+    //
+    //   • Custom alias (FG-001): the user picked the code, so we must NOT change
+    //     it. We attempt a single insert with the validated alias; a duplicate
+    //     key means the alias is already taken and we return a clear error with
+    //     NO regeneration and NO random fallback.
     //
     // 📖 Reference: web/_sql/procedures/sp_generateShortCode.sql
     // 📖 Reference: web/_functions/db_query.php — dbInsert(), dbLastErrno()
     // 📖 Reference: https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html (1062 = ER_DUP_ENTRY)
     // ========================================================================
-    $maxAttempts          = 5;
     $duplicateKeyErrno    = 1062;
     $shortCode            = null;
     $insertResult         = false;
     $generationFailed     = false;
+    $customCodeTaken      = false;
+
+    // A custom alias gets exactly one attempt (no regeneration); the random path
+    // keeps its bounded retry budget.
+    if ($useCustomCode === true)
+    {
+        $maxAttempts = 1;
+    }
+    else
+    {
+        $maxAttempts = 5;
+    }
 
     // Insert SQL is static; only the bound short code changes between attempts.
     // 📖 Reference: web/_functions/db_query.php — dbInsert()
@@ -215,22 +346,30 @@ function createShortURL(string $longURL, array $options = []): array
 
     for ($attempt = 1; $attempt <= $maxAttempts; $attempt++)
     {
-        // Generate a candidate short code.
-        $spResult = dbCallProcedure(
-            'sp_generateShortCode',
-            [$orgHandle, $codeLength],
-            'si',
-            ['@outputCode']
-        );
-
-        if ($spResult === false || empty($spResult['@outputCode']))
+        // Obtain a candidate short code: the validated alias verbatim, or a
+        // freshly generated random code.
+        if ($useCustomCode === true)
         {
-            error_log('[Go2My.Link] ERROR: sp_generateShortCode failed for org: ' . $orgHandle . ' (attempt ' . $attempt . ')');
-            $generationFailed = true;
-            break;
+            $shortCode = $customCode;
         }
+        else
+        {
+            $spResult = dbCallProcedure(
+                'sp_generateShortCode',
+                [$orgHandle, $codeLength],
+                'si',
+                ['@outputCode']
+            );
 
-        $shortCode = $spResult['@outputCode'];
+            if ($spResult === false || empty($spResult['@outputCode']))
+            {
+                error_log('[Go2My.Link] ERROR: sp_generateShortCode failed for org: ' . $orgHandle . ' (attempt ' . $attempt . ')');
+                $generationFailed = true;
+                break;
+            }
+
+            $shortCode = $spResult['@outputCode'];
+        }
 
         // Build the types string and params array for this candidate.
         // s = string, i = integer (nullable userUID handled as string for NULL)
@@ -277,10 +416,19 @@ function createShortURL(string $longURL, array $options = []): array
             break;
         }
 
-        // The insert failed. If it was a duplicate-key collision on the short
-        // code, regenerate and retry; otherwise stop and fail gracefully.
+        // The insert failed. A duplicate-key collision on the short code is
+        // handled differently for the two paths: a random code is regenerated
+        // and retried; a user-chosen alias must NOT be changed, so we record
+        // that it is taken and stop without any fallback.
         if (dbLastErrno() === $duplicateKeyErrno)
         {
+            if ($useCustomCode === true)
+            {
+                error_log('[Go2My.Link] INFO: custom alias already taken (1062) — code: ' . $shortCode . ', org: ' . $orgHandle);
+                $customCodeTaken = true;
+                break;
+            }
+
             error_log('[Go2My.Link] WARNING: short code collision (1062) — code: ' . $shortCode . ', org: ' . $orgHandle . ', attempt ' . $attempt . ' of ' . $maxAttempts);
             $shortCode = null;
             continue;
@@ -288,6 +436,18 @@ function createShortURL(string $longURL, array $options = []): array
 
         error_log('[Go2My.Link] ERROR: Failed to insert short URL (non-duplicate) — code: ' . $shortCode . ', org: ' . $orgHandle);
         break;
+    }
+
+    // A taken custom alias gets its own clear error and never falls back to a
+    // random code.
+    if ($customCodeTaken === true)
+    {
+        return [
+            'success'   => false,
+            'shortCode' => null,
+            'shortURL'  => null,
+            'error'     => 'That alias is already taken. Please choose another.',
+        ];
     }
 
     if ($generationFailed === true)

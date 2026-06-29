@@ -118,7 +118,7 @@ list; these OVERRIDE default behaviour):
 
 ## 📌 Current status
 
-- **Active stage:** 4 — COMPLETE (SECURE complete: all 8 findings F-001–F-008 fixed; findings register 0 open).
+- **Active stage:** 4 — COMPLETE phase: FG-001 built. Next: RE-OPEN STABILIZE to fix B-042 (logActivity bind mismatch — breaks audit logging + undermines rate-limiting) per the safety floor, THEN resume COMPLETE with FG-002 (tags), FG-003 (info-page auth view), FG-004 (XML+XSLT). Gated G-001..G-005 still awaiting user approval.
 - **Done so far:** Bootstrap complete. Codebase Map written and spot-verified
   against the tree. Backlog re-derived from the live GitHub issues (#1–#128) and
   the two 2026-06-04 audits. Confirmed via direct code inspection that commit
@@ -142,8 +142,13 @@ list; these OVERRIDE default behaviour):
   (`g2ml_destinationHostIsAllowed`) on both `validateDestination` and `createShortURL`;
   favicon `orgLogoPath` confined with `basename()`+`realpath()`; 90 unit tests pass
   (+29). Cycle 8 was interrupted once by a monthly spend-limit; partial work discarded
-  and cycle retried cleanly.
-- **In progress / next:** **SECURE COMPLETE** (cycles 5–9: Phase-0 + all 8 findings fixed). Cycle 9 fixed F-007 (`validateUserSession()` now re-binds `$_SESSION['user_uid']` from the DB row) + F-008 — which turned out to be a *wrong & inconsistent* Bootstrap 5.3.3 CSS SRI hash that would have **blocked the asset** (broken styling), now corrected and independently verified against the vendored copy **and** the live jsdelivr CDN. 90 unit + 5 integration tests pass. Entering **COMPLETE**: author specs for and QUEUE the big gated gaps for approval (Component C #45–50; payments/SIGNula #57–60 & advanced-auth #34–37; public REST API + API-key auth #38/#39), and auto-build the autonomy-eligible in-scope gaps (FG-001 custom short-suffix/alias, FG-002 tags, FG-003 info-page auth view, FG-004 XML+XSLT).
+  and cycle retried cleanly. Cycle 9: SECURE COMPLETE (F-007 session re-bind + F-008
+  Bootstrap CSS SRI hash corrected; findings register 0 open; 90 unit + 5 integration
+  tests pass). Cycle 10: COMPLETE phase — FG-001 (custom short-suffix/alias) auto-built
+  under the autonomy test; 110 unit + 11 integration tests pass; 5 acceptance criteria
+  demonstrated. New bug B-042 surfaced: `logActivity()` bind-type mismatch silently
+  breaks audit logging and undermines per-IP rate-limiting — re-opening STABILIZE next.
+- **In progress / next:** Fix B-042 (STABILIZE), then resume COMPLETE: auto-build FG-002 (tags), FG-003 (info-page auth view), FG-004 (XML+XSLT); queue gated gaps G-001..G-005 for user approval.
 - **Open threads:**
   - 🔴 **#93 manual action outstanding** — the plaintext legacy DB credential in
     `web/G2My.Link/public_html_legacy/dbConfig.php` is now gitignored and was
@@ -261,6 +266,13 @@ list; these OVERRIDE default behaviour):
 - **Why not allow-list approach:** The platform is a URL shortener deployed on shared hosting — the attack surface for SSRF is the stored destination of any short URL. A block-list of always-bad ranges (loopback, metadata, reserved) plus a configurable block of RFC1918 covers the realistic risk without requiring an explicit allow-list of every legitimate destination prefix, which would be unmanageable for a public shortener.
 - **Revisit if:** the app is deployed in an environment where RFC1918 destinations are legitimately needed (e.g. an intranet shortener) — set `redirect.allow_private_destinations` = `'1'`; the always-blocked ranges (loopback/link-local/metadata/reserved) remain in force regardless.
 
+### 2026-06-29 — FG-001 auto-built under autonomy test; B-042 (logActivity bind mismatch) surfaces; re-opening STABILIZE
+
+- **Decision:** FG-001 (authenticated custom short-suffix/alias) was auto-built without user gate approval under the autopilot autonomy test: table-stakes feature, explicitly in-scope per brief lines 90–92, risk Low, non-destructive (additive to existing `createShortURL()` and the dashboard create form; anonymous/public API path untouched). Custom codes are validated against `^[A-Za-z0-9_-]{3,50}$`, blocked against reserved words via `g2ml_isReservedShortCode()` (robots/favicon/index/sitemap/validating/expired/404/api/admin/install/www etc.), and on a duplicate (errno 1062) return "That alias is already taken." with no random fallback — a user-chosen code is never silently changed.
+- **B-042 surfaced:** `logActivity()` in `web/_functions/activity_logger.php` has a bind-param type-string vs params mismatch that throws on every short-URL create. The exception is caught and swallowed (non-fatal) but means activity logging silently fails on creates AND likely undermines the per-IP rate limit (`rateLimit()` counts `tblActivityLog` rows by IP). This is broader than the existing #126 (which tracks the `sp_logActivity` stored-procedure drift); the live PHP function/direct-INSERT path is affected. Classified High correctness/security.
+- **Stage decision:** Re-opening STABILIZE to fix B-042 (it undermines a security control — rate-limiting — so the safety floor requires it before resuming COMPLETE). After B-042 is fixed, resume COMPLETE: auto-build FG-002 (tags), FG-003 (info-page auth view), FG-004 (XML+XSLT), then queue gated gaps G-001..G-005 for user approval.
+- **Revisit if:** B-042 turns out to be already fixed by a concurrent change, or if the rate-limit is determined to have a separate enforcement path not dependent on `tblActivityLog`.
+
 ### 2026-06-28 — SECURE Phase 0: SECURITY.md is the findings register; purple-team order established
 
 - **Decision:** `SECURITY.md` is the single findings register using `F-` IDs mapped to GitHub issue numbers. Purple-team remediation order: F-001 (#95 spoofable client IP) → F-003 (#99 interstitial scheme guard) → F-002 (#98 deletion-cancel CSRF) → F-004 (#100 SSRF in validateDestination) → F-005 (#100 created-URL internal-host/userinfo) → F-006 (#101 favicon path-traversal latent). Active-compromise signal: none.
@@ -286,6 +298,14 @@ list; these OVERRIDE default behaviour):
   `STR_TO_DATE` with `%Y-%m-%d %H:%i:%s` and an explicit NULL fallback.
 
 ## ⛳ Checkpoint log
+
+### Cycle 10 — 2026-06-29 — COMPLETE (auto-built FG-001; surfaced B-042)
+
+- **Items resolved:** FG-001 — authenticated custom short-suffix/alias (auto-built under autonomy test).
+- **New bug surfaced:** B-042 — `logActivity()` bind-type mismatch throws on every create (swallowed silently; breaks audit logging; undermines per-IP rate-limit).
+- **Evidence:** `web/Go2My.Link/_functions/shorturl_create.php` — `createShortURL()` `customCode` option with `^[A-Za-z0-9_-]{3,50}$` validation + `g2ml_isReservedShortCode()` + hard duplicate error (no random fallback). `web/Go2My.Link/_admin/public_html/pages/links/create/index.php` — optional "Custom alias" field. `tests/unit/custom_alias_test.php` (25 tests) + `tests/integration/custom_alias_create_test.php` (6 tests). `php tests/run.php` → 110 passed / 0 failed; integration 11 passed. 5 acceptance criteria demonstrated. Lint clean.
+- **Remaining:** Re-opening STABILIZE to fix B-042 before resuming COMPLETE (FG-002 tags, FG-003 info-page auth view, FG-004 XML+XSLT). Gated gaps G-001..G-005 still awaiting user approval.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually).
 
 ### Cycle 2 — 2026-06-28 — STABILIZE
 
@@ -723,6 +743,11 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
   corrected; verify the note is consistent and `redirect.forward_utm_params`/
   `analytics.capture_tracking_params` are not claimed as built.
 
+- **id:** B-042
+  **title:** `logActivity()` bind-type mismatch throws on every create — audit logging fails; per-IP rate-limit likely undermined
+  **category:** correctness/security · **impact:** High · **component:** shared
+  **source:** found cycle 10 (broader than #126 — #126 covers `sp_logActivity` procedure drift; this is the live `logActivity()` PHP function/direct-INSERT path) · **status:** OPEN. `logActivity()` in `web/_functions/activity_logger.php` throws a MySQLi bind-param error ("number of elements in the type definition string must match the number of bind variables") on every short-URL create. The exception is caught and swallowed (non-fatal) but means activity logging silently fails on creates AND likely undermines the per-IP rate limit (`rateLimit()` counts `tblActivityLog` rows by IP). Fix: audit the bind-param type string against the actual params array in `logActivity()` and synchronise them.
+
 - **id:** B-041
   **title:** Establish pure-PHP test safety net (no Composer/PHPUnit; Dreamhost-compatible)
   **category:** quality (testing) · **impact:** High · **component:** shared
@@ -759,3 +784,4 @@ Baseline metrics measured at DISCOVER seed; every cycle appends a row.
 | 2026-06-28 | 7 | SECURE — purple-team (F-002/#98 + F-003/#99) | 29 (B-012 + B-015 resolved this cycle) | 0 open | 19 open | 10 open | clean (php -l on all 4 changed files) | 61 unit / 4 integration (8 new: `tests/unit/redirect_scheme_guard_test.php`) | Deletion-cancel CSRF→POST (B-015/#98) + interstitial scheme guard (B-012/#99) fixed. GET `?cancel` path removed; CSRF-protected POST form `account_delete_cancel` added. All destination/fallback sinks (`href`, JS `window.location`, `meta-refresh`, noscript) in `validating.php` + `expired.php` scheme-guarded via `g2ml_sanitiseURL()` + `preg_match('^https?://')` fallback; rejected destination → no link; rejected fallback → `https://go2my.link`. 61 tests pass / 0 failed (was 53). No open High/Critical findings. |
 | 2026-06-29 | 8 | SECURE — purple-team (F-004/F-005 #100 + F-006 #101; destination/path-safety cluster) | 27 (B-013 + B-014 resolved this cycle) | 0 open | 17 open | 10 open | clean (php -l on all 4 changed files) | 90 unit / 4 integration (29 new: 25 in `tests/unit/security_ssrf_host_guard_test.php` + 4 in `tests/unit/favicon_path_traversal_test.php`) | Shared anti-SSRF host guard (`g2ml_destinationHostIsAllowed` + `g2ml_isPrivateOrReservedIp`) on both `validateDestination()` (before HEAD fetch) and `createShortURL()` (at creation); loopback/link-local/metadata (169.254.169.254)/reserved always blocked; RFC1918/ULA blocked by default (override `redirect.allow_private_destinations`); rejects userinfo (`user:pass@`); IPv4-mapped-IPv6 unwrapped; fails closed when settings/DNS unavailable; seed `014_redirect_ssrf_settings.sql`. Favicon `orgLogoPath` confined with `basename()`+`realpath()` inside uploads dir (F-006). 90 tests pass / 0 failed (+29). 0 Critical/High/Med findings remaining; 2 Low open (F-007 session re-bind, F-008 SRI). Note: cycle 8 was interrupted once by a monthly spend-limit; partial work was discarded and the cycle retried cleanly from the cycle-7 checkpoint. |
 | 2026-06-29 | 9 | SECURE — purple-team (F-007 + F-008); **completes SECURE** | 27 (F-007/F-008 have no GitHub #) | 0 open | 17 open | 10 open | clean (php -l on all 6 changed files) | 90 unit / 5 integration (1 new: `tests/integration/session_rebind_test.php`) | Final 2 Low fixed → **findings register 0 open**. F-007: `validateUserSession()` re-binds `$_SESSION['user_uid']` from the DB session row (defence-in-depth; negative-control test proven). F-008: the Bootstrap 5.3.3 CSS SRI hash was **wrong & inconsistent** across `header.php` + the 3 B error pages — would have **blocked the CSS in production** — corrected to the hash verified against the vendored copy AND the live jsdelivr CDN; other assets re-verified. 90 unit + 5 integration pass. Note: cycle 9's documentarian was interrupted by the monthly spend-limit; SECURITY.md had already been written, PROJECT.md completed inline on retry. SECURE COMPLETE; advancing to COMPLETE. |
+| 2026-06-29 | 10 | COMPLETE — auto-built FG-001 (autonomy-eligible); surfaced B-042 | 27 (unchanged on GitHub) | 1 open (B-042 new) | 17 open | 10 open | clean (php -l across all changed files + new tests) | 110 unit / 11 integration (25 new unit: `tests/unit/custom_alias_test.php`; 6 new integration: `tests/integration/custom_alias_create_test.php`) | FG-001 custom short-suffix/alias BUILT under the autonomy test (table-stakes, in-scope per brief lines 90–92, risk:Low, non-destructive). `createShortURL()` gains `customCode` option — validates `^[A-Za-z0-9_-]{3,50}$`, blocks reserved words via `g2ml_isReservedShortCode()`, hard-errors "That alias is already taken." on duplicate (errno 1062, no random fallback); empty/absent → existing random+retry path unchanged. Dashboard create form adds optional "Custom alias" field with label + help text + error re-display; anonymous/public API path untouched. 5 acceptance criteria demonstrated. New bug B-042 surfaced: `logActivity()` bind-type mismatch throws on every create — swallowed silently but breaks audit logging and likely undermines per-IP rate-limit. Re-opening STABILIZE next to fix B-042. |

@@ -39,6 +39,7 @@ Ranked by importance within the aim, then favouring lower effort/risk. Autonomy-
   **confidence:** high
   **spec-seed:** Add an optional "custom suffix" text field to the authenticated create form; on submit, validate charset/length and uniqueness against `(shortCode, orgHandle)`, surfacing a friendly "already taken" error on collision (reuse the #124 TOCTOU retry/lock). Hide the field for anonymous users (brief restricts the feature to registered users).
   **gate:** autonomy-eligible
+  **status:** ✅ BUILT — cycle 10 (2026-06-29), branch `autopilot/2026-06-05`. `createShortURL()` gains a `customCode` option: validates `^[A-Za-z0-9_-]{3,50}$`, blocks reserved words via `g2ml_isReservedShortCode()`, returns "That alias is already taken." on duplicate (errno 1062) with no random fallback. Dashboard create form adds an optional "Custom alias" field. Anonymous/public API path untouched. 110 unit + 11 integration tests pass; 5 acceptance criteria demonstrated.
 
 - **id:** FG-002
   **feature:** Tags on short links (consume the existing schema)
