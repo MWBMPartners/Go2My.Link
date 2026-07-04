@@ -124,12 +124,12 @@ list; these OVERRIDE default behaviour):
 
 ## 📌 Current status
 
-- **Active stage:** COMPLETE done (FG-001 custom alias, FG-002 tags, FG-003
-  info-page auth view, FG-004 XML/XSLT all built; gated G-001..G-005 queued).
-  Entering POLISH — top Medium/Low backlog: a11y (#104 landing auto-refresh
-  WCAG 2.2.1 Level A, reduced-motion, `bg-secondary` badge contrast),
-  `public_html_*` variant hygiene (#112), lint/analysis exclusions. Then
-  VERIFY. Local branch ahead of draft PR #130 (do not merge).
+- **Active stage:** POLISH phase: WCAG reduced-motion/timing bundle
+  (#104/#105/#106) done. Next POLISH items: `bg-secondary` badge contrast
+  (<4.5:1) + per-second `aria-live` countdowns on Component-B interstitials +
+  `target="_blank"` new-window announcement; then FG-005 avatar priority
+  cascade (Low, autonomy-eligible); then VERIFY. Gated G-001..G-005 await
+  approval; local branch ahead of draft PR #130 (do not merge).
 - **Done so far:** Bootstrap complete. Codebase Map written and spot-verified
   against the tree. Backlog re-derived from the live GitHub issues (#1–#128) and
   the two 2026-06-04 audits. Confirmed via direct code inspection that commit
@@ -184,6 +184,13 @@ list; these OVERRIDE default behaviour):
   - No automated test suite — every fix needs empirical verification evidence.
 
 ## 🧾 Decision log
+
+### 2026-07-04 — Landing auto-transition: hard `<meta refresh>` removed (WCAG 2.2.1 Level A); JS auto-reload kept only for non-reduced-motion users and made non-trapping
+
+- **Decision:** Removed the `<meta http-equiv="refresh" content="900">` from all three `public_html_landing/index.php` (A/B/C) — a hard, non-dismissible timing trap that discarded the email field and reset focus every 15 minutes (WCAG 2.2.1 Level A). The JS countdown-ring auto-reload is kept only as a convenience for users who have **not** expressed a reduced-motion preference, and is made non-trapping: it checks `matchMedia('(prefers-reduced-motion: reduce)')` (no ring animation, no reload for those users) and, for everyone else, only fires when the page is visible AND no form control is currently focused. Bundled in the same cycle: a site-wide `@media (prefers-reduced-motion: reduce)` CSS block in `web/Go2My.Link/public_html/css/style.css` (neutralises animations/transitions/scroll-behaviour, including the `fa-spin` submit spinner) and a `scrollIntoView` gate in `web/Go2My.Link/public_html/js/app.js` (`'auto'` vs `'smooth'` via full `if/else`, no shorthand).
+- **Why bundle #104/#105/#106 together:** all three findings share the same root cause — motion/timing behaviour that ignores the reduced-motion preference, one of which (#104) actively traps the user in a periodic reload. Fixing the landing auto-reload mechanism and the ring loop's `requestAnimationFrame` check in the same pass avoided leaving the ring gated only at the CSS layer, which had been giving a false impression of compliance while the rAF loop kept sweeping underneath.
+- **Scope boundary:** Component C's landing page keeps its coming-soon copy and is not otherwise built out — only the timing/motion behaviour changed, on all three components equally.
+- **Revisit if:** a future landing redesign reintroduces a periodic reload — re-apply the same visibility/focus/reduced-motion guard rather than a bare meta refresh.
 
 ### 2026-07-04 — FG-004 (XML+XSLT API output) auto-built under the autonomy test; centralised API responses into `g2ml_apiRespond()`; COMPLETE phase complete
 
@@ -363,6 +370,13 @@ list; these OVERRIDE default behaviour):
   `STR_TO_DATE` with `%Y-%m-%d %H:%i:%s` and an explicit NULL fallback.
 
 ## ⛳ Checkpoint log
+
+### Cycle 16 — 2026-07-04 — POLISH (WCAG reduced-motion + timing a11y bundle: #104/#105/#106)
+
+- **Items resolved:** B-007 (#104 landing auto-refresh timing trap, WCAG 2.2.1 Level A), B-023 (#105 countdown-ring reduced-motion), B-022 (#106 main-site reduced-motion).
+- **Evidence:** Removed the `<meta http-equiv="refresh" content="900">` from all three `public_html_landing/index.php` (web/Go2My.Link, web/G2My.Link, web/Lnks.page). The JS countdown-ring auto-reload is now non-trapping: disabled entirely under `prefers-reduced-motion` (no ring animation, no reload), and otherwise only reloads when the page is visible AND no form control is focused. The `requestAnimationFrame` ring loop now checks `matchMedia('(prefers-reduced-motion: reduce)')` directly (previously only the CSS animation was gated). Main site: added a global `@media (prefers-reduced-motion: reduce)` block to `web/Go2My.Link/public_html/css/style.css` (neutralises animations/transitions/scroll-behaviour, including the `fa-spin` submit spinner); `web/Go2My.Link/public_html/js/app.js` gates `scrollIntoView` behaviour (`'auto'` under reduced-motion, else `'smooth'`, via full `if/else` — no shorthand). Verified: 0 `http-equiv="refresh"` occurrences remain; `matchMedia` guards present in each landing + `app.js`; `php -l` clean on the 3 landings; `node --check app.js` OK; `php tests/run.php` still 166 passed / 0 failed (no PHP behaviour changed). Bucket 1 (a11y).
+- **Remaining:** Next POLISH items: `bg-secondary` badge contrast (<4.5:1, B-025) + per-second `aria-live` countdowns on Component-B interstitials (B-024/#107) + `target="_blank"` new-window announcement; then FG-005 avatar priority cascade (Low, autonomy-eligible); then VERIFY. Gated G-001..G-005 still await user approval.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; local branch is ahead of the draft PR #130 (do not merge) — needs re-push to refresh.
 
 ### Cycle 15 — 2026-07-04 — COMPLETE (auto-built FG-004; XML+XSLT API output + JSON responder dedup) — **completes COMPLETE**
 
@@ -632,10 +646,15 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
 - **id:** B-007
   **title:** Landing pages auto-refresh every 15 min (`<meta refresh content="900">`) with no pause (WCAG 2.2.1 Level A)
   **category:** a11y · **impact:** High · **component:** A/B/C
-  **source:** #104, audit §4 · **status:** OPEN (confirmed present in all three
-  `public_html_landing/index.php`). Reloads discard the email field and reset
-  focus. Fix: remove the meta refresh, or replace with a visibility/focus-aware,
-  reduced-motion-disabled JS reload.
+  **source:** #104, audit §4 · **status:** ✅ Done (cycle 16). The
+  `<meta http-equiv="refresh" content="900">` timing trap was removed from all
+  three `public_html_landing/index.php` (A/B/C). The JS countdown-ring
+  auto-reload is now non-trapping: disabled entirely under
+  `prefers-reduced-motion` (no ring animation, no reload), and otherwise only
+  reloads when the page is visible AND no form control is focused (so the
+  email field is never discarded from under a typing user). Verified: 0
+  `http-equiv="refresh"` occurrences remain; `php -l` clean on all three
+  landings.
 
 - **id:** B-008
   **title:** Custom-domain resolution incomplete — `getOrgByDomain()` queries only `tblOrgShortDomains`
@@ -729,14 +748,25 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
 - **id:** B-022
   **title:** Main site (app.js + style.css) ignores `prefers-reduced-motion`
   **category:** a11y · **impact:** Medium · **component:** A
-  **source:** #106, audit §4 (WCAG 2.3.3) · **status:** OPEN. Add a global
-  reduced-motion CSS block and gate the smooth-scroll in JS.
+  **source:** #106, audit §4 (WCAG 2.3.3) · **status:** ✅ Done (cycle 16).
+  Added a global `@media (prefers-reduced-motion: reduce)` block to
+  `web/Go2My.Link/public_html/css/style.css` neutralising animations,
+  transitions, and scroll-behaviour (including the `fa-spin` submit spinner);
+  `web/Go2My.Link/public_html/js/app.js` gates `scrollIntoView` behaviour
+  (`'auto'` under reduced-motion, else `'smooth'`, via full `if/else` — no
+  shorthand). Verified: `matchMedia` guard present in `app.js`; `node --check`
+  clean.
 
 - **id:** B-023
   **title:** Landing-page countdown ring keeps animating under `prefers-reduced-motion`
   **category:** a11y · **impact:** Medium · **component:** A/B/C
-  **source:** #105, audit §4 · **status:** OPEN. CSS query gives a false
-  impression of compliance while the rAF ring keeps sweeping.
+  **source:** #105, audit §4 · **status:** ✅ Done (cycle 16). The
+  `requestAnimationFrame` ring loop now checks
+  `matchMedia('(prefers-reduced-motion: reduce)')` directly and does not
+  animate or reload for reduced-motion users — previously only the CSS
+  animation was gated, so the rAF loop kept sweeping regardless and gave a
+  false impression of compliance. Fixed as part of the same #104 auto-reload
+  rewrite.
 
 - **id:** B-024
   **title:** Per-second countdown announcements on B interstitials spam screen readers
@@ -899,3 +929,4 @@ Baseline metrics measured at DISCOVER seed; every cycle appends a row.
 | 2026-07-04 | 13 | COMPLETE — auto-built FG-002 (autonomy-eligible) | 27 (unchanged on GitHub) | 0 open | 16 open (B-020 ✅ create-path) | 10 open | clean (php -l on all changed files + new tests) | 132 unit / 18 integration (19 new unit: `tests/unit/tags_normalise_test.php`; 5 new integration: `tests/integration/tags_create_test.php`) | FG-002 tags on links BUILT under the autonomy test (Bucket 1: table-stakes + in-scope + risk:Low + non-destructive) — `tblTags`/`tblShortURLTags` schema existed since schema 020 but had zero PHP references. Wired up via find-or-create per org (`UQ_tag_org`), junction insert via `INSERT IGNORE`, tags attached AFTER the short-URL row insert with each tag in its own try/catch (a tag failure never rolls back the create); slug ASCII-only via `g2ml_slugifyTag()`, display name preserves original casing/spacing; capped at `G2ML_MAX_TAGS_PER_LINK` = 10. Dashboard create form gains an optional comma-separated "Tags" field; links index renders WCAG-accessible tag badges (`role="list"`) via one dynamically-sized bound `IN(...)` query for the page's short-URL UIDs — no N+1, confirmed placeholder-only (no interpolation). 132 unit + 18 integration pass (was 113/13); 5 acceptance criteria demonstrated. B-020 (dashboard alias/tags gap) marked done for the create-path; edit-form tag management and tag-based filtering deferred as explicit follow-ups. |
 | 2026-07-04 | 14 | COMPLETE — auto-built FG-003 (autonomy-eligible) | 27 (unchanged on GitHub) | 0 open | 15 open (B-019 ✅) | 10 open | clean (php -l on all changed files + new tests) | 141 unit / 18 integration (9 new unit: `tests/unit/info_display_destination_test.php`) | FG-003 info-page public-vs-authenticated view (#23) BUILT under the autonomy test (Bucket 1: table-stakes + in-scope + risk:Low + non-destructive) — the page docblock already documented the intent and short URLs redirect publicly so the destination is not secret. New pure helper `g2ml_infoDisplayDestination(array $linkData, bool $isAuthenticated): string` in new file `web/Go2My.Link/_functions/info_display.php` (returns the full destination when authenticated, masked domain[/...] when not, '' when none — old inline masking moved into it). `pages/info/index.php`: authenticated viewers (ANY authenticated viewer, not owner-only, per the docblock intent) see the full destination as escaped text (`g2ml_sanitiseOutput`, not a clickable link — no scheme/XSS vector); anonymous viewers keep the masked domain plus a new accessible "Log in to see the full destination" prompt linking to `/login` (no redirect-back param, avoiding open-redirect). New i18n key `info.login_for_full` in seed `010_phase6_translations.sql`. 141 unit pass (+9, was 132); lint clean; render harness confirmed a hostile payload is fully HTML-escaped for the authed view. B-019 (#23) marked done. |
 | 2026-07-04 | 15 | COMPLETE — auto-built FG-004 (autonomy-eligible); **completes COMPLETE** | 27 (unchanged on GitHub) | 0 open | 15 open | 10 open | clean (php -l on all changed files + new tests) | 166 unit / 18 integration (25 new unit: `tests/unit/api_response_test.php`) | FG-004 XML+XSLT API output BUILT under the autonomy test (Bucket 1: feature + refactor-under-test-net) — brief §8.2 required JSON (default) + XML with embedded XSLT; `api/create/index.php` previously had 10 repeated `json_encode` blocks and no XML path. New `web/_functions/api_response.php` (`g2ml_apiRespond()` + pure `g2ml_apiWantsXml()`/`g2ml_arrayToXml()`/`g2ml_buildApiXmlDocument()`) and new XSLT `web/Go2My.Link/public_html/api/create/response.xsl`; `api/create/index.php` refactored to one `g2ml_apiRespond()` call (0 `json_encode` left), with the structured branch now also triggering on `?format=xml` / `Accept: application/xml`; helper registered in `page_init.php`. JSON stays the default and is byte-identical to before (subprocess diff); XML emits a `<response>` document with a stylesheet PI, all values `htmlspecialchars` ENT_XML1-escaped (hostile payload proven escaped, lossless); no-JS redirect fallback and all status codes (405/403/422/429/201) + messages preserved. 166 unit pass (+25, was 141); lint clean; `xmllint` confirms well-formed output; dedup confirmed (0 `json_encode` remaining). **COMPLETE phase complete: all four autonomy-eligible gaps (FG-001..FG-004) built; remaining feature gaps are the gated G-001..G-005, awaiting user approval. Advancing to POLISH.** |
+| 2026-07-04 | 16 | POLISH — WCAG reduced-motion + timing a11y bundle (#104/#105/#106) | 27 (unchanged on GitHub) | 0 open (B-007 resolved this cycle) | 13 open (B-022 + B-023 ✅) | 10 open | clean (`php -l` on the 3 landings; `node --check` on `app.js`) | 166 unit / 18 integration (unchanged — no new test files; verified via `matchMedia` guard checks + `php -l` + `node --check`) | Removed the hard `<meta http-equiv="refresh" content="900">` timing trap (WCAG 2.2.1 Level A) from all three landing pages (web/Go2My.Link, web/G2My.Link, web/Lnks.page); countdown-ring auto-reload now non-trapping — disabled under `prefers-reduced-motion`, otherwise reloads only when visible AND no form control focused. rAF ring loop now checks `matchMedia('(prefers-reduced-motion: reduce)')` directly (was CSS-only gated, giving a false impression of compliance). Main site: global `@media (prefers-reduced-motion: reduce)` CSS block in `style.css` + `scrollIntoView` gate in `app.js`. 0 `http-equiv="refresh"` remaining; `matchMedia` guards present in each landing + `app.js`; 166 tests unchanged (no PHP behaviour touched). |
