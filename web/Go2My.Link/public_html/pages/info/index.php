@@ -16,9 +16,10 @@
  * via the ?code= parameter (set by .htaccess rewrite from /info/CODE)
  * or via a search form.
  *
- * Public view shows: short URL, destination domain (masked path), status,
- * creation date, category. Full destination and analytics require login
- * (Phase 4).
+ * Anonymous view shows: short URL, destination domain (masked path), status,
+ * creation date, category, and a prompt to log in for the full destination.
+ * An authenticated viewer sees the FULL destination URL instead of the masked
+ * domain (FG-003 / #23). Analytics remain a later phase.
  *
  * @package    Go2My.Link
  * @subpackage ComponentA
@@ -137,35 +138,29 @@ if ($shortCode !== '')
 }
 
 // ============================================================================
-// Helper: Mask the destination URL for public display
+// Destination display — public-vs-authenticated view (FG-003 / #23)
 // ============================================================================
-// Shows the domain but masks the path for privacy.
-// e.g., https://example.com/very/long/path → example.com/...
+// A short URL redirects publicly, so its destination is not a secret. Anonymous
+// viewers see the destination domain with the path masked for privacy; a
+// signed-in viewer sees the FULL destination — the documented, intended
+// behaviour. The decision lives in the pure, unit-tested helper
+// g2ml_infoDisplayDestination() (web/Go2My.Link/_functions/info_display.php),
+// so it can be verified without a session. The returned string is escaped as
+// text at the point of output below.
 // ============================================================================
 
-$maskedDestination = '';
+$isViewerAuthenticated = false;
 
-if ($linkData !== null)
+if (function_exists('isAuthenticated'))
 {
-    $parsed = parse_url($linkData['destinationURL']);
-    $host   = $parsed['host'] ?? '';
+    $isViewerAuthenticated = isAuthenticated();
+}
 
-    // Strip www. for cleaner display
-    if (strpos($host, 'www.') === 0)
-    {
-        $host = substr($host, 4);
-    }
+$destinationDisplay = '';
 
-    $path = $parsed['path'] ?? '';
-
-    if ($path !== '' && $path !== '/')
-    {
-        $maskedDestination = $host . '/...';
-    }
-    else
-    {
-        $maskedDestination = $host;
-    }
+if ($linkData !== null && function_exists('g2ml_infoDisplayDestination'))
+{
+    $destinationDisplay = g2ml_infoDisplayDestination($linkData, $isViewerAuthenticated);
 }
 
 // ============================================================================
@@ -357,7 +352,15 @@ if ($linkData !== null)
                             </dt>
                             <dd class="col-sm-8">
                                 <i class="fas fa-external-link-alt text-body-secondary" aria-hidden="true"></i>
-                                <?php echo g2ml_sanitiseOutput($maskedDestination); ?>
+                                <span class="text-break"><?php echo g2ml_sanitiseOutput($destinationDisplay); ?></span>
+                                <?php if (!$isViewerAuthenticated && $destinationDisplay !== '') { ?>
+                                <div class="small mt-1">
+                                    <a href="/login">
+                                        <i class="fas fa-lock" aria-hidden="true"></i>
+                                        <?php if (function_exists('__')) { echo __('info.login_for_full'); } else { echo 'Log in to see the full destination'; } ?>
+                                    </a>
+                                </div>
+                                <?php } ?>
                             </dd>
 
                             <!-- Status -->

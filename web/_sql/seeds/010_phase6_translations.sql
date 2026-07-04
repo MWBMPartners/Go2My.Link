@@ -431,6 +431,7 @@ VALUES
 ('en-GB', 'info.label_short_url', 'Short URL', 'Link info page', 1),
 ('en-GB', 'info.label_status', 'Status', 'Link info page', 1),
 ('en-GB', 'info.label_title', 'Title', 'Link info page', 1),
+('en-GB', 'info.login_for_full', 'Log in to see the full destination', 'Link info page', 1),
 ('en-GB', 'info.search_button', 'Look Up', 'Link info page', 1),
 ('en-GB', 'info.search_heading', 'Look Up a Link', 'Link info page', 1),
 ('en-GB', 'info.search_help', 'Enter a Go2My.Link short URL or just the short code.', 'Link info page', 1),

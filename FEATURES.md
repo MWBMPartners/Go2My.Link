@@ -63,6 +63,7 @@ Ranked by importance within the aim, then favouring lower effort/risk. Autonomy-
   **confidence:** high
   **spec-seed:** Detect login + ownership (or GlobalAdmin) of the looked-up code; for owners show destination/notes/created/click-count and a "manage" link, for others keep the masked/minimal view. No schema change.
   **gate:** autonomy-eligible
+  **status:** ✅ BUILT — cycle 14 (2026-07-04), branch `autopilot/2026-06-05`. New pure helper `g2ml_infoDisplayDestination()` (`web/Go2My.Link/_functions/info_display.php`) returns the full destination when the viewer is authenticated (ANY authenticated viewer, not owner-only — short URLs redirect publicly so the destination is not secret) and a masked domain otherwise. `pages/info/index.php` renders the full destination as escaped text (not a clickable link) for authed viewers and adds an accessible "Log in to see the full destination" prompt (no redirect-back param) for anonymous ones. 141 unit pass (+9); lint clean; hostile payload confirmed fully HTML-escaped in a render harness.
 
 - **id:** FG-004
   **feature:** API XML output with embedded XSLT

@@ -118,7 +118,7 @@ list; these OVERRIDE default behaviour):
 
 ## 📌 Current status
 
-- **Active stage:** COMPLETE phase: FG-001 + FG-002 built. Next: FG-003 (info-page public-vs-authenticated view #23), then FG-004 (XML+XSLT API output). Gated G-001..G-005 await approval. Note: local branch is ahead of draft PR #130 (do not merge) — re-push to refresh.
+- **Active stage:** COMPLETE phase: FG-001 + FG-002 + FG-003 built. Next: FG-004 (XML+XSLT API output) — the last small autonomy-eligible gap; after that the remaining feature work is the gated G-001..G-005 (Component C, payments, advanced auth, public API, analytics) awaiting user approval, so the loop will then move to POLISH. Local branch ahead of draft PR #130 (do not merge) — re-push to refresh.
 - **Done so far:** Bootstrap complete. Codebase Map written and spot-verified
   against the tree. Backlog re-derived from the live GitHub issues (#1–#128) and
   the two 2026-06-04 audits. Confirmed via direct code inspection that commit
@@ -173,6 +173,13 @@ list; these OVERRIDE default behaviour):
   - No automated test suite — every fix needs empirical verification evidence.
 
 ## 🧾 Decision log
+
+### 2026-07-04 — FG-003 (info-page public-vs-authenticated view, #23) auto-built under the autonomy test; full destination revealed to ANY authenticated viewer, rendered as escaped text not a link
+
+- **Decision:** FG-003 was auto-built without user gate approval under the autopilot autonomy test: table-stakes feature, explicitly in-scope per issue #23, risk Low, non-destructive, and the page's own docblock already documented the intent. The full destination is revealed to **any authenticated viewer**, not just the link's owner — because short URLs redirect publicly on visit, the destination is not a secret gated behind ownership; the only thing worth gating behind login is convenience (avoiding the click-through). The full destination is rendered as **escaped text**, not a clickable `<a href>`, closing off any scheme/XSS vector from a stored destination. Anonymous viewers keep the existing masked domain view and get a new accessible "Log in to see the full destination" prompt linking to `/login` with **no redirect-back parameter**, to avoid introducing an open-redirect surface on a page that is otherwise pure read-only lookup. The decision logic (mask vs reveal) was extracted into a pure, dependency-free helper (`g2ml_infoDisplayDestination()`) specifically so it is unit-testable without a session/DB fixture.
+- **Why any-authenticated rather than owner-only:** Owner-only would require an ownership lookup (extra query, extra edge cases for org-shared links) to protect information that is not actually secret — the short code already forwards anyone to the destination. Scoping to "any authenticated" matches the page docblock's stated intent and keeps the change additive/non-destructive with no new query.
+- **Scope boundary:** The redirect path, the create flow, and the DB query layer were untouched — this is purely a display-branching change on the existing info/preview page.
+- **Revisit if:** a future privacy requirement narrows this to owner-only (e.g. an org wants destinations hidden even from other logged-in users) — the pure helper already isolates the decision so that would be a small, testable change.
 
 ### 2026-07-04 — FG-002 (tags on links) auto-built under the autonomy test; find-or-create per org, post-commit attach with per-tag isolation
 
@@ -337,6 +344,13 @@ list; these OVERRIDE default behaviour):
   `STR_TO_DATE` with `%Y-%m-%d %H:%i:%s` and an explicit NULL fallback.
 
 ## ⛳ Checkpoint log
+
+### Cycle 14 — 2026-07-04 — COMPLETE (auto-built FG-003; info-page public-vs-authenticated view, #23)
+
+- **Items resolved:** FG-003 — info-page public-vs-authenticated view (auto-built under the autonomy test); B-019 (#23) marked done.
+- **Evidence:** New file `web/Go2My.Link/_functions/info_display.php` — pure helper `g2ml_infoDisplayDestination(array $linkData, bool $isAuthenticated): string` returns the full `destinationURL` when authenticated, a masked `domain[/...]` when not, and `''` when there is no destination; the old inline masking logic was moved into it (Component A auto-loads `_functions/*.php`, no wiring needed). `pages/info/index.php` — authenticated viewers (ANY authenticated viewer, not owner-only, matching the page docblock's stated intent — short URLs redirect publicly so the destination is not secret) see the full destination rendered as escaped text via `g2ml_sanitiseOutput()`, not a clickable link (removes any scheme/XSS vector); anonymous viewers keep the masked view plus a new accessible "Log in to see the full destination" prompt linking to `/login` with no redirect-back parameter (avoids introducing an open-redirect). New i18n key `info.login_for_full` added to seed `010_phase6_translations.sql`. Regression: `tests/unit/info_display_destination_test.php` (9 new tests). Lead re-ran: 141 unit pass (was 132); lint clean; a manual render harness confirmed a hostile payload (`<script>` in a stored destination) is fully HTML-escaped in the authenticated view.
+- **Remaining:** Next: FG-004 (XML+XSLT API output) — the last small autonomy-eligible gap. After that the remaining feature work is the gated G-001..G-005 (Component C, payments, advanced auth, public API, analytics) awaiting user approval, so the loop then moves to POLISH.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; local branch is ahead of the draft PR #130 (do not merge) — needs re-push to refresh.
 
 ### Cycle 13 — 2026-07-04 — COMPLETE (auto-built FG-002; tags on links)
 
@@ -666,8 +680,10 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
 - **id:** B-019
   **title:** Public-vs-authenticated info/preview view not implemented (#23) — always masks destination
   **category:** correctness (feature gap) · **impact:** Medium · **component:** A
-  **source:** #23, audit §7.2 · **status:** OPEN (closed-but-partial). No
-  `isAuthenticated()` branch in `pages/info/index.php`. In-scope.
+  **source:** #23, audit §7.2 · **status:** ✅ Done (cycle 14). Built as FG-003:
+  `pages/info/index.php` now branches on authentication via new pure helper
+  `g2ml_infoDisplayDestination()` — see FEATURES.md FG-003 and the cycle-14
+  Decision log entry.
 
 - **id:** B-020
   **title:** Dashboard create/edit do not expose custom suffix, alias, or tags (#30)
@@ -855,3 +871,4 @@ Baseline metrics measured at DISCOVER seed; every cycle appends a row.
 | 2026-07-04 | 11 | STABILIZE (re-open) — fixed B-042; surfaced B-043 | 27 (unchanged on GitHub) | 0 open | 18 open (B-043 new) | 10 open | clean (php -l on changed files) | 110 unit / 13 integration (2 new integration: `tests/integration/activity_log_test.php`) | `logActivity()` bind-param type-string off-by-one fixed (B-042) — 20-char string against 21 columns/placeholders/variables, plus `ipAddress` mis-typed `i`, corrected to `'ssisisssssssssssssiis'`. Evidence: BEFORE → type-string error, 0 rows inserted; AFTER → 1 row inserted; 5 create events → 5 countable `tblActivityLog` rows (per-IP rate-limit restored). 110 unit + 13 integration pass. New bug surfaced: B-043 — `_g2ml_parseUserAgent()` regex delimiter bug (`preg_quote()` missing `/` arg) breaks bot detection silently (`isBot` never set); queued next (same file, quick correctness fix). |
 | 2026-07-04 | 12 | STABILIZE (re-open) — fixed B-043; **re-open resolved** | 27 (unchanged on GitHub) | 0 open | 17 open (B-043 ✅) | 10 open | clean (php -l on changed files) | 113 unit / 13 integration (1 new unit: `tests/unit/user_agent_bot_test.php`) | B-043 fixed: `_g2ml_parseUserAgent()` now escapes each bot pattern with `preg_quote($p, '/')` (full closure, no shorthand), so `'Java/'` no longer closes the `/…/` delimiter — bot detection works (`isBot` set) with no PCRE warning. Regression test (Java/ bot, Googlebot, non-bot Chrome). 113 unit pass; lint clean. STABILIZE re-open resolved; resuming COMPLETE (FG-002 tags next). |
 | 2026-07-04 | 13 | COMPLETE — auto-built FG-002 (autonomy-eligible) | 27 (unchanged on GitHub) | 0 open | 16 open (B-020 ✅ create-path) | 10 open | clean (php -l on all changed files + new tests) | 132 unit / 18 integration (19 new unit: `tests/unit/tags_normalise_test.php`; 5 new integration: `tests/integration/tags_create_test.php`) | FG-002 tags on links BUILT under the autonomy test (Bucket 1: table-stakes + in-scope + risk:Low + non-destructive) — `tblTags`/`tblShortURLTags` schema existed since schema 020 but had zero PHP references. Wired up via find-or-create per org (`UQ_tag_org`), junction insert via `INSERT IGNORE`, tags attached AFTER the short-URL row insert with each tag in its own try/catch (a tag failure never rolls back the create); slug ASCII-only via `g2ml_slugifyTag()`, display name preserves original casing/spacing; capped at `G2ML_MAX_TAGS_PER_LINK` = 10. Dashboard create form gains an optional comma-separated "Tags" field; links index renders WCAG-accessible tag badges (`role="list"`) via one dynamically-sized bound `IN(...)` query for the page's short-URL UIDs — no N+1, confirmed placeholder-only (no interpolation). 132 unit + 18 integration pass (was 113/13); 5 acceptance criteria demonstrated. B-020 (dashboard alias/tags gap) marked done for the create-path; edit-form tag management and tag-based filtering deferred as explicit follow-ups. |
+| 2026-07-04 | 14 | COMPLETE — auto-built FG-003 (autonomy-eligible) | 27 (unchanged on GitHub) | 0 open | 15 open (B-019 ✅) | 10 open | clean (php -l on all changed files + new tests) | 141 unit / 18 integration (9 new unit: `tests/unit/info_display_destination_test.php`) | FG-003 info-page public-vs-authenticated view (#23) BUILT under the autonomy test (Bucket 1: table-stakes + in-scope + risk:Low + non-destructive) — the page docblock already documented the intent and short URLs redirect publicly so the destination is not secret. New pure helper `g2ml_infoDisplayDestination(array $linkData, bool $isAuthenticated): string` in new file `web/Go2My.Link/_functions/info_display.php` (returns the full destination when authenticated, masked domain[/...] when not, '' when none — old inline masking moved into it). `pages/info/index.php`: authenticated viewers (ANY authenticated viewer, not owner-only, per the docblock intent) see the full destination as escaped text (`g2ml_sanitiseOutput`, not a clickable link — no scheme/XSS vector); anonymous viewers keep the masked domain plus a new accessible "Log in to see the full destination" prompt linking to `/login` (no redirect-back param, avoiding open-redirect). New i18n key `info.login_for_full` in seed `010_phase6_translations.sql`. 141 unit pass (+9, was 132); lint clean; render harness confirmed a hostile payload is fully HTML-escaped for the authed view. B-019 (#23) marked done. |
