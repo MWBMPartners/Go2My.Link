@@ -118,7 +118,7 @@ list; these OVERRIDE default behaviour):
 
 ## 📌 Current status
 
-- **Active stage:** 4 — COMPLETE phase: FG-001 built. Next: RE-OPEN STABILIZE to fix B-042 (logActivity bind mismatch — breaks audit logging + undermines rate-limiting) per the safety floor, THEN resume COMPLETE with FG-002 (tags), FG-003 (info-page auth view), FG-004 (XML+XSLT). Gated G-001..G-005 still awaiting user approval.
+- **Active stage:** STABILIZE re-open — B-042 fixed (audit logging + rate-limit restored). Next: fix B-043 (parseUserAgent regex — quick correctness, same file), then resume COMPLETE with FG-002 (tags), FG-003 (info-page auth view), FG-004 (XML+XSLT). Gated G-001..G-005 await approval. Note: branch pushed + draft PR #130 open (do not merge).
 - **Done so far:** Bootstrap complete. Codebase Map written and spot-verified
   against the tree. Backlog re-derived from the live GitHub issues (#1–#128) and
   the two 2026-06-04 audits. Confirmed via direct code inspection that commit
@@ -148,7 +148,19 @@ list; these OVERRIDE default behaviour):
   under the autonomy test; 110 unit + 11 integration tests pass; 5 acceptance criteria
   demonstrated. New bug B-042 surfaced: `logActivity()` bind-type mismatch silently
   breaks audit logging and undermines per-IP rate-limiting — re-opening STABILIZE next.
-- **In progress / next:** Fix B-042 (STABILIZE), then resume COMPLETE: auto-build FG-002 (tags), FG-003 (info-page auth view), FG-004 (XML+XSLT); queue gated gaps G-001..G-005 for user approval.
+  Cycle 11 (STABILIZE re-open): B-042 fixed — bind-param type-string was 20 chars
+  against 21 columns/placeholders/variables (off-by-one) and mis-typed `ipAddress`
+  as `i`; corrected to the 21-char `'ssisisssssssssssssiis'` with each char matching
+  its column type. Verified on MySQL 9.6: before → type-string error, 0 rows
+  inserted; after → 1 row inserted; 5 create events now produce 5 countable
+  `tblActivityLog` rows (per-IP rate-limit restored). 110 unit + 13 integration
+  tests pass. New bug B-043 surfaced: `_g2ml_parseUserAgent()` regex delimiter bug
+  (`preg_quote()` missing `/` arg) breaks bot detection silently.
+- **In progress / next:** STABILIZE re-open — B-042 fixed (audit logging + rate-limit
+  restored). Next: fix B-043 (parseUserAgent regex — quick correctness, same file),
+  then resume COMPLETE with FG-002 (tags), FG-003 (info-page auth view), FG-004
+  (XML+XSLT). Gated G-001..G-005 await approval. Note: branch pushed + draft PR #130
+  open (do not merge).
 - **Open threads:**
   - 🔴 **#93 manual action outstanding** — the plaintext legacy DB credential in
     `web/G2My.Link/public_html_legacy/dbConfig.php` is now gitignored and was
@@ -161,6 +173,26 @@ list; these OVERRIDE default behaviour):
   - No automated test suite — every fix needs empirical verification evidence.
 
 ## 🧾 Decision log
+
+### 2026-07-04 — `logActivity()` bind_param type-string must equal column/placeholder/variable count AND match each column type
+
+- **Decision:** Fixed B-042 by rebuilding the `logActivity()` bind-param type
+  string in `web/_functions/activity_logger.php` from 20 chars (one short of
+  the 21 columns/placeholders/variables) to the correct 21-char
+  `'ssisisssssssssssssiis'`, with each character matching its column's actual
+  type (`statusCode`/`userUID`/`isBot`/`apiKeyUID` = `i`; `ipAddress` +
+  `logData`/JSON + the rest = `s` — `ipAddress` had been mis-typed `i`).
+- **Why it matters:** Audit logging and rate-limit correctness both depend on
+  this string being right — `bind_param` throws when the type-string length
+  doesn't match the variable count, and the exception was being caught and
+  swallowed, so every short-URL create silently failed to log while the
+  per-IP rate limiter's `COUNT(*)` over `tblActivityLog` under-counted.
+- **Revisit if:** a future change adds/removes a column from `tblActivityLog`
+  without updating both the placeholder count and the type-string in lock-step
+  — treat any edit to that INSERT as touching three things at once (columns,
+  placeholders, type-string).
+- **Follow-on:** B-043 (`_g2ml_parseUserAgent()` regex delimiter bug) queued
+  next — same file, quick correctness fix.
 
 ### 2026-06-05 — Treat audit/schema fixes in commit `6897165` / `9f58807` as done-on-branch but issues still open
 
@@ -298,6 +330,14 @@ list; these OVERRIDE default behaviour):
   `STR_TO_DATE` with `%Y-%m-%d %H:%i:%s` and an explicit NULL fallback.
 
 ## ⛳ Checkpoint log
+
+### Cycle 11 — 2026-07-04 — STABILIZE re-open (fixed B-042; surfaced B-043)
+
+- **Items resolved:** B-042 — `logActivity()` bind-param type-string off-by-one (20 chars against 21 columns/placeholders/variables) and mis-typed `ipAddress` (`i` instead of `s`), corrected to the 21-char `'ssisisssssssssssssiis'` with each char matching its column type.
+- **New bug surfaced:** B-043 — `_g2ml_parseUserAgent()` (same file, ~line 288) builds its bot regex with `preg_quote()` missing the `/` delimiter arg; the `'Java/'` pattern's unescaped `/` prematurely closes the `/…/` delimiter → `preg_match(): Unknown modifier '|'` on every call → bot detection silently broken (`isBot` never set). Medium correctness (analytics/bot-signal integrity); out of scope this cycle.
+- **Evidence:** `web/_functions/activity_logger.php` — BEFORE: bind-param type-string error thrown, 0 rows inserted. AFTER: `logActivity()` returns true, 1 row inserted with correct values. Rate-limit impact resolved: 5 create events now produce 5 countable `tblActivityLog` rows (the per-IP limiter's `COUNT(*)` was effectively 0 while logging failed — abuse-prevention gap closed). Regression: `tests/integration/activity_log_test.php` (2 new cases). Lead re-ran: 110 unit + 13 integration pass; lint clean. Sibling `error_handler.php` `tblErrorLog` INSERT checked — aligned, no bug.
+- **Remaining:** Fix B-043 (quick correctness, same file) then resume COMPLETE: auto-build FG-002 (tags), FG-003 (info-page auth view), FG-004 (XML+XSLT). Gated gaps G-001..G-005 still awaiting user approval.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; branch pushed with draft PR #130 open (do not merge).
 
 ### Cycle 10 — 2026-06-29 — COMPLETE (auto-built FG-001; surfaced B-042)
 
@@ -682,6 +722,16 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
   `**/dbConfig.php` guards landed (✅); `phpcs.xml`/`phpstan.neon` exclusions for
   dev/landing/redir variants still pending.
 
+- **id:** B-043
+  **title:** `_g2ml_parseUserAgent()` regex delimiter bug (preg_quote missing '/' arg) — bot detection silently broken (isBot never set)
+  **category:** correctness · **impact:** Medium · **component:** shared
+  **source:** found cycle 11 · **status:** OPEN. `_g2ml_parseUserAgent()`
+  (`web/_functions/activity_logger.php`, ~line 288) builds its bot regex with
+  `preg_quote()` missing the `/` delimiter argument; the `'Java/'` pattern's
+  unescaped `/` prematurely closes the `/…/` delimiter, causing
+  `preg_match(): Unknown modifier '|'` on every call — bot detection silently
+  broken (`isBot` never set). Fix is `preg_quote($p, '/')`.
+
 ### 🔵 Low impact
 
 - **id:** B-031
@@ -746,7 +796,7 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
 - **id:** B-042
   **title:** `logActivity()` bind-type mismatch throws on every create — audit logging fails; per-IP rate-limit likely undermined
   **category:** correctness/security · **impact:** High · **component:** shared
-  **source:** found cycle 10 (broader than #126 — #126 covers `sp_logActivity` procedure drift; this is the live `logActivity()` PHP function/direct-INSERT path) · **status:** OPEN. `logActivity()` in `web/_functions/activity_logger.php` throws a MySQLi bind-param error ("number of elements in the type definition string must match the number of bind variables") on every short-URL create. The exception is caught and swallowed (non-fatal) but means activity logging silently fails on creates AND likely undermines the per-IP rate limit (`rateLimit()` counts `tblActivityLog` rows by IP). Fix: audit the bind-param type string against the actual params array in `logActivity()` and synchronise them.
+  **source:** found cycle 10 (broader than #126 — #126 covers `sp_logActivity` procedure drift; this is the live `logActivity()` PHP function/direct-INSERT path) · **status:** ✅ Done (fixed cycle 11). The bind-param type string in `logActivity()` (`web/_functions/activity_logger.php`) was 20 chars against 21 columns/placeholders/variables (off-by-one) and mis-typed `ipAddress` as `i`; corrected to the 21-char `'ssisisssssssssssssiis'` with each char matching its column type (`statusCode`/`userUID`/`isBot`/`apiKeyUID` = `i`; `ipAddress` + `logData`/JSON + rest = `s`). Verified on MySQL 9.6: BEFORE → type-string error thrown, 0 rows inserted; AFTER → returns true, 1 row inserted with correct values; 5 create events now produce 5 countable `tblActivityLog` rows (the per-IP rate-limiter's `COUNT(*)` was effectively 0 while logging failed — abuse-prevention gap closed). Regression: `tests/integration/activity_log_test.php` (2 cases). 110 unit + 13 integration pass; lint clean. Sibling `error_handler.php` `tblErrorLog` INSERT checked — aligned, no bug.
 
 - **id:** B-041
   **title:** Establish pure-PHP test safety net (no Composer/PHPUnit; Dreamhost-compatible)
@@ -785,3 +835,4 @@ Baseline metrics measured at DISCOVER seed; every cycle appends a row.
 | 2026-06-29 | 8 | SECURE — purple-team (F-004/F-005 #100 + F-006 #101; destination/path-safety cluster) | 27 (B-013 + B-014 resolved this cycle) | 0 open | 17 open | 10 open | clean (php -l on all 4 changed files) | 90 unit / 4 integration (29 new: 25 in `tests/unit/security_ssrf_host_guard_test.php` + 4 in `tests/unit/favicon_path_traversal_test.php`) | Shared anti-SSRF host guard (`g2ml_destinationHostIsAllowed` + `g2ml_isPrivateOrReservedIp`) on both `validateDestination()` (before HEAD fetch) and `createShortURL()` (at creation); loopback/link-local/metadata (169.254.169.254)/reserved always blocked; RFC1918/ULA blocked by default (override `redirect.allow_private_destinations`); rejects userinfo (`user:pass@`); IPv4-mapped-IPv6 unwrapped; fails closed when settings/DNS unavailable; seed `014_redirect_ssrf_settings.sql`. Favicon `orgLogoPath` confined with `basename()`+`realpath()` inside uploads dir (F-006). 90 tests pass / 0 failed (+29). 0 Critical/High/Med findings remaining; 2 Low open (F-007 session re-bind, F-008 SRI). Note: cycle 8 was interrupted once by a monthly spend-limit; partial work was discarded and the cycle retried cleanly from the cycle-7 checkpoint. |
 | 2026-06-29 | 9 | SECURE — purple-team (F-007 + F-008); **completes SECURE** | 27 (F-007/F-008 have no GitHub #) | 0 open | 17 open | 10 open | clean (php -l on all 6 changed files) | 90 unit / 5 integration (1 new: `tests/integration/session_rebind_test.php`) | Final 2 Low fixed → **findings register 0 open**. F-007: `validateUserSession()` re-binds `$_SESSION['user_uid']` from the DB session row (defence-in-depth; negative-control test proven). F-008: the Bootstrap 5.3.3 CSS SRI hash was **wrong & inconsistent** across `header.php` + the 3 B error pages — would have **blocked the CSS in production** — corrected to the hash verified against the vendored copy AND the live jsdelivr CDN; other assets re-verified. 90 unit + 5 integration pass. Note: cycle 9's documentarian was interrupted by the monthly spend-limit; SECURITY.md had already been written, PROJECT.md completed inline on retry. SECURE COMPLETE; advancing to COMPLETE. |
 | 2026-06-29 | 10 | COMPLETE — auto-built FG-001 (autonomy-eligible); surfaced B-042 | 27 (unchanged on GitHub) | 1 open (B-042 new) | 17 open | 10 open | clean (php -l across all changed files + new tests) | 110 unit / 11 integration (25 new unit: `tests/unit/custom_alias_test.php`; 6 new integration: `tests/integration/custom_alias_create_test.php`) | FG-001 custom short-suffix/alias BUILT under the autonomy test (table-stakes, in-scope per brief lines 90–92, risk:Low, non-destructive). `createShortURL()` gains `customCode` option — validates `^[A-Za-z0-9_-]{3,50}$`, blocks reserved words via `g2ml_isReservedShortCode()`, hard-errors "That alias is already taken." on duplicate (errno 1062, no random fallback); empty/absent → existing random+retry path unchanged. Dashboard create form adds optional "Custom alias" field with label + help text + error re-display; anonymous/public API path untouched. 5 acceptance criteria demonstrated. New bug B-042 surfaced: `logActivity()` bind-type mismatch throws on every create — swallowed silently but breaks audit logging and likely undermines per-IP rate-limit. Re-opening STABILIZE next to fix B-042. |
+| 2026-07-04 | 11 | STABILIZE (re-open) — fixed B-042; surfaced B-043 | 27 (unchanged on GitHub) | 0 open | 18 open (B-043 new) | 10 open | clean (php -l on changed files) | 110 unit / 13 integration (2 new integration: `tests/integration/activity_log_test.php`) | `logActivity()` bind-param type-string off-by-one fixed (B-042) — 20-char string against 21 columns/placeholders/variables, plus `ipAddress` mis-typed `i`, corrected to `'ssisisssssssssssssiis'`. Evidence: BEFORE → type-string error, 0 rows inserted; AFTER → 1 row inserted; 5 create events → 5 countable `tblActivityLog` rows (per-IP rate-limit restored). 110 unit + 13 integration pass. New bug surfaced: B-043 — `_g2ml_parseUserAgent()` regex delimiter bug (`preg_quote()` missing `/` arg) breaks bot detection silently (`isBot` never set); queued next (same file, quick correctness fix). |
