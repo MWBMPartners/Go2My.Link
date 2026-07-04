@@ -72,12 +72,19 @@ SELECT
                                     AS `validateDestination`,
     IFNULL(old.`allowLinksPage`, 0) AS `allowLinksPage`,
     1                               AS `isActive`,
-    old.`urlStartDate`              AS `startDate`,
-    old.`urlEndDate`                AS `endDate`,
+    -- Zero-date/NULL guard: nullable target → strip zero-dates to NULL (#123)
+    NULLIF(NULLIF(CAST(old.`urlStartDate` AS CHAR), '0000-00-00 00:00:00'), '0000-00-00')
+                                    AS `startDate`,
+    NULLIF(NULLIF(CAST(old.`urlEndDate` AS CHAR), '0000-00-00 00:00:00'), '0000-00-00')
+                                    AS `endDate`,
     CONCAT('[Migrated from MWlink] ', IFNULL(old.`urlNotes`, ''))
                                     AS `urlNotes`,
-    old.`urlDateAdded`              AS `createdAt`,
-    old.`urlLastUpdated`            AS `updatedAt`
+    -- Zero-date/NULL guard: NOT NULL target → fall back to NOW() (#123)
+    IFNULL(NULLIF(NULLIF(CAST(old.`urlDateAdded` AS CHAR), '0000-00-00 00:00:00'), '0000-00-00'), NOW())
+                                    AS `createdAt`,
+    -- Zero-date/NULL guard: nullable target → strip zero-dates to NULL (#123)
+    NULLIF(NULLIF(CAST(old.`urlLastUpdated` AS CHAR), '0000-00-00 00:00:00'), '0000-00-00')
+                                    AS `updatedAt`
 FROM `mwtools_mwlink`.`tblShortURLs` old
 ON DUPLICATE KEY UPDATE
     `destinationURL` = VALUES(`destinationURL`),

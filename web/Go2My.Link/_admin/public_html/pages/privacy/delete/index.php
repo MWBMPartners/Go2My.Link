@@ -42,82 +42,116 @@ if (function_exists('__')) {
 $currentUser = getCurrentUser();
 $userUID     = $currentUser['userUID'];
 
-// ============================================================================
-// Handle cancellation of a pending deletion request (GET ?cancel=requestUID)
-// ============================================================================
-
 $actionSuccess = '';
 $actionError   = '';
 
-if (isset($_GET['cancel']) && (int) $_GET['cancel'] > 0)
+// Distinguish which POST action was submitted (cancel vs request deletion).
+$postAction = '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
-    $cancelRequestUID = (int) $_GET['cancel'];
+    $postAction = (string) ($_POST['action'] ?? 'request');
+}
 
-    // Verify the request belongs to this user and is still pending
-    $cancelRequest = dbSelectOne(
-        "SELECT requestUID, status FROM tblDataDeletionRequests
-         WHERE requestUID = ? AND userUID = ? AND requestType = 'deletion' LIMIT 1",
-        'ii',
-        [$cancelRequestUID, $userUID]
-    );
+// ============================================================================
+// Handle cancellation of a pending deletion request (CSRF-protected POST)
+// ============================================================================
+// Cancellation is a state-changing action, so it must arrive as a POST with a
+// valid CSRF token tied to the session. The previous GET-based path allowed a
+// forged link/img to cancel a user's deletion request (CSRF, F-002 / #98).
 
-    if ($cancelRequest === null || $cancelRequest === false)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $postAction === 'cancel')
+{
+    $csrfToken = $_POST['_csrf_token'] ?? '';
+
+    if (!g2ml_validateCSRFToken($csrfToken, 'account_delete_cancel'))
     {
         if (function_exists('__')) {
-            $actionError = __('delete.error_not_found');
+            $actionError = __('delete.error_csrf');
         } else {
-            $actionError = 'Deletion request not found.';
-        }
-    }
-    elseif ($cancelRequest['status'] !== 'pending')
-    {
-        if (function_exists('__')) {
-            $actionError = __('delete.error_not_cancellable');
-        } else {
-            $actionError = 'This request can no longer be cancelled.';
+            $actionError = 'Session expired. Please try again.';
         }
     }
     else
     {
-        // Cancel the request by setting status to 'rejected'
-        $updateResult = dbUpdate(
-            "UPDATE tblDataDeletionRequests SET status = 'rejected', processedAt = NOW() WHERE requestUID = ?",
-            'i',
-            [$cancelRequestUID]
-        );
+        $cancelRequestUID = (int) ($_POST['requestUID'] ?? 0);
 
-        if ($updateResult !== false)
+        if ($cancelRequestUID <= 0)
         {
             if (function_exists('__')) {
-                $actionSuccess = __('delete.cancel_success');
+                $actionError = __('delete.error_not_found');
             } else {
-                $actionSuccess = 'Deletion request cancelled. Your account will not be deleted.';
-            }
-
-            if (function_exists('logActivity'))
-            {
-                logActivity('data_deletion_cancelled', 'success', 200, [
-                    'userUID' => $userUID,
-                    'logData' => ['requestUID' => $cancelRequestUID],
-                ]);
+                $actionError = 'Deletion request not found.';
             }
         }
         else
         {
-            if (function_exists('__')) {
-                $actionError = __('delete.error_cancel_failed');
-            } else {
-                $actionError = 'Failed to cancel the deletion request. Please try again.';
+            // Verify the request belongs to this user and is still pending
+            $cancelRequest = dbSelectOne(
+                "SELECT requestUID, status FROM tblDataDeletionRequests
+                 WHERE requestUID = ? AND userUID = ? AND requestType = 'deletion' LIMIT 1",
+                'ii',
+                [$cancelRequestUID, $userUID]
+            );
+
+            if ($cancelRequest === null || $cancelRequest === false)
+            {
+                if (function_exists('__')) {
+                    $actionError = __('delete.error_not_found');
+                } else {
+                    $actionError = 'Deletion request not found.';
+                }
+            }
+            elseif ($cancelRequest['status'] !== 'pending')
+            {
+                if (function_exists('__')) {
+                    $actionError = __('delete.error_not_cancellable');
+                } else {
+                    $actionError = 'This request can no longer be cancelled.';
+                }
+            }
+            else
+            {
+                // Cancel the request by setting status to 'rejected'
+                $updateResult = dbUpdate(
+                    "UPDATE tblDataDeletionRequests SET status = 'rejected', processedAt = NOW() WHERE requestUID = ?",
+                    'i',
+                    [$cancelRequestUID]
+                );
+
+                if ($updateResult !== false)
+                {
+                    if (function_exists('__')) {
+                        $actionSuccess = __('delete.cancel_success');
+                    } else {
+                        $actionSuccess = 'Deletion request cancelled. Your account will not be deleted.';
+                    }
+
+                    if (function_exists('logActivity'))
+                    {
+                        logActivity('data_deletion_cancelled', 'success', 200, [
+                            'userUID' => $userUID,
+                            'logData' => ['requestUID' => $cancelRequestUID],
+                        ]);
+                    }
+                }
+                else
+                {
+                    if (function_exists('__')) {
+                        $actionError = __('delete.error_cancel_failed');
+                    } else {
+                        $actionError = 'Failed to cancel the deletion request. Please try again.';
+                    }
+                }
             }
         }
     }
 }
 
 // ============================================================================
-// Handle deletion request (POST)
+// Handle deletion request (CSRF-protected POST)
 // ============================================================================
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST')
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $postAction !== 'cancel')
 {
     $csrfToken = $_POST['_csrf_token'] ?? '';
 
@@ -301,12 +335,16 @@ foreach ($allRequests as $req)
                     </li>
                 </ul>
 
-                <a href="/privacy/delete?cancel=<?php echo (int) $pendingDeletion['requestUID']; ?>"
-                   class="btn btn-warning"
-                   onclick="return confirm('<?php if (function_exists('__')) { echo __('delete.cancel_confirm'); } else { echo 'Cancel your deletion request and keep your account?'; } ?>');">
-                    <i class="fas fa-undo" aria-hidden="true"></i>
-                    <?php if (function_exists('__')) { echo __('delete.cancel_button'); } else { echo 'Cancel Deletion Request'; } ?>
-                </a>
+                <form action="/privacy/delete" method="POST"
+                      onsubmit="return confirm('<?php if (function_exists('__')) { echo __('delete.cancel_confirm'); } else { echo 'Cancel your deletion request and keep your account?'; } ?>');">
+                    <?php echo g2ml_csrfField('account_delete_cancel'); ?>
+                    <input type="hidden" name="action" value="cancel">
+                    <input type="hidden" name="requestUID" value="<?php echo (int) $pendingDeletion['requestUID']; ?>">
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-undo" aria-hidden="true"></i>
+                        <?php if (function_exists('__')) { echo __('delete.cancel_button'); } else { echo 'Cancel Deletion Request'; } ?>
+                    </button>
+                </form>
             </div>
         </div>
 

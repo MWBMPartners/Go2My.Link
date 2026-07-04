@@ -41,8 +41,12 @@ SELECT
     old.`categoryDesc`          AS `categoryDescription`,
     old.`categoryFallbackURL`   AS `categoryFallbackURL`,
     1                           AS `isActive`,
-    old.`custDateCreated`       AS `createdAt`,
-    old.`custLastUpdated`       AS `updatedAt`
+    -- Zero-date/NULL guard: NOT NULL target → fall back to NOW() (#123)
+    IFNULL(NULLIF(NULLIF(CAST(old.`custDateCreated` AS CHAR), '0000-00-00 00:00:00'), '0000-00-00'), NOW())
+                                AS `createdAt`,
+    -- Zero-date/NULL guard: nullable target → strip zero-dates to NULL (#123)
+    NULLIF(NULLIF(CAST(old.`custLastUpdated` AS CHAR), '0000-00-00 00:00:00'), '0000-00-00')
+                                AS `updatedAt`
 FROM `mwtools_mwlink`.`tblCategories` old
 ON DUPLICATE KEY UPDATE
     `categoryName` = VALUES(`categoryName`),

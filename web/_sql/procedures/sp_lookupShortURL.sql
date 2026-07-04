@@ -42,15 +42,8 @@ CREATE PROCEDURE `sp_lookupShortURL`(
     READS SQL DATA
     COMMENT 'Resolve a short code to its destination URL with alias chain support (max 3 hops)'
 BEGIN
-    -- Exception handler: return error status on any SQL failure
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        SET outputDestination = NULL;
-        SET outputStatus = 'error';
-        SET outputOrgHandle = NULL;
-    END;
-
     -- Local variables
+    -- (MySQL requires all variable DECLAREs to appear BEFORE any handler DECLARE)
     DECLARE v_orgHandle     VARCHAR(50)     DEFAULT NULL;
     DECLARE v_destination   TEXT            DEFAULT NULL;
     DECLARE v_alias         VARCHAR(50)     DEFAULT NULL;
@@ -63,6 +56,15 @@ BEGIN
     DECLARE v_orgFallback   VARCHAR(500)    DEFAULT NULL;
     DECLARE v_catFallback   VARCHAR(500)    DEFAULT NULL;
     DECLARE v_found         TINYINT         DEFAULT 0;
+
+    -- Exception handler: return error status on any SQL failure
+    -- (declared AFTER the variables above, as MySQL requires)
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SET outputDestination = NULL;
+        SET outputStatus = 'error';
+        SET outputOrgHandle = NULL;
+    END;
 
     -- Ensure UTC timezone for date comparisons
     SET time_zone = '+00:00';

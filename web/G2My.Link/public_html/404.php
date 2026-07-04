@@ -61,7 +61,7 @@ $mainSiteURL  = 'https://go2my.link';
 
     <!-- Bootstrap 5.3 CSS (CDN) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YcnS/1lP6tVXrIFb8e1TdnJOz3m8f2Md5ND"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
           crossorigin="anonymous">
 
     <!-- Font Awesome 6 (CDN) -->
@@ -71,12 +71,30 @@ $mainSiteURL  = 'https://go2my.link';
 
     <!-- 🌓 FOUC Prevention — Apply theme before first paint -->
     <script>
-        (function(){
+        (function()
+        {
             var t = null;
-            try { t = localStorage.getItem('g2ml-theme'); } catch(e) {}
-            t = t || 'auto';
-            if (t === 'auto') {
-                t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+            try
+            {
+                t = localStorage.getItem('g2ml-theme');
+            }
+            catch (e)
+            {
+            }
+            if (t === null || t === '')
+            {
+                t = 'auto';
+            }
+            if (t === 'auto')
+            {
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+                {
+                    t = 'dark';
+                }
+                else
+                {
+                    t = 'light';
+                }
             }
             document.documentElement.setAttribute('data-bs-theme', t);
         })();

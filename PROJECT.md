@@ -1,0 +1,1100 @@
+# 🔗 Go2My.Link — Autopilot Project Record
+
+> Machine-and-human source of truth for the `dev-team-autopilot` run on
+> branch `autopilot/2026-06-05`. The conductor's machine state lives in
+> `.dev-team/autopilot.json`; this file is the human-readable mirror. British
+> English (en-GB) throughout. Emoji headings follow `.claude/memory/patterns.md`.
+
+## 🎯 Goal
+
+Go2My.Link is a multi-component URL-shortening platform by MWBM Partners Ltd
+(MWservices), deployed on **Dreamhost shared hosting** (PHP 8.4+/8.5+, MySQLi,
+Bootstrap 5.3, vanilla JS; no Composer/CLI assumed). It comprises three
+components on three domains: **A = go2my.link** (the main marketing site, URL
+creation, user/org dashboard, and `admin.go2my.link`), **B = g2my.link** (the
+shortlink redirect router), and **C = lnks.page** (LinksPage — largely unbuilt
+scaffolding, Phase 8). **The launch focus is Components A + B**; Component C must
+not be advertised beyond its coming-soon landing page.
+
+The aim of this run: drive A + B to a clean, defensible production launch by
+resolving the launch-hardening backlog (audit + schema findings, issues
+#93–#128), then build or queue the in-scope feature gaps — without violating the
+house rules below.
+
+## ✅ Definition of done
+
+- [ ] All launch-blocking audit/schema items (#93–#128) resolved.
+- [ ] No unresolved Critical or High security finding.
+- [ ] Lint clean (`parallel-lint`, PHP 8.4) across shipping code; PHPStan /
+      PHP_CodeSniffer advisories triaged.
+- [ ] Core flows verified live on MySQL: shorten → redirect (A create → B
+      resolve), auth/login, dashboard link CRUD, installer schema import.
+- [ ] In-scope feature gaps built or explicitly queued (Feature Spec Gate /
+      conductor gate) — large roadmap features tracked in `FEATURES.md`, not built
+      unprompted.
+- [ ] Documentation sufficient to install and run (INSTALL.md, README, schema
+      import path, credential model).
+
+## 🔒 Constraints
+
+House rules (verbatim-important — see `.claude/memory/patterns.md` for the full
+list; these OVERRIDE default behaviour):
+
+- 🚫 **No shorthand notation in ANY language.** Full `if/else` with Allman braces.
+  Banned: PHP alternative/template syntax (`if(): … endif;`), ternary
+  (`a ? b : c`), Elvis (`?:`), `|| default`, braceless single-line `if`, one-line
+  braceless arrow functions / implicit returns, short-echo `<?=`, short-open-tag
+  `<?`. `??` (null-coalescing) is allowed **only when both sides are simple
+  values** (no function-call operand).
+- 🗄️ **MySQLi only** (no PDO); **prepared statements for every query**; InnoDB +
+  `utf8mb4_unicode_ci`; sensitive values **AES-256-GCM** encrypted with SALT.
+- 🔑 **DB credentials live only in `web/_auth_keys/auth_creds.php`** (the three
+  components share one server-wide file via thin `require_once` includes). **Never
+  committed.** Never write/commit real credentials.
+- ♿ **WCAG 2.1 AA** built-in, not retrofitted (labelled `compliance` in issues —
+  there is **no `accessibility` label**).
+- 🌍 **All UI strings via `__('key')`** (dot-notation keys; `{name}` placeholders);
+  base language en-GB.
+- 🌓 **Dark/light via `data-bs-theme`** (three states auto/light/dark; CSS custom
+  props `--g2ml-*`; navbar/footer pinned dark).
+- 🔍 **Lint everything**; fix all errors/warnings/recommendations.
+- 💾 **Commit per cycle, NEVER push.** The user pushes manually. Never run
+  destructive git ops, never modify `.git/config`, never merge to `main` without
+  explicit go-ahead. Outward-facing / credentialled ops are instruct-don't-execute.
+- 🧪 A local throwaway **MySQL 9.6** (`/opt/homebrew/opt/mysql/bin/mysqld`) is
+  available for empirical DB tests (schema import, stored-proc compile, redirect
+  hot-path).
+
+## 🧰 Skills in play
+
+- **dev-team-autopilot** (`~/.claude/plugins/cache/dev-team/…/dev-team-autopilot`)
+  → conductor of the whole run (DISCOVER → STABILIZE → … loop).
+- **dev-team-iterate** → improvement cycles against the B- backlog below.
+- **dev-team-security** → adversarial security audit / remediation (XFF spoofing,
+  SSRF, CRLF, CSRF, cross-org leak findings).
+- **dev-team-review** → independent verification of completed cycles.
+- **dev-team-featurefind** → competitive feature-gap discovery → `FEATURES.md`.
+- Project house rules: `.claude/memory/patterns.md` → governs all code style.
+
+## 🎨 House style (existing-repo conventions)
+
+- **Language/stack:** PHP 8.4+/8.5+ (8.4 backward-compat via `version_compare()`),
+  MySQLi, Bootstrap 5.3, HTML5/CSS3, vanilla JS. No build step; CDN-first with
+  local fallback for libraries.
+- **Lint / static analysis:** `parallel-lint` (NOT `php-parallel-lint`) via
+  `shivammathur/setup-php@v2` in `.github/workflows/php-lint.yml`; PHPStan
+  (`phpstan.neon`) and PHP_CodeSniffer (`phpcs.xml`) advisory. No unit-test
+  framework in the repo — verification is empirical (run the SQL, exercise the
+  flow). There is **no automated test suite or coverage number**.
+- **Directory layout:** private dirs use a leading underscore (`_functions`,
+  `_includes`, `_sql`, `_auth_keys`, `_libraries`, `_schemas`). Web roots:
+  `public_html` (prod), `public_html_dev_alpha`, `public_html_dev_beta`,
+  `public_html_landing`, `public_html_redir` (and the non-shipping stray
+  `public_html_legacy` under Component B).
+- **Naming:** `tblPascalCase` tables, `camelCase` columns, `IDX_/UQ_/FK_` index
+  prefixes; PHP global functions inconsistently prefixed `g2ml_` (≈51 of ≈154 —
+  standardisation is backlog item B-024).
+- **No `.php` in URLs** — `.htaccess` rewrites / directory routing.
+- **Debug mode:** `?debug=true`; errors → `tblErrorLog`, activity → `tblActivityLog`.
+
+## 🗺️ Stage plan
+
+1. **DISCOVER** — reverse-engineer state, build the Codebase Map + scored
+   backlog, seed `PROJECT.md`/`FEATURES.md`. — status: **complete**
+2. **STABILIZE** — clear correctness + security launch-blockers (the High-impact
+   B- items: #93 rotation, #95 XFF, #121 cross-org leak, #94/#122/#123/#124
+   bugs). Verify shorten→redirect + auth + link CRUD live on MySQL. — status:
+   **complete** (cycles 2–4)
+3. **SECURE** — security Phase-0 (threat model + scanner sweep + attack-surface
+   map → SECURITY.md), then targeted remediations starting with B-003/#95 XFF
+   spoofing, then SSRF, CSRF, CRLF, cross-org, a11y items
+   (#96–#110). — status: **active**
+4. **FEATURE-FILL (in-scope)** / **COMPLETE** — close in-scope feature gaps surfaced
+   by audit §7.2/§8 and `FEATURES.md` via the conductor gate (#23 info-page auth
+   view, #30 dashboard custom suffix/alias/tags, #91 custom-domain resolution).
+   Large roadmap (Phases 7–11, Component C) stays queued. — status: **complete**
+   (cycles 10, 13–15; all four autonomy-eligible gaps FG-001..FG-004 built;
+   remaining feature gaps are the gated G-001..G-005, awaiting user approval)
+5. **POLISH** — sweep the top Medium/Low backlog items (a11y #104 landing
+   auto-refresh WCAG 2.2.1 Level A + reduced-motion + `bg-secondary` badge
+   contrast, `public_html_*` variant hygiene #112, lint/analysis exclusions).
+   — status: **active**
+6. **VERIFY & DOCUMENT** — independent review pass; finalise install/run docs;
+   confirm Definition of done. — status: planned
+
+## 📌 Current status
+
+- **Active stage:** **RUN COMPLETE.** All six phases done (DISCOVER →
+  STABILIZE → SECURE → COMPLETE → POLISH → VERIFY). VERIFY verdict: **PASS**
+  (2 must-fix defects found and fixed in-phase; 189 unit + 21 integration
+  green on MySQL 9.6; 0 open High security). Non-blocking follow-ups:
+  COV-1..COV-4. Awaiting user: review + approve gated features G-001..G-005;
+  push branch to refresh draft PR #130; then merge. Do NOT merge automatically.
+- **Done so far:** Bootstrap complete. Codebase Map written and spot-verified
+  against the tree. Backlog re-derived from the live GitHub issues (#1–#128) and
+  the two 2026-06-04 audits. Confirmed via direct code inspection that commit
+  `6897165` already landed several launch-hardening fixes (see Decision log).
+  Cycle 2 resolved B-002 (#121 cross-org category leak) and B-005 (#123 migration
+  zero-date guards) — both MySQL-verified. Cycle 3 resolved B-004 (#122 org
+  re-invite via generated-column unique key) and B-006 (#124 short-code TOCTOU
+  retry) — both MySQL-verified. Cycle 4 established the project's first test
+  safety net: pure-PHP no-Composer harness under `tests/` with 35 unit tests
+  (security.php) + 4 integration tests (sp_lookupShortURL), all green. Cycle 5
+  (SECURE Phase 0): `SECURITY.md` written — threat model, attack-surface map,
+  tooling sweep, multi-role fixtures plan, coverage ledger, findings register.
+  8 open findings (top = F-001/#95 spoofable client IP); 8 verified fixed-on-branch;
+  no secrets or active-compromise signal; deps PASS. Cycle 6 (SECURE — purple-team):
+  F-001/#95 (High) fixed — `REMOTE_ADDR` default + `TRUSTED_PROXIES` allowlist +
+  CIDR helper; rate-limit/audit spoofing closed; 53 unit tests pass (+18). Cycle 7
+  (SECURE — purple-team): F-002/#98 + F-003/#99 (both Med) fixed — deletion-cancel
+  CSRF→POST; interstitial destination/fallback scheme-guarded; 8 new regression
+  tests; 61 unit tests pass. Cycle 8 (SECURE — purple-team, destination/path-safety
+  cluster): F-004/F-005 (#100) + F-006 (#101) fixed — shared anti-SSRF host guard
+  (`g2ml_destinationHostIsAllowed`) on both `validateDestination` and `createShortURL`;
+  favicon `orgLogoPath` confined with `basename()`+`realpath()`; 90 unit tests pass
+  (+29). Cycle 8 was interrupted once by a monthly spend-limit; partial work discarded
+  and cycle retried cleanly. Cycle 9: SECURE COMPLETE (F-007 session re-bind + F-008
+  Bootstrap CSS SRI hash corrected; findings register 0 open; 90 unit + 5 integration
+  tests pass). Cycle 10: COMPLETE phase — FG-001 (custom short-suffix/alias) auto-built
+  under the autonomy test; 110 unit + 11 integration tests pass; 5 acceptance criteria
+  demonstrated. New bug B-042 surfaced: `logActivity()` bind-type mismatch silently
+  breaks audit logging and undermines per-IP rate-limiting — re-opening STABILIZE next.
+  Cycle 11 (STABILIZE re-open): B-042 fixed — bind-param type-string was 20 chars
+  against 21 columns/placeholders/variables (off-by-one) and mis-typed `ipAddress`
+  as `i`; corrected to the 21-char `'ssisisssssssssssssiis'` with each char matching
+  its column type. Verified on MySQL 9.6: before → type-string error, 0 rows
+  inserted; after → 1 row inserted; 5 create events now produce 5 countable
+  `tblActivityLog` rows (per-IP rate-limit restored). 110 unit + 13 integration
+  tests pass. New bug B-043 surfaced: `_g2ml_parseUserAgent()` regex delimiter bug
+  (`preg_quote()` missing `/` arg) breaks bot detection silently.
+- **In progress / next:** STABILIZE re-open — B-042 fixed (audit logging + rate-limit
+  restored). Next: fix B-043 (parseUserAgent regex — quick correctness, same file),
+  then resume COMPLETE with FG-002 (tags), FG-003 (info-page auth view), FG-004
+  (XML+XSLT). Gated G-001..G-005 await approval. Note: branch pushed + draft PR #130
+  open (do not merge).
+- **Open threads:**
+  - 🔴 **#93 manual action outstanding** — the plaintext legacy DB credential in
+    `web/G2My.Link/public_html_legacy/dbConfig.php` is now gitignored and was
+    never committed, **but the file still physically exists in the working tree
+    and the credential has not been confirmed rotated.** Treat as compromised;
+    rotation is instruct-don't-execute (user runs it).
+  - GitHub issues #93–#128 are all still marked **OPEN** even though some are
+    fixed on-branch — they need closing-comment + commit refs once verified.
+  - Component C (lnks.page) is scaffolding only; must not be advertised.
+  - No automated test suite — every fix needs empirical verification evidence.
+
+## 🧾 Decision log
+
+### 2026-07-04 — VERIFY caught two DB-only HIGH defects the unit-only green baseline was structurally blind to; stood up real MySQL to run the integration suite for the first time this run
+
+- **Decision:** Ran the final independent full-branch review (cycle 20, phase VERIFY, TERMINAL) over the whole `autopilot/2026-06-05` diff vs `main` (24 commits, 118 files): five dimensional reviewers (correctness, security, a11y, house-rule, test-coverage) → each material finding adversarially verified → a completeness critic. Two confirmed must-fix HIGH defects were found and fixed in-phase, both on the link-CRUD path and both invisible to the unit-only suite because they only manifest against a real database: **CR-1** — `links/edit/index.php`'s load SELECT named a non-existent column `s.shortURLUID` (the real primary key is `s.urlUID`), so the statement failed at PREPARE and link editing was 100% broken, falsifying the earlier "#94 fixed editing" claim (that fix had only corrected the adjacent `notes`→`urlNotes` column on the same statement); fixed to `s.urlUID`. **SEC-RECHECK-01** — `links/create/index.php` ran a post-insert `UPDATE tblShortURLs SET isActive=0 WHERE shortCode=?` scoped only by `shortCode`; because `UQ_shortcode_org` is per-org and FG-001 lets a user mint a custom alias duplicating another org's public code, that UPDATE deactivated the *other* org's live link — a deterministic cross-tenant deactivation DoS against the redirect crown jewel. Fixed at source rather than bolted on: added an `isActive` option to `createShortURL()` that binds `isActive` into the single INSERT (default `true`, so all existing callers incl. the public API are unaffected), and deleted the unscoped UPDATE entirely. A third, non-blocking nit (HR-1) was also fixed: `declare(strict_types=1)` added to `info_display.php` (FG-003's helper file, which had been missed).
+- **Why fix SEC-RECHECK-01 by binding into the INSERT rather than adding an org filter to the UPDATE:** an org-scoped `WHERE shortCode = ? AND orgHandle = ?` on the UPDATE would have closed the immediate cross-tenant hole but kept a second, redundant write against a row the code had *just* inserted in the same request — a second query with its own failure mode (partial state if the UPDATE fails after the INSERT succeeds) for no benefit over setting the value once, correctly, in the original INSERT. Binding `isActive` into the INSERT removes the extra query and the unscoped-write class of bug entirely, not just this instance of it.
+- **Why the biggest systemic gap mattered — and how it was closed:** the 189-pass baseline going into VERIFY was **unit-only**; every DB-backed integration test had been silently SKIPPING all run because no MySQL instance was available to the loop. Both CR-1 and SEC-RECHECK-01 are DB-only bugs (a PREPARE failure against a real schema; a cross-row UPDATE against real tenant data) that no unit test could ever have caught. VERIFY stood up a throwaway MySQL 9.6, imported the full schema + procedures + seeds, and actually **ran** the integration suite for the first time this run: 21 passed, 0 failed (the existing 18 plus 3 new). Added `tests/integration/cross_org_isolation_test.php`, covering CR-1 (the edit-load SELECT now prepares and returns a row), SEC-RECHECK-01 (an org-B inactive alias leaves org A's link active), and the `isActive` default. Both fixes are now empirically proven at the DB layer, not just read-verified.
+- **#94 status correction:** #94 was recorded as fixed in the 2026-06-05 decision log entry ("#94 (link-edit uses `urlNotes`)") but that only covered the `notes`→`urlNotes` column; the sibling `shortURLUID`→`urlUID` bug on the same SELECT meant editing a link was still completely broken. #94 is now genuinely resolved — both column bugs on that statement are fixed and integration-tested.
+- **Non-blocking follow-ups recorded, not fixed this cycle (see Backlog COV-1..COV-4):** COV-1 (#121 cross-org category isolation has no automated test — Med), COV-2 (#122 org re-invite key change untested — Low), COV-3 (favicon path-traversal test re-implements the confinement logic instead of calling the real `favicon.php` — Low), COV-4 (#124 TOCTOU random-code regenerate-on-collision retry loop untested — Low). None block the PASS verdict; none touch code shipped this run without a passing test elsewhere.
+- **Revisit if:** a future cycle adds DB-integration coverage for COV-1..COV-4, or if the CI environment gains a MySQL service container — wire the integration suite into CI so it runs on every push instead of only during manual VERIFY passes with a local throwaway DB.
+
+### 2026-07-04 — B-044 house-rule sweep run as its own mechanical cycle; whole IIFE rewritten to Allman, not just the ternary
+
+- **Decision:** Did the FOUC theme-init snippet's house-rule sweep as its own dedicated mechanical cycle (cycle 19) for consistency — all 4 identical copies (`web/_includes/header.php` and the 3 self-contained Component-B pages `expired.php`/`validating.php`/`404.php`) changed together, rather than partially touching 2 of them mid-a11y-cycle (as flagged when B-044 was first opened in cycle 17). Rewrote the whole IIFE to full Allman `if/else` — not just the `? :` ternary that was originally called out — so the snippet is internally consistent and fully house-rule-compliant in one pass: the `t = t || 'auto'` `||`-default and the one-line `try {...} catch(e) {}` K&R braces were removed alongside the ternary.
+- **Why not fix opportunistically:** The snippet is duplicated verbatim across 4 files; fixing it piecemeal across unrelated cycles risks the 4 copies drifting out of sync with each other and leaves some copies non-compliant for longer. A single mechanical pass keeps all 4 identical and closes the backlog item cleanly.
+- **Scope boundary:** Behaviour is unchanged — localStorage `g2ml-theme` read (null/'' → 'auto'), `prefers-color-scheme` resolves 'auto', `data-bs-theme` set before first paint (FOUC prevention intact). No other house-rule violations (B-036/#117) were addressed in this cycle — this was scoped strictly to the one widely repeated snippet.
+- **Revisit if:** a 5th copy of the theme-init snippet is introduced in a future file — apply the same Allman rewrite immediately rather than letting it drift, to avoid re-opening this class of finding.
+
+### 2026-07-04 — FG-005 built via build→adversarial-verify workflow (ultracode); Gravatar tier gated default-OFF for privacy
+
+- **Decision:** FG-005 (avatar priority cascade) built via a build → adversarial-verify workflow (ultracode): a build pass followed by three review lenses (correctness, security/privacy, house-rule) before acceptance. The Gravatar tier is gated default-OFF (`avatar.gravatar_enabled` setting) — a privacy-first product treats hashing and sending a user's email to a third-party avatar service as opt-in only, never a silent default. The initials monogram is the effective fallback with a WCAG-AA-verified colour palette (white text on all 10 palette colours ≥4.5:1, enforced by a runtime test). The correctness lens caught an uppercase-expansion overflow (ß→SS, ﬃ→FFI) that a naïve ASCII-only test would have missed — initials were capped to 2 characters BEFORE uppercasing, so multibyte case expansion overflowed the monogram to as many as 6 glyphs.
+- **Why fix before shipping rather than ship-then-patch:** The bug was silent (no error, just a visually broken monogram) and would only surface for names containing German ß or typographic ligatures — exactly the class of edge case a manual review pass is prone to skip. Catching it in the same cycle, before the autonomy-cleared commit, keeps the shipped state clean rather than needing a follow-up fix cycle.
+- **Scope boundary:** MS365/Google SSO tiers remain explicit no-ops (Phase 10 SSO is unbuilt); wiring them is future work, not attempted here. No resolve-time network call is made regardless of the Gravatar setting's value — enabling it later still needs a CSP `img-src` allowance plus a CSP-safe fallback script, both documented in-file as not-yet-shipped.
+- **Revisit if:** Phase 10 SSO lands (wire the MS365/Google tiers into the cascade in priority order ahead of Gravatar), or if the Gravatar tier is enabled in production (add the CSP allowance + fallback script first).
+
+### 2026-07-04 — A11y bundle 2: measure contrast rather than assume; single polite countdown announcement
+
+- **Decision:** For badge contrast (WCAG 1.4.3), measured actual ratios rather than trusting the audit's assumption — `bg-secondary` white-on-`#6c757d` came out at 4.69:1 and **PASSES** AA, so it was left unchanged; only `bg-info` (white-on-`#0dcaf0` ≈ 1.96:1, a genuine fail) was fixed, by adding `text-dark` at `web/Go2My.Link/_admin/public_html/pages/org/members/index.php:188`, matching the codebase's existing `bg-info text-dark` convention used elsewhere. For the Component-B interstitial countdowns, the visible per-second `#countdown` span had `aria-live` on it AND a separate off-screen `#countdown-status` region also announced — a double-announcement bug. Removed `aria-live` from the visible span (it is decorative; the status region owns announcements) and changed the status region from `aria-live="assertive"` to `aria-live="polite"` (a countdown is not urgent; assertive needlessly interrupts).
+- **Why not fix `bg-secondary` too:** Darkening a Bootstrap-default badge colour that already passes AA would be scope creep with no accessibility benefit and a visual-consistency cost across every page using it. Fixing only the genuine failure (`bg-info`) keeps the change surgical.
+- **New-window warning (`target="_blank"`) assessed, no change:** all such links already carry `rel="noopener noreferrer"` (the security-relevant part), and the "warn users a link opens in a new window" success criterion is WCAG 2.1 **AAA** (3.2.5) — above this project's AA target — so it is deferred as a documented non-gap, not silently dropped.
+- **Revisit if:** a future Bootstrap upgrade changes the default badge/state colours (re-measure contrast rather than assume), or if the project's compliance target is raised to AAA (then action the new-window warning).
+
+### 2026-07-04 — Landing auto-transition: hard `<meta refresh>` removed (WCAG 2.2.1 Level A); JS auto-reload kept only for non-reduced-motion users and made non-trapping
+
+- **Decision:** Removed the `<meta http-equiv="refresh" content="900">` from all three `public_html_landing/index.php` (A/B/C) — a hard, non-dismissible timing trap that discarded the email field and reset focus every 15 minutes (WCAG 2.2.1 Level A). The JS countdown-ring auto-reload is kept only as a convenience for users who have **not** expressed a reduced-motion preference, and is made non-trapping: it checks `matchMedia('(prefers-reduced-motion: reduce)')` (no ring animation, no reload for those users) and, for everyone else, only fires when the page is visible AND no form control is currently focused. Bundled in the same cycle: a site-wide `@media (prefers-reduced-motion: reduce)` CSS block in `web/Go2My.Link/public_html/css/style.css` (neutralises animations/transitions/scroll-behaviour, including the `fa-spin` submit spinner) and a `scrollIntoView` gate in `web/Go2My.Link/public_html/js/app.js` (`'auto'` vs `'smooth'` via full `if/else`, no shorthand).
+- **Why bundle #104/#105/#106 together:** all three findings share the same root cause — motion/timing behaviour that ignores the reduced-motion preference, one of which (#104) actively traps the user in a periodic reload. Fixing the landing auto-reload mechanism and the ring loop's `requestAnimationFrame` check in the same pass avoided leaving the ring gated only at the CSS layer, which had been giving a false impression of compliance while the rAF loop kept sweeping underneath.
+- **Scope boundary:** Component C's landing page keeps its coming-soon copy and is not otherwise built out — only the timing/motion behaviour changed, on all three components equally.
+- **Revisit if:** a future landing redesign reintroduces a periodic reload — re-apply the same visibility/focus/reduced-motion guard rather than a bare meta refresh.
+
+### 2026-07-04 — FG-004 (XML+XSLT API output) auto-built under the autonomy test; centralised API responses into `g2ml_apiRespond()`; COMPLETE phase complete
+
+- **Decision:** FG-004 was auto-built without user gate approval under the autopilot autonomy test: table-stakes (brief-mandated, §8.2 lines 222–224), risk Low, additive — JSON stays the default and is byte-identical to before. Rather than bolt XML onto `api/create/index.php`'s ten separate `json_encode` call sites, the response layer was centralised first: new `web/_functions/api_response.php` exposes `g2ml_apiRespond()` (the one call site every branch now uses) plus three pure, independently-testable helpers — `g2ml_apiWantsXml()` (content negotiation via `?format=xml` or `Accept: application/xml`), `g2ml_arrayToXml()`, and `g2ml_buildApiXmlDocument()`. `api/create/index.php` was refactored to route every response (405/403/422/429/201, success and error) through `g2ml_apiRespond()` — 0 `json_encode` calls remain in that file. XML output is a `<response>` document with a leading `<?xml-stylesheet?>` PI referencing the new self-hosted `web/Go2My.Link/public_html/api/create/response.xsl`; every value is `htmlspecialchars`/ENT_XML1-escaped, verified against a hostile payload and confirmed well-formed with `xmllint`.
+- **Why dedup the JSON path in the same change:** ten independent `json_encode` blocks would have meant ten independent places to wire an XML branch into (and ten places for the two formats to drift). Funnelling both formats through one `g2ml_apiRespond()` call site is a refactor-under-test-net move — the existing JSON behaviour was locked down with a byte-identical subprocess diff before/after, so the refactor could not silently change any existing response.
+- **Scope boundary:** The no-JS redirect fallback and all existing status codes/messages were preserved unchanged; only the internal response-emission mechanism and the addition of the XML branch changed. The AJAX/JSON contract used by `js/app.js` is untouched.
+- **Stage decision — COMPLETE phase complete:** FG-004 was the last of the four autonomy-eligible gaps (FG-001 custom alias, FG-002 tags, FG-003 info-page auth view, FG-004 XML/XSLT) identified in DISCOVER. All four are now built. The remaining feature gaps are the gated G-001..G-005 (Component C, payments, advanced auth, public API expansion, analytics) — each explicitly awaiting user approval per the gate ledger, not autonomy-eligible. With no further in-scope work the loop can safely auto-select, COMPLETE is done; advancing to POLISH (top Medium/Low backlog: a11y #104, `public_html_*` variant hygiene #112, lint/analysis exclusions), then VERIFY.
+- **Revisit if:** the API expansion (FG-008/FG-009) lands later, `g2ml_apiRespond()`/`g2ml_buildApiXmlDocument()` should be reused rather than re-implemented so the two new endpoints inherit the same JSON/XML parity for free.
+
+### 2026-07-04 — FG-003 (info-page public-vs-authenticated view, #23) auto-built under the autonomy test; full destination revealed to ANY authenticated viewer, rendered as escaped text not a link
+
+- **Decision:** FG-003 was auto-built without user gate approval under the autopilot autonomy test: table-stakes feature, explicitly in-scope per issue #23, risk Low, non-destructive, and the page's own docblock already documented the intent. The full destination is revealed to **any authenticated viewer**, not just the link's owner — because short URLs redirect publicly on visit, the destination is not a secret gated behind ownership; the only thing worth gating behind login is convenience (avoiding the click-through). The full destination is rendered as **escaped text**, not a clickable `<a href>`, closing off any scheme/XSS vector from a stored destination. Anonymous viewers keep the existing masked domain view and get a new accessible "Log in to see the full destination" prompt linking to `/login` with **no redirect-back parameter**, to avoid introducing an open-redirect surface on a page that is otherwise pure read-only lookup. The decision logic (mask vs reveal) was extracted into a pure, dependency-free helper (`g2ml_infoDisplayDestination()`) specifically so it is unit-testable without a session/DB fixture.
+- **Why any-authenticated rather than owner-only:** Owner-only would require an ownership lookup (extra query, extra edge cases for org-shared links) to protect information that is not actually secret — the short code already forwards anyone to the destination. Scoping to "any authenticated" matches the page docblock's stated intent and keeps the change additive/non-destructive with no new query.
+- **Scope boundary:** The redirect path, the create flow, and the DB query layer were untouched — this is purely a display-branching change on the existing info/preview page.
+- **Revisit if:** a future privacy requirement narrows this to owner-only (e.g. an org wants destinations hidden even from other logged-in users) — the pure helper already isolates the decision so that would be a small, testable change.
+
+### 2026-07-04 — FG-002 (tags on links) auto-built under the autonomy test; find-or-create per org, post-commit attach with per-tag isolation
+
+- **Decision:** FG-002 (tags on short links) was auto-built without user gate approval under the autopilot autonomy test: table-stakes feature, explicitly in-scope per brief line 91 (categories *and* tags), risk Low, non-destructive. The `tblTags`/`tblShortURLTags` schema (schema 020) existed but had zero PHP references — categories were wired, tags were defined-only. Tags find-or-create per org via the existing `UQ_tag_org` unique key; the junction insert uses `INSERT IGNORE` (idempotent, no duplicate-key noise); attaching tags happens strictly AFTER the short-URL row commits, and each tag is wrapped in its own try/catch so a single tag failure never rolls back or fails the short-URL create. Slugs are ASCII-only (`g2ml_slugifyTag()`); the display name preserves the user's original casing/spacing. A hard cap of `G2ML_MAX_TAGS_PER_LINK` = 10 prevents unbounded junction growth from a single request.
+- **Why post-commit + per-tag try/catch:** Tags are a secondary enrichment, not core to the short URL's existence — the create form's primary promise (a working short link) must not fail because of a tag-layer problem (e.g. a pathological slug collision or a transient DB hiccup on one tag among several). Mirrors the same "never let the enrichment path break the core path" principle already used for activity logging.
+- **Scope boundary:** Edit-form tag management (add/remove tags on an existing link) and tag-based filtering on the links index are explicit follow-ups, not built this cycle — captured as the FG-002 out-of-scope note in `FEATURES.md` rather than silently left undone.
+- **Revisit if:** tag volume per org grows large enough that the `IN(...)` badge-rendering query needs pagination-aware batching, or if the edit-form/filtering follow-ups surface a need to revisit the find-or-create/junction approach.
+
+### 2026-07-04 — `logActivity()` bind_param type-string must equal column/placeholder/variable count AND match each column type
+
+- **Decision:** Fixed B-042 by rebuilding the `logActivity()` bind-param type
+  string in `web/_functions/activity_logger.php` from 20 chars (one short of
+  the 21 columns/placeholders/variables) to the correct 21-char
+  `'ssisisssssssssssssiis'`, with each character matching its column's actual
+  type (`statusCode`/`userUID`/`isBot`/`apiKeyUID` = `i`; `ipAddress` +
+  `logData`/JSON + the rest = `s` — `ipAddress` had been mis-typed `i`).
+- **Why it matters:** Audit logging and rate-limit correctness both depend on
+  this string being right — `bind_param` throws when the type-string length
+  doesn't match the variable count, and the exception was being caught and
+  swallowed, so every short-URL create silently failed to log while the
+  per-IP rate limiter's `COUNT(*)` over `tblActivityLog` under-counted.
+- **Revisit if:** a future change adds/removes a column from `tblActivityLog`
+  without updating both the placeholder count and the type-string in lock-step
+  — treat any edit to that INSERT as touching three things at once (columns,
+  placeholders, type-string).
+- **Follow-on:** B-043 (`_g2ml_parseUserAgent()` regex delimiter bug) queued
+  next — same file, quick correctness fix.
+
+### 2026-06-05 — Treat audit/schema fixes in commit `6897165` / `9f58807` as done-on-branch but issues still open
+
+- **Decision:** The backlog records which #93–#128 items are already fixed on
+  this branch (verified by reading the post-fix code), while noting the GitHub
+  issues remain OPEN until closed with commit refs per the project's issue
+  protocol.
+- **Options considered:** (a) trust the issue OPEN state and re-do the work
+  (wasteful, risks regressions); (b) trust the audit's "fixed" claims blindly
+  (violates evidence-not-claims). Chose (c): verify each claimed fix against the
+  actual code now.
+- **Reason:** Evidence-not-claims discipline. Verified in code: #94 (link-edit
+  uses `urlNotes`), #96 (contact CAPTCHA verified server-side), #97 (subject
+  CR/LF/NUL stripped before the Subject header), #102 (favicon falls back to
+  `logo.png`), #103 (CSP permits the CDN/inline the error pages use), #111
+  (release.yml uses `parallel-lint`), #93/#112 (.gitignore guards present), plus
+  both schema criticals (`sp_lookupShortURL` handler order; `tblPaymentDiscounts`
+  before `tblPayments`). Confirmed NOT yet fixed: #93 rotation (manual), #95 XFF,
+  #23, #30, #91, #104/#105/#106, #99/#100/#101, #98, #121–#128 (most).
+- **Revisit if:** independent review (`dev-team-review`) disproves any "fixed"
+  claim with fresh evidence — that item returns to the backlog as a regression.
+
+### 2026-06-05 — Launch scope = Components A + B only
+
+- **Decision:** Definition of done targets A + B for launch; Component C and
+  Phases 7–11 stay roadmap (tracked in `FEATURES.md`, not built unprompted).
+- **Options considered:** ship all three (C is unbuilt — not viable); ship A only
+  (B is the redirect engine, inseparable from the product).
+- **Reason:** Matches the 2026-06-04 audit verdict and the project brief's
+  minimum-launchable-product framing.
+- **Revisit if:** the user expands scope to include Component C / a roadmap phase.
+
+### 2026-06-28 — Org re-invite: VIRTUAL generated `pendingKey` + NULL-exempt UNIQUE (not status-in-key)
+
+- **Decision:** Enforce at most one PENDING invitation per (org, email) using a
+  VIRTUAL generated column `pendingKey` that is non-NULL only when
+  `status = 'pending'`, backed by a UNIQUE index. Cancelled/expired rows store NULL
+  and are exempt from the constraint, so re-invite cycles succeed.
+- **Why not status-in-key:** Including `status` in the composite UNIQUE allowed
+  multiple active pending rows per (org, email) if the status value differed — the
+  original bug — and would silently admit a second concurrent pending invite.
+- **Index replacement required:** Dropping a composite unique index that serves as
+  the supporting index for a FK (`FK_invitation_org`) fails with MySQL errno 1553
+  unless a replacement index is added first. Added `IDX_invitation_org` before
+  dropping the old unique.
+- **Revisit if:** a future MySQL version handles generated-column NULLs differently
+  in unique indexes, or if the invitation model grows a second concurrent-pending
+  use case.
+
+### 2026-06-28 — `dbLastErrno()` added so callers can detect duplicate-key (errno 1062) for bounded retry
+
+- **Decision:** Added `dbLastErrno()` helper + `$GLOBALS['_g2ml_last_errno']` to
+  `db_query.php` so that `createShortURL()` — and any future caller — can
+  distinguish a duplicate-key failure (errno 1062) from other insert errors without
+  inspecting the raw MySQLi object.
+- **Why:** The existing `dbInsert()` return contract (affected rows / false) gives
+  no error code. Exposing errno via a thin global sidechannel is additive and does
+  not break any existing caller.
+- **Revisit if:** the project adopts an ORM or a DB-layer class that surfaces errno
+  on the return object natively.
+
+### 2026-06-28 — Test strategy: pure-PHP harness under `tests/` (no Composer; characterisation-first)
+
+- **Decision:** Establish the test safety net as a pure-PHP micro-framework
+  (`tests/bootstrap.php` + assert helpers) with two runners: `tests/run.php`
+  (unit, DB-free, exits 1 on failure) and `tests/run_integration.php`
+  (env-DSN MySQL, skips cleanly when `G2ML_TEST_DSN` is absent). No PHPUnit or
+  Composer — Dreamhost shared hosting cannot run them. Characterisation-first
+  approach: lock current behaviour (including any quirks) before refactoring.
+- **Characterisation facts recorded as intended behaviour:**
+  - CSRF tokens are **single-use** — `g2ml_validateCsrfToken()` unsets the
+    session token on first successful validate; a second call with the same token
+    fails. Callers that need reuse must regenerate.
+  - `g2ml_sanitiseInput()` = `trim(strip_tags())` and **preserves internal
+    CR/LF** — the contact-form CRLF injection defence lives at the call site
+    (`$safeSubject` stripping), not in the sanitiser. Tests confirm this.
+  - `g2ml_sanitiseURL()` rejects `javascript:`, `data:`, `ftp:`, `mailto:`, and
+    relative/malformed URLs; allows `http://` and `https://` schemes only.
+  - AES-256-GCM round-trip uses a random IV per encrypt call; identical plaintext
+    produces different ciphertext each time (verified by the unit tests).
+- **Options considered:** PHPUnit via phar (portability concerns; no CLI on
+  Dreamhost prod); skip tests entirely (no regression net, too risky at this
+  stage); pure-PHP micro-framework (chosen — zero dependencies, runs anywhere
+  PHP 8.4 does).
+- **Revisit if:** the project migrates off Dreamhost to a hosting environment
+  with Composer/CLI, at which point PHPUnit integration becomes viable.
+
+### 2026-06-28 — Client IP trust: REMOTE_ADDR default; XFF only from TRUSTED_PROXIES; CIDR via inet_pton
+
+- **Decision:** `g2ml_getClientIP()` returns `REMOTE_ADDR` by default. `X-Forwarded-For` and `X-Real-IP` headers are honoured **only** when `REMOTE_ADDR` is present in the optional `TRUSTED_PROXIES` constant (an array of IP addresses or CIDR ranges). If the constant is undefined or empty, all forwarded headers are ignored. When multiple XFF hops are present, the right-most untrusted entry is chosen. CIDR matching is performed via binary `inet_pton` comparison, covering both IPv4 and IPv6. Dreamhost shared hosting has no trusted upstream proxy, so the effective default is: trust none.
+- **Why not per-call allowlist or ini-driven config:** A single well-named constant declared alongside the credentials file is discoverable, zero-dependency, and matches the project's no-Composer constraint. A DB-driven or ini-driven list adds a fetch on every request to the hot path.
+- **Revisit if:** the app is placed behind a known proxy/CDN (e.g. Cloudflare) — define `TRUSTED_PROXIES` with the CDN's published CIDR ranges.
+
+### 2026-06-28 — Interstitial output: scheme-guard all destination/fallback sinks; deletion-cancel is a CSRF POST
+
+- **Decision:** All destination and fallback URL sinks in `validating.php` and `expired.php` (`href` attributes, JS `window.location` assignments, `meta-refresh` content, noscript text) are scheme-guarded via `g2ml_sanitiseURL()` (http(s) only) before output, with a `preg_match('#^https?://#i')` inline fallback. A rejected destination produces no link; a rejected fallback falls back to `https://go2my.link`. Account-deletion cancellation is converted to a CSRF-protected POST using a dedicated form name (`account_delete_cancel`), distinct from the deletion-request form (`account_delete`); the GET `?cancel` path is removed entirely.
+- **Why:** A legacy-migrated `javascript:` or `data:` URL stored in `tblShortURLs` would otherwise render as a clickable (or auto-followed via `window.location`) link on the interstitial pages — `htmlspecialchars` alone does not neutralise URI scheme injection. A forged GET request (e.g. via an `<img>` tag) to the cancel URL would silently cancel a victim's own pending account-deletion with no user action.
+- **Revisit if:** a future interstitial redesign introduces a new URL output sink that bypasses the guard, or if the cancellation flow gains additional steps that require re-evaluation of the form structure.
+
+### 2026-06-29 — Anti-SSRF: destination host validation on both create and validateDestination; fail-closed
+
+- **Decision:** Destination hosts are validated at two chokepoints via a shared helper `g2ml_destinationHostIsAllowed()` in `security.php`: (1) in `validateDestination()` in `redirect_resolver.php`, before any `get_headers()` HEAD fetch; (2) in `createShortURL()` in `shorturl_create.php`, before any row is inserted. Loopback, link-local (including `169.254.169.254` metadata), and other reserved ranges are **always** blocked with no override. RFC1918 private IPv4 and IPv6 ULA ranges are blocked by default and may be overridden per-instance via the new `redirect.allow_private_destinations` setting (default `'0'`). Userinfo components (`user:pass@`) are rejected. All resolved A/AAAA IP addresses must pass the check (all-must-pass, not any-must-pass). IPv4-mapped IPv6 addresses are unwrapped before comparison. The helper fails closed when settings or DNS are unavailable.
+- **Why not allow-list approach:** The platform is a URL shortener deployed on shared hosting — the attack surface for SSRF is the stored destination of any short URL. A block-list of always-bad ranges (loopback, metadata, reserved) plus a configurable block of RFC1918 covers the realistic risk without requiring an explicit allow-list of every legitimate destination prefix, which would be unmanageable for a public shortener.
+- **Revisit if:** the app is deployed in an environment where RFC1918 destinations are legitimately needed (e.g. an intranet shortener) — set `redirect.allow_private_destinations` = `'1'`; the always-blocked ranges (loopback/link-local/metadata/reserved) remain in force regardless.
+
+### 2026-06-29 — FG-001 auto-built under autonomy test; B-042 (logActivity bind mismatch) surfaces; re-opening STABILIZE
+
+- **Decision:** FG-001 (authenticated custom short-suffix/alias) was auto-built without user gate approval under the autopilot autonomy test: table-stakes feature, explicitly in-scope per brief lines 90–92, risk Low, non-destructive (additive to existing `createShortURL()` and the dashboard create form; anonymous/public API path untouched). Custom codes are validated against `^[A-Za-z0-9_-]{3,50}$`, blocked against reserved words via `g2ml_isReservedShortCode()` (robots/favicon/index/sitemap/validating/expired/404/api/admin/install/www etc.), and on a duplicate (errno 1062) return "That alias is already taken." with no random fallback — a user-chosen code is never silently changed.
+- **B-042 surfaced:** `logActivity()` in `web/_functions/activity_logger.php` has a bind-param type-string vs params mismatch that throws on every short-URL create. The exception is caught and swallowed (non-fatal) but means activity logging silently fails on creates AND likely undermines the per-IP rate limit (`rateLimit()` counts `tblActivityLog` rows by IP). This is broader than the existing #126 (which tracks the `sp_logActivity` stored-procedure drift); the live PHP function/direct-INSERT path is affected. Classified High correctness/security.
+- **Stage decision:** Re-opening STABILIZE to fix B-042 (it undermines a security control — rate-limiting — so the safety floor requires it before resuming COMPLETE). After B-042 is fixed, resume COMPLETE: auto-build FG-002 (tags), FG-003 (info-page auth view), FG-004 (XML+XSLT), then queue gated gaps G-001..G-005 for user approval.
+- **Revisit if:** B-042 turns out to be already fixed by a concurrent change, or if the rate-limit is determined to have a separate enforcement path not dependent on `tblActivityLog`.
+
+### 2026-06-28 — SECURE Phase 0: SECURITY.md is the findings register; purple-team order established
+
+- **Decision:** `SECURITY.md` is the single findings register using `F-` IDs mapped to GitHub issue numbers. Purple-team remediation order: F-001 (#95 spoofable client IP) → F-003 (#99 interstitial scheme guard) → F-002 (#98 deletion-cancel CSRF) → F-004 (#100 SSRF in validateDestination) → F-005 (#100 created-URL internal-host/userinfo) → F-006 (#101 favicon path-traversal latent). Active-compromise signal: none.
+- **Reason:** A single authoritative register prevents the findings list fragmenting across memory files and GitHub comments; `F-` IDs give stable cross-reference anchors across SECURITY.md, PROJECT.md, and GitHub issues. Ordering by exploitability × reach puts the spoofable-IP finding (poisons logs, rate-limit, login-alert — remotely exploitable with zero auth) first.
+- **Revisit if:** a second audit produces findings that conflict with the ordering, or if the user re-prioritises the purple-team queue.
+
+### 2026-06-28 — STRICT-mode zero-date guard: CAST AS CHAR before NULLIF
+
+- **Decision:** When guarding legacy zero-date columns in data-migration SQL under
+  STRICT `sql_mode` (NO_ZERO_DATE active), cast the source column `AS CHAR` before
+  comparing with `NULLIF`, rather than comparing the bare date literal
+  `'0000-00-00'` or `'0000-00-00 00:00:00'` directly.
+- **Why:** Under NO_ZERO_DATE STRICT mode, the bare zero-date literal inside a
+  `NULLIF()` call is itself rejected with errno 1292 before the comparison even
+  runs. Casting to CHAR first makes the comparison a string operation, which is
+  never mode-restricted.
+- **Canonical idiom (NOT NULL target):**
+  `IFNULL(NULLIF(NULLIF(CAST(col AS CHAR),'0000-00-00 00:00:00'),'0000-00-00'),NOW())`
+- **Canonical idiom (nullable target):**
+  `NULLIF(NULLIF(CAST(col AS CHAR),'0000-00-00 00:00:00'),'0000-00-00')`
+- **Applied in:** `web/_sql/migrations/001`, `002`, `003`, `004`, `006`, `007`.
+- **Revisit if:** a future MySQL version rejects string-mode CAST — switch to
+  `STR_TO_DATE` with `%Y-%m-%d %H:%i:%s` and an explicit NULL fallback.
+
+## ⛳ Checkpoint log
+
+### Cycle 20 — 2026-07-04 — VERIFY (final independent full-branch review) — **run TERMINAL**
+
+- **Items resolved:** CR-1 (broken link-edit load SELECT — non-existent column `s.shortURLUID`), SEC-RECHECK-01 (cross-org link deactivation DoS via unscoped `isActive` UPDATE, enabled by FG-001 custom aliases), HR-1 (missing `declare(strict_types=1)` in `info_display.php`).
+- **Evidence:** Review workflow ran over the whole branch diff vs `main` (24 commits, 118 files): 5 dimensional reviewers (correctness, security, a11y, house-rule, test-coverage) → each material finding adversarially verified → a completeness critic. Baseline re-confirmed first: 51 changed PHP files `php -l` clean, 189 unit tests pass. **CR-1** — `web/Go2My.Link/_admin/public_html/pages/links/edit/index.php`'s load SELECT named `s.shortURLUID` (the real PK is `s.urlUID`), so the statement failed at PREPARE and link editing was 100% broken; fixed to `s.urlUID`. **SEC-RECHECK-01** — `web/Go2My.Link/_admin/public_html/pages/links/create/index.php` ran a post-insert `UPDATE tblShortURLs SET isActive=0 WHERE shortCode=?` scoped only by `shortCode`; because `UQ_shortcode_org` is per-org and FG-001 lets a user mint a custom alias duplicating another org's public code, the UPDATE deactivated the *other* org's live link (cross-tenant DoS on the redirect crown jewel); fixed at source — added an `isActive` option to `createShortURL()` in `web/Go2My.Link/_functions/shorturl_create.php` bound directly into the single INSERT (default `true`, all existing callers incl. the public API unaffected) and deleted the unscoped UPDATE. Stood up a throwaway MySQL 9.6, imported the full schema + procedures + seeds, and **ran** the integration suite (previously skipping cleanly with no DB all run): **21 passed, 0 failed** (18 existing + 3 new). Added `tests/integration/cross_org_isolation_test.php` covering CR-1 (edit-load prepares + returns a row), SEC-RECHECK-01 (org-B inactive alias leaves org-A link active), and the `isActive` default. A focused adversarial re-verify of both fixes returned CONFIRMED (bind arity correct, active-case preserved, both callers safe, `strict_types` safe, no new shorthand/SQLi introduced). `#94` is now genuinely resolved — the earlier fix only corrected the sibling `notes`→`urlNotes` column on the same statement; CR-1 fixes the remaining `shortURLUID`→`urlUID` bug that had kept editing broken.
+- **Non-blocking follow-ups (backlog, not fixed this cycle):** COV-1 (#121 cross-org category isolation untested — Med), COV-2 (#122 org re-invite key change untested — Low), COV-3 (favicon path-traversal test re-implements the confinement instead of calling the real `favicon.php` — Low), COV-4 (#124 TOCTOU regenerate-on-collision retry loop untested — Low).
+- **Overall verdict: PASS.** All six phases (DISCOVER → STABILIZE → SECURE → COMPLETE → POLISH → VERIFY) are complete. 189 unit + 21 integration tests green; 0 open High security findings (findings register in `SECURITY.md` now 17 fixed / 0 open, including SEC-RECHECK-01 found-and-fixed this cycle). Run is **TERMINAL** — gated features G-001..G-005 await user approval; local branch is ahead of draft PR #130 and needs a re-push to refresh it; do **not** merge automatically.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; local branch ahead of draft PR #130 (do not merge) — needs re-push to refresh.
+
+### Cycle 19 — 2026-07-04 — POLISH (B-044 house-rule sweep; theme-init snippet) — **completes POLISH**
+
+- **Items resolved:** B-044 — FOUC theme-init inline snippet ternary house-rule sweep.
+- **Evidence:** Swept the FOUC theme-init inline `<script>` IIFE across all 4 files that carry a standalone copy: `web/_includes/header.php` (the shared header used by most pages), and the 3 self-contained Component-B pages `web/G2My.Link/public_html/{expired,validating,404}.php`. Removed the house-rule shorthand: the `? 'dark' : 'light'` ternary, the `t = t || 'auto'` `||`-default, and the one-line `try {...} catch(e) {}` K&R braces — rewrote the whole IIFE in full Allman if/else (no ternary, no `||`-default, braces on their own lines). Behaviour preserved exactly: localStorage `g2ml-theme` read (null/'' → 'auto'); if 'auto', `prefers-color-scheme` decides dark/light; then `data-bs-theme` is set before first paint (FOUC prevention intact). Verified: `php -l` clean on all 4 files; grep confirms 0 residual theme-init ternary and 0 residual `t = t || 'auto'`; the rewritten IIFE passes `node --check` as valid JS; `php tests/run.php` → 189 passed / 0 failed (unchanged). Bucket 1 (mechanical, non-destructive).
+- **Remaining:** **POLISH phase complete** — a11y bundles 1–2 (cycles 16–17) + FG-005 (cycle 18) + B-044 (this cycle) all done. Next: advance to VERIFY — an independent full-branch review pass at the latest commit (correctness re-check of the run's changes, integration sanity, completeness critic). Gated G-001..G-005 still await user approval.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; local branch is ahead of the draft PR #130 (do not merge) — needs re-push to refresh.
+
+### Cycle 18 — 2026-07-04 — POLISH (auto-built FG-005; avatar priority cascade)
+
+- **Items resolved:** FG-005 — avatar priority cascade (auto-built under the autonomy test).
+- **Evidence:** New `web/_functions/avatar.php` (`declare(strict_types=1)`, sibling copyright header): `g2ml_avatarInitials()` (multibyte-safe, ≤2 chars), `g2ml_avatarCapInitials()` (uppercase-then-cap helper), `g2ml_avatarColour()`/`g2ml_avatarPalette()`/`g2ml_avatarSeed()` (deterministic monogram colour from a 10-entry palette, white text on every colour ≥4.5:1 WCAG AA, enforced by a runtime test), `g2ml_avatarGravatarHash()`/`g2ml_avatarGravatarEnabled()`, `g2ml_resolveAvatar()` (structured `image|initials` array, priority: local stored avatar → MS365/Google SSO no-ops (Phase 10) → Gravatar (gated, default OFF) → initials monogram), `g2ml_renderAvatar()`/`g2ml_avatarEscape()` (all output escaped). Wired into shared `web/_includes/nav.php` (main site + admin): guarded `require_once` + `g2ml_renderAvatar()` call, degrading to a Font Awesome icon if unavailable; old K&R shorthand replaced with Allman if/else. Privacy: Gravatar tier default OFF (`getSetting('avatar.gravatar_enabled', false)`), no resolve-time network call; enabling it later needs a CSP `img-src` allowance + a not-yet-shipped CSP-safe fallback script (documented in-file). New `tests/unit/avatar_test.php` (initials tiers/edge cases incl. ß + Latin ligatures, colour determinism + palette contrast, Gravatar hash, resolve cascade, render escaping). Built via a build → adversarial-verify workflow (3 lenses): the correctness lens caught a CONFIRMED defect — initials capped BEFORE uppercasing, so ß→SS / ﬃ→FFI overflowed the 2-char monogram to up to 6 glyphs — fixed with `g2ml_avatarCapInitials()` (uppercase then cap on all 4 return paths) and the invariant test strengthened with ß/ligature cases. Security+privacy lens: no XSS (all dynamic values escaped; colour is a fixed palette literal, not attacker text), no privacy leak, no network — clean. House-rule lens: clean (no shorthand; `strict_types`; Allman; i18n unaffected; require guard prevents runtime fatal). Verified after fix: `php -l` clean; direct probe shows all overflow cases now ≤2 chars; `php tests/run.php` → 189 passed / 0 failed (was 166; +23 avatar tests).
+- **Remaining:** FG-005 was the last of the five Tier-1 autonomy-eligible gaps (FG-001..FG-005); all now BUILT. Next: B-044 (FOUC theme-init snippet ternary house-rule sweep), then VERIFY (independent full-branch review pass). Gated gaps G-001..G-005 still awaiting user approval.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; local branch is ahead of the draft PR #130 (do not merge) — needs re-push to refresh.
+
+### Cycle 17 — 2026-07-04 — POLISH (a11y bundle 2: badge contrast + interstitial announcements)
+
+- **Items resolved:** B-024 (#107 interstitial per-second countdown double-announcement), B-025 (badge contrast — corrected finding).
+- **Evidence:** Audited every `badge bg-*` usage. `bg-secondary` white-on-`#6c757d` measures 4.69:1 → PASSES AA, left unchanged. One genuine failure fixed: `web/Go2My.Link/_admin/public_html/pages/org/members/index.php:188` `badge bg-info` (white on cyan `#0dcaf0` ≈ 1.96:1, FAIL) → added `text-dark` (dark-on-cyan ≈ 7.9:1), matching the codebase's existing `bg-info text-dark` convention elsewhere. Component-B interstitials (`web/G2My.Link/public_html/expired.php` + `validating.php`): removed a double-announcement bug — the visible `#countdown` span was itself `aria-live` AND a separate off-screen `#countdown-status` region also announced, so screen readers heard the count twice; removed `aria-live` from the visible span (decorative; the status region owns announcements) and changed the status region from `aria-live="assertive"` to `aria-live="polite"` (a countdown is not urgent). Also fixed 3 no-shorthand house-rule violations in both files' countdown JS: the plural `? 's' : ''` ternary → full `if/else` building a `secondLabel` variable, and `validating.php`'s `targetURL = (...) ? destinationURL : fallbackURL` → full `if/else`. Verified: `php -l` clean on all 3 changed files; no countdown ternary remains; visible span no longer live; both status regions polite; no residual white-on-info badge; `php tests/run.php` → 166 passed / 0 failed (unchanged). Bucket 1 (a11y).
+- **Assessed, no change:** `target="_blank"` links already carry `rel="noopener noreferrer"`; the "opens in new window" warning is WCAG **AAA** (3.2.5), above the AA target — deferred, not a gap. `bg-danger` badges (white-on-red ≈ 4.0:1) are a known Bootstrap-default limitation with no clean colour fix — left, noted.
+- **New backlog item:** B-044 — FOUC theme-init inline snippet's `? :` ternary is repeated repo-wide across page `<head>`s; queued for a dedicated mechanical house-rule cycle rather than fixed opportunistically here.
+- **Remaining:** Next: FG-005 avatar priority cascade (Low, autonomy-eligible) as a small feature, then the theme-snippet house-rule sweep (B-044); then VERIFY. Gated G-001..G-005 still await user approval.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; local branch is ahead of the draft PR #130 (do not merge) — needs re-push to refresh.
+
+### Cycle 16 — 2026-07-04 — POLISH (WCAG reduced-motion + timing a11y bundle: #104/#105/#106)
+
+- **Items resolved:** B-007 (#104 landing auto-refresh timing trap, WCAG 2.2.1 Level A), B-023 (#105 countdown-ring reduced-motion), B-022 (#106 main-site reduced-motion).
+- **Evidence:** Removed the `<meta http-equiv="refresh" content="900">` from all three `public_html_landing/index.php` (web/Go2My.Link, web/G2My.Link, web/Lnks.page). The JS countdown-ring auto-reload is now non-trapping: disabled entirely under `prefers-reduced-motion` (no ring animation, no reload), and otherwise only reloads when the page is visible AND no form control is focused. The `requestAnimationFrame` ring loop now checks `matchMedia('(prefers-reduced-motion: reduce)')` directly (previously only the CSS animation was gated). Main site: added a global `@media (prefers-reduced-motion: reduce)` block to `web/Go2My.Link/public_html/css/style.css` (neutralises animations/transitions/scroll-behaviour, including the `fa-spin` submit spinner); `web/Go2My.Link/public_html/js/app.js` gates `scrollIntoView` behaviour (`'auto'` under reduced-motion, else `'smooth'`, via full `if/else` — no shorthand). Verified: 0 `http-equiv="refresh"` occurrences remain; `matchMedia` guards present in each landing + `app.js`; `php -l` clean on the 3 landings; `node --check app.js` OK; `php tests/run.php` still 166 passed / 0 failed (no PHP behaviour changed). Bucket 1 (a11y).
+- **Remaining:** Next POLISH items: `bg-secondary` badge contrast (<4.5:1, B-025) + per-second `aria-live` countdowns on Component-B interstitials (B-024/#107) + `target="_blank"` new-window announcement; then FG-005 avatar priority cascade (Low, autonomy-eligible); then VERIFY. Gated G-001..G-005 still await user approval.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; local branch is ahead of the draft PR #130 (do not merge) — needs re-push to refresh.
+
+### Cycle 15 — 2026-07-04 — COMPLETE (auto-built FG-004; XML+XSLT API output + JSON responder dedup) — **completes COMPLETE**
+
+- **Items resolved:** FG-004 — XML+XSLT API output (auto-built under the autonomy test); JSON responder dedup (10 `json_encode` call sites → 1 `g2ml_apiRespond()`).
+- **Evidence:** New `web/_functions/api_response.php` — `g2ml_apiRespond()` plus pure helpers `g2ml_apiWantsXml()`, `g2ml_arrayToXml()`, `g2ml_buildApiXmlDocument()`; new `web/Go2My.Link/public_html/api/create/response.xsl`. `api/create/index.php` refactored so every branch (405/403/422/429/201, success and error, no-JS redirect fallback) routes through `g2ml_apiRespond()` — 0 `json_encode` calls remain; the structured branch now also triggers on `?format=xml` / `Accept: application/xml`. Helper registered in `page_init.php`. JSON default verified byte-identical to pre-refactor output via a subprocess diff; XML output is a `<response>` document with a stylesheet PI, every value `htmlspecialchars` ENT_XML1-escaped (hostile payload proven escaped, lossless), confirmed well-formed with `xmllint`. Regression: `tests/unit/api_response_test.php` (25 new tests). Lead re-ran: 166 unit pass (was 141); lint clean; dedup confirmed (0 `json_encode` left in `api/create/index.php`).
+- **Remaining:** COMPLETE phase complete — all four autonomy-eligible gaps (FG-001 custom alias, FG-002 tags, FG-003 info-page auth view, FG-004 XML/XSLT) are built. Remaining feature gaps are the gated G-001..G-005 (Component C, payments, advanced auth, public API, analytics), still awaiting user approval. Advancing to POLISH: top Medium/Low backlog first (a11y #104 landing auto-refresh WCAG 2.2.1 Level A + reduced-motion + `bg-secondary` badge contrast, `public_html_*` variant hygiene #112, lint/analysis exclusions), then VERIFY.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; local branch is ahead of the draft PR #130 (do not merge) — needs re-push to refresh.
+
+### Cycle 14 — 2026-07-04 — COMPLETE (auto-built FG-003; info-page public-vs-authenticated view, #23)
+
+- **Items resolved:** FG-003 — info-page public-vs-authenticated view (auto-built under the autonomy test); B-019 (#23) marked done.
+- **Evidence:** New file `web/Go2My.Link/_functions/info_display.php` — pure helper `g2ml_infoDisplayDestination(array $linkData, bool $isAuthenticated): string` returns the full `destinationURL` when authenticated, a masked `domain[/...]` when not, and `''` when there is no destination; the old inline masking logic was moved into it (Component A auto-loads `_functions/*.php`, no wiring needed). `pages/info/index.php` — authenticated viewers (ANY authenticated viewer, not owner-only, matching the page docblock's stated intent — short URLs redirect publicly so the destination is not secret) see the full destination rendered as escaped text via `g2ml_sanitiseOutput()`, not a clickable link (removes any scheme/XSS vector); anonymous viewers keep the masked view plus a new accessible "Log in to see the full destination" prompt linking to `/login` with no redirect-back parameter (avoids introducing an open-redirect). New i18n key `info.login_for_full` added to seed `010_phase6_translations.sql`. Regression: `tests/unit/info_display_destination_test.php` (9 new tests). Lead re-ran: 141 unit pass (was 132); lint clean; a manual render harness confirmed a hostile payload (`<script>` in a stored destination) is fully HTML-escaped in the authenticated view.
+- **Remaining:** Next: FG-004 (XML+XSLT API output) — the last small autonomy-eligible gap. After that the remaining feature work is the gated G-001..G-005 (Component C, payments, advanced auth, public API, analytics) awaiting user approval, so the loop then moves to POLISH.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; local branch is ahead of the draft PR #130 (do not merge) — needs re-push to refresh.
+
+### Cycle 13 — 2026-07-04 — COMPLETE (auto-built FG-002; tags on links)
+
+- **Items resolved:** FG-002 — tags on short links (auto-built under the autonomy test); B-020 marked done for the create-path (custom suffix/alias from FG-001 + tags from FG-002).
+- **Evidence:** `web/Go2My.Link/_functions/shorturl_create.php` — new helpers `g2ml_slugifyTag()`, `g2ml_normaliseTags()`, `g2ml_findOrCreateTag()`, `g2ml_attachTagsToShortURL()`; `createShortURL()` attaches tags AFTER the row insert, find-or-create per org via `UQ_tag_org`, junction via `INSERT IGNORE`, each tag in its own try/catch so a tag failure never rolls back the short URL; capped at `G2ML_MAX_TAGS_PER_LINK` = 10. `web/Go2My.Link/_admin/public_html/pages/links/create/index.php` — optional comma-separated "Tags" field. `web/Go2My.Link/_admin/public_html/pages/links/index.php` — tag badges rendered via ONE query joining `tblShortURLTags`→`tblTags` for the page's short-URL UIDs, using a dynamically-sized bound `IN(...)` clause (no N+1; confirmed placeholder-only, no interpolation); badges use `role="list"` for accessibility. Regression: `tests/unit/tags_normalise_test.php` (19 tests) + `tests/integration/tags_create_test.php` (5 tests). Lead re-ran: 132 unit + 18 integration pass; lint clean. 5 acceptance criteria verified.
+- **Remaining:** Edit-form tag management and tag-based filtering deferred as explicit follow-ups (out of scope this cycle; captured in `FEATURES.md`). Next: FG-003 (info-page public-vs-authenticated view, #23), then FG-004 (XML+XSLT API output). Gated gaps G-001..G-005 still awaiting user approval.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; local branch is ahead of the draft PR #130 (do not merge) — needs re-push to refresh.
+
+### Cycle 11 — 2026-07-04 — STABILIZE re-open (fixed B-042; surfaced B-043)
+
+- **Items resolved:** B-042 — `logActivity()` bind-param type-string off-by-one (20 chars against 21 columns/placeholders/variables) and mis-typed `ipAddress` (`i` instead of `s`), corrected to the 21-char `'ssisisssssssssssssiis'` with each char matching its column type.
+- **New bug surfaced:** B-043 — `_g2ml_parseUserAgent()` (same file, ~line 288) builds its bot regex with `preg_quote()` missing the `/` delimiter arg; the `'Java/'` pattern's unescaped `/` prematurely closes the `/…/` delimiter → `preg_match(): Unknown modifier '|'` on every call → bot detection silently broken (`isBot` never set). Medium correctness (analytics/bot-signal integrity); out of scope this cycle.
+- **Evidence:** `web/_functions/activity_logger.php` — BEFORE: bind-param type-string error thrown, 0 rows inserted. AFTER: `logActivity()` returns true, 1 row inserted with correct values. Rate-limit impact resolved: 5 create events now produce 5 countable `tblActivityLog` rows (the per-IP limiter's `COUNT(*)` was effectively 0 while logging failed — abuse-prevention gap closed). Regression: `tests/integration/activity_log_test.php` (2 new cases). Lead re-ran: 110 unit + 13 integration pass; lint clean. Sibling `error_handler.php` `tblErrorLog` INSERT checked — aligned, no bug.
+- **Remaining:** Fix B-043 (quick correctness, same file) then resume COMPLETE: auto-build FG-002 (tags), FG-003 (info-page auth view), FG-004 (XML+XSLT). Gated gaps G-001..G-005 still awaiting user approval.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; branch pushed with draft PR #130 open (do not merge).
+
+### Cycle 10 — 2026-06-29 — COMPLETE (auto-built FG-001; surfaced B-042)
+
+- **Items resolved:** FG-001 — authenticated custom short-suffix/alias (auto-built under autonomy test).
+- **New bug surfaced:** B-042 — `logActivity()` bind-type mismatch throws on every create (swallowed silently; breaks audit logging; undermines per-IP rate-limit).
+- **Evidence:** `web/Go2My.Link/_functions/shorturl_create.php` — `createShortURL()` `customCode` option with `^[A-Za-z0-9_-]{3,50}$` validation + `g2ml_isReservedShortCode()` + hard duplicate error (no random fallback). `web/Go2My.Link/_admin/public_html/pages/links/create/index.php` — optional "Custom alias" field. `tests/unit/custom_alias_test.php` (25 tests) + `tests/integration/custom_alias_create_test.php` (6 tests). `php tests/run.php` → 110 passed / 0 failed; integration 11 passed. 5 acceptance criteria demonstrated. Lint clean.
+- **Remaining:** Re-opening STABILIZE to fix B-042 before resuming COMPLETE (FG-002 tags, FG-003 info-page auth view, FG-004 XML+XSLT). Gated gaps G-001..G-005 still awaiting user approval.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually).
+
+### Cycle 2 — 2026-06-28 — STABILIZE
+
+- **Items resolved:** B-002 (#121 cross-org category leak), B-005 (#123 migration zero-date guards).
+- **Evidence:** old JOIN returned 2 rows (cross-org leak); new JOIN returns 1 (correct org only). Unguarded INSERT → errno 1292 under STRICT; guarded INSERT succeeds. `004_migrate_shorturls.sql` ran end-to-end against a legacy stub → exit 0. Both PHP files lint clean (`php -l`).
+- **Remaining High correctness in STABILIZE:** B-004 (#122 org re-invite partial-key), B-006 (#124 short-code TOCTOU retry). Security High still open: B-003 (#95 XFF/trusted-proxy).
+- **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually).
+
+### Cycle 3 — 2026-06-28 — STABILIZE
+
+- **Items resolved:** B-004 (#122 org re-invite via generated-column unique key), B-006 (#124 short-code TOCTOU retry).
+- **Evidence:** B-004 — cancel→re-invite SUCCEEDS; second concurrent pending REJECTED (errno 1062); migration 010 upgrades a HEAD-schema DB cleanly. B-006 — harness: 2 collisions → regenerate → 3rd insert succeeds; 5 collisions → graceful failure. Both PHP files lint clean.
+- **Remaining in STABILIZE:** B-003 (#95 XFF/trusted-proxy, SECURE phase). B-007 (#104 landing auto-refresh, POLISH phase). B-001 (#93 legacy-cred rotation, manual user action). B-008 (#91 custom-domains, docs clarification).
+- **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually).
+
+### Cycle 4 — 2026-06-28 — STABILIZE (completes STABILIZE)
+
+- **Items resolved:** B-041 — pure-PHP test safety net established under `tests/`.
+- **Evidence:** `php tests/run.php` → 35 passed / 0 failed, exit 0. `php tests/run_integration.php` (no DSN) → 4 tests SKIPPED cleanly. Lint clean across all new files. Lead independently re-ran the suite: 35 passed / 0 failed, exit 0.
+- **Characterisation coverage:** `security.php` — `g2ml_hashPassword`/`verifyPassword` (Argon2id), `g2ml_sanitiseInput` (trim+strip_tags, preserves internal CRLF), `g2ml_sanitiseOutput` (htmlspecialchars), `g2ml_sanitiseURL` (scheme allowlist), CSRF token generate/validate (single-use confirmed), `g2ml_encrypt`/`g2ml_decrypt` AES-256-GCM round-trip. Integration: `sp_lookupShortURL` (active→200, expired→410, not_found→404, not_yet_active→404/pending).
+- **STABILIZE stage status:** COMPLETE. All High correctness B- items resolved (B-002, B-004, B-005, B-006 done; B-001 manual; B-003 deferred to SECURE). Test safety net in place.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually). Advancing to SECURE.
+
+### Cycle 6 — 2026-06-28 — SECURE (purple-team, F-001/#95)
+
+- **Items resolved:** B-003 (#95 spoofable client IP — `g2ml_getClientIP()` trusted-proxy allowlist fix).
+- **Evidence:** RED PoC (before fix): `g2ml_getClientIP()` returned forged `1.2.3.4` from a crafted `X-Forwarded-For` header; rotating IPs bypassed the per-IP rate-limit. VERIFY (after fix): genuine `203.0.113.9` (`REMOTE_ADDR`) returned; forged header ignored. Regression: `tests/unit/security_clientip_test.php` — 18 new tests covering REMOTE_ADDR baseline, XFF trusted/untrusted proxy cases, CIDR matching, fallback chain. `php tests/run.php` → 53 passed / 0 failed (was 35). `php -l` clean on all changed files. `TRUSTED_PROXIES` documented in installer creds heredoc and `docs/INSTALL.md`.
+- **Remaining open High findings:** none (F-001 was the only High; 0 open High now).
+- **Next purple-team target:** F-003 (#99 — interstitial scheme guard, Med), then F-002 (#98 — deletion-cancel CSRF, Med), then F-004 (#100 — SSRF), then F-005/#101 Low etc.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually).
+
+### Cycle 8 — 2026-06-29 — SECURE (purple-team, destination/path-safety cluster: F-004/F-005 #100 + F-006 #101)
+
+- **Items resolved:** B-013 (#100 SSRF guard on validateDestination + createShortURL), B-014 (#101 favicon path-traversal containment).
+- **Note:** cycle 8 was interrupted once by a monthly spend-limit; partial work was discarded and the cycle retried cleanly from the cycle-7 checkpoint (no partial state carried forward).
+- **Evidence:** F-004/F-005 — `g2ml_destinationHostIsAllowed()` and `g2ml_isPrivateOrReservedIp()` added to `security.php`; `validateDestination()` calls the guard before any HEAD fetch; `createShortURL()` rejects disallowed hosts at creation time. Blocked: `169.254.169.254`, `127.0.0.1`, `10.x.x.x`, `192.168.x.x`, userinfo in URL. Allowed: public IPs. Seed `014_redirect_ssrf_settings.sql` adds `redirect.allow_private_destinations` (default `'0'`). F-006 — `favicon.php` confines `orgLogoPath` with `basename()`+`realpath()` inside the uploads dir; out-of-dir or missing paths fall through to the default favicon. Regression: `php tests/run.php` → 90 passed / 0 failed (was 61; +25 SSRF unit tests, +4 favicon traversal tests). `php -l` clean on all 4 changed PHP files. Bucket 1.
+- **Remaining open security findings:** 0 Critical, 0 High, 0 Med. 2 Low: F-007 (`validateUserSession()` no userUID re-bind), F-008 (missing SRI on CDN tags).
+- **Next purple-team target:** F-008 (SRI on CDN tags in `footer.php`, `header.php`, and B error pages) — one quick cycle to clear both Low findings and reach SECURE exit gate.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually).
+
+### Cycle 7 — 2026-06-28 — SECURE (purple-team, F-002/#98 + F-003/#99)
+
+- **Items resolved:** B-015 (#98 deletion-cancel CSRF→POST), B-012 (#99 interstitial scheme guard).
+- **Evidence:** F-002 — GET `?cancel` path removed from `privacy/delete/index.php`; cancellation now requires a CSRF-verified POST via form name `account_delete_cancel` (distinct from `account_delete`); ownership, not-cancellable, and activity-log logic preserved. F-003 — every destination/fallback URL sink in `validating.php` and `expired.php` (href, JS `window.location`, `meta-refresh`, noscript) scheme-guarded via `g2ml_sanitiseURL()` (reachable in Component B via `page_init`) plus `preg_match('#^https?://#i')` inline fallback; rejected destination → no link rendered; rejected fallback → `https://go2my.link`. Regression: `tests/unit/redirect_scheme_guard_test.php` — 8 new tests. `php tests/run.php` → 61 passed / 0 failed (was 53). `php -l` clean on all 4 changed files. Bucket 1.
+- **Remaining open Med findings:** F-004/#100 (SSRF in `validateDestination`, off by default). No open High/Critical.
+- **Next purple-team target:** F-004 + F-005 + F-006 as a destination-safety cluster, then F-008 SRI (Low). After that, SECURE exit gate.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually).
+
+### Cycle 5 — 2026-06-28 — SECURE (Phase 0 — doc-only)
+
+- **Items resolved:** SECURITY.md written — threat model, attack-surface map, tooling sweep, multi-role fixtures plan, coverage ledger, and findings register.
+- **Evidence:** SECURITY.md present in repo root. Findings register: 8 OPEN (F-001–F-008, mapped to GitHub issues #95–#101); 8 verified FIXED-on-branch (F-101–F-108, mapped to #80–#103). Dependency sweep: jQuery 3.7.1, Bootstrap 5.3.3, Font Awesome 6.5.1 — all pinned and current; Chart.js version unstamped (note for when analytics ships). No committed secret found; no active-compromise signal. Coverage gap noted: GlobalAdmin + second-org fixtures (for IDOR/BFLA testing) not yet seeded; existing tests cover `security.php` + `sp_lookupShortURL` only.
+- **Artifacts added:** `SECURITY.md` (repo root).
+- **Branch state:** clean commit on `autopilot/2026-06-05`; not pushed (user pushes manually). Next: purple-team cycle targeting F-001 (#95 spoofable client IP — `g2ml_getClientIP()` trusted-proxy fix).
+
+## 🧩 Feature Specs
+
+<!-- one block per approved/auto-cleared feature, anchored #spec-<gate-id>.
+     Populated by the conductor gate or the Feature Spec Gate. Empty at DISCOVER. -->
+
+_(none yet)_
+
+---
+
+## 🗂️ Codebase Map  (cached reference — delta-updated each run)
+
+- **map-commit:** `7b67ad5`    **updated:** 2026-06-05
+- **Stack & build:** PHP 8.4+/8.5+, MySQLi (no PDO), Bootstrap 5.3, vanilla JS.
+  No build/bundler; CDN-first with local fallback. Deploy = SFTP to Dreamhost
+  (`.github/workflows/sftp-deploy.yml`: alpha→`public_html_dev_alpha`,
+  beta→`public_html_dev_beta`, prod→`public_html`). Lint via
+  `php-lint.yml` (`parallel-lint`). No test framework / coverage.
+- **Architecture:** Three independent web properties sharing one code spine.
+  - **Component A — `web/Go2My.Link/`** (NOT `GoToMy.Link`): marketing site +
+    URL creation + user/org dashboard. Public root `public_html/`; admin root
+    `web/Go2My.Link/_admin/public_html/` → `admin.go2my.link`.
+  - **Component B — `web/G2My.Link/`**: shortlink redirect router (g2my.link).
+    Core resolvers in `_functions/` (`redirect_resolver.php`,
+    `domain_resolver.php`); error/handler pages in `public_html/`.
+  - **Component C — `web/Lnks.page/`**: LinksPage. **Scaffolding only** —
+    `public_html/index.php` reads `?slug`, logs `linkspage_view`/`not_implemented`
+    and returns a 404 placeholder. DB tables `tblLinksPages*` have zero PHP refs.
+  - **Shared spine (`web/`):** `_functions/` (18 modules), `_includes/`
+    (header/footer/nav/cookie_banner/accessibility/email templates), `_sql/`
+    (schema/procedures/seeds/migrations), `_schemas/` (JSON Schemas),
+    `_auth_keys/` (the single shared `auth_creds.php` — gitignored),
+    `_libraries/` (vendored Bootstrap/FA with CDN fallback), `assets/BrandKit/`.
+- **Surfaces:**
+  - A public: home (shorten form + AJAX/no-JS), about, features, pricing,
+    contact, info/preview, legal/{terms,privacy,cookies,copyright,acceptable-use},
+    auth pages (register/login/logout/forgot/reset/verify-email), landing page.
+  - A admin (`_admin`): dashboard home, links/{index,create,edit}, profile/
+    {index,sessions}, `org/*`, invite/accept, `privacy/*` (data rights, delete),
+    security/breach-response. Web installer at `public_html/install/`.
+  - B: redirect (`/<code>`), 404.php, expired.php, validating.php, robots.php,
+    favicon.php, landing page.
+  - C: coming-soon landing only.
+- **Data model:** DB `mwtools_Go2MyLink` (InnoDB, utf8mb4_unicode_ci). Schema
+  files `web/_sql/schema/000–035` (core settings/tiers/orgs/users/invitations/
+  account-types; shorturls+categories+tags; advanced-redirects; analytics; api;
+  linkspage; payments; legal; translations). Stored procedures
+  `sp_generateShortCode`, `sp_logActivity`, `sp_lookupShortURL`. 13 seeds, 8
+  migrations (incl. `009_cuercode_qr_integration`). Hot path:
+  `sp_lookupShortURL` + `tblShortURLs.UQ_shortcode_org (shortCode, orgHandle)`.
+  Core entities: `tblUsers` (single-org via `orgHandle`, `[default]` = unassigned),
+  `tblOrganisations`, `tblShortURLs`, `tblCategories`, `tblActivityLog` (~429K
+  legacy rows to migrate), `tblAccountTypes`/`tblUserAccountTypes`, `tblAPIKeys`
+  (schema-only — #38 unbuilt). Existing data to migrate: 480 short URLs, 5 orgs,
+  7 users (plaintext pw → force-reset), 4 categories.
+- **Key modules / file map:**
+  - Redirect/resolve: `web/G2My.Link/_functions/redirect_resolver.php`,
+    `domain_resolver.php`; `sp_lookupShortURL.sql`.
+  - URL creation: `web/Go2My.Link/_functions/shorturl_create.php`
+    (`createShortURL`, `rateLimit`, `verifyCaptcha`); API
+    `public_html/api/create/index.php`.
+  - Auth/session: `web/_functions/auth.php`, `session.php`, `security.php`
+    (Argon2id `g2ml_hashPassword`/`verifyPassword`, AES-256-GCM, CSRF, sanitisers,
+    `g2ml_getClientIP`).
+  - DB: `web/_functions/db_connect.php` (MySQLi singleton), `db_query.php`
+    (prepared-statement wrappers), `settings.php` (DB-driven, encrypted
+    `isSensitive`).
+  - Org: `web/_functions/org.php` (18+ fns; `canManageOrg`). Account types:
+    `account_types.php`. Email: `email.php` (multipart MIME + AMP). Breach:
+    `breach_response.php`. Compliance: `dnt.php`, `cookie_consent.php`,
+    `data_rights.php`. i18n: `i18n.php`. Routing: `router.php`. Logging:
+    `activity_logger.php`, `error_handler.php`.
+  - Theme controller: `web/Go2My.Link/public_html/js/theme.js`.
+  - Installer: `web/Go2My.Link/public_html/install/index.php` (+ `.htaccess`).
+- **Conventions (house style):** see `## House style` above and
+  `.claude/memory/patterns.md` (the no-shorthand rule is the dominant constraint).
+- **External integrations:** Cloudflare Turnstile / Google reCAPTCHA (bot
+  protection); `mail()` / multipart-MIME email; DNS TXT verification for org
+  custom domains; **CueRCode** (first-party dynamic-QR service, schema-ready,
+  gated on the unbuilt API framework #38); SFTP deploy to Dreamhost.
+- **Known characteristics:** Redirect hot path is the perf-sensitive surface
+  (single indexed row read via `sp_lookupShortURL`). Fragile areas: the
+  `public_html_*` web-root proliferation (hygiene risk, incl. stray
+  `public_html_legacy` with a live credential), migration zero-date handling
+  under STRICT mode, short-code generation TOCTOU, and code/doc drift (MEMORY.md
+  once over-claimed UTM forwarding). No automated tests → regressions are easy to
+  introduce silently; verify empirically.
+
+## 🏃 Run record
+
+- **last-run:** 2026-06-28
+- **map-commit:** `7b67ad5`
+- **cycles-done:** 7  (0=DISCOVER, 2–3=STABILIZE correctness, 4=STABILIZE test harness, 5=SECURE Phase 0, 6=SECURE purple-team F-001, 7=SECURE purple-team F-002+F-003)
+- **branch:** `autopilot/2026-06-05`
+- **working tree at seed:** clean except untracked `.claude/agents/`,
+  `.claude/settings.json` (autopilot scaffolding — not production code).
+- **artifacts added (cycle 5):** `SECURITY.md` (repo root — threat model, attack-surface map, tooling sweep, multi-role fixtures plan, coverage ledger, findings register F-001–F-008 open / F-101–F-108 fixed).
+- **artifacts added (cycle 6):** `tests/unit/security_clientip_test.php` (18 regression tests for `g2ml_getClientIP`, `g2ml_isTrustedProxy`, `g2ml_ipInRange`); updated `web/_functions/security.php` (trusted-proxy allowlist); `docs/INSTALL.md` + installer heredoc (TRUSTED_PROXIES documentation).
+- **artifacts added (cycle 7):** `tests/unit/redirect_scheme_guard_test.php` (8 regression tests for interstitial scheme guard); updated `web/G2My.Link/public_html/validating.php` + `expired.php` (scheme guard on all URL sinks); updated `web/Go2My.Link/_admin/public_html/pages/privacy/delete/index.php` (deletion-cancel CSRF→POST).
+
+## 📋 Backlog
+
+Scored, ordered improvement items (`B-` namespace). Derived from the live GitHub
+issues (#93–#128 launch-hardening + selected closed-but-partial), the
+2026-06-04 deployment audit, and the schema review. **Large roadmap features
+(Phases 7–11, Component C build) are NOT here — they live in `FEATURES.md`.**
+Items marked **✅ fixed-on-branch** were verified in code (commit `6897165` /
+`9f58807`) but their GitHub issues are still OPEN pending closing refs.
+
+Ordered High → Medium → Low; within a tier, correctness/security first.
+
+### 🔴 High impact
+
+- **id:** B-001
+  **title:** Rotate leaked legacy production DB password; remove/archive `public_html_legacy/`
+  **category:** security · **impact:** High · **component:** B/config
+  **source:** #93 · **status:** OPEN (manual — instruct-don't-execute). `.gitignore`
+  guards landed (✅) and file was never committed, but the plaintext credential
+  still exists in the working tree and is unrotated — treat as compromised.
+
+- **id:** B-002
+  **title:** Cross-org category leak — short-URL↔category JOIN omits `orgHandle`
+  **category:** security · **impact:** High · **component:** A/shared (database)
+  **source:** #121, schema-review §High · **status:** ✅ Done (fixed cycle 2; MySQL-verified).
+  Added `AND c.orgHandle = s.orgHandle` to LEFT JOIN ON-clause in
+  `pages/links/index.php:140` and `pages/info/index.php:120`; swept all other
+  `tblCategories` PHP queries — no other leaks. Old JOIN returned 2 rows (leaked
+  another org's category name); new JOIN returns exactly 1 (correct org only).
+
+- **id:** B-003
+  **title:** `g2ml_getClientIP()` trusts spoofable X-Forwarded-For / X-Real-Ip with no trusted-proxy check
+  **category:** security · **impact:** High · **component:** shared
+  **source:** #95 · **status:** ✅ Done (cycle 6). `REMOTE_ADDR` default; XFF/XRI
+  honoured only when `REMOTE_ADDR` is in the optional `TRUSTED_PROXIES` constant
+  (undefined/empty = trust none); right-most-untrusted XFF entry chosen; CIDR match
+  via `inet_pton` (IPv4+IPv6); helpers `g2ml_isTrustedProxy()` and `g2ml_ipInRange()`
+  added. Rate-limit/audit-log spoofing closed across all 13 callers. 18 regression
+  tests added; suite now 53 unit / 0 failed. Dreamhost default = trust none.
+
+- **id:** B-004
+  **title:** Org invitations: re-invite blocked by `UQ_org_email_pending` including `status`
+  **category:** correctness · **impact:** High · **component:** A (database)
+  **source:** #122, schema-review §High · **status:** ✅ Done (fixed cycle 3; MySQL-verified).
+  Added a VIRTUAL generated column `pendingKey` (= `CONCAT(orgHandle,':',email)` while
+  `status='pending'`, else NULL) and moved `UQ_org_email_pending` onto it (NULLs are
+  exempt, so cancelled/expired rows coexist). Replaced the dropped composite unique
+  with `IDX_invitation_org` to satisfy the FK backing-index requirement (errno 1553
+  if dropped bare). Forward migration `010_org_invite_pending_key.sql` for deployed
+  DBs; documents a one-line pre-flight UPDATE if a deployed DB already has 2+
+  concurrent pendings for the same (org, email). `org.php` required no change.
+  Verified: cancel→re-invite SUCCEEDS; second concurrent pending REJECTED (errno 1062);
+  migration 010 upgrades a HEAD-schema DB cleanly.
+
+- **id:** B-005
+  **title:** Data migration: guard zero-date / NULL legacy dates under STRICT sql_mode
+  **category:** correctness · **impact:** High · **component:** database
+  **source:** #123, schema-review §High · **status:** ✅ Done (fixed cycle 2; MySQL-verified).
+  Wrapped legacy date columns in migrations 001–004, 006–007 with
+  `IFNULL(NULLIF(NULLIF(CAST(col AS CHAR),'0000-00-00 00:00:00'),'0000-00-00'),NOW())`
+  (nullable targets omit the outer `IFNULL`). CAST AS CHAR strategy avoids the
+  bare `'0000-00-00'` literal being rejected by STRICT mode itself. Verified:
+  unguarded INSERT errors 1292 under STRICT; guarded succeeds; real
+  004_migrate_shorturls.sql ran end-to-end → exit 0.
+
+- **id:** B-006
+  **title:** Short-code generation TOCTOU — retry on unique-key collision
+  **category:** correctness · **impact:** High · **component:** B/shared
+  **source:** #124, schema-review §High · **status:** ✅ Done (fixed cycle 3; MySQL-verified).
+  `shorturl_create.php`: wrapped generate→insert in a bounded 5-attempt `for` loop
+  that regenerates on a duplicate-key collision (errno 1062). `db_query.php`: added
+  `dbLastErrno()` + `$GLOBALS['_g2ml_last_errno']` so callers can distinguish errno
+  1062 (additive; `dbInsert` return contract unchanged). Verified via a harness
+  loading the real files: 2 collisions → regenerate → 3rd insert succeeds; 5
+  collisions → graceful failure. Both PHP files lint clean.
+
+- **id:** B-007
+  **title:** Landing pages auto-refresh every 15 min (`<meta refresh content="900">`) with no pause (WCAG 2.2.1 Level A)
+  **category:** a11y · **impact:** High · **component:** A/B/C
+  **source:** #104, audit §4 · **status:** ✅ Done (cycle 16). The
+  `<meta http-equiv="refresh" content="900">` timing trap was removed from all
+  three `public_html_landing/index.php` (A/B/C). The JS countdown-ring
+  auto-reload is now non-trapping: disabled entirely under
+  `prefers-reduced-motion` (no ring animation, no reload), and otherwise only
+  reloads when the page is visible AND no form control is focused (so the
+  email field is never discarded from under a typing user). Verified: 0
+  `http-equiv="refresh"` occurrences remain; `php -l` clean on all three
+  landings.
+
+- **id:** B-008
+  **title:** Custom-domain resolution incomplete — `getOrgByDomain()` queries only `tblOrgShortDomains`
+  **category:** correctness · **impact:** High · **component:** B/shared
+  **source:** #91, audit §7.2 · **status:** OPEN (closed-but-partial). The
+  `tblOrgDomains(redirect)` table is not wired into resolution; `docs/CUSTOM_DOMAINS.md`
+  absent. In-scope feature gap for the A+B launch.
+
+- **id:** B-009
+  **title:** Link-edit silently failed — UPDATE referenced non-existent column `notes`
+  **category:** correctness · **impact:** High · **component:** A (database)
+  **source:** #94 · **status:** ✅ **genuinely fixed (cycle 20 — see CR-1)**. The
+  2026-06-05 fix only corrected the `notes`→`urlNotes` column; a sibling bug on
+  the same load SELECT (`s.shortURLUID`, a non-existent column — the real PK is
+  `s.urlUID`) meant the statement still failed at PREPARE and editing remained
+  100% broken. CR-1 (VERIFY, cycle 20) fixed the remaining column and
+  integration-tested it. #94 is now genuinely resolved — close with commit refs
+  `6897165` + the cycle-20 commit.
+
+- **id:** CR-1
+  **title:** Link-edit load SELECT references non-existent column `s.shortURLUID` — editing still 100% broken despite #94's partial fix
+  **category:** correctness · **impact:** High · **component:** A (database)
+  **source:** found + fixed cycle 20 (VERIFY) · **status:** ✅ Done (cycle 20).
+  `web/Go2My.Link/_admin/public_html/pages/links/edit/index.php`'s load SELECT
+  named `s.shortURLUID`; the table's real primary key is `s.urlUID`. The
+  PREPARE failed on every load, so the edit page was unusable end-to-end — this
+  is a database-only failure mode invisible to the unit-only test suite, which
+  is why it survived the earlier partial #94 fix undetected. Fixed to
+  `s.urlUID`. Verified on MySQL 9.6 via `tests/integration/cross_org_isolation_test.php`:
+  the load SELECT now prepares and returns a row.
+
+- **id:** SEC-RECHECK-01
+  **title:** Cross-org link deactivation DoS — unscoped `isActive` UPDATE, exploitable via FG-001 custom aliases
+  **category:** security · **impact:** High · **component:** A/shared
+  **source:** found + fixed cycle 20 (VERIFY) · **status:** ✅ Done (cycle 20).
+  `web/Go2My.Link/_admin/public_html/pages/links/create/index.php` ran a
+  post-insert `UPDATE tblShortURLs SET isActive=0 WHERE shortCode=?` scoped
+  only by `shortCode`, not `orgHandle`. Because `UQ_shortcode_org` is per-org
+  and FG-001 (custom aliases) lets an authenticated user mint a code that
+  duplicates another org's public short code, this UPDATE deterministically
+  deactivated the *other* org's live link — a cross-tenant DoS on the redirect
+  crown jewel. Fixed at source: `createShortURL()` in
+  `web/Go2My.Link/_functions/shorturl_create.php` gained an `isActive` option
+  bound directly into the single INSERT (default `true`; all existing callers
+  incl. the public API unaffected), and the unscoped UPDATE was deleted
+  entirely. Verified on MySQL 9.6 via the new
+  `tests/integration/cross_org_isolation_test.php`: creating an inactive alias
+  in org B that collides with org A's active code leaves org A's link active.
+  Adversarial re-verify CONFIRMED (bind arity correct, active-case preserved,
+  both callers safe).
+
+### 🟡 Medium impact
+
+- **id:** B-010
+  **title:** Contact form had no server-side CAPTCHA verification (spoofable IP rate-limit only)
+  **category:** security · **impact:** Medium · **component:** A
+  **source:** #96 · **status:** ✅ fixed-on-branch (verified: server-side
+  Turnstile/reCAPTCHA block present). Issue OPEN — close with ref.
+
+- **id:** B-011
+  **title:** Contact-form subject allowed CRLF header injection into `mail()`
+  **category:** security · **impact:** Medium · **component:** A
+  **source:** #97 · **status:** ✅ fixed-on-branch (verified: CR/LF/NUL stripped to
+  `$safeSubject` before the Subject header; raw subject only appears in the body
+  after the blank-line separator). Issue OPEN — close with ref.
+
+- **id:** B-012
+  **title:** Interstitial pages emit redirect destination into href/JS without the http(s) scheme guard
+  **category:** security · **impact:** Medium · **component:** B
+  **source:** #99, audit §3.2 · **status:** ✅ Done (cycle 7). All destination/fallback sinks in `validating.php` and `expired.php` (`href`, JS `window.location`, `meta-refresh`, noscript) scheme-guarded via `g2ml_sanitiseURL()` (http(s) only) with `preg_match('#^https?://#i')` fallback; rejected destination → no link; rejected fallback → `https://go2my.link`; `htmlspecialchars` retained. 8 regression tests added; suite → 61 unit / 0 failed.
+
+- **id:** B-013
+  **title:** Harden against SSRF — guard server-side destination fetch and validate created URLs against internal/private hosts
+  **category:** security · **impact:** Medium · **component:** B/shared
+  **source:** #100, audit §3.3 · **status:** ✅ Done (cycle 8). Shared helper `g2ml_destinationHostIsAllowed()` + `g2ml_isPrivateOrReservedIp()` added to `security.php` (inet_pton-based range checks; http/https only; rejects userinfo; resolves A/AAAA, requires ALL IPs to pass; IPv4-mapped-IPv6 unwrapped; fails closed). `validateDestination()` calls the guard BEFORE the `get_headers()` HEAD fetch; disallowed → existing failure shape, no network call. `createShortURL()` rejects disallowed hosts at creation time (no row inserted). New setting `redirect.allow_private_destinations` (default '0'; overrides RFC1918/ULA only — loopback/link-local/metadata/reserved always blocked). Seed `web/_sql/seeds/014_redirect_ssrf_settings.sql`. 25 unit regression tests (`tests/unit/security_ssrf_host_guard_test.php`); suite → 90 passed / 0 failed (was 61). `php -l` clean on all changed files.
+
+- **id:** B-014
+  **title:** Path-traversal latent in dynamic favicon handler — confine `readfile()` to uploads dir
+  **category:** security · **impact:** Medium · **component:** B
+  **source:** #101, audit §3.2 · **status:** ✅ Done (cycle 8). `favicon.php` now confines the DB-sourced `orgLogoPath` with `basename()` + `realpath()` inside the uploads dir; paths that escape the dir or do not exist fall through to the default favicon. 4 unit regression tests (`tests/unit/favicon_path_traversal_test.php`). `php -l` clean.
+
+- **id:** B-015
+  **title:** Account-deletion cancellation is a state-changing GET with no CSRF token
+  **category:** security · **impact:** Medium · **component:** A
+  **source:** #98, audit §3.3 · **status:** ✅ Done (cycle 7). Cancellation converted to a CSRF-protected POST (form name `account_delete_cancel`, distinct from the `account_delete` request form); GET `?cancel` path removed; ownership/not-cancellable/activity-log checks preserved.
+
+- **id:** B-016
+  **title:** `sp_logActivity` drifts from schema (missing cols; NOT NULL ipAddress) — sync or remove
+  **category:** correctness · **impact:** Medium · **component:** database
+  **source:** #126, schema-review §Medium · **status:** OPEN. Currently dead code
+  (app uses a direct INSERT); errors swallowed. Sync to current schema or remove.
+
+- **id:** B-017
+  **title:** `tblActivityLog` add `(shortCode, createdAt)` composite index; decide partitioning
+  **category:** quality (perf) · **impact:** Medium · **component:** database
+  **source:** #125, schema-review §Medium, audit §7.2 (#12) · **status:** OPEN.
+  Needed before analytics (Phase 7) but cheap and safe to add now.
+
+- **id:** B-018
+  **title:** Decide `orgHandle` immutability vs migrate child FKs to surrogate `orgUID`
+  **category:** quality (tech-debt) · **impact:** Medium · **component:** database
+  **source:** #127, schema-review §Medium · **status:** OPEN. FKs target the
+  mutable business key; a handle rename cascades widely. Decide pre-launch.
+
+- **id:** B-019
+  **title:** Public-vs-authenticated info/preview view not implemented (#23) — always masks destination
+  **category:** correctness (feature gap) · **impact:** Medium · **component:** A
+  **source:** #23, audit §7.2 · **status:** ✅ Done (cycle 14). Built as FG-003:
+  `pages/info/index.php` now branches on authentication via new pure helper
+  `g2ml_infoDisplayDestination()` — see FEATURES.md FG-003 and the cycle-14
+  Decision log entry.
+
+- **id:** B-020
+  **title:** Dashboard create/edit do not expose custom suffix, alias, or tags (#30)
+  **category:** correctness (feature gap) · **impact:** Medium · **component:** A
+  **source:** #30, audit §7.2/§8.3 · **status:** ✅ Done (cycle 13, create-path).
+  Custom suffix/alias built on the create form (FG-001, cycle 10); tags built on
+  the create form + links index (FG-002, cycle 13). Edit-form alias/tag
+  management and tag-based filtering remain deferred (see FEATURES.md FG-002
+  out-of-scope note) — track any further work there, not against this item.
+
+- **id:** B-021
+  **title:** Alias-chain integrity: app-level cycle/target validation; `destinationType` unused
+  **category:** correctness · **impact:** Medium · **component:** B
+  **source:** #128, schema-review · **status:** OPEN. Max-3-hop chain has no
+  cycle/target validation at the app layer.
+
+- **id:** B-022
+  **title:** Main site (app.js + style.css) ignores `prefers-reduced-motion`
+  **category:** a11y · **impact:** Medium · **component:** A
+  **source:** #106, audit §4 (WCAG 2.3.3) · **status:** ✅ Done (cycle 16).
+  Added a global `@media (prefers-reduced-motion: reduce)` block to
+  `web/Go2My.Link/public_html/css/style.css` neutralising animations,
+  transitions, and scroll-behaviour (including the `fa-spin` submit spinner);
+  `web/Go2My.Link/public_html/js/app.js` gates `scrollIntoView` behaviour
+  (`'auto'` under reduced-motion, else `'smooth'`, via full `if/else` — no
+  shorthand). Verified: `matchMedia` guard present in `app.js`; `node --check`
+  clean.
+
+- **id:** B-023
+  **title:** Landing-page countdown ring keeps animating under `prefers-reduced-motion`
+  **category:** a11y · **impact:** Medium · **component:** A/B/C
+  **source:** #105, audit §4 · **status:** ✅ Done (cycle 16). The
+  `requestAnimationFrame` ring loop now checks
+  `matchMedia('(prefers-reduced-motion: reduce)')` directly and does not
+  animate or reload for reduced-motion users — previously only the CSS
+  animation was gated, so the rAF loop kept sweeping regardless and gave a
+  false impression of compliance. Fixed as part of the same #104 auto-reload
+  rewrite.
+
+- **id:** B-024
+  **title:** Per-second countdown announcements on B interstitials spam screen readers
+  **category:** a11y · **impact:** Medium · **component:** B
+  **source:** #107, audit §4 (WCAG 4.1.3) · **status:** ✅ Done (cycle 17). Removed
+  `aria-live` from the visible `#countdown` span in `validating.php` +
+  `expired.php` — it was doubling up with the separate off-screen
+  `#countdown-status` region, so screen readers heard the count twice. The
+  status region alone now owns announcements, and was changed from
+  `aria-live="assertive"` to `aria-live="polite"` (a countdown is not urgent;
+  assertive needlessly interrupts). Verified: no residual double-announcement
+  source; `php -l` clean on both files.
+
+- **id:** B-025
+  **title:** `bg-secondary` badges fall below 4.5:1 contrast and are used pervasively
+  **category:** a11y · **impact:** Medium · **component:** A
+  **source:** audit §4 (WCAG 1.4.3) · **status:** ✅ Done (cycle 17) — finding
+  corrected on measurement. `bg-secondary` white-on-`#6c757d` measures 4.69:1
+  and PASSES AA; left unchanged (the audit's assumed fail was not borne out).
+  `bg-info` was the genuine failure (white-on-`#0dcaf0` ≈ 1.96:1) — fixed at
+  `web/Go2My.Link/_admin/public_html/pages/org/members/index.php:188` by
+  adding `text-dark` (dark-on-cyan ≈ 7.9:1), matching the codebase's existing
+  `bg-info text-dark` convention elsewhere. `bg-danger` (white-on-red ≈ 4.0:1)
+  is a known Bootstrap-default limitation with no clean colour fix — left,
+  noted.
+
+- **id:** B-026
+  **title:** Go2My.Link landing logo has empty `alt` text (undefined `$siteName`)
+  **category:** a11y · **impact:** Medium · **component:** A
+  **source:** #108, audit §4 (WCAG 1.1.1) · **status:** OPEN. Use a literal
+  `alt="Go2My.link"` or define `$siteName`.
+
+- **id:** B-027
+  **title:** Component B default favicon always 404'd (`favicon_default.ico` missing)
+  **category:** correctness · **impact:** Medium · **component:** B
+  **source:** #102, #116 · **status:** ✅ fixed-on-branch (verified: falls back to
+  `img/logo.png`). Issues OPEN — close with ref.
+
+- **id:** B-028
+  **title:** Component B error pages loaded CDN CSS their own CSP forbids (rendered unstyled)
+  **category:** correctness · **impact:** Medium · **component:** B
+  **source:** #103 · **status:** ✅ fixed-on-branch (verified: `.htaccess` CSP now
+  permits the CDN origins + inline FOUC/countdown scripts). Issue OPEN — close.
+
+- **id:** B-029
+  **title:** Align `release.yml` PHP-lint tool with `php-lint.yml` (`parallel-lint`)
+  **category:** quality (CI) · **impact:** Medium · **component:** config
+  **source:** #111 · **status:** ✅ fixed-on-branch (verified: `release.yml` uses
+  `parallel-lint`). Issue OPEN — close.
+
+- **id:** B-030
+  **title:** Add `.gitignore` guards + lint/analysis exclusions for non-shipping `public_html_*` variants
+  **category:** quality (hygiene) · **impact:** Medium · **component:** config
+  **source:** #112, audit §6 · **status:** PARTIAL. `**/public_html_legacy/` +
+  `**/dbConfig.php` guards landed (✅); `phpcs.xml`/`phpstan.neon` exclusions for
+  dev/landing/redir variants still pending.
+
+- **id:** B-043
+  **title:** `_g2ml_parseUserAgent()` regex delimiter bug (preg_quote missing '/' arg) — bot detection silently broken (isBot never set)
+  **category:** correctness · **impact:** Medium · **component:** shared
+  **source:** found cycle 11 · **status:** OPEN. `_g2ml_parseUserAgent()`
+  (`web/_functions/activity_logger.php`, ~line 288) builds its bot regex with
+  `preg_quote()` missing the `/` delimiter argument; the `'Java/'` pattern's
+  unescaped `/` prematurely closes the `/…/` delimiter, causing
+  `preg_match(): Unknown modifier '|'` on every call — bot detection silently
+  broken (`isBot` never set). Fix is `preg_quote($p, '/')`.
+
+### 🔵 Low impact
+
+- **id:** B-031
+  **title:** Lnks.page landing `<picture>` uses the SVG URL for both source and img fallback
+  **category:** a11y/correctness · **impact:** Low · **component:** C
+  **source:** #109, audit §4 · **status:** OPEN. Point `<img src>` at `logo.png`.
+
+- **id:** B-032
+  **title:** Gradient-clipped transparent-fill landing headings vanish in forced-colors mode
+  **category:** a11y · **impact:** Low · **component:** A/C
+  **source:** #110, audit §4 · **status:** OPEN. Add `@media (forced-colors: active)`
+  fallback restoring `currentColor`/`CanvasText`.
+
+- **id:** B-033
+  **title:** Add branded error pages + `ErrorDocument` directives across components
+  **category:** quality · **impact:** Low · **component:** A/B/C
+  **source:** #114, audit §6 · **status:** OPEN. A lacks a branded 404; B/C/admin
+  declare no `ErrorDocument`.
+
+- **id:** B-034
+  **title:** Component C whitelists `robots.txt`/`sitemap.xml` but the files don't exist
+  **category:** quality · **impact:** Low · **component:** C
+  **source:** #115, audit §6 · **status:** OPEN. They fall through and are treated
+  as slugs.
+
+- **id:** B-035
+  **title:** G2My.Link landing references `/favicon.ico` that does not exist in the landing dir
+  **category:** quality · **impact:** Low · **component:** B
+  **source:** #116, audit §6 · **status:** OPEN.
+
+- **id:** B-036
+  **title:** Enforce No-Shorthand house rules across shared + A/B/C (alt PHP syntax, ternary/Elvis, JS shorthand)
+  **category:** quality (standards) · **impact:** Low · **component:** A/B/C/shared
+  **source:** #117, audit §5 · **status:** OPEN. Ternaries/Elvis in `org.php`,
+  `account_types.php`, `breach_response.php`, breach-response page; alt syntax in
+  email templates; JS shorthand in `cookie-consent.js`/`app.js`/`theme.js`/inline.
+
+- **id:** B-037
+  **title:** Standardise shared global-function naming (`g2ml_` prefix) and dedupe the `g2ml_getClientIP` fallback block
+  **category:** quality (code-redundancy) · **impact:** Low · **component:** shared
+  **source:** #118, audit §5 · **status:** OPEN. ≈51/154 fns prefixed; the
+  client-IP fallback is duplicated 9× across 6 files.
+
+- **id:** B-038
+  **title:** Component B error pages declare `lang="en"` (and omit `dir`) instead of `en-GB`
+  **category:** quality (standards/a11y) · **impact:** Low · **component:** B
+  **source:** #119, audit §4 · **status:** OPEN. Set `lang="en-GB"` + `dir="ltr"`.
+
+- **id:** B-039
+  **title:** Commit a tracked `auth_creds.example.php` template referenced by `.gitignore`
+  **category:** docs · **impact:** Low · **component:** config/shared
+  **source:** #113, audit §6 · **status:** OPEN. `.gitignore` already negates
+  `!**/auth_creds.example.php` but no template file exists (onboarding gap).
+
+- **id:** B-040
+  **title:** Correct MEMORY.md UTM-forwarding claim for Component B (feature not implemented)
+  **category:** docs · **impact:** Low · **component:** shared
+  **source:** #120, #92, audit §7.3 · **status:** OPEN. MEMORY.md has been
+  corrected; verify the note is consistent and `redirect.forward_utm_params`/
+  `analytics.capture_tracking_params` are not claimed as built.
+
+- **id:** B-042
+  **title:** `logActivity()` bind-type mismatch throws on every create — audit logging fails; per-IP rate-limit likely undermined
+  **category:** correctness/security · **impact:** High · **component:** shared
+  **source:** found cycle 10 (broader than #126 — #126 covers `sp_logActivity` procedure drift; this is the live `logActivity()` PHP function/direct-INSERT path) · **status:** ✅ Done (fixed cycle 11). The bind-param type string in `logActivity()` (`web/_functions/activity_logger.php`) was 20 chars against 21 columns/placeholders/variables (off-by-one) and mis-typed `ipAddress` as `i`; corrected to the 21-char `'ssisisssssssssssssiis'` with each char matching its column type (`statusCode`/`userUID`/`isBot`/`apiKeyUID` = `i`; `ipAddress` + `logData`/JSON + rest = `s`). Verified on MySQL 9.6: BEFORE → type-string error thrown, 0 rows inserted; AFTER → returns true, 1 row inserted with correct values; 5 create events now produce 5 countable `tblActivityLog` rows (the per-IP rate-limiter's `COUNT(*)` was effectively 0 while logging failed — abuse-prevention gap closed). Regression: `tests/integration/activity_log_test.php` (2 cases). 110 unit + 13 integration pass; lint clean. Sibling `error_handler.php` `tblErrorLog` INSERT checked — aligned, no bug.
+
+- **id:** B-041
+  **title:** Establish pure-PHP test safety net (no Composer/PHPUnit; Dreamhost-compatible)
+  **category:** quality (testing) · **impact:** High · **component:** shared
+  **source:** autopilot cycle 4 · **status:** ✅ Done (cycle 4).
+  Bootstrap micro-framework under `tests/` (assert helpers, `run.php` unit runner
+  exits 1 on failure, `run_integration.php` env-driven MySQL runner that SKIPs
+  cleanly with no DB, `tests/README.md`). Characterisation tests: 35 unit tests
+  covering `security.php` (`g2ml_hashPassword`/`verifyPassword`, `g2ml_sanitiseInput`,
+  `g2ml_sanitiseOutput`, `g2ml_sanitiseURL`, CSRF token generate/validate,
+  `g2ml_encrypt`/`g2ml_decrypt` AES-256-GCM round-trip) + 4 integration tests
+  (`sp_lookupShortURL` success/expired/not_found/not_yet_active). All green; lint
+  clean. Lead re-ran independently: 35 passed / 0 failed, exit 0.
+
+- **id:** B-044
+  **title:** House-rule sweep: FOUC theme-init inline snippet uses a `? :` ternary
+  **category:** quality (house-rule/tech-debt) · **impact:** Low · **component:** A/B/C/shared
+  **source:** found cycle 17 · **status:** ✅ Done (cycle 19). Swept all 4 files
+  carrying a standalone copy of the FOUC-prevention inline `<script>` IIFE —
+  `web/_includes/header.php` (shared header used by most pages) and the 3
+  self-contained Component-B pages `web/G2My.Link/public_html/{expired,
+  validating,404}.php`. Rewrote each IIFE in full Allman `if/else`, removing
+  the `? 'dark' : 'light'` ternary, the `t = t || 'auto'` `||`-default, and the
+  one-line `try {...} catch(e) {}` K&R braces. Behaviour preserved exactly:
+  localStorage `g2ml-theme` read (null/'' → 'auto'); if 'auto',
+  `prefers-color-scheme` decides dark/light; `data-bs-theme` set before first
+  paint (FOUC prevention intact). Verified: `php -l` clean on all 4 files; grep
+  confirms 0 residual theme-init ternary and 0 residual `t = t || 'auto'`; the
+  rewritten IIFE passes `node --check` as valid JS; `php tests/run.php` → 189
+  passed / 0 failed (unchanged).
+
+- **id:** COV-1
+  **title:** No automated test for cross-org category isolation (#121)
+  **category:** quality (testing) · **impact:** Medium · **component:** A (database)
+  **source:** found cycle 20 (VERIFY completeness critic) · **status:** OPEN.
+  B-002/#121 was fixed and MySQL-verified manually (cycle 2 — old-vs-new JOIN
+  row counts), but no regression test locks the fix in place; a future edit to
+  the category JOIN could silently reopen the cross-org leak with nothing to
+  catch it.
+
+- **id:** COV-2
+  **title:** No automated test for the org re-invite generated-column unique key (#122)
+  **category:** quality (testing) · **impact:** Low · **component:** A (database)
+  **source:** found cycle 20 (VERIFY completeness critic) · **status:** OPEN.
+  B-004/#122's `pendingKey` VIRTUAL-column fix was MySQL-verified manually
+  (cycle 3 — cancel→re-invite succeeds; second concurrent pending rejected),
+  but has no regression test in `tests/integration/`.
+
+- **id:** COV-3
+  **title:** Favicon path-traversal test re-implements the confinement logic instead of exercising the real `favicon.php`
+  **category:** quality (testing) · **impact:** Low · **component:** B
+  **source:** found cycle 20 (VERIFY completeness critic) · **status:** OPEN.
+  `tests/unit/favicon_path_traversal_test.php` (F-006, cycle 8) re-implements
+  the `basename()`+`realpath()` containment logic under test rather than
+  requiring and invoking the actual `web/G2My.Link/public_html/favicon.php`
+  handler — a regression in the real file's guard would not necessarily be
+  caught by this test.
+
+- **id:** COV-4
+  **title:** No automated test for the short-code TOCTOU regenerate-on-collision retry loop (#124)
+  **category:** quality (testing) · **impact:** Low · **component:** B/shared
+  **source:** found cycle 20 (VERIFY completeness critic) · **status:** OPEN.
+  B-006/#124's bounded 5-attempt retry-on-duplicate-key loop was verified via a
+  standalone harness (cycle 3 — 2 collisions then success; 5 collisions then
+  graceful failure), but that harness is not part of the `tests/` suite, so the
+  behaviour is not regression-tested going forward.
+
+## 💡 Proposed-Features ledger
+
+<!-- `propose`-disposition / spec-gate feature candidates live in FEATURES.md
+     (owned by dev-team-featurefind). This section is intentionally empty here so
+     the two don't drift. -->
+
+_(empty — feature gaps are tracked in `FEATURES.md`)_
+
+## 📈 Trajectory ledger
+
+Baseline metrics measured at DISCOVER seed; every cycle appends a row.
+
+| Date | Cycle | Stage | Open #93–#128 | High B- open | Med B- open | Low B- open | Lint (parallel-lint) | Coverage | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-06-05 | 0 | DISCOVER | 36 (all OPEN on GitHub; 8 fixed-on-branch pending close) | 8 (1 ✅) | 21 (5 ✅) | 10 (0 ✅) | not-run-this-cycle | none (no test suite) | Baseline seed; map-commit 7b67ad5 |
+| 2026-06-28 | 2 | STABILIZE | 34 (B-002 + B-005 resolved this cycle) | 6 (3 ✅) | 21 (5 ✅) | 10 (0 ✅) | clean (php -l on changed files) | none (no test suite) | Cross-org category isolation (B-002/#121) + migration zero-date guards (B-005/#123); old-vs-new JOIN row counts; STRICT-mode guarded-vs-unguarded INSERT (errno 1292); real 004 migration exit 0 — all MySQL-verified |
+| 2026-06-28 | 3 | STABILIZE | 32 (B-004 + B-006 resolved this cycle) | 4 (5 ✅) | 21 (5 ✅) | 10 (0 ✅) | clean (php -l on changed files) | none (no test suite) | Org re-invite via generated-column unique key (B-004/#122) + short-code TOCTOU retry (B-006/#124); cancel→re-invite SUCCESS + double-pending errno 1062; migration 010 clean; retry regenerated after 2 collisions, graceful after 5 — all MySQL-verified |
+| 2026-06-28 | 4 | STABILIZE → completes STABILIZE | 32 (no GitHub issues closed this cycle) | 4 (5 ✅) | 21 (5 ✅) | 10 (0 ✅) | clean (php -l on all new tests/ files) | 35 unit / 4 integration (new — all green) | Test harness + characterisation (B-041): pure-PHP harness under tests/; `php tests/run.php` → 35 passed / 0 failed exit 0; integration 4 passed (or SKIPs cleanly with no DSN). STABILIZE stage now COMPLETE; advancing to SECURE |
+| 2026-06-28 | 5 | SECURE — Phase 0 (doc-only) | 32 (unchanged) | 4 open | 21 open | 10 open | n/a (doc-only cycle) | 35 unit / 4 integration (unchanged) | Threat model + attack-surface map + tooling sweep + multi-role fixtures plan + coverage ledger + findings register → SECURITY.md written. 8 OPEN findings (1 High: F-001/#95; 3 Med: F-002/#98, F-003/#99, F-004/#100; 4 Low: F-005/#100, F-006/#101, F-007, F-008); 8 verified FIXED-on-branch (F-101..F-108). No secrets/active-compromise signal; deps PASS (jQuery 3.7.1, Bootstrap 5.3.3, FA 6.5.1 pinned & current; Chart.js unstamped — note for analytics). Evidence: SECURITY.md#Findings |
+| 2026-06-28 | 6 | SECURE — purple-team (F-001/#95) | 31 (B-003 resolved this cycle) | 0 open (3 ✅ including this cycle) | 21 open | 10 open | clean (php -l on changed files) | 53 unit / 4 integration (18 new: `tests/unit/security_clientip_test.php`) | Spoofable client IP fixed (B-003/#95) — `REMOTE_ADDR` default + `TRUSTED_PROXIES` allowlist + CIDR helper via `inet_pton`; right-most-untrusted XFF entry; covers all 13 callers. RED PoC: forged 1.2.3.4 returned before fix; VERIFY: genuine 203.0.113.9 returned after. 53 unit tests pass / 0 failed (was 35). TRUSTED_PROXIES documented in installer creds heredoc + docs/INSTALL.md. No open High findings remaining. |
+| 2026-06-28 | 7 | SECURE — purple-team (F-002/#98 + F-003/#99) | 29 (B-012 + B-015 resolved this cycle) | 0 open | 19 open | 10 open | clean (php -l on all 4 changed files) | 61 unit / 4 integration (8 new: `tests/unit/redirect_scheme_guard_test.php`) | Deletion-cancel CSRF→POST (B-015/#98) + interstitial scheme guard (B-012/#99) fixed. GET `?cancel` path removed; CSRF-protected POST form `account_delete_cancel` added. All destination/fallback sinks (`href`, JS `window.location`, `meta-refresh`, noscript) in `validating.php` + `expired.php` scheme-guarded via `g2ml_sanitiseURL()` + `preg_match('^https?://')` fallback; rejected destination → no link; rejected fallback → `https://go2my.link`. 61 tests pass / 0 failed (was 53). No open High/Critical findings. |
+| 2026-06-29 | 8 | SECURE — purple-team (F-004/F-005 #100 + F-006 #101; destination/path-safety cluster) | 27 (B-013 + B-014 resolved this cycle) | 0 open | 17 open | 10 open | clean (php -l on all 4 changed files) | 90 unit / 4 integration (29 new: 25 in `tests/unit/security_ssrf_host_guard_test.php` + 4 in `tests/unit/favicon_path_traversal_test.php`) | Shared anti-SSRF host guard (`g2ml_destinationHostIsAllowed` + `g2ml_isPrivateOrReservedIp`) on both `validateDestination()` (before HEAD fetch) and `createShortURL()` (at creation); loopback/link-local/metadata (169.254.169.254)/reserved always blocked; RFC1918/ULA blocked by default (override `redirect.allow_private_destinations`); rejects userinfo (`user:pass@`); IPv4-mapped-IPv6 unwrapped; fails closed when settings/DNS unavailable; seed `014_redirect_ssrf_settings.sql`. Favicon `orgLogoPath` confined with `basename()`+`realpath()` inside uploads dir (F-006). 90 tests pass / 0 failed (+29). 0 Critical/High/Med findings remaining; 2 Low open (F-007 session re-bind, F-008 SRI). Note: cycle 8 was interrupted once by a monthly spend-limit; partial work was discarded and the cycle retried cleanly from the cycle-7 checkpoint. |
+| 2026-06-29 | 9 | SECURE — purple-team (F-007 + F-008); **completes SECURE** | 27 (F-007/F-008 have no GitHub #) | 0 open | 17 open | 10 open | clean (php -l on all 6 changed files) | 90 unit / 5 integration (1 new: `tests/integration/session_rebind_test.php`) | Final 2 Low fixed → **findings register 0 open**. F-007: `validateUserSession()` re-binds `$_SESSION['user_uid']` from the DB session row (defence-in-depth; negative-control test proven). F-008: the Bootstrap 5.3.3 CSS SRI hash was **wrong & inconsistent** across `header.php` + the 3 B error pages — would have **blocked the CSS in production** — corrected to the hash verified against the vendored copy AND the live jsdelivr CDN; other assets re-verified. 90 unit + 5 integration pass. Note: cycle 9's documentarian was interrupted by the monthly spend-limit; SECURITY.md had already been written, PROJECT.md completed inline on retry. SECURE COMPLETE; advancing to COMPLETE. |
+| 2026-06-29 | 10 | COMPLETE — auto-built FG-001 (autonomy-eligible); surfaced B-042 | 27 (unchanged on GitHub) | 1 open (B-042 new) | 17 open | 10 open | clean (php -l across all changed files + new tests) | 110 unit / 11 integration (25 new unit: `tests/unit/custom_alias_test.php`; 6 new integration: `tests/integration/custom_alias_create_test.php`) | FG-001 custom short-suffix/alias BUILT under the autonomy test (table-stakes, in-scope per brief lines 90–92, risk:Low, non-destructive). `createShortURL()` gains `customCode` option — validates `^[A-Za-z0-9_-]{3,50}$`, blocks reserved words via `g2ml_isReservedShortCode()`, hard-errors "That alias is already taken." on duplicate (errno 1062, no random fallback); empty/absent → existing random+retry path unchanged. Dashboard create form adds optional "Custom alias" field with label + help text + error re-display; anonymous/public API path untouched. 5 acceptance criteria demonstrated. New bug B-042 surfaced: `logActivity()` bind-type mismatch throws on every create — swallowed silently but breaks audit logging and likely undermines per-IP rate-limit. Re-opening STABILIZE next to fix B-042. |
+| 2026-07-04 | 11 | STABILIZE (re-open) — fixed B-042; surfaced B-043 | 27 (unchanged on GitHub) | 0 open | 18 open (B-043 new) | 10 open | clean (php -l on changed files) | 110 unit / 13 integration (2 new integration: `tests/integration/activity_log_test.php`) | `logActivity()` bind-param type-string off-by-one fixed (B-042) — 20-char string against 21 columns/placeholders/variables, plus `ipAddress` mis-typed `i`, corrected to `'ssisisssssssssssssiis'`. Evidence: BEFORE → type-string error, 0 rows inserted; AFTER → 1 row inserted; 5 create events → 5 countable `tblActivityLog` rows (per-IP rate-limit restored). 110 unit + 13 integration pass. New bug surfaced: B-043 — `_g2ml_parseUserAgent()` regex delimiter bug (`preg_quote()` missing `/` arg) breaks bot detection silently (`isBot` never set); queued next (same file, quick correctness fix). |
+| 2026-07-04 | 12 | STABILIZE (re-open) — fixed B-043; **re-open resolved** | 27 (unchanged on GitHub) | 0 open | 17 open (B-043 ✅) | 10 open | clean (php -l on changed files) | 113 unit / 13 integration (1 new unit: `tests/unit/user_agent_bot_test.php`) | B-043 fixed: `_g2ml_parseUserAgent()` now escapes each bot pattern with `preg_quote($p, '/')` (full closure, no shorthand), so `'Java/'` no longer closes the `/…/` delimiter — bot detection works (`isBot` set) with no PCRE warning. Regression test (Java/ bot, Googlebot, non-bot Chrome). 113 unit pass; lint clean. STABILIZE re-open resolved; resuming COMPLETE (FG-002 tags next). |
+| 2026-07-04 | 13 | COMPLETE — auto-built FG-002 (autonomy-eligible) | 27 (unchanged on GitHub) | 0 open | 16 open (B-020 ✅ create-path) | 10 open | clean (php -l on all changed files + new tests) | 132 unit / 18 integration (19 new unit: `tests/unit/tags_normalise_test.php`; 5 new integration: `tests/integration/tags_create_test.php`) | FG-002 tags on links BUILT under the autonomy test (Bucket 1: table-stakes + in-scope + risk:Low + non-destructive) — `tblTags`/`tblShortURLTags` schema existed since schema 020 but had zero PHP references. Wired up via find-or-create per org (`UQ_tag_org`), junction insert via `INSERT IGNORE`, tags attached AFTER the short-URL row insert with each tag in its own try/catch (a tag failure never rolls back the create); slug ASCII-only via `g2ml_slugifyTag()`, display name preserves original casing/spacing; capped at `G2ML_MAX_TAGS_PER_LINK` = 10. Dashboard create form gains an optional comma-separated "Tags" field; links index renders WCAG-accessible tag badges (`role="list"`) via one dynamically-sized bound `IN(...)` query for the page's short-URL UIDs — no N+1, confirmed placeholder-only (no interpolation). 132 unit + 18 integration pass (was 113/13); 5 acceptance criteria demonstrated. B-020 (dashboard alias/tags gap) marked done for the create-path; edit-form tag management and tag-based filtering deferred as explicit follow-ups. |
+| 2026-07-04 | 14 | COMPLETE — auto-built FG-003 (autonomy-eligible) | 27 (unchanged on GitHub) | 0 open | 15 open (B-019 ✅) | 10 open | clean (php -l on all changed files + new tests) | 141 unit / 18 integration (9 new unit: `tests/unit/info_display_destination_test.php`) | FG-003 info-page public-vs-authenticated view (#23) BUILT under the autonomy test (Bucket 1: table-stakes + in-scope + risk:Low + non-destructive) — the page docblock already documented the intent and short URLs redirect publicly so the destination is not secret. New pure helper `g2ml_infoDisplayDestination(array $linkData, bool $isAuthenticated): string` in new file `web/Go2My.Link/_functions/info_display.php` (returns the full destination when authenticated, masked domain[/...] when not, '' when none — old inline masking moved into it). `pages/info/index.php`: authenticated viewers (ANY authenticated viewer, not owner-only, per the docblock intent) see the full destination as escaped text (`g2ml_sanitiseOutput`, not a clickable link — no scheme/XSS vector); anonymous viewers keep the masked domain plus a new accessible "Log in to see the full destination" prompt linking to `/login` (no redirect-back param, avoiding open-redirect). New i18n key `info.login_for_full` in seed `010_phase6_translations.sql`. 141 unit pass (+9, was 132); lint clean; render harness confirmed a hostile payload is fully HTML-escaped for the authed view. B-019 (#23) marked done. |
+| 2026-07-04 | 15 | COMPLETE — auto-built FG-004 (autonomy-eligible); **completes COMPLETE** | 27 (unchanged on GitHub) | 0 open | 15 open | 10 open | clean (php -l on all changed files + new tests) | 166 unit / 18 integration (25 new unit: `tests/unit/api_response_test.php`) | FG-004 XML+XSLT API output BUILT under the autonomy test (Bucket 1: feature + refactor-under-test-net) — brief §8.2 required JSON (default) + XML with embedded XSLT; `api/create/index.php` previously had 10 repeated `json_encode` blocks and no XML path. New `web/_functions/api_response.php` (`g2ml_apiRespond()` + pure `g2ml_apiWantsXml()`/`g2ml_arrayToXml()`/`g2ml_buildApiXmlDocument()`) and new XSLT `web/Go2My.Link/public_html/api/create/response.xsl`; `api/create/index.php` refactored to one `g2ml_apiRespond()` call (0 `json_encode` left), with the structured branch now also triggering on `?format=xml` / `Accept: application/xml`; helper registered in `page_init.php`. JSON stays the default and is byte-identical to before (subprocess diff); XML emits a `<response>` document with a stylesheet PI, all values `htmlspecialchars` ENT_XML1-escaped (hostile payload proven escaped, lossless); no-JS redirect fallback and all status codes (405/403/422/429/201) + messages preserved. 166 unit pass (+25, was 141); lint clean; `xmllint` confirms well-formed output; dedup confirmed (0 `json_encode` remaining). **COMPLETE phase complete: all four autonomy-eligible gaps (FG-001..FG-004) built; remaining feature gaps are the gated G-001..G-005, awaiting user approval. Advancing to POLISH.** |
+| 2026-07-04 | 16 | POLISH — WCAG reduced-motion + timing a11y bundle (#104/#105/#106) | 27 (unchanged on GitHub) | 0 open (B-007 resolved this cycle) | 13 open (B-022 + B-023 ✅) | 10 open | clean (`php -l` on the 3 landings; `node --check` on `app.js`) | 166 unit / 18 integration (unchanged — no new test files; verified via `matchMedia` guard checks + `php -l` + `node --check`) | Removed the hard `<meta http-equiv="refresh" content="900">` timing trap (WCAG 2.2.1 Level A) from all three landing pages (web/Go2My.Link, web/G2My.Link, web/Lnks.page); countdown-ring auto-reload now non-trapping — disabled under `prefers-reduced-motion`, otherwise reloads only when visible AND no form control focused. rAF ring loop now checks `matchMedia('(prefers-reduced-motion: reduce)')` directly (was CSS-only gated, giving a false impression of compliance). Main site: global `@media (prefers-reduced-motion: reduce)` CSS block in `style.css` + `scrollIntoView` gate in `app.js`. 0 `http-equiv="refresh"` remaining; `matchMedia` guards present in each landing + `app.js`; 166 tests unchanged (no PHP behaviour touched). |
+| 2026-07-04 | 17 | POLISH — a11y bundle 2 (badge contrast + interstitial announcements) | 27 (unchanged on GitHub) | 0 open | 11 open (B-024 + B-025 ✅) | 11 open (B-044 new) | clean (`php -l` on all 3 changed files) | 166 unit / 18 integration (unchanged — no new test files; verified via measured contrast ratios + aria-live audit + `php -l`) | Audited all `badge bg-*` usages: `bg-secondary` white-on-`#6c757d` measures 4.69:1 → PASSES AA, left unchanged (audit's assumed fail corrected). Genuine failure fixed: `bg-info` white-on-`#0dcaf0` ≈ 1.96:1 at `web/Go2My.Link/_admin/public_html/pages/org/members/index.php:188` → added `text-dark` (≈7.9:1), matching the existing `bg-info text-dark` convention elsewhere. Component-B interstitials (`validating.php` + `expired.php`): removed a double-announcement bug — `aria-live` taken off the visible `#countdown` span, the separate off-screen `#countdown-status` region (which alone now owns announcements) changed `assertive`→`polite` (a countdown is not urgent). Also fixed 3 no-shorthand violations in the same files' countdown JS (plural `? 's' : ''` ternary and validating.php's `targetURL = (...) ? destinationURL : fallbackURL` → full `if/else`). Assessed, no change: `target="_blank"` new-window warning is WCAG AAA (3.2.5), out of AA scope, and all such links already carry `rel="noopener noreferrer"`; `bg-danger` (≈4.0:1) is a known Bootstrap-default limitation with no clean colour fix. New backlog item B-044 opened: FOUC theme-init snippet's `? :` ternary repeated repo-wide — queued for a dedicated mechanical house-rule cycle. 166 tests unchanged (no PHP runtime behaviour changed). |
+| 2026-07-04 | 18 | POLISH — auto-built FG-005 (autonomy-eligible) | 27 (unchanged on GitHub) | 0 open | 11 open | 11 open (unchanged) | clean (`php -l` on all changed files + new tests) | 189 unit / 18 integration (23 new unit: `tests/unit/avatar_test.php`) | FG-005 avatar priority cascade BUILT under the autonomy test (table-stakes + risk:Low + net-positive + non-destructive + privacy-preserving) — structured avatar cascade + initials monogram (contrast-safe palette) + nav wiring; Gravatar gated default-OFF for privacy. New `web/_functions/avatar.php`: `g2ml_resolveAvatar()` returns an image-or-initials structure in priority order (local stored avatar → MS365/Google SSO no-ops (Phase 10) → Gravatar (gated, default OFF, no network call) → initials monogram); colour is deterministic from a 10-entry WCAG-AA-verified palette; all output escaped via `g2ml_renderAvatar()`/`g2ml_avatarEscape()`. Wired into shared `web/_includes/nav.php` (main site + admin), degrading to a Font Awesome icon if unavailable; old K&R shorthand replaced with Allman if/else. Built via a build→adversarial-verify workflow (correctness, security/privacy, house-rule lenses) — the correctness lens caught and fixed a cap-before-uppercase overflow (ß→SS / ﬃ→FFI expanding past the 2-char monogram) via `g2ml_avatarCapInitials()`; security/privacy and house-rule lenses came back clean. 189 tests pass (+23, was 166); `php -l` clean. **All five Tier-1 autonomy-eligible gaps (FG-001..FG-005) now BUILT.** |
+| 2026-07-04 | 19 | POLISH — B-044 theme-snippet house-rule sweep; **completes POLISH** | 27 (unchanged on GitHub) | 0 open | 11 open | 10 open (B-044 ✅) | clean (`php -l` on all 4 changed files) | 189 unit / 18 integration (unchanged — mechanical sweep, no behaviour change) | FOUC theme-init inline `<script>` IIFE rewritten to full Allman if/else across `web/_includes/header.php` + the 3 Component-B pages `expired.php`/`validating.php`/`404.php` — the `? 'dark' : 'light'` ternary, the `t = t \|\| 'auto'` `\|\|`-default, and the one-line `try {...} catch(e) {}` K&R braces all removed. Behaviour preserved: localStorage `g2ml-theme` read (null/'' → 'auto'); 'auto' resolved via `prefers-color-scheme`; `data-bs-theme` set pre-paint (FOUC prevention intact). Verified: 0 residual ternary/`\|\|`-default via grep; `node --check` confirms valid JS; `php -l` clean on all 4 files; `php tests/run.php` → 189 passed / 0 failed (unchanged). **POLISH phase complete: a11y bundles 1–2 + FG-005 + B-044 all done. Advancing to VERIFY.** |
+| 2026-07-04 | 20 | VERIFY — final independent full-branch review; **run TERMINAL** | 27 (unchanged on GitHub; CR-1/SEC-RECHECK-01 have no prior GH issue) | 0 open (CR-1 + SEC-RECHECK-01 found and fixed this cycle) | 12 open (COV-1 new) | 13 open (COV-2/COV-3/COV-4 new) | clean (`php -l` on all changed files + new test) | 189 unit / 21 integration (3 new integration: `tests/integration/cross_org_isolation_test.php`) | Review workflow found 2 must-fix HIGH defects (CR-1 — broken link-edit page, non-existent column `s.shortURLUID`; SEC-RECHECK-01 — cross-org link deactivation DoS via an unscoped `isActive` UPDATE, exploitable through FG-001 custom aliases) — both **FIXED** at source and regression-tested. Stood up a throwaway MySQL 9.6 and **ran** the integration suite for the first time this run (previously skipping cleanly with no DB) = 21 pass / 0 fail (18 existing + 3 new). Adversarial re-verify of both fixes returned CONFIRMED. #94 (link-edit) is now genuinely resolved — the 2026-06-05 fix only covered the sibling `notes`→`urlNotes` column on the same statement. Non-blocking follow-ups recorded: COV-1..COV-4 (test-coverage gaps on #121/#122/favicon-traversal/#124, none blocking). Evidence: 189 unit + 21 integration green; overall verdict **PASS**. All six phases (DISCOVER→STABILIZE→SECURE→COMPLETE→POLISH→VERIFY) complete. |

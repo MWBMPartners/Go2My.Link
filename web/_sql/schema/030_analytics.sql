@@ -105,6 +105,13 @@ CREATE TABLE IF NOT EXISTS `tblActivityLog` (
     `apiKeyUID`             BIGINT UNSIGNED     DEFAULT NULL
         COMMENT 'API key used (if API request)',
 
+    -- CueRCode dynamic-QR scan attribution
+    `scanSource`            VARCHAR(50)         DEFAULT NULL
+        COMMENT 'Click/scan channel (e.g. qr) — set when a CueRCode QR scan is detected',
+
+    `qrCodeExternalID`      BIGINT UNSIGNED     DEFAULT NULL
+        COMMENT 'CueRCode QR record id this scan is attributed to (NULL = not a QR scan)',
+
     -- Extra data
     `logData`               JSON                DEFAULT NULL
         COMMENT 'Additional structured data (varies by action type)',
@@ -121,7 +128,9 @@ CREATE TABLE IF NOT EXISTS `tblActivityLog` (
     INDEX `IDX_log_country` (`countryCode`),
     INDEX `IDX_log_created` (`createdAt`),
     INDEX `IDX_log_domain` (`requestDomain`),
-    INDEX `IDX_log_status` (`logStatus`)
+    INDEX `IDX_log_status` (`logStatus`),
+    INDEX `IDX_log_scan_source` (`scanSource`),
+    INDEX `IDX_log_qr_extid` (`qrCodeExternalID`)
 
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
