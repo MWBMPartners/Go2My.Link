@@ -71,12 +71,30 @@ $mainSiteURL  = 'https://go2my.link';
 
     <!-- 🌓 FOUC Prevention — Apply theme before first paint -->
     <script>
-        (function(){
+        (function()
+        {
             var t = null;
-            try { t = localStorage.getItem('g2ml-theme'); } catch(e) {}
-            t = t || 'auto';
-            if (t === 'auto') {
-                t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+            try
+            {
+                t = localStorage.getItem('g2ml-theme');
+            }
+            catch (e)
+            {
+            }
+            if (t === null || t === '')
+            {
+                t = 'auto';
+            }
+            if (t === 'auto')
+            {
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+                {
+                    t = 'dark';
+                }
+                else
+                {
+                    t = 'light';
+                }
             }
             document.documentElement.setAttribute('data-bs-theme', t);
         })();

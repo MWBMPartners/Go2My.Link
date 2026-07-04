@@ -124,10 +124,11 @@ list; these OVERRIDE default behaviour):
 
 ## 📌 Current status
 
-- **Active stage:** POLISH nearly done: a11y bundles 1–2 + FG-005 shipped.
-  Next: B-044 theme-snippet house-rule sweep, then advance to VERIFY
-  (independent full-branch review pass). Gated G-001..G-005 await approval;
-  local branch well ahead of draft PR #130 (do not merge).
+- **Active stage:** POLISH phase COMPLETE (a11y bundles 1-2 + FG-005 + B-044
+  house-rule sweep all done). Next: advance to VERIFY — an independent
+  full-branch review pass at the latest commit (correctness re-check of the
+  run's changes, integration sanity, completeness critic). Gated G-001..G-005
+  await approval; local branch well ahead of draft PR #130 (do not merge).
 - **Done so far:** Bootstrap complete. Codebase Map written and spot-verified
   against the tree. Backlog re-derived from the live GitHub issues (#1–#128) and
   the two 2026-06-04 audits. Confirmed via direct code inspection that commit
@@ -182,6 +183,13 @@ list; these OVERRIDE default behaviour):
   - No automated test suite — every fix needs empirical verification evidence.
 
 ## 🧾 Decision log
+
+### 2026-07-04 — B-044 house-rule sweep run as its own mechanical cycle; whole IIFE rewritten to Allman, not just the ternary
+
+- **Decision:** Did the FOUC theme-init snippet's house-rule sweep as its own dedicated mechanical cycle (cycle 19) for consistency — all 4 identical copies (`web/_includes/header.php` and the 3 self-contained Component-B pages `expired.php`/`validating.php`/`404.php`) changed together, rather than partially touching 2 of them mid-a11y-cycle (as flagged when B-044 was first opened in cycle 17). Rewrote the whole IIFE to full Allman `if/else` — not just the `? :` ternary that was originally called out — so the snippet is internally consistent and fully house-rule-compliant in one pass: the `t = t || 'auto'` `||`-default and the one-line `try {...} catch(e) {}` K&R braces were removed alongside the ternary.
+- **Why not fix opportunistically:** The snippet is duplicated verbatim across 4 files; fixing it piecemeal across unrelated cycles risks the 4 copies drifting out of sync with each other and leaves some copies non-compliant for longer. A single mechanical pass keeps all 4 identical and closes the backlog item cleanly.
+- **Scope boundary:** Behaviour is unchanged — localStorage `g2ml-theme` read (null/'' → 'auto'), `prefers-color-scheme` resolves 'auto', `data-bs-theme` set before first paint (FOUC prevention intact). No other house-rule violations (B-036/#117) were addressed in this cycle — this was scoped strictly to the one widely repeated snippet.
+- **Revisit if:** a 5th copy of the theme-init snippet is introduced in a future file — apply the same Allman rewrite immediately rather than letting it drift, to avoid re-opening this class of finding.
 
 ### 2026-07-04 — FG-005 built via build→adversarial-verify workflow (ultracode); Gravatar tier gated default-OFF for privacy
 
@@ -382,6 +390,13 @@ list; these OVERRIDE default behaviour):
   `STR_TO_DATE` with `%Y-%m-%d %H:%i:%s` and an explicit NULL fallback.
 
 ## ⛳ Checkpoint log
+
+### Cycle 19 — 2026-07-04 — POLISH (B-044 house-rule sweep; theme-init snippet) — **completes POLISH**
+
+- **Items resolved:** B-044 — FOUC theme-init inline snippet ternary house-rule sweep.
+- **Evidence:** Swept the FOUC theme-init inline `<script>` IIFE across all 4 files that carry a standalone copy: `web/_includes/header.php` (the shared header used by most pages), and the 3 self-contained Component-B pages `web/G2My.Link/public_html/{expired,validating,404}.php`. Removed the house-rule shorthand: the `? 'dark' : 'light'` ternary, the `t = t || 'auto'` `||`-default, and the one-line `try {...} catch(e) {}` K&R braces — rewrote the whole IIFE in full Allman if/else (no ternary, no `||`-default, braces on their own lines). Behaviour preserved exactly: localStorage `g2ml-theme` read (null/'' → 'auto'); if 'auto', `prefers-color-scheme` decides dark/light; then `data-bs-theme` is set before first paint (FOUC prevention intact). Verified: `php -l` clean on all 4 files; grep confirms 0 residual theme-init ternary and 0 residual `t = t || 'auto'`; the rewritten IIFE passes `node --check` as valid JS; `php tests/run.php` → 189 passed / 0 failed (unchanged). Bucket 1 (mechanical, non-destructive).
+- **Remaining:** **POLISH phase complete** — a11y bundles 1–2 (cycles 16–17) + FG-005 (cycle 18) + B-044 (this cycle) all done. Next: advance to VERIFY — an independent full-branch review pass at the latest commit (correctness re-check of the run's changes, integration sanity, completeness critic). Gated G-001..G-005 still await user approval.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; local branch is ahead of the draft PR #130 (do not merge) — needs re-push to refresh.
 
 ### Cycle 18 — 2026-07-04 — POLISH (auto-built FG-005; avatar priority cascade)
 
@@ -944,14 +959,19 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
 - **id:** B-044
   **title:** House-rule sweep: FOUC theme-init inline snippet uses a `? :` ternary
   **category:** quality (house-rule/tech-debt) · **impact:** Low · **component:** A/B/C/shared
-  **source:** found cycle 17 · **status:** OPEN. The FOUC-prevention inline
-  `<script>` repeated across page `<head>`s (`t = (...matchMedia...) ? 'dark' :
-  'light'`) uses a shorthand ternary, violating the no-shorthand house rule.
-  Low-risk/mechanical — convert every occurrence to a full `if/else` in a
-  dedicated mechanical cycle rather than opportunistically, so the repo-wide
-  pattern is made consistent in one pass. Related to the broader B-036 (#117)
-  shorthand sweep but called out separately because it is one very widely
-  repeated snippet worth its own pass.
+  **source:** found cycle 17 · **status:** ✅ Done (cycle 19). Swept all 4 files
+  carrying a standalone copy of the FOUC-prevention inline `<script>` IIFE —
+  `web/_includes/header.php` (shared header used by most pages) and the 3
+  self-contained Component-B pages `web/G2My.Link/public_html/{expired,
+  validating,404}.php`. Rewrote each IIFE in full Allman `if/else`, removing
+  the `? 'dark' : 'light'` ternary, the `t = t || 'auto'` `||`-default, and the
+  one-line `try {...} catch(e) {}` K&R braces. Behaviour preserved exactly:
+  localStorage `g2ml-theme` read (null/'' → 'auto'); if 'auto',
+  `prefers-color-scheme` decides dark/light; `data-bs-theme` set before first
+  paint (FOUC prevention intact). Verified: `php -l` clean on all 4 files; grep
+  confirms 0 residual theme-init ternary and 0 residual `t = t || 'auto'`; the
+  rewritten IIFE passes `node --check` as valid JS; `php tests/run.php` → 189
+  passed / 0 failed (unchanged).
 
 ## 💡 Proposed-Features ledger
 
@@ -985,3 +1005,4 @@ Baseline metrics measured at DISCOVER seed; every cycle appends a row.
 | 2026-07-04 | 16 | POLISH — WCAG reduced-motion + timing a11y bundle (#104/#105/#106) | 27 (unchanged on GitHub) | 0 open (B-007 resolved this cycle) | 13 open (B-022 + B-023 ✅) | 10 open | clean (`php -l` on the 3 landings; `node --check` on `app.js`) | 166 unit / 18 integration (unchanged — no new test files; verified via `matchMedia` guard checks + `php -l` + `node --check`) | Removed the hard `<meta http-equiv="refresh" content="900">` timing trap (WCAG 2.2.1 Level A) from all three landing pages (web/Go2My.Link, web/G2My.Link, web/Lnks.page); countdown-ring auto-reload now non-trapping — disabled under `prefers-reduced-motion`, otherwise reloads only when visible AND no form control focused. rAF ring loop now checks `matchMedia('(prefers-reduced-motion: reduce)')` directly (was CSS-only gated, giving a false impression of compliance). Main site: global `@media (prefers-reduced-motion: reduce)` CSS block in `style.css` + `scrollIntoView` gate in `app.js`. 0 `http-equiv="refresh"` remaining; `matchMedia` guards present in each landing + `app.js`; 166 tests unchanged (no PHP behaviour touched). |
 | 2026-07-04 | 17 | POLISH — a11y bundle 2 (badge contrast + interstitial announcements) | 27 (unchanged on GitHub) | 0 open | 11 open (B-024 + B-025 ✅) | 11 open (B-044 new) | clean (`php -l` on all 3 changed files) | 166 unit / 18 integration (unchanged — no new test files; verified via measured contrast ratios + aria-live audit + `php -l`) | Audited all `badge bg-*` usages: `bg-secondary` white-on-`#6c757d` measures 4.69:1 → PASSES AA, left unchanged (audit's assumed fail corrected). Genuine failure fixed: `bg-info` white-on-`#0dcaf0` ≈ 1.96:1 at `web/Go2My.Link/_admin/public_html/pages/org/members/index.php:188` → added `text-dark` (≈7.9:1), matching the existing `bg-info text-dark` convention elsewhere. Component-B interstitials (`validating.php` + `expired.php`): removed a double-announcement bug — `aria-live` taken off the visible `#countdown` span, the separate off-screen `#countdown-status` region (which alone now owns announcements) changed `assertive`→`polite` (a countdown is not urgent). Also fixed 3 no-shorthand violations in the same files' countdown JS (plural `? 's' : ''` ternary and validating.php's `targetURL = (...) ? destinationURL : fallbackURL` → full `if/else`). Assessed, no change: `target="_blank"` new-window warning is WCAG AAA (3.2.5), out of AA scope, and all such links already carry `rel="noopener noreferrer"`; `bg-danger` (≈4.0:1) is a known Bootstrap-default limitation with no clean colour fix. New backlog item B-044 opened: FOUC theme-init snippet's `? :` ternary repeated repo-wide — queued for a dedicated mechanical house-rule cycle. 166 tests unchanged (no PHP runtime behaviour changed). |
 | 2026-07-04 | 18 | POLISH — auto-built FG-005 (autonomy-eligible) | 27 (unchanged on GitHub) | 0 open | 11 open | 11 open (unchanged) | clean (`php -l` on all changed files + new tests) | 189 unit / 18 integration (23 new unit: `tests/unit/avatar_test.php`) | FG-005 avatar priority cascade BUILT under the autonomy test (table-stakes + risk:Low + net-positive + non-destructive + privacy-preserving) — structured avatar cascade + initials monogram (contrast-safe palette) + nav wiring; Gravatar gated default-OFF for privacy. New `web/_functions/avatar.php`: `g2ml_resolveAvatar()` returns an image-or-initials structure in priority order (local stored avatar → MS365/Google SSO no-ops (Phase 10) → Gravatar (gated, default OFF, no network call) → initials monogram); colour is deterministic from a 10-entry WCAG-AA-verified palette; all output escaped via `g2ml_renderAvatar()`/`g2ml_avatarEscape()`. Wired into shared `web/_includes/nav.php` (main site + admin), degrading to a Font Awesome icon if unavailable; old K&R shorthand replaced with Allman if/else. Built via a build→adversarial-verify workflow (correctness, security/privacy, house-rule lenses) — the correctness lens caught and fixed a cap-before-uppercase overflow (ß→SS / ﬃ→FFI expanding past the 2-char monogram) via `g2ml_avatarCapInitials()`; security/privacy and house-rule lenses came back clean. 189 tests pass (+23, was 166); `php -l` clean. **All five Tier-1 autonomy-eligible gaps (FG-001..FG-005) now BUILT.** |
+| 2026-07-04 | 19 | POLISH — B-044 theme-snippet house-rule sweep; **completes POLISH** | 27 (unchanged on GitHub) | 0 open | 11 open | 10 open (B-044 ✅) | clean (`php -l` on all 4 changed files) | 189 unit / 18 integration (unchanged — mechanical sweep, no behaviour change) | FOUC theme-init inline `<script>` IIFE rewritten to full Allman if/else across `web/_includes/header.php` + the 3 Component-B pages `expired.php`/`validating.php`/`404.php` — the `? 'dark' : 'light'` ternary, the `t = t \|\| 'auto'` `\|\|`-default, and the one-line `try {...} catch(e) {}` K&R braces all removed. Behaviour preserved: localStorage `g2ml-theme` read (null/'' → 'auto'); 'auto' resolved via `prefers-color-scheme`; `data-bs-theme` set pre-paint (FOUC prevention intact). Verified: 0 residual ternary/`\|\|`-default via grep; `node --check` confirms valid JS; `php -l` clean on all 4 files; `php tests/run.php` → 189 passed / 0 failed (unchanged). **POLISH phase complete: a11y bundles 1–2 + FG-005 + B-044 all done. Advancing to VERIFY.** |

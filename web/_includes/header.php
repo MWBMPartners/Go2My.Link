@@ -191,12 +191,30 @@ if (($themePref === 'auto')) {
     <!-- 📖 Reference: https://getbootstrap.com/docs/5.3/customize/color-modes/ -->
     <!-- ================================================================== -->
     <script>
-        (function(){
+        (function()
+        {
             var t = null;
-            try { t = localStorage.getItem('g2ml-theme'); } catch(e) {}
-            t = t || 'auto';
-            if (t === 'auto') {
-                t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+            try
+            {
+                t = localStorage.getItem('g2ml-theme');
+            }
+            catch (e)
+            {
+            }
+            if (t === null || t === '')
+            {
+                t = 'auto';
+            }
+            if (t === 'auto')
+            {
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+                {
+                    t = 'dark';
+                }
+                else
+                {
+                    t = 'light';
+                }
             }
             document.documentElement.setAttribute('data-bs-theme', t);
         })();
