@@ -183,7 +183,7 @@ else
         <!-- ⏱️ Countdown -->
         <div class="mb-4">
             <p class="text-body-secondary">
-                Redirecting in <span id="countdown" class="countdown-number" aria-live="assertive"><?php echo $countdownDelay; ?></span> seconds...
+                Redirecting in <span id="countdown" class="countdown-number"><?php echo $countdownDelay; ?></span> seconds...
             </p>
             <div class="progress" role="progressbar" aria-label="Redirect countdown"
                  aria-valuenow="<?php echo $countdownDelay; ?>" aria-valuemin="0" aria-valuemax="<?php echo $countdownDelay; ?>"
@@ -220,8 +220,8 @@ else
         </p>
     </main>
 
-    <!-- ♿ ARIA Live Region for Countdown Announcements -->
-    <div id="countdown-status" class="visually-hidden" aria-live="assertive" role="status"></div>
+    <!-- ♿ ARIA Live Region for Countdown Announcements (polite: a countdown is not urgent) -->
+    <div id="countdown-status" class="visually-hidden" aria-live="polite" role="status"></div>
 
     <!-- ⏱️ Countdown Timer Script -->
     <script>
@@ -246,7 +246,13 @@ else
 
                 // Announce at key moments for screen readers
                 if (statusEl && (remaining === 3 || remaining === 1)) {
-                    statusEl.textContent = 'Redirecting in ' + remaining + ' second' + (remaining !== 1 ? 's' : '');
+                    var secondLabel;
+                    if (remaining === 1) {
+                        secondLabel = ' second';
+                    } else {
+                        secondLabel = ' seconds';
+                    }
+                    statusEl.textContent = 'Redirecting in ' + remaining + secondLabel;
                 }
 
                 if (remaining <= 0) {

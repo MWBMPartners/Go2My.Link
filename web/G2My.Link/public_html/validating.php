@@ -217,7 +217,7 @@ if ($safeDestination !== '')
         <!-- ⏱️ Countdown -->
         <div class="mb-3">
             <p class="text-body-secondary">
-                Proceeding in <span id="countdown" class="countdown-number" aria-live="polite"><?php echo $countdownDelay; ?></span> seconds...
+                Proceeding in <span id="countdown" class="countdown-number"><?php echo $countdownDelay; ?></span> seconds...
             </p>
             <div class="progress" role="progressbar" aria-label="Redirect countdown"
                  aria-valuenow="<?php echo $countdownDelay; ?>" aria-valuemin="0" aria-valuemax="<?php echo $countdownDelay; ?>"
@@ -263,8 +263,8 @@ if ($safeDestination !== '')
         </p>
     </main>
 
-    <!-- ♿ ARIA Live Region for Countdown Announcements -->
-    <div id="countdown-status" class="visually-hidden" aria-live="assertive" role="status"></div>
+    <!-- ♿ ARIA Live Region for Countdown Announcements (polite: a countdown is not urgent) -->
+    <div id="countdown-status" class="visually-hidden" aria-live="polite" role="status"></div>
 
     <!-- ⏱️ Countdown Timer Script — Redirects to the DESTINATION (not fallback) -->
     <script>
@@ -278,7 +278,12 @@ if ($safeDestination !== '')
             var statusEl      = document.getElementById('countdown-status');
 
             // If no destination, redirect to fallback instead
-            var targetURL = (destinationURL && destinationURL !== '') ? destinationURL : fallbackURL;
+            var targetURL;
+            if (destinationURL && destinationURL !== '') {
+                targetURL = destinationURL;
+            } else {
+                targetURL = fallbackURL;
+            }
 
             var timer = setInterval(function() {
                 remaining--;
@@ -293,7 +298,13 @@ if ($safeDestination !== '')
 
                 // Announce at key moments for screen readers
                 if (statusEl && (remaining === 3 || remaining === 1)) {
-                    statusEl.textContent = 'Proceeding in ' + remaining + ' second' + (remaining !== 1 ? 's' : '');
+                    var secondLabel;
+                    if (remaining === 1) {
+                        secondLabel = ' second';
+                    } else {
+                        secondLabel = ' seconds';
+                    }
+                    statusEl.textContent = 'Proceeding in ' + remaining + secondLabel;
                 }
 
                 if (remaining <= 0) {

@@ -185,7 +185,7 @@ $invitations = getPendingInvitations($orgHandle);
                             <td>
                                 <?php echo g2ml_sanitiseOutput($member['displayName'] ?? ($member['firstName'] . ' ' . $member['lastName'])); ?>
                                 <?php if ((int) $member['userUID'] === $currentUser['userUID']) { ?>
-                                <span class="badge bg-info">You</span>
+                                <span class="badge bg-info text-dark">You</span>
                                 <?php } ?>
                                 <?php if ((int) $member['isSuspended']) { ?>
                                 <span class="badge bg-danger">Suspended</span>

@@ -124,12 +124,11 @@ list; these OVERRIDE default behaviour):
 
 ## 📌 Current status
 
-- **Active stage:** POLISH phase: WCAG reduced-motion/timing bundle
-  (#104/#105/#106) done. Next POLISH items: `bg-secondary` badge contrast
-  (<4.5:1) + per-second `aria-live` countdowns on Component-B interstitials +
-  `target="_blank"` new-window announcement; then FG-005 avatar priority
-  cascade (Low, autonomy-eligible); then VERIFY. Gated G-001..G-005 await
-  approval; local branch ahead of draft PR #130 (do not merge).
+- **Active stage:** POLISH: a11y bundles 1–2 done (#104/#105/#106 + badge
+  contrast + interstitial announcements). Next: FG-005 avatar priority
+  cascade (Low, autonomy-eligible) as a small feature, then the
+  theme-snippet house-rule sweep (B-044); then VERIFY. Gated G-001..G-005
+  await approval; local branch ahead of draft PR #130 (do not merge).
 - **Done so far:** Bootstrap complete. Codebase Map written and spot-verified
   against the tree. Backlog re-derived from the live GitHub issues (#1–#128) and
   the two 2026-06-04 audits. Confirmed via direct code inspection that commit
@@ -184,6 +183,13 @@ list; these OVERRIDE default behaviour):
   - No automated test suite — every fix needs empirical verification evidence.
 
 ## 🧾 Decision log
+
+### 2026-07-04 — A11y bundle 2: measure contrast rather than assume; single polite countdown announcement
+
+- **Decision:** For badge contrast (WCAG 1.4.3), measured actual ratios rather than trusting the audit's assumption — `bg-secondary` white-on-`#6c757d` came out at 4.69:1 and **PASSES** AA, so it was left unchanged; only `bg-info` (white-on-`#0dcaf0` ≈ 1.96:1, a genuine fail) was fixed, by adding `text-dark` at `web/Go2My.Link/_admin/public_html/pages/org/members/index.php:188`, matching the codebase's existing `bg-info text-dark` convention used elsewhere. For the Component-B interstitial countdowns, the visible per-second `#countdown` span had `aria-live` on it AND a separate off-screen `#countdown-status` region also announced — a double-announcement bug. Removed `aria-live` from the visible span (it is decorative; the status region owns announcements) and changed the status region from `aria-live="assertive"` to `aria-live="polite"` (a countdown is not urgent; assertive needlessly interrupts).
+- **Why not fix `bg-secondary` too:** Darkening a Bootstrap-default badge colour that already passes AA would be scope creep with no accessibility benefit and a visual-consistency cost across every page using it. Fixing only the genuine failure (`bg-info`) keeps the change surgical.
+- **New-window warning (`target="_blank"`) assessed, no change:** all such links already carry `rel="noopener noreferrer"` (the security-relevant part), and the "warn users a link opens in a new window" success criterion is WCAG 2.1 **AAA** (3.2.5) — above this project's AA target — so it is deferred as a documented non-gap, not silently dropped.
+- **Revisit if:** a future Bootstrap upgrade changes the default badge/state colours (re-measure contrast rather than assume), or if the project's compliance target is raised to AAA (then action the new-window warning).
 
 ### 2026-07-04 — Landing auto-transition: hard `<meta refresh>` removed (WCAG 2.2.1 Level A); JS auto-reload kept only for non-reduced-motion users and made non-trapping
 
@@ -370,6 +376,15 @@ list; these OVERRIDE default behaviour):
   `STR_TO_DATE` with `%Y-%m-%d %H:%i:%s` and an explicit NULL fallback.
 
 ## ⛳ Checkpoint log
+
+### Cycle 17 — 2026-07-04 — POLISH (a11y bundle 2: badge contrast + interstitial announcements)
+
+- **Items resolved:** B-024 (#107 interstitial per-second countdown double-announcement), B-025 (badge contrast — corrected finding).
+- **Evidence:** Audited every `badge bg-*` usage. `bg-secondary` white-on-`#6c757d` measures 4.69:1 → PASSES AA, left unchanged. One genuine failure fixed: `web/Go2My.Link/_admin/public_html/pages/org/members/index.php:188` `badge bg-info` (white on cyan `#0dcaf0` ≈ 1.96:1, FAIL) → added `text-dark` (dark-on-cyan ≈ 7.9:1), matching the codebase's existing `bg-info text-dark` convention elsewhere. Component-B interstitials (`web/G2My.Link/public_html/expired.php` + `validating.php`): removed a double-announcement bug — the visible `#countdown` span was itself `aria-live` AND a separate off-screen `#countdown-status` region also announced, so screen readers heard the count twice; removed `aria-live` from the visible span (decorative; the status region owns announcements) and changed the status region from `aria-live="assertive"` to `aria-live="polite"` (a countdown is not urgent). Also fixed 3 no-shorthand house-rule violations in both files' countdown JS: the plural `? 's' : ''` ternary → full `if/else` building a `secondLabel` variable, and `validating.php`'s `targetURL = (...) ? destinationURL : fallbackURL` → full `if/else`. Verified: `php -l` clean on all 3 changed files; no countdown ternary remains; visible span no longer live; both status regions polite; no residual white-on-info badge; `php tests/run.php` → 166 passed / 0 failed (unchanged). Bucket 1 (a11y).
+- **Assessed, no change:** `target="_blank"` links already carry `rel="noopener noreferrer"`; the "opens in new window" warning is WCAG **AAA** (3.2.5), above the AA target — deferred, not a gap. `bg-danger` badges (white-on-red ≈ 4.0:1) are a known Bootstrap-default limitation with no clean colour fix — left, noted.
+- **New backlog item:** B-044 — FOUC theme-init inline snippet's `? :` ternary is repeated repo-wide across page `<head>`s; queued for a dedicated mechanical house-rule cycle rather than fixed opportunistically here.
+- **Remaining:** Next: FG-005 avatar priority cascade (Low, autonomy-eligible) as a small feature, then the theme-snippet house-rule sweep (B-044); then VERIFY. Gated G-001..G-005 still await user approval.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; local branch is ahead of the draft PR #130 (do not merge) — needs re-push to refresh.
 
 ### Cycle 16 — 2026-07-04 — POLISH (WCAG reduced-motion + timing a11y bundle: #104/#105/#106)
 
@@ -771,14 +786,27 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
 - **id:** B-024
   **title:** Per-second countdown announcements on B interstitials spam screen readers
   **category:** a11y · **impact:** Medium · **component:** B
-  **source:** #107, audit §4 (WCAG 4.1.3) · **status:** OPEN. Remove `aria-live`
-  from the visible per-second counter; rely on the throttled status region.
+  **source:** #107, audit §4 (WCAG 4.1.3) · **status:** ✅ Done (cycle 17). Removed
+  `aria-live` from the visible `#countdown` span in `validating.php` +
+  `expired.php` — it was doubling up with the separate off-screen
+  `#countdown-status` region, so screen readers heard the count twice. The
+  status region alone now owns announcements, and was changed from
+  `aria-live="assertive"` to `aria-live="polite"` (a countdown is not urgent;
+  assertive needlessly interrupts). Verified: no residual double-announcement
+  source; `php -l` clean on both files.
 
 - **id:** B-025
   **title:** `bg-secondary` badges fall below 4.5:1 contrast and are used pervasively
   **category:** a11y · **impact:** Medium · **component:** A
-  **source:** audit §4 (WCAG 1.4.3) · **status:** OPEN. Darken the secondary badge
-  (≈`#565e64`); verify `bg-info`/`bg-warning`.
+  **source:** audit §4 (WCAG 1.4.3) · **status:** ✅ Done (cycle 17) — finding
+  corrected on measurement. `bg-secondary` white-on-`#6c757d` measures 4.69:1
+  and PASSES AA; left unchanged (the audit's assumed fail was not borne out).
+  `bg-info` was the genuine failure (white-on-`#0dcaf0` ≈ 1.96:1) — fixed at
+  `web/Go2My.Link/_admin/public_html/pages/org/members/index.php:188` by
+  adding `text-dark` (dark-on-cyan ≈ 7.9:1), matching the codebase's existing
+  `bg-info text-dark` convention elsewhere. `bg-danger` (white-on-red ≈ 4.0:1)
+  is a known Bootstrap-default limitation with no clean colour fix — left,
+  noted.
 
 - **id:** B-026
   **title:** Go2My.Link landing logo has empty `alt` text (undefined `$siteName`)
@@ -900,6 +928,18 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
   (`sp_lookupShortURL` success/expired/not_found/not_yet_active). All green; lint
   clean. Lead re-ran independently: 35 passed / 0 failed, exit 0.
 
+- **id:** B-044
+  **title:** House-rule sweep: FOUC theme-init inline snippet uses a `? :` ternary
+  **category:** quality (house-rule/tech-debt) · **impact:** Low · **component:** A/B/C/shared
+  **source:** found cycle 17 · **status:** OPEN. The FOUC-prevention inline
+  `<script>` repeated across page `<head>`s (`t = (...matchMedia...) ? 'dark' :
+  'light'`) uses a shorthand ternary, violating the no-shorthand house rule.
+  Low-risk/mechanical — convert every occurrence to a full `if/else` in a
+  dedicated mechanical cycle rather than opportunistically, so the repo-wide
+  pattern is made consistent in one pass. Related to the broader B-036 (#117)
+  shorthand sweep but called out separately because it is one very widely
+  repeated snippet worth its own pass.
+
 ## 💡 Proposed-Features ledger
 
 <!-- `propose`-disposition / spec-gate feature candidates live in FEATURES.md
@@ -930,3 +970,4 @@ Baseline metrics measured at DISCOVER seed; every cycle appends a row.
 | 2026-07-04 | 14 | COMPLETE — auto-built FG-003 (autonomy-eligible) | 27 (unchanged on GitHub) | 0 open | 15 open (B-019 ✅) | 10 open | clean (php -l on all changed files + new tests) | 141 unit / 18 integration (9 new unit: `tests/unit/info_display_destination_test.php`) | FG-003 info-page public-vs-authenticated view (#23) BUILT under the autonomy test (Bucket 1: table-stakes + in-scope + risk:Low + non-destructive) — the page docblock already documented the intent and short URLs redirect publicly so the destination is not secret. New pure helper `g2ml_infoDisplayDestination(array $linkData, bool $isAuthenticated): string` in new file `web/Go2My.Link/_functions/info_display.php` (returns the full destination when authenticated, masked domain[/...] when not, '' when none — old inline masking moved into it). `pages/info/index.php`: authenticated viewers (ANY authenticated viewer, not owner-only, per the docblock intent) see the full destination as escaped text (`g2ml_sanitiseOutput`, not a clickable link — no scheme/XSS vector); anonymous viewers keep the masked domain plus a new accessible "Log in to see the full destination" prompt linking to `/login` (no redirect-back param, avoiding open-redirect). New i18n key `info.login_for_full` in seed `010_phase6_translations.sql`. 141 unit pass (+9, was 132); lint clean; render harness confirmed a hostile payload is fully HTML-escaped for the authed view. B-019 (#23) marked done. |
 | 2026-07-04 | 15 | COMPLETE — auto-built FG-004 (autonomy-eligible); **completes COMPLETE** | 27 (unchanged on GitHub) | 0 open | 15 open | 10 open | clean (php -l on all changed files + new tests) | 166 unit / 18 integration (25 new unit: `tests/unit/api_response_test.php`) | FG-004 XML+XSLT API output BUILT under the autonomy test (Bucket 1: feature + refactor-under-test-net) — brief §8.2 required JSON (default) + XML with embedded XSLT; `api/create/index.php` previously had 10 repeated `json_encode` blocks and no XML path. New `web/_functions/api_response.php` (`g2ml_apiRespond()` + pure `g2ml_apiWantsXml()`/`g2ml_arrayToXml()`/`g2ml_buildApiXmlDocument()`) and new XSLT `web/Go2My.Link/public_html/api/create/response.xsl`; `api/create/index.php` refactored to one `g2ml_apiRespond()` call (0 `json_encode` left), with the structured branch now also triggering on `?format=xml` / `Accept: application/xml`; helper registered in `page_init.php`. JSON stays the default and is byte-identical to before (subprocess diff); XML emits a `<response>` document with a stylesheet PI, all values `htmlspecialchars` ENT_XML1-escaped (hostile payload proven escaped, lossless); no-JS redirect fallback and all status codes (405/403/422/429/201) + messages preserved. 166 unit pass (+25, was 141); lint clean; `xmllint` confirms well-formed output; dedup confirmed (0 `json_encode` remaining). **COMPLETE phase complete: all four autonomy-eligible gaps (FG-001..FG-004) built; remaining feature gaps are the gated G-001..G-005, awaiting user approval. Advancing to POLISH.** |
 | 2026-07-04 | 16 | POLISH — WCAG reduced-motion + timing a11y bundle (#104/#105/#106) | 27 (unchanged on GitHub) | 0 open (B-007 resolved this cycle) | 13 open (B-022 + B-023 ✅) | 10 open | clean (`php -l` on the 3 landings; `node --check` on `app.js`) | 166 unit / 18 integration (unchanged — no new test files; verified via `matchMedia` guard checks + `php -l` + `node --check`) | Removed the hard `<meta http-equiv="refresh" content="900">` timing trap (WCAG 2.2.1 Level A) from all three landing pages (web/Go2My.Link, web/G2My.Link, web/Lnks.page); countdown-ring auto-reload now non-trapping — disabled under `prefers-reduced-motion`, otherwise reloads only when visible AND no form control focused. rAF ring loop now checks `matchMedia('(prefers-reduced-motion: reduce)')` directly (was CSS-only gated, giving a false impression of compliance). Main site: global `@media (prefers-reduced-motion: reduce)` CSS block in `style.css` + `scrollIntoView` gate in `app.js`. 0 `http-equiv="refresh"` remaining; `matchMedia` guards present in each landing + `app.js`; 166 tests unchanged (no PHP behaviour touched). |
+| 2026-07-04 | 17 | POLISH — a11y bundle 2 (badge contrast + interstitial announcements) | 27 (unchanged on GitHub) | 0 open | 11 open (B-024 + B-025 ✅) | 11 open (B-044 new) | clean (`php -l` on all 3 changed files) | 166 unit / 18 integration (unchanged — no new test files; verified via measured contrast ratios + aria-live audit + `php -l`) | Audited all `badge bg-*` usages: `bg-secondary` white-on-`#6c757d` measures 4.69:1 → PASSES AA, left unchanged (audit's assumed fail corrected). Genuine failure fixed: `bg-info` white-on-`#0dcaf0` ≈ 1.96:1 at `web/Go2My.Link/_admin/public_html/pages/org/members/index.php:188` → added `text-dark` (≈7.9:1), matching the existing `bg-info text-dark` convention elsewhere. Component-B interstitials (`validating.php` + `expired.php`): removed a double-announcement bug — `aria-live` taken off the visible `#countdown` span, the separate off-screen `#countdown-status` region (which alone now owns announcements) changed `assertive`→`polite` (a countdown is not urgent). Also fixed 3 no-shorthand violations in the same files' countdown JS (plural `? 's' : ''` ternary and validating.php's `targetURL = (...) ? destinationURL : fallbackURL` → full `if/else`). Assessed, no change: `target="_blank"` new-window warning is WCAG AAA (3.2.5), out of AA scope, and all such links already carry `rel="noopener noreferrer"`; `bg-danger` (≈4.0:1) is a known Bootstrap-default limitation with no clean colour fix. New backlog item B-044 opened: FOUC theme-init snippet's `? :` ternary repeated repo-wide — queued for a dedicated mechanical house-rule cycle. 166 tests unchanged (no PHP runtime behaviour changed). |
