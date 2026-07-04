@@ -129,7 +129,7 @@
     "stale_after_min": 90
   },
   "branch": "autopilot/2026-06-05",
-  "last_commit": "090fbf1",
+  "last_commit": "dfbdc96",
   "trajectory_ref": "PROJECT.md#Trajectory-ledger",
   "terminal": false,
   "delay": 90,
