@@ -118,7 +118,7 @@ list; these OVERRIDE default behaviour):
 
 ## 📌 Current status
 
-- **Active stage:** COMPLETE (STABILIZE re-open resolved — B-042 + B-043 both fixed). Next: resume COMPLETE — auto-build FG-002 (tags), FG-003 (info-page public-vs-auth view), FG-004 (XML+XSLT). Gated G-001..G-005 await approval. Note: branch pushed + draft PR #130 open (do not merge); commits after #130 are local until re-pushed.
+- **Active stage:** COMPLETE phase: FG-001 + FG-002 built. Next: FG-003 (info-page public-vs-authenticated view #23), then FG-004 (XML+XSLT API output). Gated G-001..G-005 await approval. Note: local branch is ahead of draft PR #130 (do not merge) — re-push to refresh.
 - **Done so far:** Bootstrap complete. Codebase Map written and spot-verified
   against the tree. Backlog re-derived from the live GitHub issues (#1–#128) and
   the two 2026-06-04 audits. Confirmed via direct code inspection that commit
@@ -173,6 +173,13 @@ list; these OVERRIDE default behaviour):
   - No automated test suite — every fix needs empirical verification evidence.
 
 ## 🧾 Decision log
+
+### 2026-07-04 — FG-002 (tags on links) auto-built under the autonomy test; find-or-create per org, post-commit attach with per-tag isolation
+
+- **Decision:** FG-002 (tags on short links) was auto-built without user gate approval under the autopilot autonomy test: table-stakes feature, explicitly in-scope per brief line 91 (categories *and* tags), risk Low, non-destructive. The `tblTags`/`tblShortURLTags` schema (schema 020) existed but had zero PHP references — categories were wired, tags were defined-only. Tags find-or-create per org via the existing `UQ_tag_org` unique key; the junction insert uses `INSERT IGNORE` (idempotent, no duplicate-key noise); attaching tags happens strictly AFTER the short-URL row commits, and each tag is wrapped in its own try/catch so a single tag failure never rolls back or fails the short-URL create. Slugs are ASCII-only (`g2ml_slugifyTag()`); the display name preserves the user's original casing/spacing. A hard cap of `G2ML_MAX_TAGS_PER_LINK` = 10 prevents unbounded junction growth from a single request.
+- **Why post-commit + per-tag try/catch:** Tags are a secondary enrichment, not core to the short URL's existence — the create form's primary promise (a working short link) must not fail because of a tag-layer problem (e.g. a pathological slug collision or a transient DB hiccup on one tag among several). Mirrors the same "never let the enrichment path break the core path" principle already used for activity logging.
+- **Scope boundary:** Edit-form tag management (add/remove tags on an existing link) and tag-based filtering on the links index are explicit follow-ups, not built this cycle — captured as the FG-002 out-of-scope note in `FEATURES.md` rather than silently left undone.
+- **Revisit if:** tag volume per org grows large enough that the `IN(...)` badge-rendering query needs pagination-aware batching, or if the edit-form/filtering follow-ups surface a need to revisit the find-or-create/junction approach.
 
 ### 2026-07-04 — `logActivity()` bind_param type-string must equal column/placeholder/variable count AND match each column type
 
@@ -330,6 +337,13 @@ list; these OVERRIDE default behaviour):
   `STR_TO_DATE` with `%Y-%m-%d %H:%i:%s` and an explicit NULL fallback.
 
 ## ⛳ Checkpoint log
+
+### Cycle 13 — 2026-07-04 — COMPLETE (auto-built FG-002; tags on links)
+
+- **Items resolved:** FG-002 — tags on short links (auto-built under the autonomy test); B-020 marked done for the create-path (custom suffix/alias from FG-001 + tags from FG-002).
+- **Evidence:** `web/Go2My.Link/_functions/shorturl_create.php` — new helpers `g2ml_slugifyTag()`, `g2ml_normaliseTags()`, `g2ml_findOrCreateTag()`, `g2ml_attachTagsToShortURL()`; `createShortURL()` attaches tags AFTER the row insert, find-or-create per org via `UQ_tag_org`, junction via `INSERT IGNORE`, each tag in its own try/catch so a tag failure never rolls back the short URL; capped at `G2ML_MAX_TAGS_PER_LINK` = 10. `web/Go2My.Link/_admin/public_html/pages/links/create/index.php` — optional comma-separated "Tags" field. `web/Go2My.Link/_admin/public_html/pages/links/index.php` — tag badges rendered via ONE query joining `tblShortURLTags`→`tblTags` for the page's short-URL UIDs, using a dynamically-sized bound `IN(...)` clause (no N+1; confirmed placeholder-only, no interpolation); badges use `role="list"` for accessibility. Regression: `tests/unit/tags_normalise_test.php` (19 tests) + `tests/integration/tags_create_test.php` (5 tests). Lead re-ran: 132 unit + 18 integration pass; lint clean. 5 acceptance criteria verified.
+- **Remaining:** Edit-form tag management and tag-based filtering deferred as explicit follow-ups (out of scope this cycle; captured in `FEATURES.md`). Next: FG-003 (info-page public-vs-authenticated view, #23), then FG-004 (XML+XSLT API output). Gated gaps G-001..G-005 still awaiting user approval.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; local branch is ahead of the draft PR #130 (do not merge) — needs re-push to refresh.
 
 ### Cycle 11 — 2026-07-04 — STABILIZE re-open (fixed B-042; surfaced B-043)
 
@@ -658,8 +672,11 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
 - **id:** B-020
   **title:** Dashboard create/edit do not expose custom suffix, alias, or tags (#30)
   **category:** correctness (feature gap) · **impact:** Medium · **component:** A
-  **source:** #30, audit §7.2/§8.3 · **status:** OPEN (closed-but-partial). The
-  brief's headline authenticated feature is absent from the forms. In-scope.
+  **source:** #30, audit §7.2/§8.3 · **status:** ✅ Done (cycle 13, create-path).
+  Custom suffix/alias built on the create form (FG-001, cycle 10); tags built on
+  the create form + links index (FG-002, cycle 13). Edit-form alias/tag
+  management and tag-based filtering remain deferred (see FEATURES.md FG-002
+  out-of-scope note) — track any further work there, not against this item.
 
 - **id:** B-021
   **title:** Alias-chain integrity: app-level cycle/target validation; `destinationType` unused
@@ -837,3 +854,4 @@ Baseline metrics measured at DISCOVER seed; every cycle appends a row.
 | 2026-06-29 | 10 | COMPLETE — auto-built FG-001 (autonomy-eligible); surfaced B-042 | 27 (unchanged on GitHub) | 1 open (B-042 new) | 17 open | 10 open | clean (php -l across all changed files + new tests) | 110 unit / 11 integration (25 new unit: `tests/unit/custom_alias_test.php`; 6 new integration: `tests/integration/custom_alias_create_test.php`) | FG-001 custom short-suffix/alias BUILT under the autonomy test (table-stakes, in-scope per brief lines 90–92, risk:Low, non-destructive). `createShortURL()` gains `customCode` option — validates `^[A-Za-z0-9_-]{3,50}$`, blocks reserved words via `g2ml_isReservedShortCode()`, hard-errors "That alias is already taken." on duplicate (errno 1062, no random fallback); empty/absent → existing random+retry path unchanged. Dashboard create form adds optional "Custom alias" field with label + help text + error re-display; anonymous/public API path untouched. 5 acceptance criteria demonstrated. New bug B-042 surfaced: `logActivity()` bind-type mismatch throws on every create — swallowed silently but breaks audit logging and likely undermines per-IP rate-limit. Re-opening STABILIZE next to fix B-042. |
 | 2026-07-04 | 11 | STABILIZE (re-open) — fixed B-042; surfaced B-043 | 27 (unchanged on GitHub) | 0 open | 18 open (B-043 new) | 10 open | clean (php -l on changed files) | 110 unit / 13 integration (2 new integration: `tests/integration/activity_log_test.php`) | `logActivity()` bind-param type-string off-by-one fixed (B-042) — 20-char string against 21 columns/placeholders/variables, plus `ipAddress` mis-typed `i`, corrected to `'ssisisssssssssssssiis'`. Evidence: BEFORE → type-string error, 0 rows inserted; AFTER → 1 row inserted; 5 create events → 5 countable `tblActivityLog` rows (per-IP rate-limit restored). 110 unit + 13 integration pass. New bug surfaced: B-043 — `_g2ml_parseUserAgent()` regex delimiter bug (`preg_quote()` missing `/` arg) breaks bot detection silently (`isBot` never set); queued next (same file, quick correctness fix). |
 | 2026-07-04 | 12 | STABILIZE (re-open) — fixed B-043; **re-open resolved** | 27 (unchanged on GitHub) | 0 open | 17 open (B-043 ✅) | 10 open | clean (php -l on changed files) | 113 unit / 13 integration (1 new unit: `tests/unit/user_agent_bot_test.php`) | B-043 fixed: `_g2ml_parseUserAgent()` now escapes each bot pattern with `preg_quote($p, '/')` (full closure, no shorthand), so `'Java/'` no longer closes the `/…/` delimiter — bot detection works (`isBot` set) with no PCRE warning. Regression test (Java/ bot, Googlebot, non-bot Chrome). 113 unit pass; lint clean. STABILIZE re-open resolved; resuming COMPLETE (FG-002 tags next). |
+| 2026-07-04 | 13 | COMPLETE — auto-built FG-002 (autonomy-eligible) | 27 (unchanged on GitHub) | 0 open | 16 open (B-020 ✅ create-path) | 10 open | clean (php -l on all changed files + new tests) | 132 unit / 18 integration (19 new unit: `tests/unit/tags_normalise_test.php`; 5 new integration: `tests/integration/tags_create_test.php`) | FG-002 tags on links BUILT under the autonomy test (Bucket 1: table-stakes + in-scope + risk:Low + non-destructive) — `tblTags`/`tblShortURLTags` schema existed since schema 020 but had zero PHP references. Wired up via find-or-create per org (`UQ_tag_org`), junction insert via `INSERT IGNORE`, tags attached AFTER the short-URL row insert with each tag in its own try/catch (a tag failure never rolls back the create); slug ASCII-only via `g2ml_slugifyTag()`, display name preserves original casing/spacing; capped at `G2ML_MAX_TAGS_PER_LINK` = 10. Dashboard create form gains an optional comma-separated "Tags" field; links index renders WCAG-accessible tag badges (`role="list"`) via one dynamically-sized bound `IN(...)` query for the page's short-URL UIDs — no N+1, confirmed placeholder-only (no interpolation). 132 unit + 18 integration pass (was 113/13); 5 acceptance criteria demonstrated. B-020 (dashboard alias/tags gap) marked done for the create-path; edit-form tag management and tag-based filtering deferred as explicit follow-ups. |

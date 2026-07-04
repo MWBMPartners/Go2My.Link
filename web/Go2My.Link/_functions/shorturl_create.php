@@ -103,6 +103,264 @@ function g2ml_isReservedShortCode(string $code): bool
 }
 
 // ============================================================================
+// 🏷️ Tag constants — shared bounds for the link-tagging feature (FG-002)
+// ============================================================================
+// tblTags.tagName and tblTags.tagSlug are both VARCHAR(100); we never emit a
+// value that could exceed that column width. A per-link cap keeps a single
+// create from fanning out into an unbounded number of tag rows/junction rows.
+//
+// 📖 Reference: web/_sql/schema/020_shorturls_categories_tags.sql (tblTags)
+// ============================================================================
+if (!defined('G2ML_TAG_MAX_LENGTH'))
+{
+    define('G2ML_TAG_MAX_LENGTH', 100);
+}
+
+if (!defined('G2ML_MAX_TAGS_PER_LINK'))
+{
+    define('G2ML_MAX_TAGS_PER_LINK', 10);
+}
+
+// ============================================================================
+// 🏷️ g2ml_slugifyTag — derive a URL-safe slug for a tag (FG-002)
+// ============================================================================
+// Slug rules: lowercase; every run of characters that is not an ASCII letter
+// or digit collapses to a single hyphen; leading/trailing hyphens are trimmed;
+// the result is bounded to the tblTags.tagSlug VARCHAR(100) column. A tag with
+// no alphanumeric content (e.g. "!!!") yields an empty slug and is skipped by
+// the caller. Pure function — no database access.
+//
+// 📖 Reference: https://www.php.net/manual/en/function.preg-replace.php
+//
+// @param  string $tag  The raw tag text.
+// @return string       The derived slug (may be '' when nothing usable remains).
+// ============================================================================
+function g2ml_slugifyTag(string $tag): string
+{
+    $lower = mb_strtolower(trim($tag), 'UTF-8');
+    $slug  = preg_replace('/[^a-z0-9]+/', '-', $lower);
+
+    if ($slug === null)
+    {
+        return '';
+    }
+
+    $slug = trim($slug, '-');
+
+    if (strlen($slug) > G2ML_TAG_MAX_LENGTH)
+    {
+        $slug = substr($slug, 0, G2ML_TAG_MAX_LENGTH);
+        $slug = trim($slug, '-');
+    }
+
+    return $slug;
+}
+
+// ============================================================================
+// 🏷️ g2ml_normaliseTags — parse and normalise a tag input (FG-002)
+// ============================================================================
+// Accepts either a comma-separated string or an array of raw tag strings and
+// returns an ordered list of ['name' => ..., 'slug' => ...] entries. Empty
+// tags and tags that slugify to nothing are skipped; entries are de-duplicated
+// by slug (so "Marketing" and "marketing" collapse to one); the list is capped
+// at $maxTags. Display names are trimmed and bounded to VARCHAR(100). Pure
+// function — no database access.
+//
+// @param  string|array $tags     Comma-separated string OR array of raw tags.
+// @param  int          $maxTags  Maximum number of tags to keep (0 = no cap).
+// @return array<int, array{name: string, slug: string}>
+// ============================================================================
+function g2ml_normaliseTags(string|array $tags, int $maxTags = G2ML_MAX_TAGS_PER_LINK): array
+{
+    if (is_string($tags))
+    {
+        $rawList = explode(',', $tags);
+    }
+    else
+    {
+        $rawList = $tags;
+    }
+
+    $normalised = [];
+    $seenSlugs  = [];
+
+    foreach ($rawList as $rawTag)
+    {
+        if ($maxTags > 0 && count($normalised) >= $maxTags)
+        {
+            break;
+        }
+
+        if (!is_string($rawTag))
+        {
+            continue;
+        }
+
+        $name = trim($rawTag);
+
+        if ($name === '')
+        {
+            continue;
+        }
+
+        $slug = g2ml_slugifyTag($name);
+
+        if ($slug === '')
+        {
+            continue;
+        }
+
+        if (isset($seenSlugs[$slug]))
+        {
+            continue;
+        }
+
+        if (mb_strlen($name, 'UTF-8') > G2ML_TAG_MAX_LENGTH)
+        {
+            $name = mb_substr($name, 0, G2ML_TAG_MAX_LENGTH, 'UTF-8');
+        }
+
+        $seenSlugs[$slug] = true;
+        $normalised[]     = [
+            'name' => $name,
+            'slug' => $slug,
+        ];
+    }
+
+    return $normalised;
+}
+
+// ============================================================================
+// 🏷️ g2ml_findOrCreateTag — resolve a tag's UID within an org (FG-002)
+// ============================================================================
+// Find-or-create keyed on UQ_tag_org (tagSlug, orgHandle). The common reuse
+// path is a single prepared SELECT that consumes no auto-increment id. When the
+// tag is absent we INSERT; if a concurrent create wins the race and trips the
+// unique key (MySQL errno 1062), we re-SELECT so we still return the winning
+// row's tagUID. Every statement is prepared — no SQL is built from user input.
+//
+// 📖 Reference: web/_functions/db_query.php — dbSelectOne(), dbInsert(), dbLastErrno()
+//
+// @param  string $tagName    Display name (already trimmed/bounded).
+// @param  string $tagSlug    URL-safe slug (already derived, non-empty).
+// @param  string $orgHandle  Owning organisation handle.
+// @return int                The tag's UID, or 0 when it could not be resolved.
+// ============================================================================
+function g2ml_findOrCreateTag(string $tagName, string $tagSlug, string $orgHandle): int
+{
+    $existing = dbSelectOne(
+        "SELECT tagUID FROM tblTags WHERE tagSlug = ? AND orgHandle = ? LIMIT 1",
+        'ss',
+        [$tagSlug, $orgHandle]
+    );
+
+    if ($existing !== null && $existing !== false && isset($existing['tagUID']))
+    {
+        return (int) $existing['tagUID'];
+    }
+
+    $inserted = dbInsert(
+        "INSERT INTO tblTags (tagName, tagSlug, orgHandle, createdAt) VALUES (?, ?, ?, NOW())",
+        'sss',
+        [$tagName, $tagSlug, $orgHandle]
+    );
+
+    if (is_int($inserted) && $inserted > 0)
+    {
+        return $inserted;
+    }
+
+    // The insert yielded no id. If it failed on the unique key, another request
+    // created the same tag concurrently — re-select to obtain its id.
+    if ($inserted === false && dbLastErrno() === 1062)
+    {
+        $raced = dbSelectOne(
+            "SELECT tagUID FROM tblTags WHERE tagSlug = ? AND orgHandle = ? LIMIT 1",
+            'ss',
+            [$tagSlug, $orgHandle]
+        );
+
+        if ($raced !== null && $raced !== false && isset($raced['tagUID']))
+        {
+            return (int) $raced['tagUID'];
+        }
+    }
+
+    return 0;
+}
+
+// ============================================================================
+// 🏷️ g2ml_attachTagsToShortURL — link tags to a created short URL (FG-002)
+// ============================================================================
+// Normalises the supplied tags, finds-or-creates each within the org, and links
+// it to the short URL via tblShortURLTags using INSERT IGNORE (so re-adding an
+// already-linked tag is a harmless no-op rather than a duplicate-key error).
+//
+// Robustness: tags are purely additive. This function is called AFTER the short
+// URL row is committed and is fully defensive — every per-tag failure is logged
+// and swallowed so it can never roll back or break the already-created short
+// URL. Returns the number of tags successfully linked.
+//
+// 📖 Reference: web/_sql/schema/020_shorturls_categories_tags.sql (tblShortURLTags)
+//
+// @param  int          $urlUID     The created short URL's urlUID (insert_id).
+// @param  string       $orgHandle  Owning organisation handle.
+// @param  string|array $tags       Comma-separated string OR array of raw tags.
+// @return int                      Count of tags successfully linked.
+// ============================================================================
+function g2ml_attachTagsToShortURL(int $urlUID, string $orgHandle, string|array $tags): int
+{
+    if ($urlUID <= 0)
+    {
+        return 0;
+    }
+
+    $normalised = g2ml_normaliseTags($tags);
+
+    if (count($normalised) === 0)
+    {
+        return 0;
+    }
+
+    $linkedCount = 0;
+
+    foreach ($normalised as $tag)
+    {
+        try
+        {
+            $tagUID = g2ml_findOrCreateTag($tag['name'], $tag['slug'], $orgHandle);
+
+            if ($tagUID <= 0)
+            {
+                error_log('[Go2My.Link] WARNING: could not resolve tag slug "' . $tag['slug'] . '" for org: ' . $orgHandle . ' — skipping.');
+                continue;
+            }
+
+            $junctionResult = dbInsert(
+                "INSERT IGNORE INTO tblShortURLTags (urlUID, tagUID) VALUES (?, ?)",
+                'ii',
+                [$urlUID, $tagUID]
+            );
+
+            if ($junctionResult === false)
+            {
+                error_log('[Go2My.Link] WARNING: failed to link tag ' . $tagUID . ' to URL ' . $urlUID . ' — skipping.');
+                continue;
+            }
+
+            $linkedCount = $linkedCount + 1;
+        }
+        catch (Throwable $tagError)
+        {
+            error_log('[Go2My.Link] WARNING: tag attach threw for URL ' . $urlUID . ': ' . $tagError->getMessage());
+            continue;
+        }
+    }
+
+    return $linkedCount;
+}
+
+// ============================================================================
 // ✨ createShortURL — Create a new short URL
 // ============================================================================
 // Creates a new short URL record in tblShortURLs. Generates a unique random
@@ -130,6 +388,12 @@ function g2ml_isReservedShortCode(string $code): bool
 //                  verbatim as the short code; a duplicate alias fails with a
 //                  clear error and is NEVER silently regenerated. When empty or
 //                  absent, a random code is generated as before.
+//   - tags:        (string|array|null) Authenticated-only optional tags (FG-002).
+//                  A comma-separated string or an array of raw tag strings. Each
+//                  is normalised, found-or-created per org, and linked to the new
+//                  short URL AFTER it is committed. Tag handling is additive and
+//                  fully defensive: a tag failure never rolls back or breaks the
+//                  created short URL. Empty/absent = no tags (public path default).
 // @return array  ['success' => bool, 'shortCode' => ?string,
 //                 'shortURL' => ?string, 'error' => ?string]
 // ============================================================================
@@ -477,6 +741,35 @@ function createShortURL(string $longURL, array $options = []): array
     // ========================================================================
     $shortDomain = getDefaultShortDomain($orgHandle);
     $shortURL    = 'https://' . $shortDomain . '/' . $shortCode;
+
+    // ========================================================================
+    // 🏷️ Step 6b: Attach optional tags (authenticated dashboard — FG-002)
+    // ========================================================================
+    // Tags are additive metadata supplied only by the authenticated dashboard.
+    // They are found-or-created per organisation and linked via tblShortURLTags.
+    // This runs AFTER the short URL row is committed (the insert_id is the
+    // urlUID) and is fully defensive: any tag failure is logged and swallowed so
+    // it can never roll back or break the created short URL. The anonymous /
+    // public create path never sets 'tags', so this is a no-op there.
+    //
+    // 📖 Reference: g2ml_attachTagsToShortURL() above
+    // ========================================================================
+    $tagsOption = $options['tags'] ?? null;
+
+    if (($tagsOption !== null)
+        && (is_string($tagsOption) || is_array($tagsOption))
+        && is_int($insertResult)
+        && $insertResult > 0)
+    {
+        try
+        {
+            g2ml_attachTagsToShortURL((int) $insertResult, $orgHandle, $tagsOption);
+        }
+        catch (Throwable $tagAttachError)
+        {
+            error_log('[Go2My.Link] WARNING: tag attach failed for URL ' . $insertResult . ': ' . $tagAttachError->getMessage());
+        }
+    }
 
     // ========================================================================
     // 📊 Step 7: Log the creation activity

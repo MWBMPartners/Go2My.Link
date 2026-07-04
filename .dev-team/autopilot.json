@@ -50,7 +50,7 @@
   "phase_cursor": 3,
   "state": "RUNNING",
   "cursor": null,
-  "next_action": "COMPLETE: resume auto-building autonomy-eligible in-scope gaps \u2014 FG-002 (tags: tblTags/tblShortURLTags exist in schema but are never read by app code; add optional tag input on dashboard create + display on the link list), then FG-003 (info-page public-vs-authenticated view #23), FG-004 (XML+XSLT API output). Gated G-001..G-005 await user approval.",
+  "next_action": "COMPLETE: build FG-003 \u2014 info-page public-vs-authenticated view (#23). web/Go2My.Link/public_html/pages/info/index.php currently ALWAYS masks the destination; add an isAuthenticated()/ownership branch so a logged-in owner sees the full destination + link details while anonymous visitors keep the masked/safe view. Then FG-004 (XML+XSLT API output). Gated G-001..G-005 await user approval.",
   "queue": {
     "backlog": "PROJECT.md#Backlog",
     "feature_gaps": "FEATURES.md",
@@ -105,6 +105,15 @@
       "status": "built",
       "cleared_by": "autonomy-test",
       "justification": "table-stakes + in-scope (brief 90-92) + risk:Low + non-destructive; built cycle 10, 110 unit + 11 integration pass."
+    },
+    {
+      "id": "G-007",
+      "kind": "feature",
+      "title": "FG-002 tags on links",
+      "spec_ref": "FEATURES.md#FG-002",
+      "status": "built",
+      "cleared_by": "autonomy-test",
+      "justification": "unused tblTags/tblShortURLTags schema wired up; table-stakes + in-scope + risk:Low + non-destructive; built cycle 13, 132 unit + 18 integration pass."
     }
   ],
   "blocked": {
@@ -112,7 +121,7 @@
     "reason": null,
     "since": null
   },
-  "cycle": 12,
+  "cycle": 13,
   "cap": 60,
   "gates": "hybrid",
   "feature_completeness": "in-scope",
@@ -129,10 +138,10 @@
     "stale_after_min": 90
   },
   "branch": "autopilot/2026-06-05",
-  "last_commit": "27ee0b5",
+  "last_commit": "3c59824",
   "trajectory_ref": "PROJECT.md#Trajectory-ledger",
   "terminal": false,
   "delay": 90,
-  "updated": "2026-07-04T02:21:29Z",
+  "updated": "2026-07-04T02:39:34Z",
   "ops_note": "Release the lease with `rm -rf .dev-team/loop.lock` (a `holder` file lives inside, so `rmdir` fails and would stall the next cycle)."
 }

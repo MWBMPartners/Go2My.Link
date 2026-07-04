@@ -133,7 +133,7 @@ $linksParams[] = $perPage;
 $linksParams[] = $offset;
 
 $links = dbSelect(
-    "SELECT s.shortCode, s.destinationURL, s.title, s.clickCount,
+    "SELECT s.urlUID, s.shortCode, s.destinationURL, s.title, s.clickCount,
             s.isActive, s.createdAt, s.startDate, s.endDate,
             c.categoryName
      FROM tblShortURLs s
@@ -148,6 +148,58 @@ $links = dbSelect(
 if ($links === false)
 {
     $links = [];
+}
+
+// ============================================================================
+// 🏷️ Tags for the listed links (FG-002)
+// ============================================================================
+// Fetch every tag for the links on this page in ONE query (avoids an N+1 loop)
+// by binding the page's urlUIDs into a dynamically sized IN (...) clause. The
+// placeholder count is derived from the number of rows on the page (structure,
+// not user data); every bound value is still a prepared-statement parameter, so
+// no value is interpolated into SQL. Results are grouped into $tagsByURL keyed
+// by urlUID for O(1) lookup while rendering.
+//
+// 📖 Reference: web/_sql/schema/020_shorturls_categories_tags.sql (tblShortURLTags, tblTags)
+// ============================================================================
+$tagsByURL = [];
+
+if (count($links) > 0)
+{
+    $urlUIDs = [];
+
+    foreach ($links as $link)
+    {
+        $urlUIDs[] = (int) $link['urlUID'];
+    }
+
+    $tagPlaceholders = implode(', ', array_fill(0, count($urlUIDs), '?'));
+    $tagTypes        = str_repeat('i', count($urlUIDs));
+
+    $tagRows = dbSelect(
+        "SELECT st.urlUID, t.tagName, t.tagSlug
+         FROM tblShortURLTags st
+         INNER JOIN tblTags t ON st.tagUID = t.tagUID
+         WHERE st.urlUID IN (" . $tagPlaceholders . ")
+         ORDER BY t.tagName ASC",
+        $tagTypes,
+        $urlUIDs
+    );
+
+    if ($tagRows !== false)
+    {
+        foreach ($tagRows as $tagRow)
+        {
+            $ownerUID = (int) $tagRow['urlUID'];
+
+            if (!isset($tagsByURL[$ownerUID]))
+            {
+                $tagsByURL[$ownerUID] = [];
+            }
+
+            $tagsByURL[$ownerUID][] = $tagRow['tagName'];
+        }
+    }
 }
 
 // Get default short domain
@@ -253,6 +305,20 @@ if (function_exists('getDefaultShortDomain')) {
                                     </a>
                                     <?php if (!empty($link['title'])) { ?>
                                     <br><small class="text-body-secondary"><?php echo g2ml_sanitiseOutput($link['title']); ?></small>
+                                    <?php } ?>
+                                    <?php
+                                        $rowTags = $tagsByURL[(int) $link['urlUID']] ?? [];
+                                    if (count($rowTags) > 0) {
+                                    ?>
+                                    <div class="mt-1 d-flex flex-wrap gap-1" role="list"
+                                         aria-label="<?php if (function_exists('__')) { echo __('links.tags_label'); } else { echo 'Tags'; } ?>">
+                                        <?php foreach ($rowTags as $rowTag) { ?>
+                                        <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis border" role="listitem">
+                                            <i class="fas fa-tag" aria-hidden="true"></i>
+                                            <?php echo g2ml_sanitiseOutput($rowTag); ?>
+                                        </span>
+                                        <?php } ?>
+                                    </div>
                                     <?php } ?>
                                 </td>
                                 <td class="text-truncate" style="max-width:200px;" title="<?php echo g2ml_sanitiseOutput($link['destinationURL']); ?>">

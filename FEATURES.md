@@ -51,6 +51,7 @@ Ranked by importance within the aim, then favouring lower effort/risk. Autonomy-
   **confidence:** high
   **spec-seed:** Add a tag input (comma/chip entry) to create/edit forms; upsert into `tblTags` and link rows in `tblShortURLTags`; add a tag filter to the links index. Mirror the existing category code paths and prepared-statement style.
   **gate:** autonomy-eligible
+  **status:** ✅ BUILT — cycle 13 (2026-07-04), branch `autopilot/2026-06-05`. `createShortURL()` attaches tags after the row insert via new helpers (`g2ml_slugifyTag`, `g2ml_normaliseTags`, `g2ml_findOrCreateTag`, `g2ml_attachTagsToShortURL`): find-or-create per org via `UQ_tag_org`, junction insert via `INSERT IGNORE`, each tag wrapped in its own try/catch so a tag failure never rolls back the short URL (capped at `G2ML_MAX_TAGS_PER_LINK` = 10). Dashboard create form gains an optional comma-separated "Tags" field; links index renders WCAG-accessible tag badges (`role="list"`) via a single dynamically-sized bound `IN(...)` query across the page's short-URL UIDs — no N+1, no interpolation. 132 unit + 18 integration tests pass; 5 acceptance criteria demonstrated. Edit-form tag management and tag-based filtering deferred as explicit follow-ups.
 
 - **id:** FG-003
   **feature:** Info-page public-vs-authenticated view (#23)
