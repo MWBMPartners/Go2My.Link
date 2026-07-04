@@ -284,8 +284,19 @@ function _g2ml_parseUserAgent(?string $userAgent): array
         'Go-http-client', 'Java/', 'axios', 'node-fetch', 'PostmanRuntime',
     ];
 
+    // Escape each pattern for the '/' delimiter — several patterns (e.g. 'Java/')
+    // contain a slash that would otherwise close the delimiter early and raise a
+    // PCRE "Unknown modifier" warning, silently breaking bot detection (B-043).
+    // 📖 Reference: https://www.php.net/manual/en/function.preg-quote.php
     // 📖 Reference: https://www.php.net/manual/en/function.preg-match.php
-    $botRegex = '/' . implode('|', array_map('preg_quote', $botPatterns)) . '/i';
+    $quotedBotPatterns = array_map(
+        function (string $botPattern): string
+        {
+            return preg_quote($botPattern, '/');
+        },
+        $botPatterns
+    );
+    $botRegex = '/' . implode('|', $quotedBotPatterns) . '/i';
 
     if (preg_match($botRegex, $userAgent))
     {
