@@ -26,9 +26,6 @@
     <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png">
     <link rel="shortcut icon" href="/favicon.ico">
 
-    <!-- Auto-refresh every 15 minutes (900 seconds) -->
-    <meta http-equiv="refresh" content="900">
-
     <style>
         /* =================================================================
            Lnks.page — Coming Soon Landing Page
@@ -377,18 +374,66 @@
 </div>
 <script>
     (function () {
-        var meta = document.querySelector('meta[http-equiv="refresh"]');
-        var duration = meta ? parseInt(meta.getAttribute('content'), 10) || 900 : 900;
+        var AUTO_RELOAD_SECONDS = 900; // 15 minutes
+        var CIRCUMFERENCE = 75.398;
+
+        var ring = document.getElementById('countdown-ring');
         var circle = document.getElementById('countdown-progress');
-        if (!circle) return;
-        var circumference = 75.398;
-        var start = Date.now();
-        function tick() {
-            var progress = Math.min((Date.now() - start) / (duration * 1000), 1);
-            circle.style.strokeDashoffset = circumference * (1 - progress);
-            if (progress >= 1) { window.location.reload(); }
-            else { requestAnimationFrame(tick); }
+        if (!circle) {
+            return;
         }
+
+        // #104 / #105 — Reduced-motion users get NO ring animation and NO
+        // auto-reload (a page-level auto-reload with no way to pause/stop is a
+        // WCAG 2.2.1 Level-A timing trap). Read the media query once and, when
+        // it matches, hide the decorative ring and return before scheduling any
+        // animation frame or reload.
+        var reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+        if (reducedMotionQuery.matches) {
+            if (ring) {
+                ring.style.display = 'none';
+            }
+            return;
+        }
+
+        // Everyone else keeps a gentle auto-transition. The ring visualises
+        // progress; when it completes we only reload if the page is visible AND
+        // no form control is focused — otherwise we quietly restart the cycle so
+        // the user is never interrupted mid-interaction (still non-trapping).
+        var start = Date.now();
+
+        function aFormControlHasFocus() {
+            var active = document.activeElement;
+            if (!active) {
+                return false;
+            }
+            var tag = active.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON') {
+                return true;
+            }
+            if (active.isContentEditable === true) {
+                return true;
+            }
+            return false;
+        }
+
+        function tick() {
+            var elapsed = Date.now() - start;
+            var progress = Math.min(elapsed / (AUTO_RELOAD_SECONDS * 1000), 1);
+            circle.style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
+
+            if (progress >= 1) {
+                if (document.hidden === true || aFormControlHasFocus() === true) {
+                    start = Date.now();
+                    requestAnimationFrame(tick);
+                } else {
+                    window.location.reload();
+                }
+            } else {
+                requestAnimationFrame(tick);
+            }
+        }
+
         requestAnimationFrame(tick);
     })();
 </script>

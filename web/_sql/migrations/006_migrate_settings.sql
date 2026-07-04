@@ -49,8 +49,12 @@ SELECT
     old.`settingsDesc`              AS `settingDescription`,
     'string'                        AS `settingDataType`,
     0                               AS `isSensitive`,
-    old.`settingsDateCreated`       AS `createdAt`,
-    old.`settingsLastUpdated`       AS `updatedAt`
+    -- Zero-date/NULL guard: NOT NULL target → fall back to NOW() (#123)
+    IFNULL(NULLIF(NULLIF(CAST(old.`settingsDateCreated` AS CHAR), '0000-00-00 00:00:00'), '0000-00-00'), NOW())
+                                    AS `createdAt`,
+    -- Zero-date/NULL guard: nullable target → strip zero-dates to NULL (#123)
+    NULLIF(NULLIF(CAST(old.`settingsLastUpdated` AS CHAR), '0000-00-00 00:00:00'), '0000-00-00')
+                                    AS `updatedAt`
 FROM `mwtools_mwlink`.`tblSettingsDictionary` old
 ON DUPLICATE KEY UPDATE
     `settingDefault` = VALUES(`settingDefault`),
@@ -81,8 +85,12 @@ SELECT
     old.`settingsValue`             AS `settingValue`,
     NULL                            AS `settingDescription`,
     'string'                        AS `settingDataType`,
-    old.`settingsDateCreated`       AS `createdAt`,
-    old.`settingsLastUpdated`       AS `updatedAt`
+    -- Zero-date/NULL guard: NOT NULL target → fall back to NOW() (#123)
+    IFNULL(NULLIF(NULLIF(CAST(old.`settingsDateCreated` AS CHAR), '0000-00-00 00:00:00'), '0000-00-00'), NOW())
+                                    AS `createdAt`,
+    -- Zero-date/NULL guard: nullable target → strip zero-dates to NULL (#123)
+    NULLIF(NULLIF(CAST(old.`settingsLastUpdated` AS CHAR), '0000-00-00 00:00:00'), '0000-00-00')
+                                    AS `updatedAt`
 FROM `mwtools_mwlink`.`tblSettings` old
 ON DUPLICATE KEY UPDATE
     `settingValue` = VALUES(`settingValue`),

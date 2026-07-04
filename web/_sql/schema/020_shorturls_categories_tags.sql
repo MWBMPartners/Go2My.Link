@@ -126,6 +126,23 @@ CREATE TABLE IF NOT EXISTS `tblShortURLs` (
     `createdByUserUID`      BIGINT UNSIGNED     DEFAULT NULL
         COMMENT 'FK to tblUsers.userUID (who created this link)',
 
+    -- CueRCode dynamic-QR integration (provenance + external QR reference)
+    `createdVia`            ENUM('web', 'api', 'import', 'admin', 'cuercode')
+                            NOT NULL DEFAULT 'web'
+        COMMENT 'How this short URL was created; cuercode = minted by the CueRCode QR service',
+
+    `createdViaAPIKeyUID`   BIGINT UNSIGNED     DEFAULT NULL
+        COMMENT 'FK to tblAPIKeys.apiKeyUID — which API key minted this code; constraint added in 031_api.sql',
+
+    `qrCodeExternalID`      BIGINT UNSIGNED     DEFAULT NULL
+        COMMENT 'Opaque id of the owning CueRCode QR record (NULL = not QR-backed); the QR record lives in CueRCode',
+
+    `qrCodeExternalUUID`    CHAR(36)            DEFAULT NULL
+        COMMENT 'Opaque UUID of the owning CueRCode QR record (NULL = not QR-backed)',
+
+    `qrCodeLinkedAt`        DATETIME            DEFAULT NULL
+        COMMENT 'UTC timestamp when a CueRCode QR was linked to this short URL',
+
     -- UTM parameters
     `utmSource`             VARCHAR(255)        DEFAULT NULL,
     `utmMedium`             VARCHAR(255)        DEFAULT NULL,
@@ -172,6 +189,10 @@ CREATE TABLE IF NOT EXISTS `tblShortURLs` (
     INDEX `IDX_url_active` (`isActive`),
     INDEX `IDX_url_dates` (`startDate`, `endDate`),
     INDEX `IDX_url_alias` (`redirectAlias`),
+    INDEX `IDX_url_created_via` (`createdVia`),
+    INDEX `IDX_url_apikey` (`createdViaAPIKeyUID`),
+    INDEX `IDX_url_qr_extid` (`qrCodeExternalID`),
+    UNIQUE KEY `UQ_url_qr_uuid` (`qrCodeExternalUUID`),
 
     CONSTRAINT `FK_url_org`
         FOREIGN KEY (`orgHandle`)

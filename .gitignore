@@ -23,6 +23,19 @@
 # ============================================================================
 **/auth_creds.php
 !**/auth_creds.example.php
+
+# Legacy MWlink config holds a plaintext DB credential — never commit it, and
+# never commit the legacy web root it lives in (it must not ship). See #93.
+**/dbConfig.php
+**/public_html_legacy/
+
+# Installer runtime artefacts (server-local; never commit)
+**/_auth_keys/.install_token
+**/_auth_keys/.installed
+
+# dev-team autopilot loop lock (runtime only; state file autopilot.json IS tracked)
+.dev-team/loop.lock/
+
 *.env
 .env.*
 *.pem

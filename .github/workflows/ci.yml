@@ -1,0 +1,147 @@
+# Copyright (c) 2024–2026 MWBM Partners Ltd (MWservices).
+# All rights reserved.
+#
+# This source code is proprietary and confidential.
+# Unauthorised copying, modification, or distribution is strictly prohibited.
+
+# =============================================================================
+# Go2My.Link — CI (Frontend + Backend code checks)
+# =============================================================================
+#
+# Runs the front-end (JS / JSON / CSS) and back-end (PHP) code checks that
+# gate every pull request and every push to a deployable branch. The two job
+# names below are deliberately fixed:
+#
+#     Frontend (ubuntu-latest)
+#     Backend (ubuntu-latest)
+#
+# These are the exact status-check contexts required by the repository's
+# "Protect main branch" ruleset. The `os` matrix (single value) is what makes
+# GitHub render the "(ubuntu-latest)" suffix into the check context name, so
+# the required checks resolve instead of orphaning. Do not rename these jobs
+# or drop the matrix without also updating the ruleset, or every PR to main
+# will soft-lock.
+#
+# Must-pass steps are syntax-level checks (JS parse, JSON validity, PHP lint)
+# that are known-green on the current tree. Style / static-analysis steps run
+# advisory (continue-on-error) so they surface issues without blocking the
+# gate; they can be promoted to hard failures once the tree is clean.
+#
+# @package    Go2My.Link
+# @author     MWBM Partners Ltd (MWservices)
+# @since      v1.0.0 — Launch Hardening
+# =============================================================================
+
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - alpha
+      - beta
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ===========================================================================
+  # Frontend — JavaScript syntax, JSON validity, CSS sanity
+  # Emits the required status check: "Frontend (ubuntu-latest)"
+  # ===========================================================================
+  frontend:
+    name: Frontend
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: JavaScript syntax check
+        run: |
+          set -euo pipefail
+          count=0
+          while IFS= read -r file
+          do
+            count=$((count + 1))
+            echo "Checking $file"
+            node --check "$file"
+          done < <(git ls-files 'web/**/*.js' | grep -vE '_libraries/|/vendor/|\.min\.js$' || true)
+          echo "Checked $count JavaScript file(s)."
+
+      - name: JSON validity check
+        run: |
+          set -euo pipefail
+          count=0
+          while IFS= read -r file
+          do
+            count=$((count + 1))
+            echo "Validating $file"
+            node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" "$file"
+          done < <(git ls-files 'web/**/*.json' | grep -vE '_libraries/|/vendor/|package-lock' || true)
+          echo "Validated $count JSON file(s)."
+
+      - name: CSS lint (advisory)
+        continue-on-error: true
+        run: |
+          set -uo pipefail
+          npx --yes stylelint --version >/dev/null 2>&1 || true
+          npx --yes stylelint "web/**/*.css" \
+            --ignore-pattern "**/_libraries/**" \
+            --ignore-pattern "**/vendor/**" \
+            --ignore-pattern "**/*.min.css" \
+            --config '{"rules":{}}' || true
+
+  # ===========================================================================
+  # Backend — PHP syntax lint (hard gate) + static analysis (advisory)
+  # Emits the required status check: "Backend (ubuntu-latest)"
+  # ===========================================================================
+  backend:
+    name: Backend
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: parallel-lint
+
+      - name: PHP syntax lint
+        run: |
+          parallel-lint --exclude vendor --exclude _libraries --exclude .git web/
+
+      - name: PHPStan (advisory)
+        continue-on-error: true
+        run: |
+          curl -sL https://github.com/phpstan/phpstan/releases/latest/download/phpstan.phar -o phpstan.phar
+          chmod +x phpstan.phar
+          php phpstan.phar analyse --configuration=phpstan.neon --no-progress
+
+      - name: PHP_CodeSniffer (advisory)
+        continue-on-error: true
+        run: |
+          curl -sOL https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar
+          chmod +x phpcs.phar
+          php phpcs.phar --standard=phpcs.xml --report=summary

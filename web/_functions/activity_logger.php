@@ -178,8 +178,31 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
             return false;
         }
 
+        // Type string MUST have exactly one character per bound variable (21),
+        // each matching its column: s=string, i=int.
+        //   1  s  logAction        (VARCHAR)
+        //   2  s  logStatus        (VARCHAR)
+        //   3  i  statusCode       (SMALLINT UNSIGNED)
+        //   4  s  orgHandle        (VARCHAR)
+        //   5  i  userUID          (BIGINT UNSIGNED)
+        //   6  s  shortCode        (VARCHAR)
+        //   7  s  destinationURL   (TEXT)
+        //   8  s  requestDomain    (VARCHAR)
+        //   9  s  requestPath      (VARCHAR)
+        //   10 s  requestMethod    (VARCHAR)
+        //   11 s  requestReferer   (VARCHAR)
+        //   12 s  requestUserAgent (VARCHAR)
+        //   13 s  browserName      (VARCHAR)
+        //   14 s  browserVersion   (VARCHAR)
+        //   15 s  osName           (VARCHAR)
+        //   16 s  osVersion        (VARCHAR)
+        //   17 s  deviceType       (VARCHAR)
+        //   18 s  ipAddress        (VARCHAR — NOT an int)
+        //   19 i  isBot            (TINYINT UNSIGNED)
+        //   20 i  apiKeyUID        (BIGINT UNSIGNED)
+        //   21 s  logData          (JSON, bound as a string)
         $stmt->bind_param(
-            'ssisissssssssssssiis',
+            'ssisisssssssssssssiis',
             $action,
             $status,
             $statusCode,
@@ -261,8 +284,19 @@ function _g2ml_parseUserAgent(?string $userAgent): array
         'Go-http-client', 'Java/', 'axios', 'node-fetch', 'PostmanRuntime',
     ];
 
+    // Escape each pattern for the '/' delimiter — several patterns (e.g. 'Java/')
+    // contain a slash that would otherwise close the delimiter early and raise a
+    // PCRE "Unknown modifier" warning, silently breaking bot detection (B-043).
+    // 📖 Reference: https://www.php.net/manual/en/function.preg-quote.php
     // 📖 Reference: https://www.php.net/manual/en/function.preg-match.php
-    $botRegex = '/' . implode('|', array_map('preg_quote', $botPatterns)) . '/i';
+    $quotedBotPatterns = array_map(
+        function (string $botPattern): string
+        {
+            return preg_quote($botPattern, '/');
+        },
+        $botPatterns
+    );
+    $botRegex = '/' . implode('|', $quotedBotPatterns) . '/i';
 
     if (preg_match($botRegex, $userAgent))
     {

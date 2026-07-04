@@ -35,6 +35,12 @@ The existing `mwtools_mwlink` database (MyISAM, utf8mb4) contains data to be mig
 
 Schema files are located in `web/_sql/schema/`.
 
+> 🔗 **CueRCode dynamic-QR integration** (v1.0.0 — Launch Hardening): `tblShortURLs`
+> and `tblActivityLog` carry nullable hooks so the external CueRCode QR service can
+> own a short code and have scans attributed. There is **no local `tblQRCodes`** —
+> the QR record lives in CueRCode. See `web/_sql/migrations/009_cuercode_qr_integration.sql`,
+> seed `013_cuercode_settings.sql`, and `docs/SCHEMA_REVIEW_2026-06-04.md`.
+
 ### 📂 Table Groups
 
 #### 🔧 Core
@@ -55,7 +61,7 @@ Schema files are located in `web/_sql/schema/`.
 
 | Table | Purpose |
 | --- | --- |
-| `tblShortURLs` | 🔗 Enhanced short URL records with `createdByUserUID` FK, `isActive`, `clickCount` cache |
+| `tblShortURLs` | 🔗 Enhanced short URL records (`createdByUserUID` FK, `isActive`, `clickCount` cache) + CueRCode provenance/QR columns (`createdVia`, `createdViaAPIKeyUID`, `qrCodeExternalID`/`qrCodeExternalUUID`, `qrCodeLinkedAt`) |
 | `tblCategories` | 🏷️ Link categories |
 | `tblTags` | 🏷️ Link tags |
 | `tblShortURLTags` | 🔀 Junction table (short URLs ↔ tags) |
@@ -68,7 +74,7 @@ Schema files are located in `web/_sql/schema/`.
 
 | Table | Purpose |
 | --- | --- |
-| `tblActivityLog` | 📊 Request/redirect logging (InnoDB, structured geo/UA columns, partitioned by month) |
+| `tblActivityLog` | 📊 Request/redirect logging (InnoDB, structured geo/UA columns; monthly partitioning available but **not enabled**) + CueRCode scan attribution (`scanSource`, `qrCodeExternalID`) |
 | `tblErrorLog` | 🐛 PHP errors with backtrace |
 
 #### 📡 API

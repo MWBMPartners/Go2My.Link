@@ -1,0 +1,181 @@
+{
+  "mission": "production-ready + feature-complete (in scope) for Go2My.Link Components A+B",
+  "aim": "Go2My.Link \u2014 multi-component URL-shortening platform (A=go2my.link main+admin, B=g2my.link redirect router, C=lnks.page LinksPage [largely unbuilt]); drive A+B to a clean production launch by clearing the launch-hardening backlog and closing in-scope feature gaps.",
+  "definition_of_done": [
+    "all launch-blocking audit/schema items (#93-#128) resolved",
+    "no unresolved Critical/High security finding",
+    "lint clean (parallel-lint, PHP 8.4)",
+    "core flows verified live on MySQL (shorten->redirect, auth/login, dashboard link CRUD, installer import)",
+    "in-scope feature gaps built-or-queued",
+    "docs sufficient to install/run"
+  ],
+  "plan": [
+    {
+      "phase": "DISCOVER",
+      "mode": "iterate-audit+featurefind",
+      "exit": "work queue seeded",
+      "status": "done"
+    },
+    {
+      "phase": "STABILIZE",
+      "mode": "iterate",
+      "exit": "no High correctness/test gap; safety net exists",
+      "status": "done"
+    },
+    {
+      "phase": "SECURE",
+      "mode": "security",
+      "exit": "Phase-0 done; no unresolved Critical/High finding; rounds dry",
+      "status": "done"
+    },
+    {
+      "phase": "COMPLETE",
+      "mode": "orchestrator(feature)",
+      "exit": "every High in-scope gap built-or-queued",
+      "status": "done"
+    },
+    {
+      "phase": "POLISH",
+      "mode": "iterate",
+      "exit": "no High UX/perf item",
+      "status": "done"
+    },
+    {
+      "phase": "VERIFY",
+      "mode": "review",
+      "exit": "complete review pass: overall PASS @ last_commit",
+      "status": "done"
+    }
+  ],
+  "phase_cursor": 5,
+  "state": "COMPLETE",
+  "cursor": null,
+  "next_action": "RUN COMPLETE (terminal). All six phases done. VERIFY caught + fixed 2 must-fix HIGH defects in-phase (CR-1 broken edit page; SEC-RECHECK-01 cross-org deactivation DoS) and made the integration suite actually execute on MySQL 9.6 (21 pass). Overall verdict PASS; 189 unit + 21 integration green; 0 open High security. No further autopilot cycles — STOP looping (do not ScheduleWakeup). Handoff to user: (1) review + approve any gated features G-001..G-005 (Component C, payments, advanced auth, public API+API-key, analytics) via `approve G-00X`/`build Component C`; (2) `push` to refresh draft PR #130; (3) review + merge PR #130 manually. Non-blocking follow-ups COV-1..COV-4 in PROJECT.md Backlog. If resumed, re-open VERIFY only if new commits land.",
+  "queue": {
+    "backlog": "PROJECT.md#Backlog",
+    "feature_gaps": "FEATURES.md",
+    "findings": "SECURITY.md#Findings"
+  },
+  "gate_ledger": [
+    {
+      "id": "G-001",
+      "kind": "feature",
+      "title": "Component C \u2014 LinksPage product (lnks.page)",
+      "spec_ref": "FEATURES.md#FG-019..024",
+      "status": "awaiting-user",
+      "reservation": "Entire third product/component is unbuilt (Phase 8 #45-50): renderer, templates, management UI, HTML upload, age-gate. Large; user explicitly gated. Needs which-features + how approval."
+    },
+    {
+      "id": "G-002",
+      "kind": "feature",
+      "title": "Payments & subscriptions (SIGNula, #57-60)",
+      "spec_ref": "FEATURES.md",
+      "status": "awaiting-user",
+      "reservation": "Billing/payments + external providers (PayPal/Apple/Google/crypto) \u2014 high-risk, external-touching, explicitly deferred to SIGNula. Bucket-2/3."
+    },
+    {
+      "id": "G-003",
+      "kind": "feature",
+      "title": "Advanced authentication \u2014 2FA/social/SSO/PassKey (SIGNula, #34-37)",
+      "spec_ref": "FEATURES.md",
+      "status": "awaiting-user",
+      "reservation": "Auth subsystem expansion; risky/architectural; deferred to SIGNula."
+    },
+    {
+      "id": "G-004",
+      "kind": "feature",
+      "title": "Public REST API + API-key auth + management UI (#38/#39/#40)",
+      "spec_ref": "FEATURES.md#FG-008-009",
+      "status": "awaiting-user",
+      "reservation": "Foundational for external integrations incl. CueRCode dynamic-QR; medium-risk (key issuance/verification, scopes, rate-limit). Needs design approval."
+    },
+    {
+      "id": "G-005",
+      "kind": "feature",
+      "title": "Analytics dashboard + click tracking/geo/device/export (#41-44)",
+      "spec_ref": "FEATURES.md#FG-006-007",
+      "status": "awaiting-user",
+      "reservation": "Large Phase-7 feature set; depends on tracking-capture design. Surface for prioritisation."
+    },
+    {
+      "id": "G-006",
+      "kind": "feature",
+      "title": "FG-001 authenticated custom short-suffix/alias",
+      "spec_ref": "FEATURES.md#FG-001",
+      "status": "built",
+      "cleared_by": "autonomy-test",
+      "justification": "table-stakes + in-scope (brief 90-92) + risk:Low + non-destructive; built cycle 10, 110 unit + 11 integration pass."
+    },
+    {
+      "id": "G-007",
+      "kind": "feature",
+      "title": "FG-002 tags on links",
+      "spec_ref": "FEATURES.md#FG-002",
+      "status": "built",
+      "cleared_by": "autonomy-test",
+      "justification": "unused tblTags/tblShortURLTags schema wired up; table-stakes + in-scope + risk:Low + non-destructive; built cycle 13, 132 unit + 18 integration pass."
+    },
+    {
+      "id": "G-008",
+      "kind": "feature",
+      "title": "FG-003 info-page public-vs-authenticated view (#23)",
+      "spec_ref": "FEATURES.md#FG-003",
+      "status": "built",
+      "cleared_by": "autonomy-test",
+      "justification": "documented-intent gap; escaped-text reveal to authed viewers, masked+login-prompt for anon; risk:Low; built cycle 14, 141 unit pass."
+    },
+    {
+      "id": "G-009",
+      "kind": "feature",
+      "title": "FG-004 XML+XSLT API output + responder dedup",
+      "spec_ref": "FEATURES.md#FG-004",
+      "status": "built",
+      "cleared_by": "autonomy-test",
+      "justification": "brief \u00a78.2 gap + net-positive dedup (10 json_encode -> 1 helper); JSON byte-identical; risk:Low; built cycle 15, 166 unit pass."
+    },
+    {
+      "id": "G-010",
+      "kind": "feature",
+      "title": "FG-005 avatar priority cascade (resolver + initials monogram + nav wiring)",
+      "spec_ref": "FEATURES.md#FG-005",
+      "status": "built",
+      "cleared_by": "autonomy-test",
+      "justification": "table-stakes + risk:Low + non-destructive + privacy-preserving (Gravatar tier gated default-OFF, no resolve-time network); built cycle 18 via build->adversarial-verify workflow (3 lenses); correctness lens caught+fixed a cap-before-uppercase overflow (\u00df/ligatures); 189 unit pass (+23)."
+    }
+  ],
+  "blocked": {
+    "is": false,
+    "reason": null,
+    "since": null
+  },
+  "cycle": 20,
+  "cap": 60,
+  "gates": "hybrid",
+  "feature_completeness": "in-scope",
+  "verify": {
+    "commit": "649ddac",
+    "overall": "PASS",
+    "found_and_fixed_in_phase": [
+      "CR-1 (HIGH correctness): edit page selected non-existent column s.shortURLUID -> s.urlUID; link editing was 100% broken (#94 only partially fixed before). Now genuinely fixed.",
+      "SEC-RECHECK-01 (HIGH tenant-isolation): create page unscoped `UPDATE isActive=0 WHERE shortCode=?` = cross-org deactivation DoS enabled by FG-001. Fixed by binding isActive into createShortURL INSERT (default true) + deleting the UPDATE.",
+      "HR-1 (nit): declare(strict_types=1) added to info_display.php."
+    ],
+    "integration": "RUN on throwaway MySQL 9.6 (full schema+procedures+seeds imported): 21 passed, 0 failed (was always SKIPPED without a DB). New tests/integration/cross_org_isolation_test.php guards CR-1 + SEC-RECHECK-01 + isActive default.",
+    "unit": "189 passed, 0 failed",
+    "completeness_critic": "PASS with non-blocking follow-ups COV-1..COV-4 (see PROJECT.md Backlog).",
+    "adversarial_reverify": "CONFIRMED — fixes correct & complete (bind arity, active-case preserved, both callers safe, strict_types safe, no new shorthand/SQLi)."
+  },
+  "verified_at_commit": "649ddac",
+  "lock": {
+    "holder": null,
+    "ts": null,
+    "stale_after_min": 90
+  },
+  "branch": "autopilot/2026-06-05",
+  "last_commit": "649ddac",
+  "trajectory_ref": "PROJECT.md#Trajectory-ledger",
+  "terminal": true,
+  "delay": 90,
+  "updated": "2026-07-04T04:39:41Z",
+  "ops_note": "Release the lease with `rm -rf .dev-team/loop.lock` (a `holder` file lives inside, so `rmdir` fails and would stall the next cycle)."
+}

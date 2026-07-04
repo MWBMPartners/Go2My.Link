@@ -42,9 +42,14 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
     Header set Referrer-Policy "strict-origin-when-cross-origin"
     Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
 
-    # Content Security Policy (tight — redirect engine serves minimal HTML)
+    # Content Security Policy
+    # The 302 redirect path serves no HTML; the branded interstitial/error pages
+    # (404.php, expired.php, validating.php) load Bootstrap (jsDelivr) and Font
+    # Awesome (cdnjs, incl. webfonts) and use small inline FOUC/countdown scripts,
+    # so those origins and 'unsafe-inline' are permitted here. Nonce-based script
+    # hardening is tracked for post-launch.
     # 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
-    Header set Content-Security-Policy "default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'"
+    Header set Content-Security-Policy "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src https://cdnjs.cloudflare.com; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'"
 
     # HSTS — enforce HTTPS for 1 year
     Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"

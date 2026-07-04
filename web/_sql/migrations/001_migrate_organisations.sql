@@ -57,8 +57,12 @@ SELECT
     1                           AS `isActive`,
     CONCAT('[Migrated from MWlink] ', IFNULL(old.`custOrgNotes`, ''))
                                 AS `orgNotes`,
-    old.`custOrgDateCreated`    AS `createdAt`,
-    old.`custOrgLastUpdated`    AS `updatedAt`
+    -- Zero-date/NULL guard: NOT NULL target → fall back to NOW() (#123)
+    IFNULL(NULLIF(NULLIF(CAST(old.`custOrgDateCreated` AS CHAR), '0000-00-00 00:00:00'), '0000-00-00'), NOW())
+                                AS `createdAt`,
+    -- Zero-date/NULL guard: nullable target → strip zero-dates to NULL (#123)
+    NULLIF(NULLIF(CAST(old.`custOrgLastUpdated` AS CHAR), '0000-00-00 00:00:00'), '0000-00-00')
+                                AS `updatedAt`
 FROM `mwtools_mwlink`.`tblCustomerOrg` old
 ON DUPLICATE KEY UPDATE
     `orgName` = VALUES(`orgName`),
@@ -79,7 +83,9 @@ SELECT
     old.`custOrgShortURLDomain`     AS `shortDomain`,
     1                               AS `isDefault`,
     1                               AS `isActive`,
-    old.`custOrgDateCreated`        AS `createdAt`
+    -- Zero-date/NULL guard: NOT NULL target → fall back to NOW() (#123)
+    IFNULL(NULLIF(NULLIF(CAST(old.`custOrgDateCreated` AS CHAR), '0000-00-00 00:00:00'), '0000-00-00'), NOW())
+                                    AS `createdAt`
 FROM `mwtools_mwlink`.`tblCustomerOrg` old
 WHERE old.`custOrgShortURLDomain` IS NOT NULL
   AND old.`custOrgShortURLDomain` != ''

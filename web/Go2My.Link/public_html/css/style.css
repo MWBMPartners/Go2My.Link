@@ -613,3 +613,32 @@ footer a:focus {
         background-color: var(--bs-table-hover-bg);
     }
 }
+
+/* ========================================================================== */
+/* ♿ REDUCED MOTION (WCAG 2.3.3 Animation from Interactions; supports 2.2.2)  */
+/* ========================================================================== */
+/* When the user has asked their operating system to minimise non-essential   */
+/* motion (prefers-reduced-motion: reduce), neutralise decorative animation   */
+/* and transitions site-wide. This covers Font Awesome's .fa-spin loading     */
+/* spinner (js/app.js swaps it in during URL-shortening submission), any      */
+/* Bootstrap fade/collapse transitions, and any CSS animations, while leaving */
+/* layout and functionality unchanged.                                        */
+/*                                                                            */
+/* Durations are collapsed to a near-zero 0.01ms rather than 0 so that any    */
+/* code still listening for animationend / transitionend events continues to  */
+/* receive them (setting 0 can suppress those events in some browsers).       */
+/*                                                                            */
+/* 📖 prefers-reduced-motion:                                                 */
+/*    https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion */
+/* ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

@@ -161,6 +161,14 @@ function validateUserSession(): bool
         return false;
     }
 
+    // 🔐 Defence-in-depth: re-bind the in-memory user identity from the
+    // authoritative session row. This ensures $_SESSION['user_uid'] always
+    // derives from the validated DB record rather than from whatever value
+    // happened to be in the PHP session, mitigating session confusion or
+    // fixation where the token and the stored identity could diverge.
+    // 📖 Reference: createUserSession() / loginUser() use 'user_uid' (int).
+    $_SESSION['user_uid'] = (int) $session['userUID'];
+
     return true;
 }
 

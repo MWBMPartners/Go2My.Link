@@ -194,8 +194,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
         resultDiv.classList.remove('d-none');
 
-        // Scroll result into view smoothly
-        resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        // Scroll result into view. Respect the user's reduced-motion preference
+        // (#106, WCAG 2.3.3): smooth scrolling for most users, but an instant
+        // jump for those who have asked the OS to minimise non-essential motion.
+        var scrollBehaviour;
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            scrollBehaviour = 'auto';
+        } else {
+            scrollBehaviour = 'smooth';
+        }
+        resultDiv.scrollIntoView({ behavior: scrollBehaviour, block: 'nearest' });
 
         // Move focus to copy button for keyboard users (WCAG 2.4.3)
         if (copyBtn) { copyBtn.focus(); }

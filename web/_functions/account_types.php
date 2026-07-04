@@ -155,6 +155,14 @@ function hasAccountType(int $userUID, string $accountTypeID, ?string $orgHandle 
  * and returns the corresponding legacy roleName. Falls back to 'User' if
  * no active account types are found.
  *
+ * Defense-in-depth: a GlobalAdmin-level assignment (roleName = 'GlobalAdmin')
+ * is only honoured when it lives in the '[default]' org. This means that
+ * even if a 'global-admin' row somehow ends up attached to a tenant org
+ * (bypassing canGrantAccountType(), e.g. via a future caller or direct SQL),
+ * it cannot silently promote tblUsers.role — the platform-wide GlobalAdmin
+ * type is only ever meaningful in the shared '[default]' org, matching how
+ * the installer bootstraps the very first GlobalAdmin.
+ *
  * @param  int         $userUID    The user's UID
  * @param  string|null $orgHandle  If provided, consider types in this org only
  * @return string                  Legacy role name: 'GlobalAdmin', 'Admin', 'User', or 'Anonymous'
@@ -171,6 +179,7 @@ function getEffectiveRole(int $userUID, ?string $orgHandle = null): string
                AND uat.isActive = 1
                AND (uat.expiresAt IS NULL OR uat.expiresAt > NOW())
                AND at.isActive = 1
+               AND (at.roleName != 'GlobalAdmin' OR uat.orgHandle = '[default]')
              ORDER BY at.roleLevel DESC
              LIMIT 1",
             'is',
@@ -187,6 +196,7 @@ function getEffectiveRole(int $userUID, ?string $orgHandle = null): string
                AND uat.isActive = 1
                AND (uat.expiresAt IS NULL OR uat.expiresAt > NOW())
                AND at.isActive = 1
+               AND (at.roleName != 'GlobalAdmin' OR uat.orgHandle = '[default]')
              ORDER BY at.roleLevel DESC
              LIMIT 1",
             'i',
@@ -200,6 +210,104 @@ function getEffectiveRole(int $userUID, ?string $orgHandle = null): string
     }
 
     return 'User';
+}
+
+// ============================================================================
+// 🔒 Privilege-Ceiling Guard
+// ============================================================================
+
+/**
+ * Determine whether an acting user is permitted to grant or revoke a given
+ * account type within an org context.
+ *
+ * This is the hard privilege ceiling that closes the org-Admin-self-escalates
+ * -to-GlobalAdmin path: a non-GlobalAdmin must NEVER be able to grant (or
+ * revoke) the GlobalAdmin-level account type ('global-admin'), in ANY org —
+ * including an org they created and legitimately manage. GlobalAdmins may
+ * always grant/revoke any account type.
+ *
+ * A NULL $actingUserUID means the assignment is a trusted system-internal
+ * grant (registration bootstrap, membership-removal reset to the base
+ * 'user' type) where there is no external actor to check — these call sites
+ * never carry attacker-controlled data and are always permitted.
+ *
+ * The acting user's role is read fresh from the database (never from
+ * $_SESSION) because the acting user is not always the current session
+ * user — for example acceptInvitation() passes the original inviter's UID
+ * as the granter, not the invitee who is actually making the request.
+ *
+ * Called at the top of assignAccountType() and revokeAccountType() so the
+ * ceiling holds even if a future caller forgets to check it directly.
+ *
+ * @param  int|null $actingUserUID  UID of the user performing the grant/revoke, or NULL for a system-internal grant
+ * @param  string   $accountTypeID  Account type slug being granted/revoked
+ * @param  string   $orgHandle      Organisation context (reserved for future org-scoped rules)
+ * @return bool                     True if the action is permitted
+ */
+function canGrantAccountType(?int $actingUserUID, string $accountTypeID, string $orgHandle): bool
+{
+    if ($actingUserUID === null)
+    {
+        return true;
+    }
+
+    $targetType = getAccountType($accountTypeID);
+
+    if ($targetType === null)
+    {
+        // Unknown or inactive type — let the caller's own validation
+        // (getAccountType() check in assignAccountType()) reject it.
+        return true;
+    }
+
+    $actingUserRow = dbSelectOne(
+        "SELECT role FROM tblUsers WHERE userUID = ? LIMIT 1",
+        'i',
+        [$actingUserUID]
+    );
+
+    if ($actingUserRow === null || $actingUserRow === false)
+    {
+        // Acting user does not exist — fail closed.
+        return false;
+    }
+
+    $globalAdminLevel = 3;
+
+    if (defined('G2ML_ROLE_LEVELS'))
+    {
+        if (isset(G2ML_ROLE_LEVELS['GlobalAdmin']))
+        {
+            $globalAdminLevel = G2ML_ROLE_LEVELS['GlobalAdmin'];
+        }
+    }
+
+    $actingRoleLevel = 0;
+
+    if (defined('G2ML_ROLE_LEVELS'))
+    {
+        if (isset(G2ML_ROLE_LEVELS[$actingUserRow['role']]))
+        {
+            $actingRoleLevel = G2ML_ROLE_LEVELS[$actingUserRow['role']];
+        }
+    }
+
+    // A GlobalAdmin may grant or revoke any account type, in any org.
+    if ($actingRoleLevel >= $globalAdminLevel)
+    {
+        return true;
+    }
+
+    // No non-GlobalAdmin may ever grant or revoke the GlobalAdmin-level
+    // account type. Without this, any org Admin (a role any user gets for
+    // free by creating their own organisation) could mint themselves — or
+    // any other user — a platform-wide GlobalAdmin.
+    if ((int) $targetType['roleLevel'] >= $globalAdminLevel)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 // ============================================================================
@@ -227,6 +335,13 @@ function assignAccountType(
     ?int $grantedByUserUID = null,
     ?string $expiresAt = null
 ): array {
+    // Privilege-ceiling guard — must run before any other logic so it holds
+    // even for callers that would otherwise skip straight to the DB writes.
+    if (!canGrantAccountType($grantedByUserUID, $accountTypeID, $orgHandle))
+    {
+        return ['success' => false, 'error' => 'You do not have permission to grant this account type.'];
+    }
+
     // Validate the account type exists and is active
     $accountType = getAccountType($accountTypeID);
     if ($accountType === null)
@@ -308,6 +423,24 @@ function assignAccountType(
  */
 function revokeAccountType(int $userUID, string $accountTypeID, string $orgHandle): array
 {
+    // Resolve the acting user (the current session user is who is actually
+    // performing this revoke) for the privilege-ceiling guard below. Also
+    // reused for activity logging further down instead of re-fetching.
+    $actingUser    = getCurrentUser();
+    $actingUserUID = null;
+
+    if ($actingUser !== null)
+    {
+        $actingUserUID = $actingUser['userUID'];
+    }
+
+    // Privilege-ceiling guard — must run before any other logic so it holds
+    // even for callers that would otherwise skip straight to the DB writes.
+    if (!canGrantAccountType($actingUserUID, $accountTypeID, $orgHandle))
+    {
+        return ['success' => false, 'error' => 'You do not have permission to revoke this account type.'];
+    }
+
     // Check the assignment exists and is active
     $existing = dbSelectOne(
         "SELECT userAccountTypeUID
@@ -354,9 +487,15 @@ function revokeAccountType(int $userUID, string $accountTypeID, string $orgHandl
     syncEffectiveRole($userUID);
 
     // Log activity
-    $currentUser = getCurrentUser();
+    $loggedByUserUID = 0;
+
+    if ($actingUserUID !== null)
+    {
+        $loggedByUserUID = $actingUserUID;
+    }
+
     logActivity('revoke_account_type', 'success', 200, [
-        'userUID' => ($currentUser !== null) ? $currentUser['userUID'] : 0,
+        'userUID' => $loggedByUserUID,
         'logData' => [
             'targetUserUID'  => $userUID,
             'accountTypeID'  => $accountTypeID,

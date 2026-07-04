@@ -90,22 +90,156 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             case 'add_account_type':
                 $targetUID = (int) ($_POST['user_uid'] ?? 0);
                 $addTypeID = $_POST['account_type_id'] ?? '';
+
                 if ($addTypeID !== '' && function_exists('assignAccountType'))
                 {
-                    $result = assignAccountType($targetUID, $addTypeID, $orgHandle, $currentUser['userUID']);
-                    if ($result['success']) { $actionSuccess = 'Account type assigned.'; }
-                    else { $actionError = $result['error'] ?? 'Failed to assign account type.'; }
+                    // (a) The target must actually be a member of THIS org —
+                    // otherwise an org Admin could target any user UID on
+                    // the platform, in any other org, by guessing a UID.
+                    $targetMember = dbSelectOne(
+                        "SELECT userUID FROM tblUsers WHERE userUID = ? AND orgHandle = ? LIMIT 1",
+                        'is',
+                        [$targetUID, $orgHandle]
+                    );
+
+                    if ($targetMember === null || $targetMember === false)
+                    {
+                        $actionError = 'That user is not a member of this organisation.';
+                    }
+                    else
+                    {
+                        $grantType = null;
+
+                        if (function_exists('getAccountType'))
+                        {
+                            $grantType = getAccountType($addTypeID);
+                        }
+
+                        if ($grantType === null)
+                        {
+                            $actionError = 'Unknown or inactive account type.';
+                        }
+                        else
+                        {
+                            // (b) Privilege ceiling: a non-GlobalAdmin must
+                            // never be able to grant an account type at or
+                            // above their own effective role level — this
+                            // is what stops an org Admin (a role any user
+                            // gets for free by creating their own org)
+                            // minting themselves a platform-wide GlobalAdmin.
+                            $globalAdminLevel = 3;
+                            $actingRoleLevel  = 0;
+
+                            if (defined('G2ML_ROLE_LEVELS'))
+                            {
+                                if (isset(G2ML_ROLE_LEVELS['GlobalAdmin']))
+                                {
+                                    $globalAdminLevel = G2ML_ROLE_LEVELS['GlobalAdmin'];
+                                }
+
+                                if (isset(G2ML_ROLE_LEVELS[$currentUser['role']]))
+                                {
+                                    $actingRoleLevel = G2ML_ROLE_LEVELS[$currentUser['role']];
+                                }
+                            }
+
+                            $grantedRoleLevel = (int) $grantType['roleLevel'];
+
+                            if ($actingRoleLevel < $globalAdminLevel && $grantedRoleLevel >= $actingRoleLevel)
+                            {
+                                $actionError = 'You do not have permission to grant an account type at or above your own privilege level.';
+                            }
+                            else
+                            {
+                                $result = assignAccountType($targetUID, $addTypeID, $orgHandle, $currentUser['userUID']);
+
+                                if ($result['success'])
+                                {
+                                    $actionSuccess = 'Account type assigned.';
+                                }
+                                else
+                                {
+                                    $actionError = $result['error'] ?? 'Failed to assign account type.';
+                                }
+                            }
+                        }
+                    }
                 }
                 break;
 
             case 'remove_account_type':
                 $targetUID    = (int) ($_POST['user_uid'] ?? 0);
                 $removeTypeID = $_POST['account_type_id'] ?? '';
+
                 if ($removeTypeID !== '' && function_exists('revokeAccountType'))
                 {
-                    $result = revokeAccountType($targetUID, $removeTypeID, $orgHandle);
-                    if ($result['success']) { $actionSuccess = 'Account type revoked.'; }
-                    else { $actionError = $result['error'] ?? 'Failed to revoke account type.'; }
+                    // (a) The target must actually be a member of THIS org.
+                    $targetMember = dbSelectOne(
+                        "SELECT userUID FROM tblUsers WHERE userUID = ? AND orgHandle = ? LIMIT 1",
+                        'is',
+                        [$targetUID, $orgHandle]
+                    );
+
+                    if ($targetMember === null || $targetMember === false)
+                    {
+                        $actionError = 'That user is not a member of this organisation.';
+                    }
+                    else
+                    {
+                        $revokeType = null;
+
+                        if (function_exists('getAccountType'))
+                        {
+                            $revokeType = getAccountType($removeTypeID);
+                        }
+
+                        if ($revokeType === null)
+                        {
+                            $actionError = 'Unknown or inactive account type.';
+                        }
+                        else
+                        {
+                            // (b) Same privilege ceiling as the grant path —
+                            // also prevents a rogue Admin from stripping a
+                            // real GlobalAdmin's status (privilege-removal
+                            // DoS against the platform's own administrators).
+                            $globalAdminLevel = 3;
+                            $actingRoleLevel  = 0;
+
+                            if (defined('G2ML_ROLE_LEVELS'))
+                            {
+                                if (isset(G2ML_ROLE_LEVELS['GlobalAdmin']))
+                                {
+                                    $globalAdminLevel = G2ML_ROLE_LEVELS['GlobalAdmin'];
+                                }
+
+                                if (isset(G2ML_ROLE_LEVELS[$currentUser['role']]))
+                                {
+                                    $actingRoleLevel = G2ML_ROLE_LEVELS[$currentUser['role']];
+                                }
+                            }
+
+                            $revokedRoleLevel = (int) $revokeType['roleLevel'];
+
+                            if ($actingRoleLevel < $globalAdminLevel && $revokedRoleLevel >= $actingRoleLevel)
+                            {
+                                $actionError = 'You do not have permission to revoke an account type at or above your own privilege level.';
+                            }
+                            else
+                            {
+                                $result = revokeAccountType($targetUID, $removeTypeID, $orgHandle);
+
+                                if ($result['success'])
+                                {
+                                    $actionSuccess = 'Account type revoked.';
+                                }
+                                else
+                                {
+                                    $actionError = $result['error'] ?? 'Failed to revoke account type.';
+                                }
+                            }
+                        }
+                    }
                 }
                 break;
         }
@@ -185,7 +319,7 @@ $invitations = getPendingInvitations($orgHandle);
                             <td>
                                 <?php echo g2ml_sanitiseOutput($member['displayName'] ?? ($member['firstName'] . ' ' . $member['lastName'])); ?>
                                 <?php if ((int) $member['userUID'] === $currentUser['userUID']) { ?>
-                                <span class="badge bg-info">You</span>
+                                <span class="badge bg-info text-dark">You</span>
                                 <?php } ?>
                                 <?php if ((int) $member['isSuspended']) { ?>
                                 <span class="badge bg-danger">Suspended</span>
