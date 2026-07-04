@@ -44,13 +44,13 @@
       "phase": "VERIFY",
       "mode": "review",
       "exit": "complete review pass: overall PASS @ last_commit",
-      "status": "in-progress"
+      "status": "done"
     }
   ],
   "phase_cursor": 5,
-  "state": "RUNNING",
+  "state": "COMPLETE",
   "cursor": null,
-  "next_action": "POLISH COMPLETE (cycles 16-19: reduced-motion/timing #104/#105/#106; a11y bundle 2 bg-info contrast + B interstitial announcements; FG-005 avatar cascade; B-044 theme-snippet house-rule sweep). Now VERIFY: run an independent full-branch review pass at last_commit. Scope = the whole autopilot run's diff on autopilot/2026-06-05 vs main. Method (ultracode): a review workflow — parallel reviewers across dimensions (correctness/regression, security re-check, a11y/WCAG, house-rule/lint, test-coverage/integration) each producing findings, then adversarially verify each finding, then a completeness critic (what's unverified/missing). Confirm php tests/run.php green (189) + php -l clean across changed files. Record overall PASS/FAIL @ last_commit into verify{} and PROJECT.md; on PASS the run is terminal (set terminal=true) pending user review of gated G-001..G-005 and the push/merge of PR #130.",
+  "next_action": "RUN COMPLETE (terminal). All six phases done. VERIFY caught + fixed 2 must-fix HIGH defects in-phase (CR-1 broken edit page; SEC-RECHECK-01 cross-org deactivation DoS) and made the integration suite actually execute on MySQL 9.6 (21 pass). Overall verdict PASS; 189 unit + 21 integration green; 0 open High security. No further autopilot cycles — STOP looping (do not ScheduleWakeup). Handoff to user: (1) review + approve any gated features G-001..G-005 (Component C, payments, advanced auth, public API+API-key, analytics) via `approve G-00X`/`build Component C`; (2) `push` to refresh draft PR #130; (3) review + merge PR #130 manually. Non-blocking follow-ups COV-1..COV-4 in PROJECT.md Backlog. If resumed, re-open VERIFY only if new commits land.",
   "queue": {
     "backlog": "PROJECT.md#Backlog",
     "feature_gaps": "FEATURES.md",
@@ -148,27 +148,34 @@
     "reason": null,
     "since": null
   },
-  "cycle": 19,
+  "cycle": 20,
   "cap": 60,
   "gates": "hybrid",
   "feature_completeness": "in-scope",
   "verify": {
-    "commit": null,
-    "claim_groups": [],
-    "integration": "pending",
-    "completeness_critic": "pending"
+    "commit": "649ddac",
+    "overall": "PASS",
+    "found_and_fixed_in_phase": [
+      "CR-1 (HIGH correctness): edit page selected non-existent column s.shortURLUID -> s.urlUID; link editing was 100% broken (#94 only partially fixed before). Now genuinely fixed.",
+      "SEC-RECHECK-01 (HIGH tenant-isolation): create page unscoped `UPDATE isActive=0 WHERE shortCode=?` = cross-org deactivation DoS enabled by FG-001. Fixed by binding isActive into createShortURL INSERT (default true) + deleting the UPDATE.",
+      "HR-1 (nit): declare(strict_types=1) added to info_display.php."
+    ],
+    "integration": "RUN on throwaway MySQL 9.6 (full schema+procedures+seeds imported): 21 passed, 0 failed (was always SKIPPED without a DB). New tests/integration/cross_org_isolation_test.php guards CR-1 + SEC-RECHECK-01 + isActive default.",
+    "unit": "189 passed, 0 failed",
+    "completeness_critic": "PASS with non-blocking follow-ups COV-1..COV-4 (see PROJECT.md Backlog).",
+    "adversarial_reverify": "CONFIRMED — fixes correct & complete (bind arity, active-case preserved, both callers safe, strict_types safe, no new shorthand/SQLi)."
   },
-  "verified_at_commit": null,
+  "verified_at_commit": "649ddac",
   "lock": {
     "holder": null,
     "ts": null,
     "stale_after_min": 90
   },
   "branch": "autopilot/2026-06-05",
-  "last_commit": "dc5ef6f",
+  "last_commit": "649ddac",
   "trajectory_ref": "PROJECT.md#Trajectory-ledger",
-  "terminal": false,
+  "terminal": true,
   "delay": 90,
-  "updated": "2026-07-04T04:02:48Z",
+  "updated": "2026-07-04T04:39:41Z",
   "ops_note": "Release the lease with `rm -rf .dev-team/loop.lock` (a `holder` file lives inside, so `rmdir` fails and would stall the next cycle)."
 }
