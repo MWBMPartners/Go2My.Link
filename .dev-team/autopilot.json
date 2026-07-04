@@ -32,13 +32,13 @@
       "phase": "COMPLETE",
       "mode": "orchestrator(feature)",
       "exit": "every High in-scope gap built-or-queued",
-      "status": "in-progress"
+      "status": "done"
     },
     {
       "phase": "POLISH",
       "mode": "iterate",
       "exit": "no High UX/perf item",
-      "status": "pending"
+      "status": "in-progress"
     },
     {
       "phase": "VERIFY",
@@ -47,10 +47,10 @@
       "status": "pending"
     }
   ],
-  "phase_cursor": 3,
+  "phase_cursor": 4,
   "state": "RUNNING",
   "cursor": null,
-  "next_action": "COMPLETE: build FG-004 \u2014 XML+XSLT API output (brief \u00a78.2). The internal create API (web/Go2My.Link/public_html/api/create/index.php) returns JSON only; add an OPTIONAL XML representation (via ?format=xml or Accept: application/xml) plus an XSLT stylesheet for human-friendly browser rendering. Keep it ADDITIVE (JSON stays the default; AJAX path unchanged); escape all values. After FG-004 the remaining feature gaps are the gated G-001..G-005 (awaiting user approval), so advance to POLISH.",
+  "next_action": "POLISH phase (UX/a11y/perf/dedup): pull top Medium/Low backlog, prioritising a11y. First bundle (WCAG): #104 landing-page 15-min meta auto-refresh (WCAG 2.2.1 Level A \u2014 remove or make pause/stop/extend-able + reduced-motion for the countdown ring across A/B/C landings), and #106 main-site prefers-reduced-motion (app.js smooth-scroll + spinner). Then bg-secondary badge contrast (<4.5:1) + per-second aria-live countdowns on B interstitials. Also FG-005 avatar priority cascade (Low, autonomy-eligible) as a small feature. Bundle by theme; verify each; then advance to VERIFY.",
   "queue": {
     "backlog": "PROJECT.md#Backlog",
     "feature_gaps": "FEATURES.md",
@@ -123,6 +123,15 @@
       "status": "built",
       "cleared_by": "autonomy-test",
       "justification": "documented-intent gap; escaped-text reveal to authed viewers, masked+login-prompt for anon; risk:Low; built cycle 14, 141 unit pass."
+    },
+    {
+      "id": "G-009",
+      "kind": "feature",
+      "title": "FG-004 XML+XSLT API output + responder dedup",
+      "spec_ref": "FEATURES.md#FG-004",
+      "status": "built",
+      "cleared_by": "autonomy-test",
+      "justification": "brief \u00a78.2 gap + net-positive dedup (10 json_encode -> 1 helper); JSON byte-identical; risk:Low; built cycle 15, 166 unit pass."
     }
   ],
   "blocked": {
@@ -130,7 +139,7 @@
     "reason": null,
     "since": null
   },
-  "cycle": 14,
+  "cycle": 15,
   "cap": 60,
   "gates": "hybrid",
   "feature_completeness": "in-scope",
@@ -147,10 +156,10 @@
     "stale_after_min": 90
   },
   "branch": "autopilot/2026-06-05",
-  "last_commit": "c8b5dc4",
+  "last_commit": "2d8d4b5",
   "trajectory_ref": "PROJECT.md#Trajectory-ledger",
   "terminal": false,
   "delay": 90,
-  "updated": "2026-07-04T02:51:16Z",
+  "updated": "2026-07-04T03:07:49Z",
   "ops_note": "Release the lease with `rm -rf .dev-team/loop.lock` (a `holder` file lives inside, so `rmdir` fails and would stall the next cycle)."
 }

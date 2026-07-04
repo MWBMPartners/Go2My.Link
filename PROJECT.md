@@ -109,16 +109,27 @@ list; these OVERRIDE default behaviour):
    map → SECURITY.md), then targeted remediations starting with B-003/#95 XFF
    spoofing, then SSRF, CSRF, CRLF, cross-org, a11y items
    (#96–#110). — status: **active**
-4. **FEATURE-FILL (in-scope)** — close in-scope feature gaps surfaced by audit
-   §7.2/§8 and `FEATURES.md` via the conductor gate (e.g. #23 info-page auth view,
-   #30 dashboard custom suffix/alias/tags, #91 custom-domain resolution). Large
-   roadmap (Phases 7–11, Component C) stays queued. — status: planned
-5. **VERIFY & DOCUMENT** — independent review pass; finalise install/run docs;
+4. **FEATURE-FILL (in-scope)** / **COMPLETE** — close in-scope feature gaps surfaced
+   by audit §7.2/§8 and `FEATURES.md` via the conductor gate (#23 info-page auth
+   view, #30 dashboard custom suffix/alias/tags, #91 custom-domain resolution).
+   Large roadmap (Phases 7–11, Component C) stays queued. — status: **complete**
+   (cycles 10, 13–15; all four autonomy-eligible gaps FG-001..FG-004 built;
+   remaining feature gaps are the gated G-001..G-005, awaiting user approval)
+5. **POLISH** — sweep the top Medium/Low backlog items (a11y #104 landing
+   auto-refresh WCAG 2.2.1 Level A + reduced-motion + `bg-secondary` badge
+   contrast, `public_html_*` variant hygiene #112, lint/analysis exclusions).
+   — status: **active**
+6. **VERIFY & DOCUMENT** — independent review pass; finalise install/run docs;
    confirm Definition of done. — status: planned
 
 ## 📌 Current status
 
-- **Active stage:** COMPLETE phase: FG-001 + FG-002 + FG-003 built. Next: FG-004 (XML+XSLT API output) — the last small autonomy-eligible gap; after that the remaining feature work is the gated G-001..G-005 (Component C, payments, advanced auth, public API, analytics) awaiting user approval, so the loop will then move to POLISH. Local branch ahead of draft PR #130 (do not merge) — re-push to refresh.
+- **Active stage:** COMPLETE done (FG-001 custom alias, FG-002 tags, FG-003
+  info-page auth view, FG-004 XML/XSLT all built; gated G-001..G-005 queued).
+  Entering POLISH — top Medium/Low backlog: a11y (#104 landing auto-refresh
+  WCAG 2.2.1 Level A, reduced-motion, `bg-secondary` badge contrast),
+  `public_html_*` variant hygiene (#112), lint/analysis exclusions. Then
+  VERIFY. Local branch ahead of draft PR #130 (do not merge).
 - **Done so far:** Bootstrap complete. Codebase Map written and spot-verified
   against the tree. Backlog re-derived from the live GitHub issues (#1–#128) and
   the two 2026-06-04 audits. Confirmed via direct code inspection that commit
@@ -173,6 +184,14 @@ list; these OVERRIDE default behaviour):
   - No automated test suite — every fix needs empirical verification evidence.
 
 ## 🧾 Decision log
+
+### 2026-07-04 — FG-004 (XML+XSLT API output) auto-built under the autonomy test; centralised API responses into `g2ml_apiRespond()`; COMPLETE phase complete
+
+- **Decision:** FG-004 was auto-built without user gate approval under the autopilot autonomy test: table-stakes (brief-mandated, §8.2 lines 222–224), risk Low, additive — JSON stays the default and is byte-identical to before. Rather than bolt XML onto `api/create/index.php`'s ten separate `json_encode` call sites, the response layer was centralised first: new `web/_functions/api_response.php` exposes `g2ml_apiRespond()` (the one call site every branch now uses) plus three pure, independently-testable helpers — `g2ml_apiWantsXml()` (content negotiation via `?format=xml` or `Accept: application/xml`), `g2ml_arrayToXml()`, and `g2ml_buildApiXmlDocument()`. `api/create/index.php` was refactored to route every response (405/403/422/429/201, success and error) through `g2ml_apiRespond()` — 0 `json_encode` calls remain in that file. XML output is a `<response>` document with a leading `<?xml-stylesheet?>` PI referencing the new self-hosted `web/Go2My.Link/public_html/api/create/response.xsl`; every value is `htmlspecialchars`/ENT_XML1-escaped, verified against a hostile payload and confirmed well-formed with `xmllint`.
+- **Why dedup the JSON path in the same change:** ten independent `json_encode` blocks would have meant ten independent places to wire an XML branch into (and ten places for the two formats to drift). Funnelling both formats through one `g2ml_apiRespond()` call site is a refactor-under-test-net move — the existing JSON behaviour was locked down with a byte-identical subprocess diff before/after, so the refactor could not silently change any existing response.
+- **Scope boundary:** The no-JS redirect fallback and all existing status codes/messages were preserved unchanged; only the internal response-emission mechanism and the addition of the XML branch changed. The AJAX/JSON contract used by `js/app.js` is untouched.
+- **Stage decision — COMPLETE phase complete:** FG-004 was the last of the four autonomy-eligible gaps (FG-001 custom alias, FG-002 tags, FG-003 info-page auth view, FG-004 XML/XSLT) identified in DISCOVER. All four are now built. The remaining feature gaps are the gated G-001..G-005 (Component C, payments, advanced auth, public API expansion, analytics) — each explicitly awaiting user approval per the gate ledger, not autonomy-eligible. With no further in-scope work the loop can safely auto-select, COMPLETE is done; advancing to POLISH (top Medium/Low backlog: a11y #104, `public_html_*` variant hygiene #112, lint/analysis exclusions), then VERIFY.
+- **Revisit if:** the API expansion (FG-008/FG-009) lands later, `g2ml_apiRespond()`/`g2ml_buildApiXmlDocument()` should be reused rather than re-implemented so the two new endpoints inherit the same JSON/XML parity for free.
 
 ### 2026-07-04 — FG-003 (info-page public-vs-authenticated view, #23) auto-built under the autonomy test; full destination revealed to ANY authenticated viewer, rendered as escaped text not a link
 
@@ -344,6 +363,13 @@ list; these OVERRIDE default behaviour):
   `STR_TO_DATE` with `%Y-%m-%d %H:%i:%s` and an explicit NULL fallback.
 
 ## ⛳ Checkpoint log
+
+### Cycle 15 — 2026-07-04 — COMPLETE (auto-built FG-004; XML+XSLT API output + JSON responder dedup) — **completes COMPLETE**
+
+- **Items resolved:** FG-004 — XML+XSLT API output (auto-built under the autonomy test); JSON responder dedup (10 `json_encode` call sites → 1 `g2ml_apiRespond()`).
+- **Evidence:** New `web/_functions/api_response.php` — `g2ml_apiRespond()` plus pure helpers `g2ml_apiWantsXml()`, `g2ml_arrayToXml()`, `g2ml_buildApiXmlDocument()`; new `web/Go2My.Link/public_html/api/create/response.xsl`. `api/create/index.php` refactored so every branch (405/403/422/429/201, success and error, no-JS redirect fallback) routes through `g2ml_apiRespond()` — 0 `json_encode` calls remain; the structured branch now also triggers on `?format=xml` / `Accept: application/xml`. Helper registered in `page_init.php`. JSON default verified byte-identical to pre-refactor output via a subprocess diff; XML output is a `<response>` document with a stylesheet PI, every value `htmlspecialchars` ENT_XML1-escaped (hostile payload proven escaped, lossless), confirmed well-formed with `xmllint`. Regression: `tests/unit/api_response_test.php` (25 new tests). Lead re-ran: 166 unit pass (was 141); lint clean; dedup confirmed (0 `json_encode` left in `api/create/index.php`).
+- **Remaining:** COMPLETE phase complete — all four autonomy-eligible gaps (FG-001 custom alias, FG-002 tags, FG-003 info-page auth view, FG-004 XML/XSLT) are built. Remaining feature gaps are the gated G-001..G-005 (Component C, payments, advanced auth, public API, analytics), still awaiting user approval. Advancing to POLISH: top Medium/Low backlog first (a11y #104 landing auto-refresh WCAG 2.2.1 Level A + reduced-motion + `bg-secondary` badge contrast, `public_html_*` variant hygiene #112, lint/analysis exclusions), then VERIFY.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; local branch is ahead of the draft PR #130 (do not merge) — needs re-push to refresh.
 
 ### Cycle 14 — 2026-07-04 — COMPLETE (auto-built FG-003; info-page public-vs-authenticated view, #23)
 
@@ -872,3 +898,4 @@ Baseline metrics measured at DISCOVER seed; every cycle appends a row.
 | 2026-07-04 | 12 | STABILIZE (re-open) — fixed B-043; **re-open resolved** | 27 (unchanged on GitHub) | 0 open | 17 open (B-043 ✅) | 10 open | clean (php -l on changed files) | 113 unit / 13 integration (1 new unit: `tests/unit/user_agent_bot_test.php`) | B-043 fixed: `_g2ml_parseUserAgent()` now escapes each bot pattern with `preg_quote($p, '/')` (full closure, no shorthand), so `'Java/'` no longer closes the `/…/` delimiter — bot detection works (`isBot` set) with no PCRE warning. Regression test (Java/ bot, Googlebot, non-bot Chrome). 113 unit pass; lint clean. STABILIZE re-open resolved; resuming COMPLETE (FG-002 tags next). |
 | 2026-07-04 | 13 | COMPLETE — auto-built FG-002 (autonomy-eligible) | 27 (unchanged on GitHub) | 0 open | 16 open (B-020 ✅ create-path) | 10 open | clean (php -l on all changed files + new tests) | 132 unit / 18 integration (19 new unit: `tests/unit/tags_normalise_test.php`; 5 new integration: `tests/integration/tags_create_test.php`) | FG-002 tags on links BUILT under the autonomy test (Bucket 1: table-stakes + in-scope + risk:Low + non-destructive) — `tblTags`/`tblShortURLTags` schema existed since schema 020 but had zero PHP references. Wired up via find-or-create per org (`UQ_tag_org`), junction insert via `INSERT IGNORE`, tags attached AFTER the short-URL row insert with each tag in its own try/catch (a tag failure never rolls back the create); slug ASCII-only via `g2ml_slugifyTag()`, display name preserves original casing/spacing; capped at `G2ML_MAX_TAGS_PER_LINK` = 10. Dashboard create form gains an optional comma-separated "Tags" field; links index renders WCAG-accessible tag badges (`role="list"`) via one dynamically-sized bound `IN(...)` query for the page's short-URL UIDs — no N+1, confirmed placeholder-only (no interpolation). 132 unit + 18 integration pass (was 113/13); 5 acceptance criteria demonstrated. B-020 (dashboard alias/tags gap) marked done for the create-path; edit-form tag management and tag-based filtering deferred as explicit follow-ups. |
 | 2026-07-04 | 14 | COMPLETE — auto-built FG-003 (autonomy-eligible) | 27 (unchanged on GitHub) | 0 open | 15 open (B-019 ✅) | 10 open | clean (php -l on all changed files + new tests) | 141 unit / 18 integration (9 new unit: `tests/unit/info_display_destination_test.php`) | FG-003 info-page public-vs-authenticated view (#23) BUILT under the autonomy test (Bucket 1: table-stakes + in-scope + risk:Low + non-destructive) — the page docblock already documented the intent and short URLs redirect publicly so the destination is not secret. New pure helper `g2ml_infoDisplayDestination(array $linkData, bool $isAuthenticated): string` in new file `web/Go2My.Link/_functions/info_display.php` (returns the full destination when authenticated, masked domain[/...] when not, '' when none — old inline masking moved into it). `pages/info/index.php`: authenticated viewers (ANY authenticated viewer, not owner-only, per the docblock intent) see the full destination as escaped text (`g2ml_sanitiseOutput`, not a clickable link — no scheme/XSS vector); anonymous viewers keep the masked domain plus a new accessible "Log in to see the full destination" prompt linking to `/login` (no redirect-back param, avoiding open-redirect). New i18n key `info.login_for_full` in seed `010_phase6_translations.sql`. 141 unit pass (+9, was 132); lint clean; render harness confirmed a hostile payload is fully HTML-escaped for the authed view. B-019 (#23) marked done. |
+| 2026-07-04 | 15 | COMPLETE — auto-built FG-004 (autonomy-eligible); **completes COMPLETE** | 27 (unchanged on GitHub) | 0 open | 15 open | 10 open | clean (php -l on all changed files + new tests) | 166 unit / 18 integration (25 new unit: `tests/unit/api_response_test.php`) | FG-004 XML+XSLT API output BUILT under the autonomy test (Bucket 1: feature + refactor-under-test-net) — brief §8.2 required JSON (default) + XML with embedded XSLT; `api/create/index.php` previously had 10 repeated `json_encode` blocks and no XML path. New `web/_functions/api_response.php` (`g2ml_apiRespond()` + pure `g2ml_apiWantsXml()`/`g2ml_arrayToXml()`/`g2ml_buildApiXmlDocument()`) and new XSLT `web/Go2My.Link/public_html/api/create/response.xsl`; `api/create/index.php` refactored to one `g2ml_apiRespond()` call (0 `json_encode` left), with the structured branch now also triggering on `?format=xml` / `Accept: application/xml`; helper registered in `page_init.php`. JSON stays the default and is byte-identical to before (subprocess diff); XML emits a `<response>` document with a stylesheet PI, all values `htmlspecialchars` ENT_XML1-escaped (hostile payload proven escaped, lossless); no-JS redirect fallback and all status codes (405/403/422/429/201) + messages preserved. 166 unit pass (+25, was 141); lint clean; `xmllint` confirms well-formed output; dedup confirmed (0 `json_encode` remaining). **COMPLETE phase complete: all four autonomy-eligible gaps (FG-001..FG-004) built; remaining feature gaps are the gated G-001..G-005, awaiting user approval. Advancing to POLISH.** |

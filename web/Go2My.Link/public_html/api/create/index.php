@@ -81,17 +81,41 @@ $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
     && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
 
 // ============================================================================
+// 🔎 Step 2b: Determine whether to emit a STRUCTURED response
+// ============================================================================
+// A structured response (JSON by default, XML on request) is returned to any
+// XHR/fetch caller (X-Requested-With) AND to any API client that explicitly
+// asks for XML via "?format=xml" or an "Accept: application/xml" header, even
+// when X-Requested-With is absent. Everything else keeps the no-JS redirect
+// fallback. Format selection itself lives in g2ml_apiRespond().
+//
+// 📖 Reference: web/_functions/api_response.php — g2ml_apiWantsXml()
+// ============================================================================
+
+$acceptHeaderValue = '';
+
+if (isset($_SERVER['HTTP_ACCEPT']) && is_string($_SERVER['HTTP_ACCEPT']))
+{
+    $acceptHeaderValue = $_SERVER['HTTP_ACCEPT'];
+}
+
+$isStructuredRequest = $isAjax;
+
+if (g2ml_apiWantsXml($_GET, $acceptHeaderValue))
+{
+    $isStructuredRequest = true;
+}
+
+// ============================================================================
 // 🛡️ Step 3: Enforce POST method
 // ============================================================================
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST')
 {
-    if ($isAjax)
+    if ($isStructuredRequest)
     {
-        http_response_code(405);
-        header('Content-Type: application/json; charset=UTF-8');
         header('Allow: POST');
-        echo json_encode(['success' => false, 'error' => 'Method not allowed.']);
+        g2ml_apiRespond(['success' => false, 'error' => 'Method not allowed.'], 405);
     }
     else
     {
@@ -113,11 +137,9 @@ if (!g2ml_validateCSRFToken($csrfToken, 'shorten_url'))
 {
     $errorMsg = 'Your session has expired. Please reload the page and try again.';
 
-    if ($isAjax)
+    if ($isStructuredRequest)
     {
-        http_response_code(403);
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode(['success' => false, 'error' => $errorMsg]);
+        g2ml_apiRespond(['success' => false, 'error' => $errorMsg], 403);
     }
     else
     {
@@ -148,11 +170,9 @@ if ($turnstileSecretKey !== '')
     {
         $errorMsg = 'Please complete the CAPTCHA verification.';
 
-        if ($isAjax)
+        if ($isStructuredRequest)
         {
-            http_response_code(422);
-            header('Content-Type: application/json; charset=UTF-8');
-            echo json_encode(['success' => false, 'error' => $errorMsg]);
+            g2ml_apiRespond(['success' => false, 'error' => $errorMsg], 422);
         }
         else
         {
@@ -165,11 +185,9 @@ if ($turnstileSecretKey !== '')
     {
         $errorMsg = 'CAPTCHA verification failed. Please try again.';
 
-        if ($isAjax)
+        if ($isStructuredRequest)
         {
-            http_response_code(403);
-            header('Content-Type: application/json; charset=UTF-8');
-            echo json_encode(['success' => false, 'error' => $errorMsg]);
+            g2ml_apiRespond(['success' => false, 'error' => $errorMsg], 403);
         }
         else
         {
@@ -187,11 +205,9 @@ elseif ($recaptchaSecretKey !== '')
     {
         $errorMsg = 'Please complete the CAPTCHA verification.';
 
-        if ($isAjax)
+        if ($isStructuredRequest)
         {
-            http_response_code(422);
-            header('Content-Type: application/json; charset=UTF-8');
-            echo json_encode(['success' => false, 'error' => $errorMsg]);
+            g2ml_apiRespond(['success' => false, 'error' => $errorMsg], 422);
         }
         else
         {
@@ -204,11 +220,9 @@ elseif ($recaptchaSecretKey !== '')
     {
         $errorMsg = 'CAPTCHA verification failed. Please try again.';
 
-        if ($isAjax)
+        if ($isStructuredRequest)
         {
-            http_response_code(403);
-            header('Content-Type: application/json; charset=UTF-8');
-            echo json_encode(['success' => false, 'error' => $errorMsg]);
+            g2ml_apiRespond(['success' => false, 'error' => $errorMsg], 403);
         }
         else
         {
@@ -239,16 +253,14 @@ if (!$rateCheck['allowed'])
         ],
     ]);
 
-    if ($isAjax)
+    if ($isStructuredRequest)
     {
-        http_response_code(429);
-        header('Content-Type: application/json; charset=UTF-8');
         header('Retry-After: 3600');
-        echo json_encode([
+        g2ml_apiRespond([
             'success'   => false,
             'error'     => $errorMsg,
             'remaining' => 0,
-        ]);
+        ], 429);
     }
     else
     {
@@ -267,11 +279,9 @@ if ($longURL === '')
 {
     $errorMsg = 'Please enter a URL to shorten.';
 
-    if ($isAjax)
+    if ($isStructuredRequest)
     {
-        http_response_code(422);
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode(['success' => false, 'error' => $errorMsg]);
+        g2ml_apiRespond(['success' => false, 'error' => $errorMsg], 422);
     }
     else
     {
@@ -297,15 +307,13 @@ $result = createShortURL($longURL, [
 
 if ($result['success'])
 {
-    if ($isAjax)
+    if ($isStructuredRequest)
     {
-        http_response_code(201);
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode([
+        g2ml_apiRespond([
             'success'   => true,
             'shortURL'  => $result['shortURL'],
             'shortCode' => $result['shortCode'],
-        ]);
+        ], 201);
     }
     else
     {
@@ -315,14 +323,12 @@ if ($result['success'])
 }
 else
 {
-    if ($isAjax)
+    if ($isStructuredRequest)
     {
-        http_response_code(422);
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode([
+        g2ml_apiRespond([
             'success' => false,
             'error'   => $result['error'],
-        ]);
+        ], 422);
     }
     else
     {

@@ -75,6 +75,9 @@ Ranked by importance within the aim, then favouring lower effort/risk. Autonomy-
   **confidence:** high
   **spec-seed:** Add an `Accept:`/`?format=xml` switch to the API response layer; serialise the same payload via a small XML builder, prepend an `<?xml-stylesheet?>` referencing a self-hosted XSLT, set `Content-Type: application/xml`. Keep JSON the default. (Best landed *with* the API expansion FG-008/FG-009.)
   **gate:** autonomy-eligible
+  **status:** ✅ BUILT — cycle 15 (2026-07-04), branch `autopilot/2026-06-05`. New `web/_functions/api_response.php` (`g2ml_apiRespond()` + pure `g2ml_apiWantsXml()`/`g2ml_arrayToXml()`/`g2ml_buildApiXmlDocument()`); new XSLT `web/Go2My.Link/public_html/api/create/response.xsl`; refactored `api/create/index.php` (10 repeated `json_encode` blocks → one `g2ml_apiRespond()` call; 0 `json_encode` left; the structured branch now also triggers on `?format=xml` / `Accept: application/xml` so API clients get structured responses); helper registered in `page_init.php`. JSON stays the default and is byte-identical to before (subprocess diff); XML emits a `<response>` document with a stylesheet PI, all values `htmlspecialchars` ENT_XML1-escaped (hostile payload proven escaped, lossless); no-JS redirect fallback and all status codes (405/403/422/429/201) + messages preserved. Regression: `tests/unit/api_response_test.php` (25 new tests). Lead re-ran: 166 unit pass (was 141); lint clean; `xmllint` confirms well-formed output; dedup confirmed (0 `json_encode` remaining in `api/create/index.php`).
+
+**Tier 1 status (2026-07-04, end of COMPLETE):** FG-001, FG-002, FG-003 and FG-004 — all four autonomy-eligible gaps selected this run — are now ✅ BUILT. FG-005 (avatar priority cascade) remains open under its existing autonomy-eligible gate; it was not selected in this pass and carries forward to a future cycle. All Tier 2–5 gaps remain gate-for-approval, unchanged.
 
 - **id:** FG-005
   **feature:** Avatar priority cascade
