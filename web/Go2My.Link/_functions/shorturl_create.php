@@ -506,6 +506,22 @@ function createShortURL(string $longURL, array $options = []): array
     $endDate    = $options['endDate'] ?? null;
     $notes      = $options['notes'] ?? null;
 
+    // isActive (SEC-RECHECK-01 hardening): a caller may create a link inactive.
+    // Default active to preserve behaviour for every existing caller. The value
+    // is coerced to 0/1 and BOUND into the INSERT (never a post-insert UPDATE
+    // scoped only by shortCode, which — since UQ_shortcode_org is per-org and
+    // FG-001 lets a user mint an alias duplicating another org's code — would
+    // deactivate a different tenant's live link).
+    $isActiveOption = $options['isActive'] ?? true;
+    if ($isActiveOption)
+    {
+        $isActiveValue = 1;
+    }
+    else
+    {
+        $isActiveValue = 0;
+    }
+
     // Custom alias (FG-001): empty/absent means "generate a random code".
     $customCode = trim((string) ($options['customCode'] ?? ''));
 
@@ -606,7 +622,7 @@ function createShortURL(string $longURL, array $options = []): array
         VALUES
         (?, ?, ?, 'url',
          ?, ?, ?, ?,
-         ?, ?, 1, NOW(), NOW())";
+         ?, ?, ?, NOW(), NOW())";
 
     for ($attempt = 1; $attempt <= $maxAttempts; $attempt++)
     {
@@ -671,6 +687,10 @@ function createShortURL(string $longURL, array $options = []): array
         // endDate (nullable string)
         $types   .= 's';
         $params[] = $endDate;
+
+        // isActive (bound integer, never interpolated — SEC-RECHECK-01)
+        $types   .= 'i';
+        $params[] = $isActiveValue;
 
         $insertResult = dbInsert($insertSQL, $types, $params);
 

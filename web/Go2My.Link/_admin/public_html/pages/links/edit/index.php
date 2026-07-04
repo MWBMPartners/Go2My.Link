@@ -51,7 +51,7 @@ if ($shortCode === '')
 else
 {
     $linkData = dbSelectOne(
-        "SELECT s.shortURLUID, s.shortCode, s.destinationURL, s.title,
+        "SELECT s.urlUID, s.shortCode, s.destinationURL, s.title,
                 s.urlNotes AS notes, s.categoryID, s.startDate, s.endDate,
                 s.isActive, s.createdAt, s.clickCount, s.orgHandle
          FROM tblShortURLs s

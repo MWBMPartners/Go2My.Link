@@ -124,11 +124,12 @@ list; these OVERRIDE default behaviour):
 
 ## 📌 Current status
 
-- **Active stage:** POLISH phase COMPLETE (a11y bundles 1-2 + FG-005 + B-044
-  house-rule sweep all done). Next: advance to VERIFY — an independent
-  full-branch review pass at the latest commit (correctness re-check of the
-  run's changes, integration sanity, completeness critic). Gated G-001..G-005
-  await approval; local branch well ahead of draft PR #130 (do not merge).
+- **Active stage:** **RUN COMPLETE.** All six phases done (DISCOVER →
+  STABILIZE → SECURE → COMPLETE → POLISH → VERIFY). VERIFY verdict: **PASS**
+  (2 must-fix defects found and fixed in-phase; 189 unit + 21 integration
+  green on MySQL 9.6; 0 open High security). Non-blocking follow-ups:
+  COV-1..COV-4. Awaiting user: review + approve gated features G-001..G-005;
+  push branch to refresh draft PR #130; then merge. Do NOT merge automatically.
 - **Done so far:** Bootstrap complete. Codebase Map written and spot-verified
   against the tree. Backlog re-derived from the live GitHub issues (#1–#128) and
   the two 2026-06-04 audits. Confirmed via direct code inspection that commit
@@ -183,6 +184,15 @@ list; these OVERRIDE default behaviour):
   - No automated test suite — every fix needs empirical verification evidence.
 
 ## 🧾 Decision log
+
+### 2026-07-04 — VERIFY caught two DB-only HIGH defects the unit-only green baseline was structurally blind to; stood up real MySQL to run the integration suite for the first time this run
+
+- **Decision:** Ran the final independent full-branch review (cycle 20, phase VERIFY, TERMINAL) over the whole `autopilot/2026-06-05` diff vs `main` (24 commits, 118 files): five dimensional reviewers (correctness, security, a11y, house-rule, test-coverage) → each material finding adversarially verified → a completeness critic. Two confirmed must-fix HIGH defects were found and fixed in-phase, both on the link-CRUD path and both invisible to the unit-only suite because they only manifest against a real database: **CR-1** — `links/edit/index.php`'s load SELECT named a non-existent column `s.shortURLUID` (the real primary key is `s.urlUID`), so the statement failed at PREPARE and link editing was 100% broken, falsifying the earlier "#94 fixed editing" claim (that fix had only corrected the adjacent `notes`→`urlNotes` column on the same statement); fixed to `s.urlUID`. **SEC-RECHECK-01** — `links/create/index.php` ran a post-insert `UPDATE tblShortURLs SET isActive=0 WHERE shortCode=?` scoped only by `shortCode`; because `UQ_shortcode_org` is per-org and FG-001 lets a user mint a custom alias duplicating another org's public code, that UPDATE deactivated the *other* org's live link — a deterministic cross-tenant deactivation DoS against the redirect crown jewel. Fixed at source rather than bolted on: added an `isActive` option to `createShortURL()` that binds `isActive` into the single INSERT (default `true`, so all existing callers incl. the public API are unaffected), and deleted the unscoped UPDATE entirely. A third, non-blocking nit (HR-1) was also fixed: `declare(strict_types=1)` added to `info_display.php` (FG-003's helper file, which had been missed).
+- **Why fix SEC-RECHECK-01 by binding into the INSERT rather than adding an org filter to the UPDATE:** an org-scoped `WHERE shortCode = ? AND orgHandle = ?` on the UPDATE would have closed the immediate cross-tenant hole but kept a second, redundant write against a row the code had *just* inserted in the same request — a second query with its own failure mode (partial state if the UPDATE fails after the INSERT succeeds) for no benefit over setting the value once, correctly, in the original INSERT. Binding `isActive` into the INSERT removes the extra query and the unscoped-write class of bug entirely, not just this instance of it.
+- **Why the biggest systemic gap mattered — and how it was closed:** the 189-pass baseline going into VERIFY was **unit-only**; every DB-backed integration test had been silently SKIPPING all run because no MySQL instance was available to the loop. Both CR-1 and SEC-RECHECK-01 are DB-only bugs (a PREPARE failure against a real schema; a cross-row UPDATE against real tenant data) that no unit test could ever have caught. VERIFY stood up a throwaway MySQL 9.6, imported the full schema + procedures + seeds, and actually **ran** the integration suite for the first time this run: 21 passed, 0 failed (the existing 18 plus 3 new). Added `tests/integration/cross_org_isolation_test.php`, covering CR-1 (the edit-load SELECT now prepares and returns a row), SEC-RECHECK-01 (an org-B inactive alias leaves org A's link active), and the `isActive` default. Both fixes are now empirically proven at the DB layer, not just read-verified.
+- **#94 status correction:** #94 was recorded as fixed in the 2026-06-05 decision log entry ("#94 (link-edit uses `urlNotes`)") but that only covered the `notes`→`urlNotes` column; the sibling `shortURLUID`→`urlUID` bug on the same SELECT meant editing a link was still completely broken. #94 is now genuinely resolved — both column bugs on that statement are fixed and integration-tested.
+- **Non-blocking follow-ups recorded, not fixed this cycle (see Backlog COV-1..COV-4):** COV-1 (#121 cross-org category isolation has no automated test — Med), COV-2 (#122 org re-invite key change untested — Low), COV-3 (favicon path-traversal test re-implements the confinement logic instead of calling the real `favicon.php` — Low), COV-4 (#124 TOCTOU random-code regenerate-on-collision retry loop untested — Low). None block the PASS verdict; none touch code shipped this run without a passing test elsewhere.
+- **Revisit if:** a future cycle adds DB-integration coverage for COV-1..COV-4, or if the CI environment gains a MySQL service container — wire the integration suite into CI so it runs on every push instead of only during manual VERIFY passes with a local throwaway DB.
 
 ### 2026-07-04 — B-044 house-rule sweep run as its own mechanical cycle; whole IIFE rewritten to Allman, not just the ternary
 
@@ -390,6 +400,14 @@ list; these OVERRIDE default behaviour):
   `STR_TO_DATE` with `%Y-%m-%d %H:%i:%s` and an explicit NULL fallback.
 
 ## ⛳ Checkpoint log
+
+### Cycle 20 — 2026-07-04 — VERIFY (final independent full-branch review) — **run TERMINAL**
+
+- **Items resolved:** CR-1 (broken link-edit load SELECT — non-existent column `s.shortURLUID`), SEC-RECHECK-01 (cross-org link deactivation DoS via unscoped `isActive` UPDATE, enabled by FG-001 custom aliases), HR-1 (missing `declare(strict_types=1)` in `info_display.php`).
+- **Evidence:** Review workflow ran over the whole branch diff vs `main` (24 commits, 118 files): 5 dimensional reviewers (correctness, security, a11y, house-rule, test-coverage) → each material finding adversarially verified → a completeness critic. Baseline re-confirmed first: 51 changed PHP files `php -l` clean, 189 unit tests pass. **CR-1** — `web/Go2My.Link/_admin/public_html/pages/links/edit/index.php`'s load SELECT named `s.shortURLUID` (the real PK is `s.urlUID`), so the statement failed at PREPARE and link editing was 100% broken; fixed to `s.urlUID`. **SEC-RECHECK-01** — `web/Go2My.Link/_admin/public_html/pages/links/create/index.php` ran a post-insert `UPDATE tblShortURLs SET isActive=0 WHERE shortCode=?` scoped only by `shortCode`; because `UQ_shortcode_org` is per-org and FG-001 lets a user mint a custom alias duplicating another org's public code, the UPDATE deactivated the *other* org's live link (cross-tenant DoS on the redirect crown jewel); fixed at source — added an `isActive` option to `createShortURL()` in `web/Go2My.Link/_functions/shorturl_create.php` bound directly into the single INSERT (default `true`, all existing callers incl. the public API unaffected) and deleted the unscoped UPDATE. Stood up a throwaway MySQL 9.6, imported the full schema + procedures + seeds, and **ran** the integration suite (previously skipping cleanly with no DB all run): **21 passed, 0 failed** (18 existing + 3 new). Added `tests/integration/cross_org_isolation_test.php` covering CR-1 (edit-load prepares + returns a row), SEC-RECHECK-01 (org-B inactive alias leaves org-A link active), and the `isActive` default. A focused adversarial re-verify of both fixes returned CONFIRMED (bind arity correct, active-case preserved, both callers safe, `strict_types` safe, no new shorthand/SQLi introduced). `#94` is now genuinely resolved — the earlier fix only corrected the sibling `notes`→`urlNotes` column on the same statement; CR-1 fixes the remaining `shortURLUID`→`urlUID` bug that had kept editing broken.
+- **Non-blocking follow-ups (backlog, not fixed this cycle):** COV-1 (#121 cross-org category isolation untested — Med), COV-2 (#122 org re-invite key change untested — Low), COV-3 (favicon path-traversal test re-implements the confinement instead of calling the real `favicon.php` — Low), COV-4 (#124 TOCTOU regenerate-on-collision retry loop untested — Low).
+- **Overall verdict: PASS.** All six phases (DISCOVER → STABILIZE → SECURE → COMPLETE → POLISH → VERIFY) are complete. 189 unit + 21 integration tests green; 0 open High security findings (findings register in `SECURITY.md` now 17 fixed / 0 open, including SEC-RECHECK-01 found-and-fixed this cycle). Run is **TERMINAL** — gated features G-001..G-005 await user approval; local branch is ahead of draft PR #130 and needs a re-push to refresh it; do **not** merge automatically.
+- **Branch state:** clean commit on `autopilot/2026-06-05`; local branch ahead of draft PR #130 (do not merge) — needs re-push to refresh.
 
 ### Cycle 19 — 2026-07-04 — POLISH (B-044 house-rule sweep; theme-init snippet) — **completes POLISH**
 
@@ -709,8 +727,45 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
 - **id:** B-009
   **title:** Link-edit silently failed — UPDATE referenced non-existent column `notes`
   **category:** correctness · **impact:** High · **component:** A (database)
-  **source:** #94 · **status:** ✅ fixed-on-branch (verified: SELECT/UPDATE now use
-  `urlNotes`). Issue still OPEN — close with commit ref `6897165`.
+  **source:** #94 · **status:** ✅ **genuinely fixed (cycle 20 — see CR-1)**. The
+  2026-06-05 fix only corrected the `notes`→`urlNotes` column; a sibling bug on
+  the same load SELECT (`s.shortURLUID`, a non-existent column — the real PK is
+  `s.urlUID`) meant the statement still failed at PREPARE and editing remained
+  100% broken. CR-1 (VERIFY, cycle 20) fixed the remaining column and
+  integration-tested it. #94 is now genuinely resolved — close with commit refs
+  `6897165` + the cycle-20 commit.
+
+- **id:** CR-1
+  **title:** Link-edit load SELECT references non-existent column `s.shortURLUID` — editing still 100% broken despite #94's partial fix
+  **category:** correctness · **impact:** High · **component:** A (database)
+  **source:** found + fixed cycle 20 (VERIFY) · **status:** ✅ Done (cycle 20).
+  `web/Go2My.Link/_admin/public_html/pages/links/edit/index.php`'s load SELECT
+  named `s.shortURLUID`; the table's real primary key is `s.urlUID`. The
+  PREPARE failed on every load, so the edit page was unusable end-to-end — this
+  is a database-only failure mode invisible to the unit-only test suite, which
+  is why it survived the earlier partial #94 fix undetected. Fixed to
+  `s.urlUID`. Verified on MySQL 9.6 via `tests/integration/cross_org_isolation_test.php`:
+  the load SELECT now prepares and returns a row.
+
+- **id:** SEC-RECHECK-01
+  **title:** Cross-org link deactivation DoS — unscoped `isActive` UPDATE, exploitable via FG-001 custom aliases
+  **category:** security · **impact:** High · **component:** A/shared
+  **source:** found + fixed cycle 20 (VERIFY) · **status:** ✅ Done (cycle 20).
+  `web/Go2My.Link/_admin/public_html/pages/links/create/index.php` ran a
+  post-insert `UPDATE tblShortURLs SET isActive=0 WHERE shortCode=?` scoped
+  only by `shortCode`, not `orgHandle`. Because `UQ_shortcode_org` is per-org
+  and FG-001 (custom aliases) lets an authenticated user mint a code that
+  duplicates another org's public short code, this UPDATE deterministically
+  deactivated the *other* org's live link — a cross-tenant DoS on the redirect
+  crown jewel. Fixed at source: `createShortURL()` in
+  `web/Go2My.Link/_functions/shorturl_create.php` gained an `isActive` option
+  bound directly into the single INSERT (default `true`; all existing callers
+  incl. the public API unaffected), and the unscoped UPDATE was deleted
+  entirely. Verified on MySQL 9.6 via the new
+  `tests/integration/cross_org_isolation_test.php`: creating an inactive alias
+  in org B that collides with org A's active code leaves org A's link active.
+  Adversarial re-verify CONFIRMED (bind arity correct, active-case preserved,
+  both callers safe).
 
 ### 🟡 Medium impact
 
@@ -973,6 +1028,42 @@ Ordered High → Medium → Low; within a tier, correctness/security first.
   rewritten IIFE passes `node --check` as valid JS; `php tests/run.php` → 189
   passed / 0 failed (unchanged).
 
+- **id:** COV-1
+  **title:** No automated test for cross-org category isolation (#121)
+  **category:** quality (testing) · **impact:** Medium · **component:** A (database)
+  **source:** found cycle 20 (VERIFY completeness critic) · **status:** OPEN.
+  B-002/#121 was fixed and MySQL-verified manually (cycle 2 — old-vs-new JOIN
+  row counts), but no regression test locks the fix in place; a future edit to
+  the category JOIN could silently reopen the cross-org leak with nothing to
+  catch it.
+
+- **id:** COV-2
+  **title:** No automated test for the org re-invite generated-column unique key (#122)
+  **category:** quality (testing) · **impact:** Low · **component:** A (database)
+  **source:** found cycle 20 (VERIFY completeness critic) · **status:** OPEN.
+  B-004/#122's `pendingKey` VIRTUAL-column fix was MySQL-verified manually
+  (cycle 3 — cancel→re-invite succeeds; second concurrent pending rejected),
+  but has no regression test in `tests/integration/`.
+
+- **id:** COV-3
+  **title:** Favicon path-traversal test re-implements the confinement logic instead of exercising the real `favicon.php`
+  **category:** quality (testing) · **impact:** Low · **component:** B
+  **source:** found cycle 20 (VERIFY completeness critic) · **status:** OPEN.
+  `tests/unit/favicon_path_traversal_test.php` (F-006, cycle 8) re-implements
+  the `basename()`+`realpath()` containment logic under test rather than
+  requiring and invoking the actual `web/G2My.Link/public_html/favicon.php`
+  handler — a regression in the real file's guard would not necessarily be
+  caught by this test.
+
+- **id:** COV-4
+  **title:** No automated test for the short-code TOCTOU regenerate-on-collision retry loop (#124)
+  **category:** quality (testing) · **impact:** Low · **component:** B/shared
+  **source:** found cycle 20 (VERIFY completeness critic) · **status:** OPEN.
+  B-006/#124's bounded 5-attempt retry-on-duplicate-key loop was verified via a
+  standalone harness (cycle 3 — 2 collisions then success; 5 collisions then
+  graceful failure), but that harness is not part of the `tests/` suite, so the
+  behaviour is not regression-tested going forward.
+
 ## 💡 Proposed-Features ledger
 
 <!-- `propose`-disposition / spec-gate feature candidates live in FEATURES.md
@@ -1006,3 +1097,4 @@ Baseline metrics measured at DISCOVER seed; every cycle appends a row.
 | 2026-07-04 | 17 | POLISH — a11y bundle 2 (badge contrast + interstitial announcements) | 27 (unchanged on GitHub) | 0 open | 11 open (B-024 + B-025 ✅) | 11 open (B-044 new) | clean (`php -l` on all 3 changed files) | 166 unit / 18 integration (unchanged — no new test files; verified via measured contrast ratios + aria-live audit + `php -l`) | Audited all `badge bg-*` usages: `bg-secondary` white-on-`#6c757d` measures 4.69:1 → PASSES AA, left unchanged (audit's assumed fail corrected). Genuine failure fixed: `bg-info` white-on-`#0dcaf0` ≈ 1.96:1 at `web/Go2My.Link/_admin/public_html/pages/org/members/index.php:188` → added `text-dark` (≈7.9:1), matching the existing `bg-info text-dark` convention elsewhere. Component-B interstitials (`validating.php` + `expired.php`): removed a double-announcement bug — `aria-live` taken off the visible `#countdown` span, the separate off-screen `#countdown-status` region (which alone now owns announcements) changed `assertive`→`polite` (a countdown is not urgent). Also fixed 3 no-shorthand violations in the same files' countdown JS (plural `? 's' : ''` ternary and validating.php's `targetURL = (...) ? destinationURL : fallbackURL` → full `if/else`). Assessed, no change: `target="_blank"` new-window warning is WCAG AAA (3.2.5), out of AA scope, and all such links already carry `rel="noopener noreferrer"`; `bg-danger` (≈4.0:1) is a known Bootstrap-default limitation with no clean colour fix. New backlog item B-044 opened: FOUC theme-init snippet's `? :` ternary repeated repo-wide — queued for a dedicated mechanical house-rule cycle. 166 tests unchanged (no PHP runtime behaviour changed). |
 | 2026-07-04 | 18 | POLISH — auto-built FG-005 (autonomy-eligible) | 27 (unchanged on GitHub) | 0 open | 11 open | 11 open (unchanged) | clean (`php -l` on all changed files + new tests) | 189 unit / 18 integration (23 new unit: `tests/unit/avatar_test.php`) | FG-005 avatar priority cascade BUILT under the autonomy test (table-stakes + risk:Low + net-positive + non-destructive + privacy-preserving) — structured avatar cascade + initials monogram (contrast-safe palette) + nav wiring; Gravatar gated default-OFF for privacy. New `web/_functions/avatar.php`: `g2ml_resolveAvatar()` returns an image-or-initials structure in priority order (local stored avatar → MS365/Google SSO no-ops (Phase 10) → Gravatar (gated, default OFF, no network call) → initials monogram); colour is deterministic from a 10-entry WCAG-AA-verified palette; all output escaped via `g2ml_renderAvatar()`/`g2ml_avatarEscape()`. Wired into shared `web/_includes/nav.php` (main site + admin), degrading to a Font Awesome icon if unavailable; old K&R shorthand replaced with Allman if/else. Built via a build→adversarial-verify workflow (correctness, security/privacy, house-rule lenses) — the correctness lens caught and fixed a cap-before-uppercase overflow (ß→SS / ﬃ→FFI expanding past the 2-char monogram) via `g2ml_avatarCapInitials()`; security/privacy and house-rule lenses came back clean. 189 tests pass (+23, was 166); `php -l` clean. **All five Tier-1 autonomy-eligible gaps (FG-001..FG-005) now BUILT.** |
 | 2026-07-04 | 19 | POLISH — B-044 theme-snippet house-rule sweep; **completes POLISH** | 27 (unchanged on GitHub) | 0 open | 11 open | 10 open (B-044 ✅) | clean (`php -l` on all 4 changed files) | 189 unit / 18 integration (unchanged — mechanical sweep, no behaviour change) | FOUC theme-init inline `<script>` IIFE rewritten to full Allman if/else across `web/_includes/header.php` + the 3 Component-B pages `expired.php`/`validating.php`/`404.php` — the `? 'dark' : 'light'` ternary, the `t = t \|\| 'auto'` `\|\|`-default, and the one-line `try {...} catch(e) {}` K&R braces all removed. Behaviour preserved: localStorage `g2ml-theme` read (null/'' → 'auto'); 'auto' resolved via `prefers-color-scheme`; `data-bs-theme` set pre-paint (FOUC prevention intact). Verified: 0 residual ternary/`\|\|`-default via grep; `node --check` confirms valid JS; `php -l` clean on all 4 files; `php tests/run.php` → 189 passed / 0 failed (unchanged). **POLISH phase complete: a11y bundles 1–2 + FG-005 + B-044 all done. Advancing to VERIFY.** |
+| 2026-07-04 | 20 | VERIFY — final independent full-branch review; **run TERMINAL** | 27 (unchanged on GitHub; CR-1/SEC-RECHECK-01 have no prior GH issue) | 0 open (CR-1 + SEC-RECHECK-01 found and fixed this cycle) | 12 open (COV-1 new) | 13 open (COV-2/COV-3/COV-4 new) | clean (`php -l` on all changed files + new test) | 189 unit / 21 integration (3 new integration: `tests/integration/cross_org_isolation_test.php`) | Review workflow found 2 must-fix HIGH defects (CR-1 — broken link-edit page, non-existent column `s.shortURLUID`; SEC-RECHECK-01 — cross-org link deactivation DoS via an unscoped `isActive` UPDATE, exploitable through FG-001 custom aliases) — both **FIXED** at source and regression-tested. Stood up a throwaway MySQL 9.6 and **ran** the integration suite for the first time this run (previously skipping cleanly with no DB) = 21 pass / 0 fail (18 existing + 3 new). Adversarial re-verify of both fixes returned CONFIRMED. #94 (link-edit) is now genuinely resolved — the 2026-06-05 fix only covered the sibling `notes`→`urlNotes` column on the same statement. Non-blocking follow-ups recorded: COV-1..COV-4 (test-coverage gaps on #121/#122/favicon-traversal/#124, none blocking). Evidence: 189 unit + 21 integration green; overall verdict **PASS**. All six phases (DISCOVER→STABILIZE→SECURE→COMPLETE→POLISH→VERIFY) complete. |

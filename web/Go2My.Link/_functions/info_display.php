@@ -7,6 +7,8 @@
  * Unauthorised copying, modification, or distribution is strictly prohibited.
  */
 
+declare(strict_types=1);
+
 /**
  * ============================================================================
  * 🔍 Go2My.Link — Info Page Display Helpers (Component A)

@@ -136,6 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             'endDate'    => $endDateVal,
             'customCode' => $customCodeVal,
             'tags'       => $tags,
+            'isActive'   => $isActive,
         ];
 
         if (function_exists('createShortURL'))
@@ -144,16 +145,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
             if ($result['success'])
             {
-                // Set isActive if unchecked (createShortURL defaults to active)
-                if (!$isActive && !empty($result['shortCode']))
-                {
-                    dbUpdate(
-                        "UPDATE tblShortURLs SET isActive = 0 WHERE shortCode = ?",
-                        's',
-                        [$result['shortCode']]
-                    );
-                }
-
+                // isActive is bound directly into the INSERT by createShortURL()
+                // (SEC-RECHECK-01). No post-insert UPDATE — an UPDATE scoped only
+                // by shortCode would deactivate another org's link that shares the
+                // same code (UQ_shortcode_org is per-org).
                 $formSuccess = true;
                 $resultURL   = $result['shortURL'] ?? '';
                 $resultCode  = $result['shortCode'] ?? '';

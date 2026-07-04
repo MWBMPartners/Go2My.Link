@@ -237,7 +237,8 @@ micro-framework (`tests/bootstrap.php`); MySQL available locally.
 
 Severity = impact on assets. Status reconciled against **current** branch code
 (2026-06-05/06-28), not the original audit snapshot.
-**Open:** 0 (0 Critical / 0 High / 0 Med / 0 Low). **Fixed on branch:** 16.
+**Open:** 0 (0 Critical / 0 High / 0 Med / 0 Low). **Fixed on branch:** 17 (16 from
+SECURE cycles 5–9 + 1 found-and-fixed during VERIFY cycle 20).
 
 > 🔒 **SECURE phase complete** — all 8 F- register findings (F-001 through F-008) are now either fixed or verified intact. No open findings remain. Purple-team cycles 5–9 covered: Phase-0 threat model (cycle 5), F-001 High (cycle 6), F-002/F-003 Med (cycle 7), F-004/F-005/F-006 Med/Low (cycle 8), F-007/F-008 Low (cycle 9). Register is fully closed; the run advances to COMPLETE.
 
@@ -259,12 +260,15 @@ Severity = impact on assets. Status reconciled against **current** branch code
 | F-106 | Redirect destination `Location:` scheme guard | Med | **FIXED-on-branch** (resolver layer; F-003 is the residual interstitial gap) | 601 | `redirect_resolver.php:273-280` `^https?://` allowlist | — |
 | F-107 | Email-header CRLF / template-path / salt-rotation / breach-TOCTOU / reset-token-in-URL hardening (#80–#84) | (various) | **FIXED — verified intact** | 93/22/362 | `email.php:93,155-202`; `breach_response.php`; `auth.php` | #80-#90 |
 | F-108 | Legacy plaintext DB password in `public_html_legacy/dbConfig.php` | High | **MITIGATED-in-repo / rotation OPEN** | 798 | now gitignored + untracked + never committed (§0); **must still rotate the credential** | #93 |
+| **SEC-RECHECK-01** | Cross-org link deactivation DoS — a post-insert `UPDATE tblShortURLs SET isActive=0 WHERE shortCode=?` was scoped only by `shortCode`, not `orgHandle`. Because `UQ_shortcode_org` is per-org and FG-001 lets an authenticated user mint a custom alias that duplicates another org's public short code, this UPDATE deterministically deactivated the *other* org's live link — a cross-tenant DoS against the redirect crown jewel | **High** | ✅ **FIXED** (cycle 20 — VERIFY) — `isActive` is now bound directly into the single `createShortURL()` INSERT (new option, default `true`, so all existing callers incl. the public API are unaffected); the unscoped post-insert `UPDATE` was deleted entirely | 639 | `web/Go2My.Link/_functions/shorturl_create.php` (`createShortURL()`); `web/Go2My.Link/_admin/public_html/pages/links/create/index.php` (unscoped UPDATE removed); regression `tests/integration/cross_org_isolation_test.php` | — (found in VERIFY, no prior GH issue) |
 
 ### 6.1 Prioritised purple-team target list (highest severity first)
 
 All findings F-001 through F-008 are now fixed. **Register is fully closed — 0 open findings.**
 
 > The FIXED-on-branch set (F-101…F-107) remains unregressed (re-confirmed at cycle 9: 90 unit + 5 integration pass). The **rotation** action behind F-108 (#93) remains a manual operations task for the user.
+>
+> **VERIFY update (cycle 20):** an independent full-branch review workflow discovered and fixed one further High finding, **SEC-RECHECK-01** (cross-org link deactivation DoS enabled by FG-001's custom aliases) — see the register row above, empirically proven via `tests/integration/cross_org_isolation_test.php` on MySQL 9.6. Register remains **0 open** (17 fixed in total).
 
 ---
 
