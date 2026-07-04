@@ -28,6 +28,9 @@ on:
     paths:
       - '**.php'
 
+permissions:
+  contents: read
+
 jobs:
   php-lint:
     name: PHP Syntax Check
@@ -38,10 +41,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
       - name: Setup PHP ${{ matrix.php-version }}
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2.37.2
         with:
           php-version: ${{ matrix.php-version }}
           tools: parallel-lint
@@ -51,8 +54,12 @@ jobs:
           parallel-lint --exclude vendor --exclude _libraries --exclude .git web/
 
       - name: Install PHPStan
+        env:
+          PHPSTAN_VERSION: "2.2.4"
+          PHPSTAN_SHA256: "f1e81a1418faab14a057188646cf1220f066276fc640ce9ef1c9a4af3f0ed46b"
         run: |
-          curl -sL https://github.com/phpstan/phpstan/releases/latest/download/phpstan.phar -o phpstan.phar
+          curl -sL "https://github.com/phpstan/phpstan/releases/download/${PHPSTAN_VERSION}/phpstan.phar" -o phpstan.phar
+          echo "${PHPSTAN_SHA256}  phpstan.phar" | sha256sum --check --strict
           chmod +x phpstan.phar
 
       - name: Run PHPStan (advisory)
@@ -60,8 +67,12 @@ jobs:
         continue-on-error: true
 
       - name: Install PHP_CodeSniffer
+        env:
+          PHPCS_VERSION: "3.7.2"
+          PHPCS_SHA256: "204214c1ea5ba814fb0b2608c19cca2c10bf5ffcc9f0e3d4c34aadc0179517b7"
         run: |
-          curl -sOL https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar
+          curl -sL "https://github.com/squizlabs/PHP_CodeSniffer/releases/download/${PHPCS_VERSION}/phpcs.phar" -o phpcs.phar
+          echo "${PHPCS_SHA256}  phpcs.phar" | sha256sum --check --strict
           chmod +x phpcs.phar
 
       - name: Run PHPCS (advisory)
