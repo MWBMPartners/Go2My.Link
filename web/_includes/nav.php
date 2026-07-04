@@ -165,17 +165,46 @@ if (function_exists('getCurrentRoute')) {
                 $userAvatar      = $_SESSION['user_avatar'] ?? '';
                 $userDisplayName = $_SESSION['user_display_name'] ?? 'Account';
                 $userEmail       = $_SESSION['user_email'] ?? '';
+
+                // FG-005 — avatar priority cascade. Load the resolver/renderer
+                // once (page_init.php normally loads it; this guarded require
+                // keeps the navbar self-sufficient if it did not).
+                if (!function_exists('g2ml_renderAvatar'))
+                {
+                    if (defined('G2ML_FUNCTIONS') && file_exists(G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'avatar.php'))
+                    {
+                        require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'avatar.php';
+                    }
+                    elseif (file_exists(__DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '_functions' . DIRECTORY_SEPARATOR . 'avatar.php'))
+                    {
+                        require_once __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . '_functions' . DIRECTORY_SEPARATOR . 'avatar.php';
+                    }
+                }
+
+                // Assemble a user array for the cascade from whatever the
+                // session carries (any missing key degrades gracefully).
+                $avatarUser = [
+                    'avatarURL'   => $userAvatar,
+                    'displayName' => $userDisplayName,
+                    'email'       => $userEmail,
+                    'firstName'   => $_SESSION['user_first_name'] ?? '',
+                    'lastName'    => $_SESSION['user_last_name'] ?? '',
+                    'userUID'     => $_SESSION['user_uid'] ?? 0,
+                ];
                 ?>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userMenuDropdown"
                        role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <?php if ($userAvatar !== '') { ?>
-                        <img src="<?php echo g2ml_sanitiseOutput($userAvatar); ?>"
-                             alt="" class="rounded-circle me-1" width="24" height="24"
-                             style="object-fit:cover;">
-                        <?php } else { ?>
-                        <i class="fas fa-user-circle me-1" aria-hidden="true"></i>
-                        <?php } ?>
+                        <?php
+                        if (function_exists('g2ml_renderAvatar'))
+                        {
+                            echo g2ml_renderAvatar($avatarUser, 24, 'me-1');
+                        }
+                        else
+                        {
+                            echo '<i class="fas fa-user-circle me-1" aria-hidden="true"></i>';
+                        }
+                        ?>
                         <?php echo htmlspecialchars($userDisplayName, ENT_QUOTES, 'UTF-8'); ?>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuDropdown">

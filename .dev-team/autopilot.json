@@ -50,7 +50,7 @@
   "phase_cursor": 4,
   "state": "RUNNING",
   "cursor": null,
-  "next_action": "POLISH phase (UX/a11y/perf/dedup) continues. Done cycle 16 (reduced-motion/timing #104/#105/#106) and cycle 17 (a11y bundle 2: bg-info badge contrast fix + B interstitial double-announce removal/assertive->polite + 3 countdown-JS ternary house-rule fixes; bg-secondary measured 4.69:1 = PASS left alone; new-window warning is AAA = out of scope). Next: FG-005 avatar priority cascade (Low, autonomy-eligible small feature). Then B-044 house-rule sweep (FOUC theme-init `? :` ternary repeated repo-wide across page <head>s -> full if/else, mechanical, own cycle). Then advance to VERIFY.",
+  "next_action": "POLISH phase nearly complete. Done: cycle 16 (reduced-motion/timing #104/#105/#106), cycle 17 (a11y bundle 2: bg-info contrast + B interstitial double-announce/assertive->polite + 3 countdown ternary fixes), cycle 18 (FG-005 avatar priority cascade — built via build->adversarial-verify workflow; structured cascade + WCAG-AA initials monogram + nav wiring; Gravatar gated default-OFF for privacy; correctness lens caught+fixed a cap-before-uppercase overflow; 189 tests). Next: B-044 house-rule sweep (FOUC theme-init `? :` ternary repeated repo-wide across page <head>s -> full if/else, mechanical, own cycle). Then advance to VERIFY (independent full-branch review pass @ last_commit).",
   "queue": {
     "backlog": "PROJECT.md#Backlog",
     "feature_gaps": "FEATURES.md",
@@ -132,6 +132,15 @@
       "status": "built",
       "cleared_by": "autonomy-test",
       "justification": "brief \u00a78.2 gap + net-positive dedup (10 json_encode -> 1 helper); JSON byte-identical; risk:Low; built cycle 15, 166 unit pass."
+    },
+    {
+      "id": "G-010",
+      "kind": "feature",
+      "title": "FG-005 avatar priority cascade (resolver + initials monogram + nav wiring)",
+      "spec_ref": "FEATURES.md#FG-005",
+      "status": "built",
+      "cleared_by": "autonomy-test",
+      "justification": "table-stakes + risk:Low + non-destructive + privacy-preserving (Gravatar tier gated default-OFF, no resolve-time network); built cycle 18 via build->adversarial-verify workflow (3 lenses); correctness lens caught+fixed a cap-before-uppercase overflow (\u00df/ligatures); 189 unit pass (+23)."
     }
   ],
   "blocked": {
@@ -139,7 +148,7 @@
     "reason": null,
     "since": null
   },
-  "cycle": 17,
+  "cycle": 18,
   "cap": 60,
   "gates": "hybrid",
   "feature_completeness": "in-scope",
@@ -156,10 +165,10 @@
     "stale_after_min": 90
   },
   "branch": "autopilot/2026-06-05",
-  "last_commit": "6d775cc",
+  "last_commit": "9e39882",
   "trajectory_ref": "PROJECT.md#Trajectory-ledger",
   "terminal": false,
   "delay": 90,
-  "updated": "2026-07-04T03:33:43Z",
+  "updated": "2026-07-04T03:53:59Z",
   "ops_note": "Release the lease with `rm -rf .dev-team/loop.lock` (a `holder` file lives inside, so `rmdir` fails and would stall the next cycle)."
 }
