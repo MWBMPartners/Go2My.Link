@@ -93,9 +93,39 @@ if ($orgHandle !== '[default]')
         // Build the full filesystem path to the org's favicon
         // Org favicons are stored in the _uploads/ directory
         $uploadsDir  = G2ML_ROOT . DIRECTORY_SEPARATOR . '_uploads';
-        $faviconFile = $uploadsDir . DIRECTORY_SEPARATOR . $orgFaviconPath;
 
-        if (file_exists($faviconFile) && is_file($faviconFile))
+        // --------------------------------------------------------------------
+        // 🛡️ Path-traversal confinement (F-006 / #101)
+        // --------------------------------------------------------------------
+        // orgFaviconPath is DB-sourced and could contain traversal sequences
+        // ("../../_auth_keys/auth_creds.php"). basename() strips any directory
+        // component so only the bare filename survives, then realpath() is used
+        // to confirm the resolved file genuinely sits inside the uploads dir.
+        // Anything that escapes the uploads dir falls through to the default
+        // favicon below. Legitimate filenames ("org-fav.ico") are unaffected.
+        //
+        // 📖 Reference: https://www.php.net/manual/en/function.basename.php
+        // 📖 Reference: https://www.php.net/manual/en/function.realpath.php
+        // --------------------------------------------------------------------
+        $safeName    = basename($orgFaviconPath);
+        $faviconFile = $uploadsDir . DIRECTORY_SEPARATOR . $safeName;
+
+        $resolvedUploadsDir = realpath($uploadsDir);
+        $resolvedFavicon    = realpath($faviconFile);
+
+        $isConfined = false;
+
+        if ($resolvedUploadsDir !== false && $resolvedFavicon !== false)
+        {
+            $prefix = $resolvedUploadsDir . DIRECTORY_SEPARATOR;
+
+            if (strncmp($resolvedFavicon, $prefix, strlen($prefix)) === 0)
+            {
+                $isConfined = true;
+            }
+        }
+
+        if ($isConfined === true && file_exists($faviconFile) && is_file($faviconFile))
         {
             // Detect MIME type
             // 📖 Reference: https://www.php.net/manual/en/function.mime-content-type.php
@@ -127,6 +157,18 @@ if (file_exists($defaultFavicon) && is_file($defaultFavicon))
     header('Cache-Control: public, max-age=86400'); // 24 hours
     header('Content-Length: ' . filesize($defaultFavicon));
     readfile($defaultFavicon);
+    exit;
+}
+
+// Fall back to the brand logo PNG when no .ico file is present.
+$logoFallback = __DIR__ . DIRECTORY_SEPARATOR . 'img' . DIRECTORY_SEPARATOR . 'logo.png';
+
+if (file_exists($logoFallback) && is_file($logoFallback))
+{
+    header('Content-Type: image/png');
+    header('Cache-Control: public, max-age=86400'); // 24 hours
+    header('Content-Length: ' . filesize($logoFallback));
+    readfile($logoFallback);
     exit;
 }
 

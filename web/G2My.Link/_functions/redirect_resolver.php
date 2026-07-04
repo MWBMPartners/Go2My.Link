@@ -144,6 +144,30 @@ function validateDestination(string $url, int $timeout = 5): array
         'error'      => null,
     ];
 
+    // ------------------------------------------------------------------------
+    // 🛡️ SSRF guard (F-004 / #100): never fetch internal / loopback /
+    // link-local / cloud-metadata hosts. Vet the host BEFORE the request so a
+    // malicious destination can never make the server issue an outbound HEAD
+    // to an internal address. On rejection we return the existing
+    // validation-failed shape without touching the network.
+    //
+    // 📖 Reference: web/_functions/security.php — g2ml_destinationHostIsAllowed()
+    // ------------------------------------------------------------------------
+    if (g2ml_destinationHostIsAllowed($url) === false)
+    {
+        $result['error'] = 'Destination host is not permitted';
+
+        if (isset($_SESSION))
+        {
+            $_SESSION[$cacheKey] = [
+                'result'    => $result,
+                'timestamp' => time(),
+            ];
+        }
+
+        return $result;
+    }
+
     // Build the stream context for the HEAD request
     // 📖 Reference: https://www.php.net/manual/en/context.http.php
     $contextOptions = [

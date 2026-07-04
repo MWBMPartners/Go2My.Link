@@ -77,7 +77,9 @@ SELECT
         'toolDevStatus', old.`toolDevStatus`,
         'logLicenseID', old.`logLicenseID`
     )                               AS `logData`,
-    old.`activityStart`             AS `createdAt`
+    -- Zero-date/NULL guard: NOT NULL target → fall back to NOW() (#123)
+    IFNULL(NULLIF(NULLIF(CAST(old.`activityStart` AS CHAR), '0000-00-00 00:00:00'), '0000-00-00'), NOW())
+                                    AS `createdAt`
 FROM `mwtools_mwlink`.`tblActivityLog` old
 ORDER BY old.`logUID` ASC
 LIMIT 10000 OFFSET 0;

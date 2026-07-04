@@ -77,7 +77,7 @@ jobs:
       # Checkout
       # =====================================================================
       - name: "📥 Checkout code"
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0  # Full history for changelog generation
 
@@ -86,9 +86,19 @@ jobs:
       # =====================================================================
       - name: "🔍 Parse inputs"
         id: parse
+        env:
+          COMPONENT_INPUT: ${{ github.event.inputs.component }}
+          VERSION: ${{ github.event.inputs.version }}
         run: |
-          COMPONENT_INPUT="${{ github.event.inputs.component }}"
-          VERSION="${{ github.event.inputs.version }}"
+          # Reject anything that isn't a well-formed semantic version before
+          # this value is echoed into downstream tags, release names, and
+          # git/gh commands — closes the shell-injection surface at the
+          # earliest point.
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$'; then
+            echo "❌ Invalid version format: $VERSION"
+            echo "   Expected e.g. 0.5.0 or 1.0.0-rc1"
+            exit 1
+          fi
 
           # Extract component key (everything before " — ")
           COMPONENT_KEY=$(echo "$COMPONENT_INPUT" | cut -d' ' -f1)
@@ -160,13 +170,13 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.4"
-          tools: php-parallel-lint/php-parallel-lint
+          tools: parallel-lint
 
       - name: "🔍 PHP Lint check"
         run: |
           COMPONENT_PATH="${{ steps.parse.outputs.component_path }}"
           echo "🔍 Linting PHP files in $COMPONENT_PATH ..."
-          php-parallel-lint --exclude vendor --exclude _libraries "$COMPONENT_PATH" || {
+          parallel-lint --exclude vendor --exclude _libraries "$COMPONENT_PATH" || {
             echo "❌ PHP syntax errors found. Fix before releasing."
             exit 1
           }
@@ -177,13 +187,14 @@ jobs:
       # =====================================================================
       - name: "📝 Generate release notes"
         id: notes
+        env:
+          VERSION: ${{ steps.parse.outputs.version }}
+          COMPONENT: ${{ steps.parse.outputs.component_label }}
+          EXTRA_NOTES: ${{ github.event.inputs.notes }}
+          TAG_PREFIX: ${{ steps.parse.outputs.component_key }}
+          COMPONENT_PATH: ${{ steps.parse.outputs.component_path }}
         run: |
-          VERSION="${{ steps.parse.outputs.version }}"
-          COMPONENT="${{ steps.parse.outputs.component_label }}"
-          EXTRA_NOTES="${{ github.event.inputs.notes }}"
-
           # Get the latest tag for this component (if any)
-          TAG_PREFIX="${{ steps.parse.outputs.component_key }}"
           if [ "$TAG_PREFIX" = "all" ]; then
             LATEST_TAG=$(git tag -l 'v*' --sort=-v:refname | head -1)
           else
@@ -193,7 +204,7 @@ jobs:
           # Build release body
           BODY="## 🚀 ${COMPONENT} — v${VERSION}"
           BODY="${BODY}\n\n**Released:** $(date -u +'%Y-%m-%d %H:%M UTC')"
-          BODY="${BODY}\n**Released by:** @${{ github.actor }}"
+          BODY="${BODY}\n**Released by:** @${GITHUB_ACTOR}"
 
           if [ -n "$EXTRA_NOTES" ]; then
             BODY="${BODY}\n\n### 📝 Notes\n\n${EXTRA_NOTES}"
@@ -202,7 +213,7 @@ jobs:
           # Generate commit log since last tag
           if [ -n "$LATEST_TAG" ]; then
             BODY="${BODY}\n\n### 📋 Changes since ${LATEST_TAG}\n"
-            COMMITS=$(git log "${LATEST_TAG}..HEAD" --oneline --no-merges -- "${{ steps.parse.outputs.component_path }}" 2>/dev/null | head -30)
+            COMMITS=$(git log "${LATEST_TAG}..HEAD" --oneline --no-merges -- "${COMPONENT_PATH}" 2>/dev/null | head -30)
             if [ -n "$COMMITS" ]; then
               BODY="${BODY}\n\`\`\`"
               BODY="${BODY}\n${COMMITS}"
@@ -214,7 +225,7 @@ jobs:
             BODY="${BODY}\n\n> 🎉 This is the first release for this component."
           fi
 
-          BODY="${BODY}\n\n---\n*Released via [GitHub Actions](https://github.com/${{ github.repository }}/actions)*"
+          BODY="${BODY}\n\n---\n*Released via [GitHub Actions](https://github.com/${GITHUB_REPOSITORY}/actions)*"
 
           # Write to file (avoids escaping issues)
           echo -e "$BODY" > /tmp/release-notes.md
@@ -223,39 +234,51 @@ jobs:
       # Create the release
       # =====================================================================
       - name: "🏷️ Create Git tag"
+        env:
+          TAG: ${{ steps.parse.outputs.tag }}
+          RELEASE_NAME: ${{ steps.parse.outputs.release_name }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "${{ steps.parse.outputs.tag }}" -m "${{ steps.parse.outputs.release_name }}"
-          git push origin "${{ steps.parse.outputs.tag }}"
+          git tag -a "$TAG" -m "$RELEASE_NAME"
+          git push origin "$TAG"
 
       - name: "📦 Create GitHub Release"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.parse.outputs.tag }}
+          RELEASE_NAME: ${{ steps.parse.outputs.release_name }}
+          PRERELEASE_INPUT: ${{ github.event.inputs.prerelease }}
         run: |
           PRERELEASE_FLAG=""
-          if [ "${{ github.event.inputs.prerelease }}" = "true" ]; then
+          if [ "$PRERELEASE_INPUT" = "true" ]; then
             PRERELEASE_FLAG="--prerelease"
           fi
 
-          gh release create "${{ steps.parse.outputs.tag }}" \
-            --title "${{ steps.parse.outputs.release_name }}" \
+          gh release create "$TAG" \
+            --title "$RELEASE_NAME" \
             --notes-file /tmp/release-notes.md \
             $PRERELEASE_FLAG
 
-          echo "✅ Release created: ${{ steps.parse.outputs.release_name }}"
+          echo "✅ Release created: $RELEASE_NAME"
 
       # =====================================================================
       # Summary
       # =====================================================================
       - name: "📋 Release summary"
+        env:
+          COMPONENT_LABEL: ${{ steps.parse.outputs.component_label }}
+          TAG: ${{ steps.parse.outputs.tag }}
+          VERSION: ${{ steps.parse.outputs.version }}
+          PRERELEASE_INPUT: ${{ github.event.inputs.prerelease }}
+          ACTOR: ${{ github.actor }}
         run: |
           echo "## ✅ Release Complete" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
           echo "|-------|-------|" >> "$GITHUB_STEP_SUMMARY"
-          echo "| 📦 Component | ${{ steps.parse.outputs.component_label }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| 🏷️ Tag | \`${{ steps.parse.outputs.tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| 📋 Version | ${{ steps.parse.outputs.version }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| 🔄 Pre-release | ${{ github.event.inputs.prerelease }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| 👤 Released by | @${{ github.actor }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 📦 Component | $COMPONENT_LABEL |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 🏷️ Tag | \`$TAG\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 📋 Version | $VERSION |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 🔄 Pre-release | $PRERELEASE_INPUT |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| 👤 Released by | @$ACTOR |" >> "$GITHUB_STEP_SUMMARY"
