@@ -48,14 +48,36 @@ elseif ($recaptchaSiteKey !== '')
 }
 
 // ♿ Check for no-JS fallback results (from API redirect)
-if (isset($_GET['created'])) {
-    $createdURL = g2ml_sanitiseInput($_GET['created']);
-} else {
+// 🛡️ $createdURL is rendered into an <a href="..."> attribute below, so it
+// must be scheme-restricted (http/https only) via g2ml_sanitiseURL() BEFORE
+// it ever reaches the attribute — g2ml_sanitiseOutput() alone only entity-
+// encodes and does NOT stop a "javascript:" (or other) scheme from executing
+// on click. Blank the value outright if the scheme guard rejects it.
+if (isset($_GET['created']))
+{
+    $createdURLInput = g2ml_sanitiseInput($_GET['created']);
+    $createdURLChecked = g2ml_sanitiseURL($createdURLInput);
+    if ($createdURLChecked === false)
+    {
+        $createdURL = '';
+    }
+    else
+    {
+        $createdURL = $createdURLChecked;
+    }
+}
+else
+{
     $createdURL = '';
 }
-if (isset($_GET['error'])) {
+// ℹ️ $errorMsg is rendered as plain text only (never into a URL attribute),
+// so g2ml_sanitiseOutput() entity-encoding at the echo site is sufficient.
+if (isset($_GET['error']))
+{
     $errorMsg = g2ml_sanitiseInput($_GET['error']);
-} else {
+}
+else
+{
     $errorMsg = '';
 }
 ?>
