@@ -61,6 +61,155 @@ define('G2ML_ROLE_LEVELS', [
 ]);
 
 // ============================================================================
+// 🆔 Username Auto-Derivation (registration)
+// ============================================================================
+// The public registration form collects only email / password / firstName /
+// lastName — there is no username field — but tblUsers.username is
+// VARCHAR(50) NOT NULL with UNIQUE KEY UQ_username and no default
+// (web/_sql/schema/013_core_users.sql:32,129). registerUser() must therefore
+// auto-derive a unique, schema-valid username from the email address before
+// inserting. See issue #136.
+// ============================================================================
+
+/**
+ * Derive a schema-valid username base from an email address's local-part.
+ *
+ * Lowercases the local-part (the substring before '@'), strips every
+ * character outside the installer's allowed charset [a-z0-9._-]
+ * (web/Go2My.Link/public_html/install/index.php:871), collapses runs of 2
+ * or more separators (., _, -) down to a single hyphen, and trims leading
+ * and trailing separators. The result is truncated to leave room for a
+ * uniqueness suffix, and padded with random alphanumeric characters if it
+ * would otherwise be shorter than the schema's 3-character minimum.
+ *
+ * @param  string $email A validated email address (lowercased/trimmed by the caller)
+ * @return string        A base username, always matching ^[a-z0-9._-]{3,43}$
+ */
+function g2ml_deriveUsernameBase(string $email): string
+{
+    $suffixReserveLength = 7;
+    $maximumBaseLength   = 50 - $suffixReserveLength;
+    $minimumBaseLength   = 3;
+
+    $atPosition = strpos($email, '@');
+
+    if ($atPosition === false)
+    {
+        $localPart = $email;
+    }
+    else
+    {
+        $localPart = substr($email, 0, $atPosition);
+    }
+
+    $base = strtolower($localPart);
+
+    // Strip every character outside the installer's allowed charset.
+    $base = preg_replace('/[^a-z0-9._-]/', '', $base);
+
+    if ($base === null)
+    {
+        $base = '';
+    }
+
+    // Collapse runs of 2+ separators down to a single hyphen so an email
+    // local-part such as "a..b---c" does not smuggle in ugly long runs.
+    $base = preg_replace('/[._-]{2,}/', '-', $base);
+
+    if ($base === null)
+    {
+        $base = '';
+    }
+
+    // A username may not start or end with a separator.
+    $base = trim($base, '._-');
+
+    // Truncate an overlong base to leave room for a uniqueness suffix, then
+    // re-trim in case truncation exposed a trailing separator.
+    if (strlen($base) > $maximumBaseLength)
+    {
+        $base = substr($base, 0, $maximumBaseLength);
+        $base = rtrim($base, '._-');
+    }
+
+    // Pad a too-short (or stripped-to-nothing) base with random
+    // alphanumeric characters until the schema minimum is met.
+    $paddingNeeded = $minimumBaseLength - strlen($base);
+
+    if ($paddingNeeded > 0)
+    {
+        $base = $base . substr(bin2hex(random_bytes($paddingNeeded)), 0, $paddingNeeded);
+    }
+
+    return $base;
+}
+
+/**
+ * Generate a username that is (at generation time) not already present in
+ * tblUsers, for use by registerUser() when auto-deriving a username from an
+ * email address (issue #136).
+ *
+ * This performs a best-effort availability check via a prepared SELECT; it
+ * does NOT by itself guarantee uniqueness against a concurrent registration.
+ * That residual time-of-check to time-of-use race is closed by the bounded
+ * INSERT retry loop in registerUser(), which regenerates the username on
+ * MySQL errno 1062 — mirroring the short-code collision retry in
+ * web/Go2My.Link/_functions/shorturl_create.php.
+ *
+ * @param  string $email A validated, lowercased email address
+ * @return string        A username matching ^[A-Za-z0-9._-]{3,50}$ that was
+ *                       free at the moment of the availability check
+ *
+ * 📖 Reference: web/_functions/db_query.php — dbSelectOne()
+ */
+function g2ml_generateUniqueUsername(string $email): string
+{
+    $base                     = g2ml_deriveUsernameBase($email);
+    $maximumAvailabilityTries = 5;
+    $candidate                = $base;
+
+    for ($attempt = 1; $attempt <= $maximumAvailabilityTries; $attempt++)
+    {
+        if ($attempt > 1)
+        {
+            $suffix    = substr(bin2hex(random_bytes(4)), 0, 6);
+            $candidate = $base . '-' . $suffix;
+        }
+
+        $existing = dbSelectOne(
+            "SELECT userUID FROM tblUsers WHERE username = ? LIMIT 1",
+            's',
+            [$candidate]
+        );
+
+        if ($existing === false)
+        {
+            // Availability check itself failed (e.g. transient DB error).
+            // Return the candidate as a best effort — the INSERT's own
+            // UQ_username constraint, and registerUser()'s retry loop, are
+            // the authoritative guard against a real collision.
+            error_log('[Go2My.Link] WARNING: g2ml_generateUniqueUsername — availability check failed for candidate: ' . $candidate);
+
+            return $candidate;
+        }
+
+        if ($existing === null)
+        {
+            // Not found — free at the moment of the check.
+            return $candidate;
+        }
+    }
+
+    // Exceptionally unlucky run: every bounded attempt collided. Fall back
+    // to a long random suffix without a further check; the INSERT retry
+    // loop in registerUser() still guards against a genuine collision via
+    // MySQL errno 1062.
+    $fallbackSuffix = substr(bin2hex(random_bytes(6)), 0, 10);
+
+    return $base . '-' . $fallbackSuffix;
+}
+
+// ============================================================================
 // 📝 Register User
 // ============================================================================
 
@@ -146,20 +295,63 @@ function registerUser(string $email, string $password, string $firstName, string
     // Build display name from first + last
     $displayName = $firstName . ' ' . $lastName;
 
-    // Insert the user
-    $userUID = dbInsert(
-        "INSERT INTO tblUsers (
-            orgHandle, email, passwordHash, firstName, lastName, displayName,
-            role, emailVerified, emailVerifyToken, emailVerifyExpiry,
-            isActive, isSuspended, createdAt
-        ) VALUES (
-            '[default]', ?, ?, ?, ?, ?,
-            'User', 0, ?, ?,
-            1, 0, NOW()
-        )",
-        'sssssss',
-        [$email, $passwordHash, $firstName, $lastName, $displayName, $verifyTokenHash, $verifyExpiry]
-    );
+    // ------------------------------------------------------------------------
+    // 🆔 + 💾 Derive a unique username and insert the user
+    // ------------------------------------------------------------------------
+    // tblUsers.username is NOT NULL with UNIQUE KEY UQ_username and no
+    // default, but the registration form collects no username (issue #136),
+    // so g2ml_generateUniqueUsername() derives one from the email address.
+    // Its availability check is best-effort: a concurrent registration can
+    // still win the race between that check and this INSERT (the same
+    // time-of-check to time-of-use window handled for short codes in
+    // web/Go2My.Link/_functions/shorturl_create.php). We therefore wrap
+    // generate -> insert in a bounded retry: on a duplicate-key error
+    // (MySQL errno 1062) we regenerate the username and try again, rather
+    // than failing the registration outright. A 1062 could in principle
+    // also stem from a concurrent duplicate-email race (UQ_email, guarded
+    // above by the pre-check) rather than the username; in that case every
+    // retry collides identically and the loop still terminates safely with
+    // the same generic error message this function returned before the fix.
+    // 📖 Reference: web/_functions/db_query.php — dbInsert(), dbLastErrno()
+    // 📖 Reference: https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html (1062 = ER_DUP_ENTRY)
+    // ------------------------------------------------------------------------
+    $duplicateKeyErrno   = 1062;
+    $maxUsernameAttempts = 5;
+    $userUID             = false;
+    $username            = '';
+
+    for ($attempt = 1; $attempt <= $maxUsernameAttempts; $attempt++)
+    {
+        $username = g2ml_generateUniqueUsername($email);
+
+        $userUID = dbInsert(
+            "INSERT INTO tblUsers (
+                orgHandle, username, email, passwordHash, firstName, lastName, displayName,
+                role, emailVerified, emailVerifyToken, emailVerifyExpiry,
+                isActive, isSuspended, createdAt
+            ) VALUES (
+                '[default]', ?, ?, ?, ?, ?, ?,
+                'User', 0, ?, ?,
+                1, 0, NOW()
+            )",
+            'ssssssss',
+            [$username, $email, $passwordHash, $firstName, $lastName, $displayName, $verifyTokenHash, $verifyExpiry]
+        );
+
+        if ($userUID !== false)
+        {
+            break;
+        }
+
+        if (dbLastErrno() === $duplicateKeyErrno)
+        {
+            error_log('[Go2My.Link] WARNING: registerUser — username collision (1062) — username: ' . $username . ', attempt ' . $attempt . ' of ' . $maxUsernameAttempts);
+            continue;
+        }
+
+        error_log('[Go2My.Link] ERROR: registerUser — failed to insert user (non-duplicate) for email: ' . $email);
+        break;
+    }
 
     if ($userUID === false)
     {
