@@ -3,11 +3,25 @@
 > 📦 **Portable copy** — this directory is the repo-tracked mirror of the Claude
 > project memory so it travels to every machine/platform via git. See
 > [README.md](../README.md) for how it maps to the device-local auto-memory.
-> Last synced: **2026-06-05**.
+> Last synced: **2026-07-09**.
 
+> 🚀 **[Launch Plan 2026-07-09](../../docs/LAUNCH_PLAN_2026-07-09.md)** — Fable-5 strategic launch & roadmap plan (11 sections: verdict, API arch, CueRCode contract, SIGNula OIDC, custom-domain DNS, tier ladder, Component C, exec backlog P0–P4). **Read this for current direction.**
+> 🤝 **[HANDOFF.md](../../HANDOFF.md)** — session pick-up point: what's done, in-flight, decisions pending, next steps.
 > 📑 [Audit 2026-06-04](audit-2026-06-04.md) — full deployment-readiness audit; A+B launchable after fixes, C unbuilt; issues #93–#120 filed.
 > 🗄️ [Installer, schema & CueRCode 2026-06](installer-schema-cuercode-2026-06.md) — web installer + 2 critical schema fixes + CueRCode dynamic-QR integration; issues #121–#128.
 > 🕓 [HISTORY.md](../HISTORY.md) — chronological work log.
+
+> ⚠️ **2026-07-09 current state (supersedes the 2026-06-05 notes below):** the
+> `autopilot/2026-06-05` + `hardening/cycle-2` runs reached **VERIFY PASS / COMPLETE**
+> (merged PR #130; cycle-2 = commit `46fe7a5`). **~19–24 launch-hardening issues are
+> fixed in CODE but still OPEN on GitHub** — close them with commit refs. A+B are
+> **code-complete for launch**. NEW **P0 blocker #135** found this pass: `loginUser()`
+> selects a non-existent `avatarURL` column (schema is `avatarPath`) → login broken on
+> fresh install (fix in flight). Remaining launch work is small: #135, #93 (manual DB
+> cred rotation on host), 480-URL migration dry-run, legal sign-off, issue close-out.
+> Big roadmap (API #38/#39 → CueRCode, custom domains #91, tiers, SIGNula OIDC,
+> Component C) is **fast-follow P1–P3** — see the Launch Plan. Do **NOT** merge stale
+> local `main` (it would resurrect the legacy engine + #93 credential file).
 
 ## 📋 Project Overview
 

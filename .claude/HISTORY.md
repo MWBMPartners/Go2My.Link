@@ -2,7 +2,31 @@
 
 > Chronological log of significant Claude-assisted work, newest first. Portable
 > (repo-tracked) so the project's working history is available on every machine.
-> Companion to [.claude/memory/MEMORY.md](memory/MEMORY.md). Last updated **2026-06-05**.
+> Companion to [.claude/memory/MEMORY.md](memory/MEMORY.md). Last updated **2026-07-09**.
+
+---
+
+## 2026-07-09 — Launch-readiness review, strategic roadmap & P0 login-blocker
+
+Branch: **`launch-prep/2026-07-09`** (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) — committed, **not pushed**.
+
+### Full no-assumptions review (issues + milestones + Project #4 + codebase)
+- Reconciled GitHub state against the tree: the `autopilot/2026-06-05` + `hardening/cycle-2` runs reached **VERIFY PASS / COMPLETE** (merged PR #130). **~19–24 launch-hardening issues are fixed in code but still OPEN** — need closing with commit refs. **A + B are code-complete for launch.**
+- Confirmed: API framework is 100% greenfield (`tblAPIKeys` has zero PHP refs) → **hard blocker for CueRCode**; Component C scaffolding-only; custom domains ~70% (verification + docs missing, two domain tables disconnected); premium tiers = full data model / ~no enforcement; SIGNula = zero code.
+
+### Fable 5 deep strategic plan → `docs/LAUNCH_PLAN_2026-07-09.md`
+- 11 sections: per-component verdict, **Option A recommendation (ship A+B now, fast-follow)**, API framework architecture for Dreamhost/MySQLi (key hashing/scopes/DB rate-limit/versioning/envelope), **CueRCode create/re-point/scan contract**, **SIGNula OIDC + account-linking** model, **custom-domain DNS/TLS** mechanism (Cloudflare-for-SaaS recommended), tier ladder + gating layer, Component C build plan, security/lint sweep, 15 scored enhancement ideas, and a **model-tagged execution backlog P0–P4**.
+
+### 🔴 NEW P0 launch-blocker found — #135
+- `loginUser()` (`auth.php:219`) + `data_rights.php:324` + `profile/index.php:41` select/update a **non-existent `avatarURL` column** (schema is `avatarPath`) → **login broken on fresh install**; not caught because the test suite never drives `loginUser()`. Filed **#135**; fix + login integration test delegated to Sonnet.
+
+### Housekeeping
+- Reverted a CI-breaking YAML indent typo in `.github/workflows/ci.yml`.
+- Wrote **`HANDOFF.md`**; updated `.claude/memory/MEMORY.md`.
+- Do **NOT** merge stale local `main` — it would resurrect `public_html_legacy/` (the #93 credential) + an old conflicting UTM impl.
+
+### Decisions pending from owner (block P1+ direction)
+- Launch sequencing (rec: Option A); SIGNula's IdP-broker role (collapses #34–37); billing (Stripe vs SIGNula); Cloudflare-for-SaaS approval; final tier naming/currency; migration cutover window; Component C priority.
 
 ---
 
