@@ -172,6 +172,8 @@ require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'db_query.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'error_handler.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'settings.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'api_response.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'api_auth.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'api_ratelimit.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'dnt.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'activity_logger.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'i18n.php';

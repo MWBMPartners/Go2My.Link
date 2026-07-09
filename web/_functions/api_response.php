@@ -277,3 +277,95 @@ function g2ml_apiRespond(array $data, int $statusCode = 200): void
 
     exit;
 }
+
+// ============================================================================
+// 📦 /api/v1 envelope — {status, data, meta} / {status, error} (#38)
+// ============================================================================
+//
+// The versioned public API (/api/v1/*) publishes a documented envelope shape
+// that differs from the website's own internal flat {success:...} responses
+// (which api/create and api/consent keep using unchanged, so existing callers
+// never break). These builders sit ON TOP of g2ml_apiRespond() — they never
+// re-implement JSON/XML negotiation, so /api/v1 gets XML parity for free.
+// ============================================================================
+
+/**
+ * Build a success envelope for the /api/v1 response shape.
+ *
+ * @param  mixed                 $data  The success payload (endpoint-specific).
+ * @param  array<string, mixed>  $meta  Extra meta fields (e.g. 'rateLimit' => [...]).
+ *                                       Overrides the auto-generated 'timestamp'
+ *                                       and 'requestId' defaults if supplied.
+ * @return array<string, mixed>          {"status":"success","data":...,"meta":{...}}
+ *
+ * Usage example:
+ *   g2ml_apiRespond(g2ml_apiEnvelope(['pong' => true], ['requestId' => $requestId]), 200);
+ */
+function g2ml_apiEnvelope(mixed $data, array $meta = []): array
+{
+    $baseMeta = [
+        'timestamp' => gmdate('Y-m-d\TH:i:s\Z'),
+        'requestId' => g2ml_generateToken(8),
+    ];
+
+    $mergedMeta = array_merge($baseMeta, $meta);
+
+    return [
+        'status' => 'success',
+        'data'   => $data,
+        'meta'   => $mergedMeta,
+    ];
+}
+
+/**
+ * Build an error envelope for the /api/v1 response shape.
+ *
+ * @param  int         $httpCode  The HTTP status code being returned (echoed into error.code).
+ * @param  string      $message   A generic, non-leaking human-readable message.
+ * @param  string|null $field     Optional offending field name, for validation errors.
+ * @return array<string, mixed>    {"status":"error","error":{"code":...,"message":...,"field":...}}
+ *
+ * Usage example:
+ *   g2ml_apiRespond(g2ml_apiErrorBody(401, 'Invalid or expired API key.'), 401);
+ */
+function g2ml_apiErrorBody(int $httpCode, string $message, ?string $field = null): array
+{
+    return [
+        'status' => 'error',
+        'error'  => [
+            'code'    => $httpCode,
+            'message' => $message,
+            'field'   => $field,
+        ],
+    ];
+}
+
+/**
+ * Sanitise a raw "_apiroute" value to a safe, traversal-free route string.
+ *
+ * Whitelists letters, digits, forward slash, underscore and hyphen — matching
+ * the .htaccess rewrite contract for /api/v1/*. No '.' is permitted at all,
+ * so a directory-traversal segment ("..") can never survive this filter.
+ * Leading/trailing slashes are trimmed so 'ping', '/ping' and 'ping/' all
+ * normalise to the same route key.
+ *
+ * @param  string $rawRoute  The raw, attacker-controlled route segment.
+ * @return string|null        The normalised route (possibly ''), or null if
+ *                             it contains any character outside the whitelist.
+ */
+function g2ml_apiSanitiseRoute(string $rawRoute): ?string
+{
+    $trimmedRoute = trim($rawRoute, '/');
+
+    if ($trimmedRoute === '')
+    {
+        return '';
+    }
+
+    if (preg_match('/^[A-Za-z0-9\/_-]+$/', $trimmedRoute) !== 1)
+    {
+        return null;
+    }
+
+    return $trimmedRoute;
+}

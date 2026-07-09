@@ -123,6 +123,15 @@ RewriteCond %{REQUEST_FILENAME}.php -f
 RewriteRule ^(.+)$ $1.php [L]
 
 # =============================================================================
+# Public API v1 — /api/v1/* route (#38)
+# Maps /api/v1/<anything> to the api/v1 front controller via ?_apiroute=.
+# The front controller itself sanitises _apiroute to [A-Za-z0-9/_-]*.
+# Must come before the catch-all route below.
+# =============================================================================
+RewriteRule ^api/v1/?$ api/v1/index.php [QSA,L]
+RewriteRule ^api/v1/(.+)$ api/v1/index.php?_apiroute=$1 [QSA,L]
+
+# =============================================================================
 # Info Page — /info/SHORTCODE route
 # Maps /info/abc123 to the router with route=info and code=abc123.
 # Must come before the catch-all route below.
