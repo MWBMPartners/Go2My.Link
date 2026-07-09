@@ -193,13 +193,13 @@ test('gravatar hash: equals md5 of the trimmed, lower-cased email', function ():
 // 🧭 g2ml_resolveAvatar — the priority cascade
 // ============================================================================
 
-test('resolve: a stored avatarURL wins as a local image', function (): void
+test('resolve: a stored avatarPath wins as a local image', function (): void
 {
-    $user     = ['avatarURL' => 'https://cdn.example.com/a.png', 'email' => 'x@example.com'];
+    $user     = ['avatarPath' => 'https://cdn.example.com/a.png', 'email' => 'x@example.com'];
     $resolved = g2ml_resolveAvatar($user);
 
     assert_same('image', $resolved['type'], 'A stored avatar resolves to an image');
-    assert_same('local', $resolved['source'], 'A stored avatarURL is the local source');
+    assert_same('local', $resolved['source'], 'A stored avatarPath is the local source');
     assert_same('https://cdn.example.com/a.png', $resolved['url'], 'The stored URL is passed through');
 });
 
@@ -232,12 +232,12 @@ test('resolve: an empty user resolves to a U monogram', function (): void
     assert_same('U', $resolved['text'], 'The universal fallback initial is U');
 });
 
-test('resolve: an empty avatarURL is ignored and does not become a local image', function (): void
+test('resolve: an empty avatarPath is ignored and does not become a local image', function (): void
 {
-    $user     = ['avatarURL' => '   ', 'displayName' => 'Test User'];
+    $user     = ['avatarPath' => '   ', 'displayName' => 'Test User'];
     $resolved = g2ml_resolveAvatar($user);
 
-    assert_same('initials', $resolved['type'], 'A blank avatarURL must not resolve to an image');
+    assert_same('initials', $resolved['type'], 'A blank avatarPath must not resolve to an image');
 });
 
 // ============================================================================
@@ -266,7 +266,7 @@ test('render: a hostile display name is escaped and never emitted raw', function
 
 test('render: a hostile stored avatar URL cannot break out of the src attribute', function (): void
 {
-    $user = ['avatarURL' => 'https://x/"><script>alert(1)</script>'];
+    $user = ['avatarPath' => 'https://x/"><script>alert(1)</script>'];
     $html = g2ml_renderAvatar($user, 24);
 
     assert_same('image', g2ml_resolveAvatar($user)['type'], 'A stored URL resolves to an image branch');

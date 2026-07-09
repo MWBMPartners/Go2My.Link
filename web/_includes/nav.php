@@ -184,7 +184,7 @@ if (function_exists('getCurrentRoute')) {
                 // Assemble a user array for the cascade from whatever the
                 // session carries (any missing key degrades gracefully).
                 $avatarUser = [
-                    'avatarURL'   => $userAvatar,
+                    'avatarPath'  => $userAvatar,
                     'displayName' => $userDisplayName,
                     'email'       => $userEmail,
                     'firstName'   => $_SESSION['user_first_name'] ?? '',

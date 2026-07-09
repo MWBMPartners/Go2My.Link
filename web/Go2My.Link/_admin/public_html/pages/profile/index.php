@@ -38,7 +38,7 @@ $userUID     = $currentUser['userUID'];
 
 // Fetch full user data from DB (session may not have everything)
 $userData = dbSelectOne(
-    "SELECT userUID, firstName, lastName, displayName, email, timezone, avatarURL,
+    "SELECT userUID, firstName, lastName, displayName, email, timezone, avatarPath,
             emailVerified, createdAt
      FROM tblUsers WHERE userUID = ? LIMIT 1",
     'i',

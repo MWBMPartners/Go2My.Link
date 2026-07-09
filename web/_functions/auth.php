@@ -216,7 +216,7 @@ function loginUser(string $email, string $password): array
     $user = dbSelectOne(
         "SELECT userUID, orgHandle, email, passwordHash, firstName, lastName,
                 displayName, role, emailVerified, isActive, isSuspended,
-                failedLoginAttempts, lockedUntil, avatarURL, timezone,
+                failedLoginAttempts, lockedUntil, avatarPath, timezone,
                 forcePasswordReset
          FROM tblUsers
          WHERE email = ?
@@ -423,7 +423,7 @@ function loginUser(string $email, string $password): array
     $_SESSION['user_last_name']    = $user['lastName'];
     $_SESSION['user_role']         = $user['role'];
     $_SESSION['user_org_handle']   = $user['orgHandle'];
-    $_SESSION['user_avatar']       = $user['avatarURL'] ?? '';
+    $_SESSION['user_avatar']       = $user['avatarPath'] ?? '';
     $_SESSION['user_timezone']     = $user['timezone'] ?? 'UTC';
     $_SESSION['email_verified']    = (int) $user['emailVerified'];
 

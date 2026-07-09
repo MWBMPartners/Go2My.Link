@@ -321,7 +321,7 @@ function g2ml_anonymiseUserData(int $userUID): bool
         // Anonymise user profile
         $sql = "UPDATE tblUsers SET
                     email = ?, firstName = ?, lastName = ?, displayName = ?,
-                    passwordHash = '', avatarURL = NULL, isActive = 0,
+                    passwordHash = '', avatarPath = NULL, isActive = 0,
                     emailVerified = 0, updatedAt = NOW()
                 WHERE userUID = ?";
         $stmt = $db->prepare($sql);
