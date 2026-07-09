@@ -3,7 +3,7 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-09 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`).
+> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `602573e`.
 
 ---
 
@@ -50,22 +50,34 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
 
 | Item | Owner | Status |
 |---|---|---|
-| **#135** login blocker (`avatarURL`→`avatarPath`) + login integration test | dev | **IN FLIGHT** (Sonnet) |
+| **#135** login blocker (`avatarURL`→`avatarPath`) + login integration test | dev | ✅ **DONE** `13f21c4` (unit 189/0, integ 22/0) |
+| **#136** registration blocker (missing `NOT NULL` `username`) + register test | dev | ✅ **DONE** `f7b9e07` (unit 189/0, integ 23/0) |
+| **#138** GDPR data-export broken (non-existent columns) | dev | ✅ **DONE** `602573e` (php -l clean, unit 189/0) — integration test still TODO |
+| Column-audit sweep (find sibling schema/code mismatches) | dev | ✅ **DONE** — 0 P0, 1 P1 (#138). Core flows all verified column-correct. |
 | **#93** rotate leaked legacy DB password on host + remove `public_html_legacy/` | **owner (ops)** | pending — instruct-don't-execute |
 | Migration dry-run + full 480-URL migration; force-reset 7 plaintext passwords | dev + owner | pending |
 | Legal sign-off on 5 `{{LEGAL_REVIEW_NEEDED}}` docs | **owner/legal** | pending |
-| Close ~24 fixed-but-open issues with commit refs | dev | queued (next) |
-| Doc drift: pricing USD→GBP/tier names, API envelope, DNS TXT prefix, MEMORY UTM | dev | queued (next) |
+| Close ~21 fixed-but-open issues with commit refs (#94–#124 cluster + #113) | dev | ⏸ **awaiting owner go-ahead** (guardrail blocked mass close) |
+| Doc drift: pricing USD→GBP/tier names, API envelope, DNS TXT prefix, MEMORY UTM | dev | queued |
+| Data-export integration test (`#138` follow-up) | dev | queued |
 
 ---
 
-## 🔄 Done this session (2026-07-09)
+## 🔄 Done this session (2026-07-09 → 07-10)
 
 - Reverted a CI-breaking YAML typo in `.github/workflows/ci.yml` (stray indent on `uses:`).
 - Full no-assumptions review of issues/milestones/project + codebase.
-- **Fable 5 deep plan** → `docs/LAUNCH_PLAN_2026-07-09.md` (also in scratchpad).
-- Filed **#135** (P0 login blocker). Updated `.claude/memory/MEMORY.md` + this HANDOFF.
-- Delegated **#135 fix** to a Sonnet implementation agent.
+- **Fable 5 deep plan** → `docs/LAUNCH_PLAN_2026-07-09.md` (`082c310`).
+- Fixed **3 launch-hardening defects** (each: own issue, own commit, tests):
+  - **#135** login blocker `avatarURL`→`avatarPath` (`13f21c4`) + `auth_login_test.php`.
+  - **#136** registration blocker — auto-derive unique `username` (`f7b9e07`) + `auth_register_test.php`.
+  - **#138** GDPR data-export non-existent columns (`602573e`).
+- **Column-audit sweep** across all PHP SQL vs schema DDL: **0 P0, 1 P1** (was #138). Every core
+  write path (register/login/session/create-URL/redirect/org/installer) verified column-correct
+  with matching bind counts — see plan for the CLEAN list.
+- Owner locked 4 roadmap decisions (2026-07-09): ship A+B now + plan rest; custom-domain
+  verify/routing now + manual TLS first + Cloudflare-for-SaaS later; multi-provider billing
+  (Stripe + PayPal + SIGNula); SIGNula as single OIDC broker (collapses #34–37).
 
 ## ⏭️ Immediate next steps (execution queue — see plan §10)
 
