@@ -3,7 +3,7 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `602573e`.
+> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `34453d8` (+ this handoff commit).
 
 ---
 
@@ -78,12 +78,22 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
 - Owner locked 4 roadmap decisions (2026-07-09): ship A+B now + plan rest; custom-domain
   verify/routing now + manual TLS first + Cloudflare-for-SaaS later; multi-provider billing
   (Stripe + PayPal + SIGNula); SIGNula as single OIDC broker (collapses #34–37).
+- Owner green-lit (2026-07-10) proceeding with ALL dev-side work; ops/legal (their actions) deferred.
+- **Closed 21 verified-fixed launch-hardening issues** with evidence (#94–#124 cluster + #113).
+- Filed **6 `for consideration` enhancement issues**: #139 password-protected links, #140 rich
+  expiry/click-cap, #141 bulk import, #142 branded interstitials, #143 audit-log export, #144 A/B split.
+- **Built + security-reviewed the API v1 framework (#38)** — `34453d8`. New: `api_auth.php`,
+  `api_ratelimit.php`, `public_html/api/v1/` (front controller + ping/account handlers),
+  migration 011 (composite index), seed 015, 28 unit + 16 integration tests. Key auth
+  (prefix + sha256/`hash_equals`), scopes, DB rate-limiting, redacted request log, envelope.
+  **Passed adversarial review** (see #38 comment); residual pre-auth IP throttle folded into #39.
 
 ## ⏭️ Immediate next steps (execution queue — see plan §10)
 
 - **P0:** finish #135; close ~24 issues; reconcile doc drift + stale `main`; low a11y/hygiene
   (#114–119); (owner) #93 rotation, migration, legal.
-- **P1:** API framework **#38** (Opus) → endpoints **#39** → key UI **#40** → **CueRCode wiring**
+- **P1:** ✅ API framework **#38** (done+reviewed `34453d8`) → **⏳ endpoints #39** (URL CRUD/bulk/list
+  + pre-auth IP throttle) → key UI **#40** → **CueRCode wiring** (createShortURL/logActivity QR fields)
   → analytics **#41/#42** → geo/UA **#43** → UTM **#92** → custom-domain verify+docs **#91**
   → **OpenAPI/Swagger #75** (capstone) → API security cycle.
 - **P2:** entitlement/gating layer → pricing/usage UI → **SIGNula OIDC** → billing (Stripe or SIGNula).
