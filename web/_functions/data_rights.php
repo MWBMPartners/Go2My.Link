@@ -97,7 +97,7 @@ function g2ml_requestDataExport(int $userUID): array
 
         // Gather short URLs
         $sql  = "SELECT shortCode, destinationURL, title, isActive, clickCount,
-                        createdAt, updatedAt, expiresAt
+                        createdAt, updatedAt, startDate, endDate
                  FROM tblShortURLs WHERE createdByUserUID = ?";
         $stmt = $db->prepare($sql);
         $stmt->bind_param('i', $userUID);
@@ -116,7 +116,7 @@ function g2ml_requestDataExport(int $userUID): array
         $stmt->close();
 
         // Gather sessions (exclude tokens for security)
-        $sql  = "SELECT sessionUID, deviceType, browserName, osName, ipAddress,
+        $sql  = "SELECT sessionUID, deviceInfo, ipAddress,
                         isActive, createdAt, lastActivityAt, expiresAt
                  FROM tblUserSessions WHERE userUID = ? ORDER BY createdAt DESC";
         $stmt = $db->prepare($sql);
@@ -147,11 +147,15 @@ function g2ml_requestDataExport(int $userUID): array
         file_put_contents($filepath, $jsonContent);
 
         // Calculate expiry
-        if (function_exists('getSetting')) {
-        $expiryHours = (int) getSetting('compliance.data_export_expiry_hours', 48);
-    } else {
-        $expiryHours = 48;
-    }
+        if (function_exists('getSetting'))
+        {
+            $expiryHours = (int) getSetting('compliance.data_export_expiry_hours', 48);
+        }
+        else
+        {
+            $expiryHours = 48;
+        }
+
         $expiresAt   = date('Y-m-d H:i:s', strtotime("+{$expiryHours} hours"));
 
         // Create request record
