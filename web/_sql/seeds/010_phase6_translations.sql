@@ -48,6 +48,16 @@ VALUES
 ('en-GB', 'about.title', 'About', 'About page', 1);
 
 -- ============================================================================
+-- 🔑 API Keys Page (apikeys.*)
+-- ============================================================================
+
+INSERT IGNORE INTO tblTranslations (localeCode, translationKey, translationValue, context, isVerified)
+VALUES
+('en-GB', 'apikeys.description', 'Create and manage API keys for your organisation.', 'API keys page', 1),
+('en-GB', 'apikeys.error_forbidden', 'You do not have permission to manage API keys.', 'API keys page', 1),
+('en-GB', 'apikeys.title', 'API Keys', 'API keys page', 1);
+
+-- ============================================================================
 -- 🔄 Common (common.*)
 -- ============================================================================
 
@@ -1155,6 +1165,7 @@ VALUES
 INSERT IGNORE INTO tblTranslations (localeCode, translationKey, translationValue, context, isVerified)
 VALUES
 ('en-GB', 'nav.about', 'About', 'Main navigation', 1),
+('en-GB', 'nav.api_keys', 'API Keys', 'Main navigation', 1),
 ('en-GB', 'nav.aria_label', 'Main navigation', 'Main navigation', 1),
 ('en-GB', 'nav.dashboard', 'Dashboard', 'Main navigation', 1),
 ('en-GB', 'nav.features', 'Features', 'Main navigation', 1),

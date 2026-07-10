@@ -200,6 +200,9 @@ $isAdmin     = canManageOrg($orgHandle);
                             <span><i class="fas fa-bolt fa-fw" aria-hidden="true"></i> Short Domains</span>
                             <span class="badge bg-primary rounded-pill"><?php echo number_format(count($shortDomains)); ?></span>
                         </a>
+                        <a href="/api-keys" class="list-group-item list-group-item-action">
+                            <i class="fas fa-key fa-fw" aria-hidden="true"></i> API Keys
+                        </a>
                         <a href="/org/settings" class="list-group-item list-group-item-action">
                             <i class="fas fa-cog fa-fw" aria-hidden="true"></i> Organisation Settings
                         </a>

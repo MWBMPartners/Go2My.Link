@@ -405,6 +405,73 @@ function g2ml_apiKeyHasScope(array $keyRow, string $scope): bool
 }
 
 // ============================================================================
+// 🔐 Scope whitelist & dashboard input validation (#40)
+// ============================================================================
+
+/**
+ * The canonical, whitelisted set of API scopes a key may be granted.
+ *
+ * Single source of truth consulted by g2ml_apiValidateScopesInput() below
+ * and by the API Key Management dashboard (#40,
+ * web/Go2My.Link/_admin/public_html/pages/api-keys/index.php) when rendering
+ * the scope checkboxes. A new scope should be added here first, then wired
+ * into the handler under public_html/api/v1/handlers/ that actually enforces
+ * it.
+ *
+ * @return array<int, string>
+ */
+function g2ml_apiValidScopesList(): array
+{
+    return [
+        'urls:read',
+        'urls:write',
+        'urls:delete',
+        'analytics:read',
+        'domains:read',
+        'domains:write',
+        'org:read',
+        'account:read',
+        'qr:link',
+    ];
+}
+
+/**
+ * Filter caller-supplied scope strings down to the whitelist in
+ * g2ml_apiValidScopesList(), dropping anything unrecognised and
+ * de-duplicating. Pure and DB-free, so it is directly unit-testable.
+ *
+ * Used by the API Key Management dashboard (#40) to sanitise the "create
+ * key" form's scope checkboxes before calling g2ml_apiGenerateKey() — a
+ * forged or stray POST value (e.g. an attacker adding an unlisted scope
+ * name to the request body) must never be able to grant a key a permission
+ * outside the documented set.
+ *
+ * @param  array $requestedScopes  Raw scope strings from user input (any
+ *                                  non-string entries are silently skipped).
+ * @return array                   Valid scopes only, de-duplicated, reindexed from 0.
+ */
+function g2ml_apiValidateScopesInput(array $requestedScopes): array
+{
+    $allowedScopes = g2ml_apiValidScopesList();
+    $validScopes   = [];
+
+    foreach ($requestedScopes as $requestedScope)
+    {
+        if (!is_string($requestedScope))
+        {
+            continue;
+        }
+
+        if (in_array($requestedScope, $allowedScopes, true) && !in_array($requestedScope, $validScopes, true))
+        {
+            $validScopes[] = $requestedScope;
+        }
+    }
+
+    return $validScopes;
+}
+
+// ============================================================================
 // 🗑️ Revocation & listing (org-scoped — never cross-org)
 // ============================================================================
 

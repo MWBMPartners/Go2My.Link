@@ -235,6 +235,12 @@ if (function_exists('getCurrentRoute')) {
                             <?php if (function_exists('__')) { echo __('nav.organisation'); } else { echo 'Organisation'; } ?>
                         </a></li>
 
+                        <!-- API Keys -->
+                        <li><a class="dropdown-item" href="https://admin.go2my.link/api-keys">
+                            <i class="fas fa-key fa-fw" aria-hidden="true"></i>
+                            <?php if (function_exists('__')) { echo __('nav.api_keys'); } else { echo 'API Keys'; } ?>
+                        </a></li>
+
                         <!-- Privacy & Data -->
                         <li><a class="dropdown-item" href="https://admin.go2my.link/privacy">
                             <i class="fas fa-shield-halved fa-fw" aria-hidden="true"></i>
