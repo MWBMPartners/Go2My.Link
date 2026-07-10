@@ -3,7 +3,8 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `bad789a` (+ this handoff commit).
+> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `89fb2e1` (+ this handoff commit).
+> **Status:** everything buildable WITHOUT owner input is DONE. Remaining work needs owner credentials/decisions (SIGNula, billing, tier naming) or is owner ops/legal (below).
 
 ---
 
@@ -120,8 +121,10 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
   → multi-provider billing Stripe+PayPal+SIGNula (needs owner: provider keys).
 - **P1 follow-ups:** ✅ **UTM #92** (`ea857f1`); ✅ **API adversarial security cycle** (`bad789a` — surface
   well-hardened; 1 Medium fixed (audit-log INSERT length-bound → closed a backoff-bypass + `error_log`
-  injection); Low residuals tracked in **#149**, test-flake in **#148**); **⏭️ geo #43 IN PROGRESS** (GeoLite2
-  via `MAXMIND_LICENSE_KEY` org secret → CI fetches `.mmdb`; feeds analytics country breakdown).
+  injection); Low residuals tracked in **#149**, test-flake in **#148**); ✅ **geo #43** (`89fb2e1`, vendored
+  pure-PHP MaxMind reader, gated OFF + graceful-no-op, CI-fetched `.mmdb`, country analytics widget).
+- **Small tracked cleanups (buildable, low priority):** #148 test-flake; #149 API Low residuals; dormant
+  `analytics.geoip_enabled` scaffolding setting (remove); GT-6 two-domain-table unification.
 - **✅ Component C (LinksPage) — 6/6 COMPLETE:** C.1 renderer #45 (`e37134f`) · C.2 mgmt UI #48 (`40181cc`)
   · C.3 template picker + preview #47 (`1dd6634`) · C.4 custom-domain fallback #46 (`99a10c4`) · C.5 age-gate
   #50 (`d68dfc0`) · **C.6 custom-HTML/WYSIWYG #49 (`16984aa`, Opus)** — DOM allowlist sanitiser +

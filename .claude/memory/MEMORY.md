@@ -32,8 +32,8 @@
 > run **migration 016** before deploying to an existing DB (else `getOrgTier` fails-open, all gating off);
 > keep custom-HTML OFF (default) until a security sign-off (highest XSS surface). **Remaining dev needs owner
 > input:** SIGNula OIDC endpoints/creds, multi-provider billing (Stripe/PayPal/SIGNula keys), final tier
-> naming/currency; an API adversarial security cycle is still
-> pending. **Owner ops/legal deferred:** #93 cred rotation, 480-URL migration (+ assign tiers — Free tier
+> naming/currency. ✅ API adversarial security cycle DONE (`bad789a`, 1 Medium fixed; residuals #149).
+> ✅ geo #43 DONE (`89fb2e1`). **Owner ops/legal deferred:** #93 cred rotation, 480-URL migration (+ assign tiers — Free tier
 > now enforced), legal sign-off, push/review the branch.
 > **🌍 #43 IP geolocation shipped (2026-07-10):** vendored pure-PHP `MaxMind\Db\Reader`
 > (maxmind-db/reader-php v1.13.1, Apache-2.0) at `web/_libraries/maxminddb/` — NO ext-maxminddb
