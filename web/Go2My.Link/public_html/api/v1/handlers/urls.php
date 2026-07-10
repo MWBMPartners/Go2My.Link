@@ -408,6 +408,14 @@ function g2ml_apiHandleUrlsCreate(array $keyRow, array $context): array
             $errorMessage = $created['error'];
         }
 
+        // The org's plan link limit was reached (#146 — entitlements.php,
+        // g2ml_checkLimit()). A tier/quota rejection is a 403 (the request is
+        // well-formed; the caller's plan forbids it right now), never a 422.
+        if (($created['limitReached'] ?? false) === true)
+        {
+            throw new G2mlApiHandlerException(403, $errorMessage, 'destination_url');
+        }
+
         // A qrCodeExternalUUID collision is distinguished by createShortURL()
         // via the qrUuidTaken flag — checked FIRST and NEVER folded into the
         // 'already taken' (custom-alias) branch below, per #145: the two

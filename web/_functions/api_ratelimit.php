@@ -55,12 +55,20 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
  *
  * Counts tblAPIRequestLog rows for this apiKeyUID over two windows (24 hours
  * and 60 seconds) via IDX_apireq_key_created, a single composite-index range
- * scan per window. The daily limit is the key's own `rateLimitOverride` when
- * set, otherwise the `api.default_daily_limit` setting; the burst limit is
- * always `api.default_per_minute`.
+ * scan per window. The daily limit is resolved in this priority order (#146):
  *
- * @param  array $keyRow  A verified key row (see g2ml_apiVerifyKey()); only
- *                         `apiKeyUID` and `rateLimitOverride` are read.
+ *   1. The key's own `rateLimitOverride`, when set (a per-key override always
+ *      wins — an operator who set one explicitly wants it honoured verbatim).
+ *   2. The owning org's tier `maxAPIRequestsPerDay` (via g2ml_getOrgTier() —
+ *      NULL on an unlimited/GlobalAdmin/'[default]' tier means no cap here).
+ *   3. The `api.default_daily_limit` setting, when the tier ALSO has no cap
+ *      (NULL) — preserves pre-#146 behaviour for every key on an unlimited tier.
+ *
+ * The burst limit is always `api.default_per_minute` (unaffected by #146 —
+ * tiers do not model a burst rate).
+ *
+ * @param  array $keyRow  A verified key row (see g2ml_apiVerifyKey()); reads
+ *                         `apiKeyUID`, `rateLimitOverride`, and `orgHandle`.
  * @return array           ['allowed'=>bool, 'limit'=>int, 'remaining'=>int,
  *                          'resetAt'=>string (ISO8601 UTC), 'retryAfter'=>int (seconds, 0 when allowed)]
  *
@@ -81,7 +89,33 @@ function g2ml_apiCheckRateLimit(array $keyRow): array
     }
     else
     {
-        $dailyLimit = (int) getSetting('api.default_daily_limit', 5000);
+        // No per-key override — defer to the owning org's tier (#146). A
+        // missing/blank orgHandle on the key row falls back to '[default]',
+        // which g2ml_getOrgTier() always resolves as unlimited, exactly
+        // preserving the pre-#146 "use the setting" behaviour for such rows.
+        $tierDailyLimit = null;
+
+        if (function_exists('g2ml_getOrgTier'))
+        {
+            $keyOrgHandle = '[default]';
+
+            if (isset($keyRow['orgHandle']) && is_string($keyRow['orgHandle']) && $keyRow['orgHandle'] !== '')
+            {
+                $keyOrgHandle = $keyRow['orgHandle'];
+            }
+
+            $tier           = g2ml_getOrgTier($keyOrgHandle);
+            $tierDailyLimit = $tier['maxAPIRequestsPerDay'] ?? null;
+        }
+
+        if ($tierDailyLimit !== null)
+        {
+            $dailyLimit = (int) $tierDailyLimit;
+        }
+        else
+        {
+            $dailyLimit = (int) getSetting('api.default_daily_limit', 5000);
+        }
     }
 
     $burstLimit = (int) getSetting('api.default_per_minute', 60);

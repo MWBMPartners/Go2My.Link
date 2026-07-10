@@ -674,6 +674,57 @@ function createShortURL(string $longURL, array $options = []): array
     }
 
     // ========================================================================
+    // 💎 Step 3c: Enforce the org's maxLinks entitlement (#146)
+    // ========================================================================
+    // Counts the org's current ACTIVE short URLs (an indexed, org-scoped
+    // query against IDX_url_org) and checks it against the org's tier via
+    // g2ml_checkLimit(). GlobalAdmin / '[default]' / an unlimited tier always
+    // resolve to a NULL limit (allowed) inside g2ml_getOrgTier() — see
+    // web/_functions/entitlements.php. This NEVER retroactively touches an
+    // existing link; it only blocks a NEW create once the org is already at
+    // (or over) its plan's link count.
+    //
+    // Fail OPEN: if the COUNT query itself fails, $currentActiveLinkCount
+    // stays 0 (dbSelect() already error_log()s the underlying failure), which
+    // can only ever make the check MORE permissive, never block a legitimate
+    // create because of a system fault.
+    //
+    // 📖 Reference: web/_functions/entitlements.php — g2ml_checkLimit()
+    // 📖 Reference: web/_sql/schema/020_shorturls_categories_tags.sql (IDX_url_org)
+    // ========================================================================
+    if (function_exists('g2ml_checkLimit'))
+    {
+        $activeLinkCountRow = dbSelectOne(
+            "SELECT COUNT(*) AS cnt FROM tblShortURLs WHERE orgHandle = ? AND isActive = 1",
+            's',
+            [$orgHandle]
+        );
+
+        if ($activeLinkCountRow !== null && $activeLinkCountRow !== false)
+        {
+            $currentActiveLinkCount = (int) $activeLinkCountRow['cnt'];
+        }
+        else
+        {
+            error_log('[Go2My.Link] WARNING: entitlements — could not count active links for org: ' . $orgHandle . ' — treating as 0 (fail OPEN).');
+            $currentActiveLinkCount = 0;
+        }
+
+        $linkLimitCheck = g2ml_checkLimit($orgHandle, 'maxLinks', $currentActiveLinkCount);
+
+        if ($linkLimitCheck['allowed'] === false)
+        {
+            return [
+                'success'      => false,
+                'shortCode'    => null,
+                'shortURL'     => null,
+                'error'        => 'You have reached your plan\'s link limit. Please upgrade to create more short links.',
+                'limitReached' => true,
+            ];
+        }
+    }
+
+    // ========================================================================
     // 🎲 + 💾 Steps 4 & 5: Obtain a short code and insert
     // ========================================================================
     // Two paths share one INSERT:

@@ -139,6 +139,7 @@ require_once $g2mlCdvFunctionsDir . 'activity_logger.php';
 require_once $g2mlCdvFunctionsDir . 'session.php';
 require_once $g2mlCdvFunctionsDir . 'auth.php';
 require_once $g2mlCdvFunctionsDir . 'org.php';
+require_once $g2mlCdvFunctionsDir . 'entitlements.php';
 require_once dirname(__DIR__, 2) . '/web/G2My.Link/_functions/domain_resolver.php';
 require_once dirname(__DIR__, 2) . '/web/G2My.Link/_functions/redirect_resolver.php';
 
@@ -382,12 +383,37 @@ function g2ml_cdv_set_setting(mysqli $db, string $settingID, string $value): voi
 // Shared fixtures: the free tier, [default] org + its verified g2my.link
 // short domain (mirrors seed 002), and a second org ('cdvtestorg') to own the
 // domains under test.
+//
+// cdvtestorg is deliberately assigned a TIER with an unlimited
+// maxCustomDomains ('cdvunlimited', defined below), NOT the real seeded
+// 'free' tier (whose maxCustomDomains is a genuine, intentional 0 per
+// web/_sql/seeds/001_subscription_tiers.sql). This suite's own purpose is
+// DNS-verification mechanics and the org.max_short_domains SETTING-only
+// quota (#91) — both predate and are independent of the tier-based cap added
+// by #146 (entitlements.php). A dedicated tier∩setting reconciliation test is
+// added below (case 8) to cover #146's addOrgShortDomain() behaviour
+// specifically, without coupling every pre-existing case in this file to
+// whatever the live pricing tiers happen to allow.
 // ----------------------------------------------------------------------------
 g2ml_cdv_exec(
     $db,
     "INSERT INTO `tblSubscriptionTiers` (`tierID`, `tierName`) "
     . "VALUES ('free', 'Free') "
     . "ON DUPLICATE KEY UPDATE `tierName` = VALUES(`tierName`)"
+);
+
+// sortOrder is set to a deliberately HIGH value (999): g2ml_getOrgTier()'s
+// Free-tier FALLBACK query picks the lowest-sortOrder ACTIVE tier across the
+// WHOLE tblSubscriptionTiers table (it is not scoped to this file's own
+// fixtures), and the column's own DEFAULT is 0 — lower than the real seeded
+// 'free' tier's sortOrder of 1. Leaving this test tier at the default would
+// make IT win that global fallback query and corrupt any OTHER test/file in
+// the same suite run that asserts a "no-tier org -> Free" resolution.
+g2ml_cdv_exec(
+    $db,
+    "INSERT INTO `tblSubscriptionTiers` (`tierID`, `tierName`, `maxLinks`, `maxCustomDomains`, `maxAPIRequestsPerDay`, `maxLinksPages`, `sortOrder`, `isActive`) "
+    . "VALUES ('cdvunlimited', 'CDV Unlimited Test Tier', NULL, NULL, NULL, NULL, 999, 1) "
+    . "ON DUPLICATE KEY UPDATE `tierName` = VALUES(`tierName`), `sortOrder` = VALUES(`sortOrder`)"
 );
 
 g2ml_cdv_exec(
@@ -400,8 +426,8 @@ g2ml_cdv_exec(
 g2ml_cdv_exec(
     $db,
     "INSERT INTO `tblOrganisations` (`orgHandle`, `orgName`, `orgFallbackURL`, `tierID`, `isActive`) "
-    . "VALUES ('cdvtestorg', 'Custom Domain Verification Test Org', 'https://go2my.link/cdvtestorg', 'free', 1) "
-    . "ON DUPLICATE KEY UPDATE `orgFallbackURL` = VALUES(`orgFallbackURL`)"
+    . "VALUES ('cdvtestorg', 'Custom Domain Verification Test Org', 'https://go2my.link/cdvtestorg', 'cdvunlimited', 1) "
+    . "ON DUPLICATE KEY UPDATE `orgFallbackURL` = VALUES(`orgFallbackURL`), `tierID` = VALUES(`tierID`)"
 );
 
 // The system's own default short domain, pre-verified — mirrors the fix made
@@ -640,4 +666,101 @@ test('migration 013 backfill: a pre-existing isActive=1 row is grandfathered to 
 
     g2ml_cdv_delete_short_domain($db, 'cdv-grandfathered.test');
     g2ml_cdv_delete_shorturl($db, 'cdvgrandfcode');
+});
+
+// ----------------------------------------------------------------------------
+// 8. #146: the effective cap is the TIGHTER of tier.maxCustomDomains and the
+//    org.max_short_domains setting — proven from BOTH directions.
+// ----------------------------------------------------------------------------
+test('addOrgShortDomain (#146): a tighter TIER cap than the setting is enforced', function () use ($db): void
+{
+    g2ml_cdv_exec($db, "DELETE FROM `tblOrgShortDomains` WHERE `orgHandle` = 'cdvtestorg'");
+    g2ml_cdv_login_as($db, 'cdvtestorg');
+
+    // Tier cap (1) is TIGHTER than the setting (5) — the tier must win.
+    g2ml_cdv_exec($db, "UPDATE `tblSubscriptionTiers` SET `maxCustomDomains` = 1 WHERE `tierID` = 'cdvunlimited'");
+    g2ml_cdv_set_setting($db, 'org.max_short_domains', '5');
+    g2ml_clearOrgTierCache('cdvtestorg');
+
+    $first = addOrgShortDomain('cdvtestorg', 'cdv-reconcile-tier-1.test');
+    assert_true($first['success'], 'The first domain, within the tier cap of 1, is accepted even though the setting allows 5');
+
+    $second = addOrgShortDomain('cdvtestorg', 'cdv-reconcile-tier-2.test');
+    assert_false($second['success'], 'A second domain is rejected by the TIGHTER tier cap, even though the setting alone would allow it');
+    assert_contains('maximum', $second['error'] ?? '', 'The rejection explains the plan limit');
+
+    // Restore.
+    g2ml_cdv_delete_short_domain($db, 'cdv-reconcile-tier-1.test');
+    g2ml_cdv_delete_short_domain($db, 'cdv-reconcile-tier-2.test');
+    g2ml_cdv_exec($db, "UPDATE `tblSubscriptionTiers` SET `maxCustomDomains` = NULL WHERE `tierID` = 'cdvunlimited'");
+    g2ml_cdv_set_setting($db, 'org.max_short_domains', '0');
+    g2ml_clearOrgTierCache('cdvtestorg');
+});
+
+test('addOrgShortDomain (#146): a tighter SETTING cap than the tier is enforced', function () use ($db): void
+{
+    g2ml_cdv_exec($db, "DELETE FROM `tblOrgShortDomains` WHERE `orgHandle` = 'cdvtestorg'");
+    g2ml_cdv_login_as($db, 'cdvtestorg');
+
+    // Setting cap (1) is TIGHTER than the tier (NULL = unlimited) — the
+    // setting must win. cdvunlimited's maxCustomDomains is NULL here (the
+    // fixture default), so this also proves NULL is correctly ignored/never
+    // treated as "0" when combining.
+    g2ml_cdv_set_setting($db, 'org.max_short_domains', '1');
+    g2ml_clearOrgTierCache('cdvtestorg');
+
+    $first = addOrgShortDomain('cdvtestorg', 'cdv-reconcile-setting-1.test');
+    assert_true($first['success'], 'The first domain, within the setting cap of 1, is accepted with an unlimited tier');
+
+    $second = addOrgShortDomain('cdvtestorg', 'cdv-reconcile-setting-2.test');
+    assert_false($second['success'], 'A second domain is rejected by the setting cap, with the tier itself uncapped');
+    assert_contains('maximum', $second['error'] ?? '', 'The rejection explains the plan limit');
+
+    // Restore.
+    g2ml_cdv_delete_short_domain($db, 'cdv-reconcile-setting-1.test');
+    g2ml_cdv_delete_short_domain($db, 'cdv-reconcile-setting-2.test');
+    g2ml_cdv_set_setting($db, 'org.max_short_domains', '0');
+    g2ml_clearOrgTierCache('cdvtestorg');
+});
+
+// ----------------------------------------------------------------------------
+// 9. #146 fail-open: a simulated entitlement-system lookup failure must NOT
+//    block addOrgShortDomain() — it must behave as though the tier imposes no
+//    cap at all (the setting, if any, still applies on its own).
+// ----------------------------------------------------------------------------
+test('addOrgShortDomain (#146): a simulated tier-lookup failure fails OPEN (does not block the add)', function () use ($db): void
+{
+    g2ml_cdv_exec($db, "DELETE FROM `tblOrgShortDomains` WHERE `orgHandle` = 'cdvtestorg'");
+    g2ml_cdv_login_as($db, 'cdvtestorg');
+
+    // Even with a tier cap of 1 already reached, a lookup FAILURE must fail
+    // OPEN — the entitlement system's own fault must never block a legitimate
+    // add. This simulates a real DB/query error, not a "no tier" or
+    // "inactive tier" state (those already have their own tested fallback).
+    g2ml_cdv_exec($db, "UPDATE `tblSubscriptionTiers` SET `maxCustomDomains` = 1 WHERE `tierID` = 'cdvunlimited'");
+    g2ml_cdv_set_setting($db, 'org.max_short_domains', '0');
+    g2ml_clearOrgTierCache('cdvtestorg');
+
+    $seeded = addOrgShortDomain('cdvtestorg', 'cdv-failopen-seed.test');
+    assert_true($seeded['success'], 'Precondition: the tier cap of 1 is reached with one domain seeded');
+    g2ml_clearOrgTierCache('cdvtestorg');
+
+    $GLOBALS['g2ml_entitlements_tier_lookup_override'] = function (string $orgHandle): array|null|false
+    {
+        // A DB/query system failure — dbSelectOne()'s own false-on-error contract.
+        return false;
+    };
+
+    $duringFailure = addOrgShortDomain('cdvtestorg', 'cdv-failopen-add.test');
+
+    unset($GLOBALS['g2ml_entitlements_tier_lookup_override']);
+    g2ml_clearOrgTierCache('cdvtestorg');
+
+    assert_true($duringFailure['success'], 'A simulated entitlement-system lookup failure must fail OPEN — the add proceeds despite the (now-unknowable) tier cap');
+
+    // Restore.
+    g2ml_cdv_delete_short_domain($db, 'cdv-failopen-seed.test');
+    g2ml_cdv_delete_short_domain($db, 'cdv-failopen-add.test');
+    g2ml_cdv_exec($db, "UPDATE `tblSubscriptionTiers` SET `maxCustomDomains` = NULL WHERE `tierID` = 'cdvunlimited'");
+    g2ml_clearOrgTierCache('cdvtestorg');
 });

@@ -288,6 +288,14 @@ function updateOrganisation(string $orgHandle, array $data): array
         'logData' => ['orgHandle' => $orgHandle, 'fields' => array_keys($data)],
     ]);
 
+    // A tierID change must never leave a stale entitlement decision cached for
+    // the REST of this request (e.g. a GlobalAdmin reassigning a tier and then
+    // immediately creating a link for that org) — see entitlements.php (#146).
+    if (array_key_exists('tierID', $data) && function_exists('g2ml_clearOrgTierCache'))
+    {
+        g2ml_clearOrgTierCache($orgHandle);
+    }
+
     return ['success' => true];
 }
 
@@ -1076,11 +1084,57 @@ function addOrgShortDomain(string $orgHandle, string $domain): array
     );
     $existingDomainCount = (int) ($currentCount['cnt'] ?? 0);
 
+    // ------------------------------------------------------------------------
+    // Quota reconciliation (#146): the effective cap is the TIGHTER of the
+    // org's subscription tier (tblSubscriptionTiers.maxCustomDomains) and the
+    // operator-configured org.max_short_domains setting (#91) — whichever
+    // number is smaller wins. NULL (tier = unlimited) and 0 (setting = no
+    // cap, the setting's own pre-#146 convention) are both ignored when
+    // combining; if BOTH sources are uncapped, custom domains are unlimited.
+    // GlobalAdmin / '[default]' / an unlimited tier always resolve
+    // maxCustomDomains to NULL (see entitlements.php — g2ml_getOrgTier(),
+    // which already fails OPEN — i.e. NULL — on any lookup error), so for
+    // those the setting alone (if any) is the only possible cap.
+    // ------------------------------------------------------------------------
+    $tierMaxCustomDomains = null;
+
+    if (function_exists('g2ml_getOrgTier'))
+    {
+        $orgTier              = g2ml_getOrgTier($orgHandle);
+        $tierMaxCustomDomains = $orgTier['maxCustomDomains'] ?? null;
+    }
+
     $maxShortDomains = (int) getSetting('org.max_short_domains', '0');
 
-    if ($maxShortDomains > 0 && $existingDomainCount >= $maxShortDomains)
+    if ($maxShortDomains > 0)
     {
-        return ['success' => false, 'error' => "Your plan allows a maximum of {$maxShortDomains} short domains."];
+        $settingMaxCustomDomains = $maxShortDomains;
+    }
+    else
+    {
+        $settingMaxCustomDomains = null;
+    }
+
+    if ($tierMaxCustomDomains !== null && $settingMaxCustomDomains !== null)
+    {
+        $effectiveMaxCustomDomains = min($tierMaxCustomDomains, $settingMaxCustomDomains);
+    }
+    elseif ($tierMaxCustomDomains !== null)
+    {
+        $effectiveMaxCustomDomains = $tierMaxCustomDomains;
+    }
+    elseif ($settingMaxCustomDomains !== null)
+    {
+        $effectiveMaxCustomDomains = $settingMaxCustomDomains;
+    }
+    else
+    {
+        $effectiveMaxCustomDomains = null;
+    }
+
+    if ($effectiveMaxCustomDomains !== null && $existingDomainCount >= $effectiveMaxCustomDomains)
+    {
+        return ['success' => false, 'error' => "Your plan allows a maximum of {$effectiveMaxCustomDomains} short domains."];
     }
 
     if ($existingDomainCount === 0)

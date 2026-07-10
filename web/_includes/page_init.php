@@ -186,6 +186,7 @@ require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'session.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'auth.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'org.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'account_types.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'entitlements.php';
 
 // Layer 4 — Compliance, Privacy & Security Response (depend on Layers 1+2+3)
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'cookie_consent.php';

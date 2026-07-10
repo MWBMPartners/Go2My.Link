@@ -145,6 +145,7 @@ require_once $g2mlApiKeyFunctionsDir . '/settings.php';
 require_once $g2mlApiKeyFunctionsDir . '/api_response.php';
 require_once $g2mlApiKeyFunctionsDir . '/api_auth.php';
 require_once $g2mlApiKeyFunctionsDir . '/api_ratelimit.php';
+require_once $g2mlApiKeyFunctionsDir . '/entitlements.php';
 
 // ----------------------------------------------------------------------------
 // Helpers
@@ -263,6 +264,31 @@ g2ml_apikey_test_exec(
     "INSERT INTO `tblOrganisations` (`orgHandle`, `orgName`, `orgFallbackURL`, `tierID`, `isActive`) "
     . "VALUES ('orgbapikey', 'Org B (API key isolation test)', 'https://go2my.link/orgb', 'free', 1) "
     . "ON DUPLICATE KEY UPDATE `orgFallbackURL` = VALUES(`orgFallbackURL`)"
+);
+
+// A dedicated, tight test tier (#146) so "the daily limit reflects the org's
+// tier" is deterministic and independent of whatever the live pricing seed
+// (web/_sql/seeds/001_subscription_tiers.sql) happens to allow.
+//
+// sortOrder is set to a deliberately HIGH value (999): g2ml_getOrgTier()'s
+// Free-tier FALLBACK query picks the lowest-sortOrder ACTIVE tier across the
+// WHOLE tblSubscriptionTiers table (not scoped to this file's own fixtures),
+// and the column's own DEFAULT is 0 — lower than the real seeded 'free'
+// tier's sortOrder of 1. Leaving this test tier at the default would make IT
+// win that global fallback query and corrupt any OTHER integration file in
+// the same suite run asserting "no-tier org -> Free".
+g2ml_apikey_test_exec(
+    $db,
+    "INSERT INTO `tblSubscriptionTiers` (`tierID`, `tierName`, `maxLinks`, `maxCustomDomains`, `maxAPIRequestsPerDay`, `maxLinksPages`, `sortOrder`, `isActive`) "
+    . "VALUES ('apikey146tier', 'API Key Test Tier (#146)', NULL, NULL, 3, NULL, 999, 1) "
+    . "ON DUPLICATE KEY UPDATE `maxAPIRequestsPerDay` = VALUES(`maxAPIRequestsPerDay`), `sortOrder` = VALUES(`sortOrder`)"
+);
+
+g2ml_apikey_test_exec(
+    $db,
+    "INSERT INTO `tblOrganisations` (`orgHandle`, `orgName`, `orgFallbackURL`, `tierID`, `isActive`) "
+    . "VALUES ('orgapikey146', 'Org (#146 tier-reflects-rate-limit test)', 'https://go2my.link/orgapikey146', 'apikey146tier', 1) "
+    . "ON DUPLICATE KEY UPDATE `orgFallbackURL` = VALUES(`orgFallbackURL`), `tierID` = VALUES(`tierID`)"
 );
 
 // ============================================================================
@@ -556,6 +582,108 @@ test('rateLimit: the per-minute burst limit trips independently of the daily lim
     g2ml_apikey_test_clear_log($db, (int) $created['apiKeyUID']);
     g2ml_apikey_test_exec($db, 'DELETE FROM `tblAPIKeys` WHERE `apiKeyUID` = ' . (int) $created['apiKeyUID']);
     g2ml_apikey_test_exec($db, 'DELETE FROM `tblUsers` WHERE `userUID` = ' . $userUID);
+});
+
+// ============================================================================
+// 💎 #146 — the daily limit reflects the org's subscription tier
+// ============================================================================
+
+test('rateLimit (#146): the daily limit reflects the org\'s tier when no per-key override is set', function () use ($db): void
+{
+    $marker  = 'apikey_' . substr(hash('sha256', (string) microtime(true) . 'rl-tier'), 0, 12);
+    $userUID = g2ml_apikey_test_insert_user($db, 'orgapikey146', $marker);
+    $created = g2ml_apiGenerateKey($userUID, 'orgapikey146', 'Rate-limit tier test key', ['account:read'], null);
+
+    // No rateLimitOverride is set on this key — the tier's maxAPIRequestsPerDay
+    // (3, per the fixture above) must be what governs, NOT the global
+    // api.default_daily_limit setting (5000).
+    $verified = g2ml_apiVerifyKey($created['plaintextKey']);
+    assert_same(null, $verified['rateLimitOverride'], 'Precondition: no per-key override is set');
+
+    g2ml_clearOrgTierCache('orgapikey146');
+    g2ml_apikey_test_clear_log($db, (int) $created['apiKeyUID']);
+
+    // Seed exactly the tier's worth of requests within the last day.
+    g2ml_apikey_test_seed_log_row($db, (int) $created['apiKeyUID'], '2 HOUR');
+    g2ml_apikey_test_seed_log_row($db, (int) $created['apiKeyUID'], '1 HOUR');
+    g2ml_apikey_test_seed_log_row($db, (int) $created['apiKeyUID'], '30 MINUTE');
+
+    $rateLimit = g2ml_apiCheckRateLimit($verified);
+
+    assert_false($rateLimit['allowed'], 'Reaching the ORG TIER\'s daily limit (3) must deny the request');
+    assert_same(3, $rateLimit['limit'], 'The reported limit must reflect the org\'s tier, not the global default (5000)');
+    assert_same(0, $rateLimit['remaining'], 'remaining must be 0 once the tier limit is reached');
+
+    g2ml_apikey_test_clear_log($db, (int) $created['apiKeyUID']);
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblAPIKeys` WHERE `apiKeyUID` = ' . (int) $created['apiKeyUID']);
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblUsers` WHERE `userUID` = ' . $userUID);
+    g2ml_clearOrgTierCache('orgapikey146');
+});
+
+test('rateLimit (#146): a per-key rateLimitOverride still wins over the org\'s tier', function () use ($db): void
+{
+    $marker  = 'apikey_' . substr(hash('sha256', (string) microtime(true) . 'rl-override-wins'), 0, 12);
+    $userUID = g2ml_apikey_test_insert_user($db, 'orgapikey146', $marker);
+    $created = g2ml_apiGenerateKey($userUID, 'orgapikey146', 'Rate-limit override-wins test key', ['account:read'], null);
+
+    // The org's own tier allows 3/day, but THIS key has an explicit override
+    // of 1 — the override must win, per g2ml_apiCheckRateLimit()'s own
+    // documented priority order (per-key override > tier > setting).
+    g2ml_apikey_test_exec($db, 'UPDATE `tblAPIKeys` SET `rateLimitOverride` = 1 WHERE `apiKeyUID` = ' . (int) $created['apiKeyUID']);
+
+    $verified = g2ml_apiVerifyKey($created['plaintextKey']);
+    assert_same(1, (int) $verified['rateLimitOverride'], 'The override must round-trip through verify');
+
+    g2ml_clearOrgTierCache('orgapikey146');
+    g2ml_apikey_test_clear_log($db, (int) $created['apiKeyUID']);
+    g2ml_apikey_test_seed_log_row($db, (int) $created['apiKeyUID'], '1 HOUR');
+
+    $rateLimit = g2ml_apiCheckRateLimit($verified);
+
+    assert_false($rateLimit['allowed'], 'Reaching the per-key override (1) must deny the request');
+    assert_same(1, $rateLimit['limit'], 'The reported limit is the per-key override (1), NOT the tier\'s 3');
+
+    g2ml_apikey_test_clear_log($db, (int) $created['apiKeyUID']);
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblAPIKeys` WHERE `apiKeyUID` = ' . (int) $created['apiKeyUID']);
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblUsers` WHERE `userUID` = ' . $userUID);
+    g2ml_clearOrgTierCache('orgapikey146');
+});
+
+test('rateLimit (#146): a simulated tier-lookup failure fails OPEN (falls back to the global default)', function () use ($db): void
+{
+    $marker  = 'apikey_' . substr(hash('sha256', (string) microtime(true) . 'rl-failopen'), 0, 12);
+    $userUID = g2ml_apikey_test_insert_user($db, 'orgapikey146', $marker);
+    $created = g2ml_apiGenerateKey($userUID, 'orgapikey146', 'Rate-limit fail-open test key', ['account:read'], null);
+
+    $verified = g2ml_apiVerifyKey($created['plaintextKey']);
+    assert_same(null, $verified['rateLimitOverride'], 'Precondition: no per-key override is set');
+
+    g2ml_clearOrgTierCache('orgapikey146');
+    g2ml_apikey_test_clear_log($db, (int) $created['apiKeyUID']);
+
+    // Simulate a DB/query system failure resolving the org's tier.
+    $GLOBALS['g2ml_entitlements_tier_lookup_override'] = function (string $orgHandle): array|null|false
+    {
+        return false;
+    };
+
+    $rateLimit = g2ml_apiCheckRateLimit($verified);
+
+    unset($GLOBALS['g2ml_entitlements_tier_lookup_override']);
+    g2ml_clearOrgTierCache('orgapikey146');
+
+    // g2ml_getOrgTier() fails OPEN to the unlimited sentinel (maxAPIRequestsPerDay
+    // = null) on a lookup failure, so g2ml_apiCheckRateLimit() falls through to
+    // the global api.default_daily_limit setting, exactly as it would for a key
+    // whose org genuinely has no tier-imposed cap — never a hard block caused by
+    // the entitlement system's own fault.
+    assert_true($rateLimit['allowed'], 'A simulated entitlement-system lookup failure must fail OPEN — the request is allowed');
+    assert_same((int) getSetting('api.default_daily_limit', 5000), $rateLimit['limit'], 'The reported limit falls back to the global default, not a blocked/zero limit');
+
+    g2ml_apikey_test_clear_log($db, (int) $created['apiKeyUID']);
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblAPIKeys` WHERE `apiKeyUID` = ' . (int) $created['apiKeyUID']);
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblUsers` WHERE `userUID` = ' . $userUID);
+    g2ml_clearOrgTierCache('orgapikey146');
 });
 
 // ============================================================================
