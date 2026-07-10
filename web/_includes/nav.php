@@ -229,6 +229,12 @@ if (function_exists('getCurrentRoute')) {
                             <?php if (function_exists('__')) { echo __('nav.my_links'); } else { echo 'My Links'; } ?>
                         </a></li>
 
+                        <!-- Analytics (#42) -->
+                        <li><a class="dropdown-item" href="https://admin.go2my.link/analytics">
+                            <i class="fas fa-chart-line fa-fw" aria-hidden="true"></i>
+                            <?php if (function_exists('__')) { echo __('nav.analytics'); } else { echo 'Analytics'; } ?>
+                        </a></li>
+
                         <!-- Organisation -->
                         <li><a class="dropdown-item" href="https://admin.go2my.link/org">
                             <i class="fas fa-building fa-fw" aria-hidden="true"></i>

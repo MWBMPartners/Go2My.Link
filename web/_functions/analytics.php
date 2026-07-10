@@ -577,3 +577,156 @@ function g2ml_analyticsApiKeyUsage(string $orgHandle, ?int $apiKeyUID, string $f
 
     return $usage;
 }
+
+// ============================================================================
+// 📊 Dashboard UI helpers (#42) — date-range presets, NOT part of the #41
+// aggregate contract above
+// ============================================================================
+// The functions above (g2ml_analyticsClicksOverTime() through
+// g2ml_analyticsApiKeyUsage()) are the tested #41 data layer and are
+// UNCHANGED by this section. Everything below is pure, DB-free glue added
+// for the #42 dashboard page
+// (web/Go2My.Link/_admin/public_html/pages/analytics/index.php): turning its
+// ?range=/?from=/?to= query parameters into the 'Y-m-d H:i:s' from/to pair
+// every function above expects, plus picking a sensible clicks-over-time
+// bucket for the chosen span.
+//
+// Unlike _g2ml_apiAnalyticsResolveRange() (the API's date-parameter
+// validator in
+// web/Go2My.Link/public_html/api/v1/handlers/analytics.php), these
+// functions never throw: a dashboard page degrades to a safe default on bad
+// input instead of failing the request, matching the tolerant style already
+// used by web/Go2My.Link/_admin/public_html/pages/links/index.php (an
+// unrecognised ?filter= value there silently falls back rather than
+// erroring).
+// ============================================================================
+
+/**
+ * Parse a strict 'YYYY-MM-DD' date-only string into a normalised
+ * 'YYYY-MM-DD' string, validating it names a real calendar date — or null
+ * when absent/malformed. Internal to
+ * g2ml_analyticsDashboardResolveRange(); not part of the public contract.
+ *
+ * @param  string|null $raw
+ * @return string|null
+ */
+function _g2ml_analyticsDashboardParseDateOnly(?string $raw): ?string
+{
+    if ($raw === null)
+    {
+        return null;
+    }
+
+    $trimmedValue = trim($raw);
+
+    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $trimmedValue, $matches) !== 1)
+    {
+        return null;
+    }
+
+    $year  = (int) $matches[1];
+    $month = (int) $matches[2];
+    $day   = (int) $matches[3];
+
+    if (!checkdate($month, $day, $year))
+    {
+        return null;
+    }
+
+    return $trimmedValue;
+}
+
+/**
+ * Resolve the analytics DASHBOARD's date-range UI parameters (?range=,
+ * ?from=, ?to=) into a validated from/to/rangeDays/rangeLabel tuple, in the
+ * same 'Y-m-d H:i:s' shape every function above expects.
+ *
+ * ?range= is one of '7'|'30'|'90' (unrecognised or absent falls back to
+ * '30'). ?from=/?to= (both strict 'YYYY-MM-DD') override the preset with a
+ * custom range WHEN both are present, well-formed, and from <= to; the
+ * custom span is clamped to a maximum of 366 days (anchored at "to") so a
+ * single dashboard load cannot request an unbounded date range. Any other
+ * combination — only one of the two present, either malformed, or from
+ * after to — is ignored entirely and the preset applies instead.
+ *
+ * @param  string|null $rangeParam  Raw ?range= value, or null when absent.
+ * @param  string|null $fromParam   Raw ?from= value ('YYYY-MM-DD'), or null when absent.
+ * @param  string|null $toParam     Raw ?to= value ('YYYY-MM-DD'), or null when absent.
+ * @return array{from: string, to: string, rangeDays: int, rangeLabel: string}
+ */
+function g2ml_analyticsDashboardResolveRange(?string $rangeParam, ?string $fromParam, ?string $toParam): array
+{
+    $nowTimestamp = time();
+    $to           = gmdate('Y-m-d H:i:s', $nowTimestamp);
+
+    $customFromDate = _g2ml_analyticsDashboardParseDateOnly($fromParam);
+    $customToDate   = _g2ml_analyticsDashboardParseDateOnly($toParam);
+
+    if ($customFromDate !== null && $customToDate !== null)
+    {
+        $customFromTimestamp = strtotime($customFromDate . ' 00:00:00');
+        $customToTimestamp   = strtotime($customToDate . ' 23:59:59');
+
+        if ($customFromTimestamp !== false && $customToTimestamp !== false && $customFromTimestamp <= $customToTimestamp)
+        {
+            $maxSpanSeconds = 366 * 24 * 60 * 60;
+
+            if (($customToTimestamp - $customFromTimestamp) > $maxSpanSeconds)
+            {
+                $customFromTimestamp = $customToTimestamp - $maxSpanSeconds;
+            }
+
+            $customRangeDays = (int) ceil(($customToTimestamp - $customFromTimestamp) / (24 * 60 * 60));
+
+            return [
+                'from'       => gmdate('Y-m-d H:i:s', $customFromTimestamp),
+                'to'         => gmdate('Y-m-d H:i:s', $customToTimestamp),
+                'rangeDays'  => max(1, $customRangeDays),
+                'rangeLabel' => 'custom',
+            ];
+        }
+    }
+
+    $validPresets = ['7', '30', '90'];
+    $preset       = '30';
+
+    if ($rangeParam !== null && in_array($rangeParam, $validPresets, true))
+    {
+        $preset = $rangeParam;
+    }
+
+    $presetRangeDays = (int) $preset;
+    $fromTimestamp   = $nowTimestamp - ($presetRangeDays * 24 * 60 * 60);
+
+    return [
+        'from'       => gmdate('Y-m-d H:i:s', $fromTimestamp),
+        'to'         => $to,
+        'rangeDays'  => $presetRangeDays,
+        'rangeLabel' => $preset,
+    ];
+}
+
+/**
+ * Choose a sensible clicks-over-time bucket for the dashboard's chosen
+ * range span, so a 90-day (or wider, custom) range does not render 90+
+ * individual daily points on the line chart. This always returns a member
+ * of the bucket whitelist enforced by _g2ml_analyticsBucketFormat() above —
+ * it is a UI convenience layered on top, not a second whitelist.
+ *
+ * @param  int $rangeDays
+ * @return string  One of 'day', 'week', 'month'.
+ */
+function g2ml_analyticsDashboardBucketForRangeDays(int $rangeDays): string
+{
+    if ($rangeDays <= 45)
+    {
+        return 'day';
+    }
+
+    if ($rangeDays <= 180)
+    {
+        return 'week';
+    }
+
+    return 'month';
+}

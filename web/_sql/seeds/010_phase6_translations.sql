@@ -48,6 +48,53 @@ VALUES
 ('en-GB', 'about.title', 'About', 'About page', 1);
 
 -- ============================================================================
+-- 📊 Analytics Dashboard (analytics.*)
+-- ============================================================================
+
+INSERT IGNORE INTO tblTranslations (localeCode, translationKey, translationValue, context, isVerified)
+VALUES
+('en-GB', 'analytics.back_to_overview', 'Back to all links', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_browser', 'Browser Breakdown', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_browser_desc', 'Doughnut chart of clicks grouped by browser.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_clicks_over_time', 'Clicks Over Time', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_clicks_over_time_desc', 'Line chart of click counts across the selected date range.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_device', 'Device Type Breakdown', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_device_desc', 'Doughnut chart of clicks grouped by device type.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_os', 'Operating System Breakdown', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_os_desc', 'Doughnut chart of clicks grouped by operating system.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_referrers', 'Top Referrers', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_scan_sources', 'QR Scan Sources', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_scan_sources_desc', 'Bar chart of clicks attributed to CueRCode QR scans, grouped by source.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_top_links', 'Top Links', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_top_links_desc', 'Bar chart ranking your organisation''s short links by click count in the selected date range.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.description', 'View click analytics and performance for your organisation''s short links.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.error_unavailable', 'Analytics is not available for accounts that are not yet part of an organisation.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.heading', 'Analytics', 'Analytics dashboard', 1),
+('en-GB', 'analytics.no_data', 'No data for this period.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.no_referrers', 'No referrer data for this period.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.no_scan_sources', 'No QR scans recorded in this period.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.range_7', 'Last 7 days', 'Analytics dashboard', 1),
+('en-GB', 'analytics.range_30', 'Last 30 days', 'Analytics dashboard', 1),
+('en-GB', 'analytics.range_90', 'Last 90 days', 'Analytics dashboard', 1),
+('en-GB', 'analytics.range_apply', 'Apply', 'Analytics dashboard', 1),
+('en-GB', 'analytics.range_custom_toggle', 'Custom range', 'Analytics dashboard', 1),
+('en-GB', 'analytics.range_from', 'From', 'Analytics dashboard', 1),
+('en-GB', 'analytics.range_heading', 'Date range', 'Analytics dashboard', 1),
+('en-GB', 'analytics.range_to', 'To', 'Analytics dashboard', 1),
+('en-GB', 'analytics.subheading_org', 'Org-wide performance across all your short links.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.table_col_clicks', 'Clicks', 'Analytics dashboard', 1),
+('en-GB', 'analytics.table_col_period', 'Period', 'Analytics dashboard', 1),
+('en-GB', 'analytics.table_col_referrer', 'Referrer', 'Analytics dashboard', 1),
+('en-GB', 'analytics.table_col_scans', 'Scans', 'Analytics dashboard', 1),
+('en-GB', 'analytics.table_col_short_code', 'Short Code', 'Analytics dashboard', 1),
+('en-GB', 'analytics.table_col_source', 'Source', 'Analytics dashboard', 1),
+('en-GB', 'analytics.table_col_value', 'Value', 'Analytics dashboard', 1),
+('en-GB', 'analytics.table_toggle', 'View data table', 'Analytics dashboard', 1),
+('en-GB', 'analytics.title', 'Analytics', 'Analytics dashboard', 1),
+('en-GB', 'analytics.view_link', 'View', 'Analytics dashboard', 1),
+('en-GB', 'analytics.viewing_link', 'Viewing analytics for {code}', 'Analytics dashboard', 1);
+
+-- ============================================================================
 -- 🔑 API Keys Page (apikeys.*)
 -- ============================================================================
 
@@ -1165,6 +1212,7 @@ VALUES
 INSERT IGNORE INTO tblTranslations (localeCode, translationKey, translationValue, context, isVerified)
 VALUES
 ('en-GB', 'nav.about', 'About', 'Main navigation', 1),
+('en-GB', 'nav.analytics', 'Analytics', 'Main navigation', 1),
 ('en-GB', 'nav.api_keys', 'API Keys', 'Main navigation', 1),
 ('en-GB', 'nav.aria_label', 'Main navigation', 'Main navigation', 1),
 ('en-GB', 'nav.dashboard', 'Dashboard', 'Main navigation', 1),
