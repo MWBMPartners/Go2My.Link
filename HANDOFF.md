@@ -3,7 +3,7 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `9522d96` (+ this handoff commit).
+> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `ea857f1` (+ this handoff commit).
 
 ---
 
@@ -118,8 +118,13 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
   assigned or they can't create >50 links / any custom domain. → next: pricing-page reconcile + usage
   meters (needs owner: final tier naming/currency) → SIGNula OIDC (needs owner: endpoints/client creds)
   → multi-provider billing Stripe+PayPal+SIGNula (needs owner: provider keys).
-- **P1 follow-ups still open:** UTM #92 (buildable), API adversarial security cycle (buildable),
-  geo #43 (needs owner: MaxMind GeoLite2 license).
+- **P1 follow-ups:** ✅ **UTM #92** (`ea857f1`, capture+forward, off by default, byte-identical-when-off);
+  API adversarial security cycle (buildable, pending); geo #43 **now UNBLOCKED** — `MAXMIND_LICENSE_KEY`
+  is a GitHub **org secret**, so CI can fetch GeoLite2 + deploy the `.mmdb` (build after Component C).
+- **⏭️ Component C (LinksPage) IN PROGRESS** — building sequentially: C.1 renderer #45 (system templates +
+  escaped 7 placeholders `{{avatar/background/bio/links/name/social/theme}}`, scheme-validated items;
+  `customHTML`/freeform `customCSS` DEFERRED to C.6) → C.2 mgmt UI #48 → C.3 template picker #47 →
+  C.4 custom-domain fallback #46 → C.5 age-gate #50 → **C.6 WYSIWYG/HTML-upload #49 (Opus + security cycle — highest XSS risk).**
 - **P3:** Component C (LinksPage) — large greenfield (renderer/UI/templates/custom-domain fallback/
   age-gate/WYSIWYG — the HTML-upload piece is the highest stored-XSS risk in the whole product).
   - 🎉 **Milestone: public API + CueRCode integration READY.** CueRCode integrates via `/api/v1` with a
