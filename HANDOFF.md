@@ -3,7 +3,7 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `89fb2e1` (+ this handoff commit).
+> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `66b58da` (+ this handoff commit).
 > **Status:** everything buildable WITHOUT owner input is DONE. Remaining work needs owner credentials/decisions (SIGNula, billing, tier naming) or is owner ops/legal (below).
 
 ---
@@ -32,22 +32,24 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
 
 ---
 
-## ✅ Where things actually stand (verified 2026-07-09, code wins over docs)
+## ✅ Where things actually stand (current — 2026-07-10; code wins over docs)
 
-- **A + B are code-complete for launch.** The `autopilot/2026-06-05` + `hardening/cycle-2`
-  runs reached **VERIFY PASS / COMPLETE** (merged PR #130; cycle-2 = `46fe7a5`).
-- **~19–24 launch-hardening issues are fixed in code but still OPEN on GitHub**
-  (#94–#124, SEC-RECHECK-01, the SSRF/CRLF/XFF/CSP/a11y cluster) — verified file-by-file
-  in the plan §1.1. They just need **closing with commit refs**.
-- **Component C = scaffolding only** — must not be advertised beyond its landing page.
-- **API is 100% greenfield** on a good schema (`tblAPIKeys`/`tblAPIRequestLog` have zero
-  PHP references). **CueRCode is blocked until #38/#39 ship.**
-- **Premium tiers:** full data model (`tblSubscriptionTiers`, 4 GBP tiers) but **almost
-  no enforcement** (no `canUseFeature()`), and the pricing page is mismatched (USD/3-tier).
-- **SIGNula / advanced auth:** zero code. Custom domains: **done** (routing +
-  verification + partner docs shipped by #91; two-domain-table disconnect
-  resolved 2026-07-10 by deprecating `tblOrgDomains` rather than unifying —
-  GT-6, `web/_sql/migrations/018_deprecate_org_domains.sql`).
+- **A + B are code-ready for launch.** All 2026-07-09 launch-hardening fixes verified in-tree;
+  3 fresh-install P0/P1 blockers found+fixed (#135/#136/#138) + a column-audit sweep (0 P0).
+- **Public API: BUILT + security-audited.** #38 framework + #39 endpoints + #40 key-mgmt UI +
+  #75 OpenAPI/Redoc at `/api/docs`; a full adversarial audit (`bad789a`) passed (1 Medium fixed).
+  **CueRCode integrates now** (#145) via `/api/v1` with a `qr:link` key.
+- **Analytics: BUILT** (#41 data + `/api/v1/analytics` + #42 dashboard); **IP geolocation BUILT**
+  (#43, gated off, CI-fetched `.mmdb`); **UTM capture/forward BUILT** (#92, gated off).
+- **Premium tiers: entitlement gating ENFORCED** (`entitlements.php` #146 — `maxLinks`/API-daily
+  (per-org)/domain-cap, fail-open). Pricing-page reconcile still pending (needs owner tier naming/currency).
+- **Component C (LinksPage): 6/6 BUILT** (#45/#48/#47/#46/#50/#49). `customHTML`/WYSIWYG is
+  premium-gated + kill-switch OFF (needs owner security sign-off before enabling).
+- **Custom domains: DONE** (#91 verification + verified-only routing + partner docs); the two-domain
+  disconnect **resolved** by deprecating `tblOrgDomains` (GT-6, `migrations/018_deprecate_org_domains.sql`).
+- **SIGNula / billing: zero code — need owner** (SIGNula OIDC endpoints/creds; Stripe/PayPal/SIGNula keys).
+- **Auth-dir refactor:** per-component `_auth_keys/` → `.auth/` (`98b7909`); owner must run 4 `mv`s
+  (3 dir renames + `dbConfig.php` → `web/_auth_keys/`). Shared `web/_auth_keys/` unchanged.
 
 ## 🔴 Genuinely outstanding before an A+B launch (small)
 
