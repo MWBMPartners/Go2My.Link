@@ -689,6 +689,43 @@ function createShortURL(string $longURL, array $options = []): array
     // can only ever make the check MORE permissive, never block a legitimate
     // create because of a system fault.
     //
+    // ⚠️  ACCEPTED RESIDUAL — maxLinks TOCTOU (#149.2, evaluated & documented,
+    //     NOT hardened): this count -> check -> insert is NOT atomic. Two
+    //     genuinely concurrent createShortURL() calls for the SAME org can
+    //     both COUNT before either INSERT commits, so both pass the check —
+    //     the org can overshoot maxLinks by a small margin (bounded by how
+    //     many creates for that org are truly in-flight at once, realistically
+    //     a handful, never unbounded). This was evaluated for a safe fix and
+    //     deliberately left as-is:
+    //       - A `SELECT ... FOR UPDATE` (or equivalent locking read) on the
+    //         count, or an atomic `INSERT ... SELECT ... WHERE (COUNT...) < ?`,
+    //         would close the window, but an aggregate COUNT(*) with no
+    //         exact-match index takes InnoDB next-key locks across the WHOLE
+    //         matching range under REPEATABLE READ — serializing EVERY
+    //         concurrent create for that org for the duration of the lock,
+    //         including across this function's own shortCode collision retry
+    //         loop below (multiple generate+insert attempts inside one
+    //         transaction). That harms the busiest orgs the MOST — precisely
+    //         the population most likely to hit this race — trading a soft,
+    //         cosmetic over-provisioning edge case for a real throughput
+    //         regression and added deadlock surface on the hottest path in
+    //         the codebase.
+    //       - A post-insert re-check-and-rollback (detect the overshoot AFTER
+    //         committing, then deactivate the "losing" row) avoids the lock
+    //         contention, but trades it for a confusing UX regression: a
+    //         caller can receive success=true and then have their link
+    //         silently deactivated moments later by an unrelated concurrent
+    //         request, with no deterministic rule for which of several
+    //         simultaneous creators "wins" — worse than the residual itself.
+    //     maxLinks is a soft, plan-communication limit — never a security or
+    //     tenant-isolation boundary (no cross-org data exposure, no privilege
+    //     escalation; it only ever affects the requesting org's own count) —
+    //     so a small, bounded overshoot under genuine concurrency is an
+    //     acceptable trade against those regressions. If a HARD real-time cap
+    //     is ever required, prefer an out-of-band reconciliation (e.g. a
+    //     periodic job that deactivates the newest links over the cap) over
+    //     locking this hot path.
+    //
     // 📖 Reference: web/_functions/entitlements.php — g2ml_checkLimit()
     // 📖 Reference: web/_sql/schema/020_shorturls_categories_tags.sql (IDX_url_org)
     // ========================================================================
