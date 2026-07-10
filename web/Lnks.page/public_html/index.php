@@ -13,17 +13,31 @@
  * ============================================================================
  *
  * Entry point for lnks.page — the LinkTree-like link listing service.
- * Routes requests via ?slug= parameter (set by .htaccess) to render
- * user/organisation LinksPages.
+ * Routes requests via ?slug= (set by .htaccess) to render user/organisation
+ * LinksPages.
  *
- * Full LinksPage rendering is implemented in Phase 7. This is a placeholder
- * that sets up the bootstrap and shows a "coming soon" or 404 response.
+ * Flow:
+ *   1. Bootstrap (auth_creds, component constants, page_init).
+ *   2. Load the LinksPage resolver + renderer (web/Lnks.page/_functions/).
+ *   3. No slug — show the (self-contained) "coming soon" page.
+ *   4. A slug is present:
+ *      a. Validate its charset/length BEFORE ever touching the database
+ *         (g2ml_linkspageIsValidSlug()).
+ *      b. Resolve it (g2ml_resolveLinksPage()) — published + active page,
+ *         its SYSTEM template, and its active items, ordered by sortOrder.
+ *      c. Not found / unpublished / malformed → branded 404 (404.php),
+ *         never a raw stack trace.
+ *      d. Found → render (g2ml_renderLinksPage()) and emit the HTML.
+ *
+ * 🔒 SECURITY: customHTML/customCSS are NEVER read here (deferred to C.6/#49
+ *    — see linkspage_resolver.php / linkspage_renderer.php file headers).
+ *    Only SYSTEM templates are ever consumed.
  *
  * @package    Go2My.Link
  * @subpackage ComponentC
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.3.0
- * @since      Phase 2
+ * @version    0.4.0
+ * @since      Phase 2 (renderer built Phase 8 / #45)
  * ============================================================================
  */
 
@@ -63,65 +77,173 @@ require_once G2ML_ROOT
     . DIRECTORY_SEPARATOR . '_includes'
     . DIRECTORY_SEPARATOR . 'page_init.php';
 
-// Load accessibility helpers
-require_once G2ML_INCLUDES
-    . DIRECTORY_SEPARATOR . 'accessibility.php';
+// ============================================================================
+// 📦 Step 4: Load Component C Function Files
+// ============================================================================
+
+$componentFunctionsDir = dirname(__DIR__) . DIRECTORY_SEPARATOR . '_functions';
+
+require_once $componentFunctionsDir
+    . DIRECTORY_SEPARATOR . 'linkspage_resolver.php';
+
+require_once $componentFunctionsDir
+    . DIRECTORY_SEPARATOR . 'linkspage_renderer.php';
 
 // ============================================================================
-// 📋 Step 4: Handle Slug Routing
-// ============================================================================
-// Full implementation in Phase 7. For now, show a placeholder page.
+// 📋 Step 5: Read & Trim the Slug
 // ============================================================================
 
 $slug = $_GET['slug'] ?? '';
 $slug = trim($slug);
 
-// Homepage (no slug)
+// ============================================================================
+// 🏠 Step 6: No Slug — Self-Contained "Coming Soon" Homepage
+// ============================================================================
+// Deliberately self-contained (no external CDN scripts/stylesheets) so it
+// renders correctly under this component's strict Content-Security-Policy
+// (see web/Lnks.page/public_html/.htaccess).
+// ============================================================================
+
 if ($slug === '')
 {
-    $pageTitle = 'LinksPage — ' . getSetting('site.name', 'Go2My.Link');
-    $pageDesc  = 'Create your own customisable link listing page.';
+    if (function_exists('getSetting'))
+    {
+        $siteName = getSetting('site.name', 'Go2My.Link');
+    }
+    else
+    {
+        $siteName = 'Go2My.Link';
+    }
 
-    require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'header.php';
+    if (function_exists('__'))
+    {
+        $comingSoonMessage = __('linkspage.coming_soon');
+        $learnMoreLabel    = __('linkspage.learn_more');
+    }
+    else
+    {
+        $comingSoonMessage = 'LinksPage is coming soon. Create your own customisable link listing page.';
+        $learnMoreLabel    = 'Learn More';
+    }
     ?>
-    <div class="container py-5 text-center">
-        <h1 class="display-4"><?php echo htmlspecialchars(getSetting('site.name', 'Go2My.Link'), ENT_QUOTES, 'UTF-8'); ?></h1>
-        <h2 class="text-muted">LinksPage</h2>
-        <p class="lead mt-3">
-            <?php if (function_exists('__')) { echo __('linkspage.coming_soon'); } else { echo 'LinksPage is coming soon. Create your own customisable link listing page.'; } ?>
-        </p>
-        <a href="https://go2my.link" class="btn btn-primary btn-lg mt-3">
-            <?php if (function_exists('__')) { echo __('linkspage.learn_more'); } else { echo 'Learn More'; } ?>
-        </a>
-    </div>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="robots" content="index, follow">
+        <title>LinksPage — <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?></title>
+        <style>
+            body {
+                margin: 0;
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #f8f9fa;
+                color: #212529;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            }
+            .lp-home-container {
+                max-width: 560px;
+                text-align: center;
+                padding: 2rem 1.5rem;
+            }
+            .lp-home-title {
+                font-size: 2rem;
+                font-weight: 800;
+                margin: 0 0 0.25rem;
+            }
+            .lp-home-subtitle {
+                font-size: 1.1rem;
+                color: #6c757d;
+                margin: 0 0 1rem;
+            }
+            .lp-home-message {
+                font-size: 1rem;
+                color: #495057;
+                margin: 0 0 1.75rem;
+            }
+            .lp-home-cta {
+                display: inline-block;
+                padding: 0.65rem 1.5rem;
+                background: #1E88E5;
+                color: #fff;
+                text-decoration: none;
+                border-radius: 8px;
+                font-weight: 600;
+            }
+            .lp-home-cta:hover,
+            .lp-home-cta:focus {
+                background: #1668ab;
+            }
+        </style>
+    </head>
+    <body>
+        <main class="lp-home-container">
+            <h1 class="lp-home-title"><?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?></h1>
+            <p class="lp-home-subtitle">LinksPage</p>
+            <p class="lp-home-message"><?php echo htmlspecialchars($comingSoonMessage, ENT_QUOTES, 'UTF-8'); ?></p>
+            <a class="lp-home-cta" href="https://go2my.link">
+                <?php echo htmlspecialchars($learnMoreLabel, ENT_QUOTES, 'UTF-8'); ?>
+            </a>
+        </main>
+    </body>
+    </html>
     <?php
-    require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'footer.php';
     exit;
 }
 
 // ============================================================================
-// Slug provided — attempt to look up LinksPage (placeholder)
-// Full implementation in Phase 7
+// 🔤 Step 7: Validate the Slug Shape BEFORE Touching the Database
 // ============================================================================
 
-// Log the page view attempt
-logActivity('linkspage_view', 'not_implemented', 404, [
-    'logData' => ['slug' => $slug],
+if (!g2ml_linkspageIsValidSlug($slug))
+{
+    logActivity('linkspage_view', 'invalid_slug', 404, [
+        'logData' => ['slug' => $slug],
+    ]);
+
+    http_response_code(404);
+    require __DIR__ . DIRECTORY_SEPARATOR . '404.php';
+    exit;
+}
+
+// ============================================================================
+// 📞 Step 8: Resolve the Slug
+// ============================================================================
+
+$pageModel = g2ml_resolveLinksPage($slug);
+
+if ($pageModel === null)
+{
+    logActivity('linkspage_view', 'not_found', 404, [
+        'logData' => ['slug' => $slug],
+    ]);
+
+    http_response_code(404);
+    require __DIR__ . DIRECTORY_SEPARATOR . '404.php';
+    exit;
+}
+
+// ============================================================================
+// ✅ Step 9: Render the Resolved Page
+// ============================================================================
+
+$pageOrgHandle = null;
+
+if (isset($pageModel['page']['orgHandle']) && is_string($pageModel['page']['orgHandle']))
+{
+    $pageOrgHandle = $pageModel['page']['orgHandle'];
+}
+
+logActivity('linkspage_view', 'success', 200, [
+    'orgHandle' => $pageOrgHandle,
+    'logData'   => [
+        'slug'    => $slug,
+        'pageUID' => $pageModel['page']['pageUID'] ?? null,
+    ],
 ]);
 
-http_response_code(404);
-$pageTitle = '404 — Page Not Found';
-
-require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'header.php';
-?>
-<div class="container py-5 text-center">
-    <h1 class="display-4 text-muted">404</h1>
-    <p class="lead">
-        <?php if (function_exists('__')) { echo __('linkspage.not_found'); } else { echo 'This LinksPage does not exist or has not been set up yet.'; } ?>
-    </p>
-    <a href="/" class="btn btn-primary mt-3">
-        <?php if (function_exists('__')) { echo __('error.back_home'); } else { echo 'Back to Home'; } ?>
-    </a>
-</div>
-<?php
-require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'footer.php';
+echo g2ml_renderLinksPage($pageModel);
+exit;

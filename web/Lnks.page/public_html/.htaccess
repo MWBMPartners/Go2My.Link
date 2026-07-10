@@ -44,8 +44,21 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
     Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
 
     # Content Security Policy
+    # LinksPage (Component C) is a PUBLIC render surface for third-party-
+    # authored content (page title/bio, item links, social links, theme
+    # colours — see web/Lnks.page/_functions/linkspage_renderer.php). Every
+    # page this component serves (the "coming soon" homepage, the branded
+    # 404, and the rendered LinksPage itself) is now fully self-contained —
+    # no CDN scripts/stylesheets — so the policy below intentionally has NO
+    # third-party origins, unlike the other two components. Theme/background
+    # colours are injected into a <style> block (never an inline `style=`
+    # attribute driven by unvalidated data — see hex validation in
+    # linkspage_renderer.php), so 'unsafe-inline' is scoped to style-src only;
+    # script-src stays 'self' with no 'unsafe-inline' since this component
+    # ships no inline scripts at all. object-src is 'none' (no plugins/embeds
+    # of any kind), closing the classic Flash/Java CSP bypass vector.
     # 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
-    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net code.jquery.com cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; font-src 'self' cdnjs.cloudflare.com data:; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
 
     # HSTS — enforce HTTPS for 1 year
     Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
