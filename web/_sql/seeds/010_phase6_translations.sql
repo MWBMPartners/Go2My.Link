@@ -1166,8 +1166,20 @@ VALUES
 INSERT IGNORE INTO tblTranslations (localeCode, translationKey, translationValue, context, isVerified)
 VALUES
 ('en-GB', 'linkspage.coming_soon', 'LinksPage is coming soon. Create your own customisable link listing page.', 'LinksPage', 1),
+('en-GB', 'linkspage.create_description', 'Set up a new LinksPage listing page.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.create_heading', 'Create LinksPage', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.create_new', 'Create LinksPage', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.create_title', 'Create LinksPage', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.description', 'Manage your LinksPage listing pages and their links.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.edit_description', 'Edit your LinksPage settings and manage its links.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.edit_heading', 'Edit LinksPage', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.edit_title', 'Edit LinksPage', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.heading', 'LinksPage', 'LinksPage management (admin)', 1),
 ('en-GB', 'linkspage.learn_more', 'Learn More', 'LinksPage', 1),
-('en-GB', 'linkspage.not_found', 'This LinksPage does not exist or has not been set up yet.', 'LinksPage', 1);
+('en-GB', 'linkspage.limit_reached', 'You have reached your plan''s LinksPage limit. Please upgrade your plan to create more LinksPages.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.no_pages', 'You have not created a LinksPage yet.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.not_found', 'This LinksPage does not exist or has not been set up yet.', 'LinksPage', 1),
+('en-GB', 'linkspage.title', 'LinksPage', 'LinksPage management (admin)', 1);
 
 -- ============================================================================
 -- 🔐 Login Page (login.*)
@@ -1219,6 +1231,7 @@ VALUES
 ('en-GB', 'nav.features', 'Features', 'Main navigation', 1),
 ('en-GB', 'nav.home', 'Home', 'Main navigation', 1),
 ('en-GB', 'nav.language', 'Language', 'Main navigation', 1),
+('en-GB', 'nav.linkspage', 'LinksPage', 'Main navigation', 1),
 ('en-GB', 'nav.login', 'Log In', 'Main navigation', 1),
 ('en-GB', 'nav.logout', 'Log Out', 'Main navigation', 1),
 ('en-GB', 'nav.my_links', 'My Links', 'Main navigation', 1),

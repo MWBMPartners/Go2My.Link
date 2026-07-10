@@ -192,6 +192,7 @@ require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'entitlements.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'cookie_consent.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'data_rights.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'breach_response.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'linkspage_manage.php';
 
 // ============================================================================
 // ⚠️ Step 6: Register Error/Exception/Shutdown Handlers

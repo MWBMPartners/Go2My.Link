@@ -229,6 +229,12 @@ if (function_exists('getCurrentRoute')) {
                             <?php if (function_exists('__')) { echo __('nav.my_links'); } else { echo 'My Links'; } ?>
                         </a></li>
 
+                        <!-- LinksPage (Component C.2, #48) -->
+                        <li><a class="dropdown-item" href="https://admin.go2my.link/linkspage">
+                            <i class="fas fa-address-card fa-fw" aria-hidden="true"></i>
+                            <?php if (function_exists('__')) { echo __('nav.linkspage'); } else { echo 'LinksPage'; } ?>
+                        </a></li>
+
                         <!-- Analytics (#42) -->
                         <li><a class="dropdown-item" href="https://admin.go2my.link/analytics">
                             <i class="fas fa-chart-line fa-fw" aria-hidden="true"></i>
