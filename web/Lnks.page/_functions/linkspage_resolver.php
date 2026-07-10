@@ -71,6 +71,7 @@
  *   - g2ml_resolveLinksPage()                       — the main PUBLIC resolver, by slug (DB-touching)
  *   - g2ml_resolveLinksPageByUID()                  — C.4/#46 PUBLIC resolver, by pageUID (DB-touching)
  *   - g2ml_linkspageBuildOwnerPreviewModel()         — C.3/#47 OWNER PREVIEW model builder (pre-verified input only)
+ *   - g2ml_linkspageHasAgeGatedItems()                — C.5/#50 whole-page age-gate detector (pure, DB-free)
  *
  * Dependencies: web/_functions/db_query.php (dbSelect()/dbSelectOne()) and
  *               web/_functions/settings.php (getSetting()) — both already
@@ -79,8 +80,8 @@
  * @package    Go2My.Link
  * @subpackage ComponentC
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.2.0
- * @since      Phase 8 (#45; by-pageUID public resolver added v1.2.0 / #46)
+ * @version    0.3.0
+ * @since      Phase 8 (#45; by-pageUID public resolver added v1.2.0 / #46; age gate v1.2.0 / #50)
  * ============================================================================
  */
 
@@ -504,4 +505,47 @@ function g2ml_linkspageBuildOwnerPreviewModel(array $pageRow, array $itemRows): 
         'template' => $templateRow,
         'items'    => $itemRows,
     ];
+}
+
+// ============================================================================
+// 🔞 Whole-page age-gate detector (Component C.5, #50)
+// ============================================================================
+
+/**
+ * Determine whether ANY item on an already-resolved page model is flagged
+ * requiresAgeGate = 1.
+ *
+ * 🔒 WHOLE-PAGE GATING CHOICE (documented per the task's "your call" note):
+ * if a page has AT LEAST ONE gated item, the ENTIRE page is gated behind the
+ * good-faith interstitial (web/Lnks.page/_functions/linkspage_renderer.php's
+ * g2ml_linkspageRenderAgeGateInterstitial()) rather than attempting a
+ * per-item reveal. A per-item reveal would need JavaScript to intercept a
+ * click and swap in the real href afterwards — this component's CSP
+ * (script-src 'self', no inline/external scripts — see
+ * web/Lnks.page/public_html/.htaccess) forbids that outright, and the task
+ * explicitly requires the flow to work with NO JavaScript. Gating the whole
+ * page is the simplest mechanism that satisfies "gated item hrefs are never
+ * emitted before confirmation" without any script at all — see
+ * web/Lnks.page/public_html/index.php's Step 8.5 for where this is used.
+ *
+ * @param  array $items  The page model's 'items' array (already isActive = 1
+ *                        filtered by the resolver above).
+ * @return bool
+ */
+function g2ml_linkspageHasAgeGatedItems(array $items): bool
+{
+    foreach ($items as $item)
+    {
+        if (!is_array($item))
+        {
+            continue;
+        }
+
+        if (isset($item['requiresAgeGate']) && (int) $item['requiresAgeGate'] === 1)
+        {
+            return true;
+        }
+    }
+
+    return false;
 }

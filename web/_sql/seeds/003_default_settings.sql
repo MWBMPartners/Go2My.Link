@@ -139,6 +139,12 @@ INSERT INTO `tblSettings` (
  'default', 'default', 'Default template for new LinksPages',
  'string', 0, 1),
 
+('linkspage.adult_domains', 'Default', NULL,
+ '["onlyfans.com","fansly.com","pornhub.com","xvideos.com","xnxx.com","chaturbate.com","youporn.com","redtube.com"]',
+ '["onlyfans.com","fansly.com","pornhub.com","xvideos.com","xnxx.com","chaturbate.com","youporn.com","redtube.com"]',
+ 'Curated adult-content domains that auto-flag LinksPage items for age verification (Component C.5, #50)',
+ 'json', 0, 1),
+
 -- =========================================================================
 -- Debug/maintenance settings
 -- =========================================================================

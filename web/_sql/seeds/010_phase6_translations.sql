@@ -1167,6 +1167,11 @@ VALUES
 
 INSERT IGNORE INTO tblTranslations (localeCode, translationKey, translationValue, context, isVerified)
 VALUES
+('en-GB', 'linkspage.agegate_body', 'This page contains age-restricted content. Please confirm you are of legal age (18+) to continue.', 'LinksPage — age verification (C.5, #50)', 1),
+('en-GB', 'linkspage.agegate_confirm', 'I am 18 or older — Continue', 'LinksPage — age verification (C.5, #50)', 1),
+('en-GB', 'linkspage.agegate_heading', 'Age Verification Required', 'LinksPage — age verification (C.5, #50)', 1),
+('en-GB', 'linkspage.agegate_leave', 'Leave this site', 'LinksPage — age verification (C.5, #50)', 1),
+('en-GB', 'linkspage.agegate_title', 'Age Verification Required', 'LinksPage — age verification (C.5, #50)', 1),
 ('en-GB', 'linkspage.coming_soon', 'LinksPage is coming soon. Create your own customisable link listing page.', 'LinksPage', 1),
 ('en-GB', 'linkspage.create_description', 'Set up a new LinksPage listing page.', 'LinksPage management (admin)', 1),
 ('en-GB', 'linkspage.create_heading', 'Create LinksPage', 'LinksPage management (admin)', 1),

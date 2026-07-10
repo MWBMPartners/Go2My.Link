@@ -27,17 +27,26 @@
  *         its SYSTEM template, and its active items, ordered by sortOrder.
  *      c. Not found / unpublished / malformed → branded 404 (404.php),
  *         never a raw stack trace.
- *      d. Found → render (g2ml_renderLinksPage()) and emit the HTML.
+ *      d. Age gate (C.5, #50): if ANY active item on the page is flagged
+ *         requiresAgeGate = 1, the WHOLE page is gated behind a good-faith
+ *         interstitial until a valid signed g2ml_agegate cookie is present —
+ *         see g2ml_linkspageHasAgeGatedItems() / g2ml_ageGateHasValidCookie()
+ *         / g2ml_linkspageRenderAgeGateInterstitial(). A same-origin,
+ *         CSRF-protected POST confirms and redirects back (Post/Redirect/Get).
+ *      e. Found (and not gated, or already confirmed) → render
+ *         (g2ml_renderLinksPage()) and emit the HTML.
  *
  * 🔒 SECURITY: customHTML/customCSS are NEVER read here (deferred to C.6/#49
  *    — see linkspage_resolver.php / linkspage_renderer.php file headers).
- *    Only SYSTEM templates are ever consumed.
+ *    Only SYSTEM templates are ever consumed. See web/_functions/adult_content.php
+ *    for the age-gate cookie's signing/verification and the "no DOB, ever"
+ *    privacy posture.
  *
  * @package    Go2My.Link
  * @subpackage ComponentC
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.4.0
- * @since      Phase 2 (renderer built Phase 8 / #45)
+ * @version    0.5.0
+ * @since      Phase 2 (renderer built Phase 8 / #45; age gate v1.2.0 / #50)
  * ============================================================================
  */
 
@@ -224,6 +233,74 @@ if ($pageModel === null)
     http_response_code(404);
     require __DIR__ . DIRECTORY_SEPARATOR . '404.php';
     exit;
+}
+
+// ============================================================================
+// 🔞 Step 8.5: Age Verification Gate (Component C.5, #50)
+// ============================================================================
+// Whole-page gating: if ANY active item on this page is flagged
+// requiresAgeGate = 1 (auto-flagged for known adult domains, or manually set
+// by the owner — see web/_functions/linkspage_manage.php and
+// web/_functions/adult_content.php's g2ml_isAdultDomain()), the ENTIRE page
+// is set aside behind a good-faith interstitial until the visitor confirms
+// via a signed, HMAC g2ml_agegate cookie. See
+// g2ml_linkspageHasAgeGatedItems()'s docblock (linkspage_resolver.php) for
+// why this is a whole-page (not per-item) gate — in short: a per-item reveal
+// would need JavaScript, which this component's CSP forbids.
+//
+// 🔒 Gated (and non-gated) item URLs are NEVER selected into
+// g2ml_linkspageRenderAgeGateInterstitial() at all — it takes only the
+// slug, never $pageModel — so it is architecturally impossible for an
+// itemURL to leak through the interstitial's output.
+// ============================================================================
+
+$pageRequiresAgeGate = g2ml_linkspageHasAgeGatedItems($pageModel['items']);
+
+if ($pageRequiresAgeGate === true)
+{
+    $requestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+
+    // Handle the Confirm form submission FIRST (Post/Redirect/Get) — a
+    // same-origin POST, CSRF-protected via the standard session-backed
+    // g2ml_validateCSRFToken() (Component C already starts a PHP session for
+    // every visitor — see page_init.php Step 7).
+    if ($requestMethod === 'POST' && isset($_POST['g2ml_agegate_confirm']))
+    {
+        $submittedCSRFToken = $_POST['_csrf_token'] ?? '';
+
+        if (g2ml_validateCSRFToken($submittedCSRFToken, 'linkspage_agegate_confirm_' . $slug))
+        {
+            g2ml_ageGateSetConfirmedCookie();
+
+            logActivity('linkspage_agegate', 'confirmed', 200, [
+                'logData' => ['slug' => $slug, 'pageUID' => $pageModel['page']['pageUID'] ?? null],
+            ]);
+        }
+        else
+        {
+            logActivity('linkspage_agegate', 'invalid_csrf', 403, [
+                'logData' => ['slug' => $slug],
+            ]);
+        }
+
+        // Always redirect back to the SAME slug via GET regardless of the
+        // token's validity — the browser never resubmits the form, and
+        // whether the visitor is now unlocked is decided purely by whether
+        // a valid cookie is present on the follow-up GET, not by this
+        // response's body/status.
+        header('Location: /' . rawurlencode($slug));
+        exit;
+    }
+
+    if (!g2ml_ageGateHasValidCookie())
+    {
+        logActivity('linkspage_view', 'age_gate_shown', 200, [
+            'logData' => ['slug' => $slug, 'pageUID' => $pageModel['page']['pageUID'] ?? null],
+        ]);
+
+        echo g2ml_linkspageRenderAgeGateInterstitial($slug);
+        exit;
+    }
 }
 
 // ============================================================================

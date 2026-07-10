@@ -243,6 +243,7 @@ if ($pageData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
                     'itemTitle'       => $_POST['item_title'] ?? '',
                     'itemDescription' => $_POST['item_description'] ?? '',
                     'itemIcon'        => $_POST['item_icon'] ?? '',
+                    'requiresAgeGate' => isset($_POST['requires_age_gate']),
                 ]);
 
                 if ($addResult['success'] === true)
@@ -264,6 +265,7 @@ if ($pageData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
                     'itemDescription' => $_POST['item_description'] ?? '',
                     'itemIcon'        => $_POST['item_icon'] ?? '',
                     'manualURL'       => $_POST['manual_url'] ?? '',
+                    'requiresAgeGate' => isset($_POST['requires_age_gate']),
                 ]);
 
                 if ($updateItemResult['success'] === true)
@@ -711,6 +713,10 @@ else
                                     <span class="badge bg-info text-dark">Manual</span>
                                     <?php } ?>
 
+                                    <?php if ((int) $itemRow['requiresAgeGate'] === 1) { ?>
+                                    <span class="badge bg-warning text-dark">🔞 Age-gated</span>
+                                    <?php } ?>
+
                                     <br>
                                     <small class="text-body-secondary"><?php echo g2ml_sanitiseOutput($itemRow['itemURL']); ?></small>
                                 </div>
@@ -829,6 +835,15 @@ else
                                     }
                                     ?>
 
+                                    <div class="form-check mb-3">
+                                        <input class="form-check-input" type="checkbox" id="requires-age-gate-<?php echo (int) $itemRow['itemUID']; ?>" name="requires_age_gate" value="1"
+                                            <?php if ((int) $itemRow['requiresAgeGate'] === 1) { echo 'checked'; } ?>>
+                                        <label class="form-check-label" for="requires-age-gate-<?php echo (int) $itemRow['itemUID']; ?>">
+                                            🔞 Age-restricted (18+) — require visitors to confirm their age before this link is shown
+                                        </label>
+                                        <div class="form-text">Known adult-content domains are always gated, even if this box is unchecked.</div>
+                                    </div>
+
                                     <button type="submit" class="btn btn-sm btn-primary">
                                         <i class="fas fa-save" aria-hidden="true"></i> Save Link
                                     </button>
@@ -930,6 +945,14 @@ else
                                 'value'    => '',
                             ]);
                             ?>
+
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="new-item-requires-age-gate" name="requires_age_gate" value="1">
+                                <label class="form-check-label" for="new-item-requires-age-gate">
+                                    🔞 Age-restricted (18+) — require visitors to confirm their age before this link is shown
+                                </label>
+                                <div class="form-text">Known adult-content domains are automatically flagged even if this box is left unchecked.</div>
+                            </div>
 
                             <div class="d-grid">
                                 <button type="submit" class="btn btn-primary">

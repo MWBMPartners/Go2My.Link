@@ -59,12 +59,13 @@
  *   - g2ml_linkspageApplyTemplate()       — the 7-placeholder substitution engine
  *   - g2ml_linkspageBuildDocument()       — wraps rendered body + CSS into a full HTML document
  *   - g2ml_renderLinksPage()              — top-level: page model -> full HTML document
+ *   - g2ml_linkspageRenderAgeGateInterstitial() — C.5/#50 good-faith age-verification interstitial
  *
  * @package    Go2My.Link
  * @subpackage ComponentC
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.1.0
- * @since      Phase 8 (#45)
+ * @version    0.2.0
+ * @since      Phase 8 (#45; age gate v1.2.0 / #50)
  * ============================================================================
  */
 
@@ -400,10 +401,15 @@ function g2ml_linkspageRenderItem(array $item): string
 
     $iconHTML = g2ml_linkspageRenderItemIcon($item);
 
-    // 🔞 C.5 hook (age verification — issue #50, NOT built here). An item
-    // flagged requiresAgeGate=1 is still rendered unconditionally by C.1; a
-    // future age-gate interstitial (C.5) will intercept clicks on any item
-    // carrying this data attribute BEFORE the destination is reached.
+    // 🔞 C.5 (age verification, #50) is enforced at the PAGE level, BEFORE
+    // this renderer is ever invoked — see linkspage_resolver.php's
+    // g2ml_linkspageHasAgeGatedItems() and public_html/index.php's Step 8.5.
+    // By the time g2ml_renderLinksPage() (and therefore this function) runs,
+    // either the page had no gated items at all, or the visitor already
+    // carries a valid signed g2ml_agegate cookie — so it is safe to render
+    // this item's real href here. The data-age-gate attribute below is
+    // therefore purely a COSMETIC post-confirmation hook (e.g. an optional
+    // "18+" badge via CSS) — it carries no security meaning of its own.
     $ageGateAttribute = '';
 
     if (isset($item['requiresAgeGate']) && (int) $item['requiresAgeGate'] === 1)
@@ -777,4 +783,133 @@ function g2ml_renderLinksPage(array $pageModel): string
     }
 
     return g2ml_linkspageBuildDocument($escapedName, $escapedDescription, $resolvedCSS, $customFontCSS, $bodyHTML);
+}
+
+// ============================================================================
+// 🔞 Good-faith age-verification interstitial (Component C.5, #50)
+// ============================================================================
+
+/**
+ * Render the good-faith age-verification interstitial shown INSTEAD OF the
+ * real page whenever web/Lnks.page/public_html/index.php determines the
+ * page has at least one requiresAgeGate = 1 item (see
+ * linkspage_resolver.php's g2ml_linkspageHasAgeGatedItems()) and the visitor
+ * does not already carry a valid signed g2ml_agegate cookie (see
+ * web/_functions/adult_content.php's g2ml_ageGateHasValidCookie()).
+ *
+ * 🔒 SECURITY / PRIVACY — this function is the enforcement point that
+ * guarantees gated (and non-gated) item destinations are NEVER emitted
+ * before confirmation:
+ *   - This function takes ONLY the page's slug — no page/template/items
+ *     data is passed in or read here at all. It is therefore architecturally
+ *     IMPOSSIBLE for any item's itemURL/itemTitle to leak through this
+ *     output, because this function never has access to it in the first
+ *     place. The caller (index.php) must call this function INSTEAD OF
+ *     g2ml_renderLinksPage() while the gate is unconfirmed — never both.
+ *   - This is a GOOD-FAITH gate: a single boolean confirmation. No date of
+ *     birth (or any other personal data) is ever requested, collected, or
+ *     stored — see web/_functions/adult_content.php's file header. The
+ *     exact legal-age threshold is not disclosed beyond the generic "18+"
+ *     label, per the task's requirement not to reveal the precise value in
+ *     a way that would help a minor argue around the gate.
+ *   - The Confirm action is a same-origin POST back to this exact slug,
+ *     protected by the standard session-backed CSRF pair
+ *     (g2ml_csrfField()/g2ml_validateCSRFToken()) — Component C already
+ *     starts a PHP session for every visitor (see page_init.php Step 7), so
+ *     this reuses the SAME CSRF mechanism the rest of the application uses,
+ *     rather than inventing a parallel one.
+ *   - The Leave action is a FIXED, hard-coded URL (never derived from any
+ *     request parameter, query string, or the slug) — no open-redirect
+ *     surface here.
+ *   - No inline or external <script> anywhere in this markup — every page
+ *     this component serves must work with NO JavaScript at all, per this
+ *     component's CSP (script-src 'self', no 'unsafe-inline' — see
+ *     web/Lnks.page/public_html/.htaccess).
+ *
+ * ♿ ACCESSIBILITY: a `<main>` landmark with an `aria-labelledby` heading, a
+ * visible (non-colour-only) heading + body text, native keyboard-operable
+ * controls (a real <button> and a real <a>) with visible focus outlines,
+ * and `autofocus` on the primary action so keyboard/screen-reader users
+ * land on it immediately.
+ *
+ * @param  string $slug  The ALREADY shape-validated slug (see
+ *                         g2ml_linkspageIsValidSlug()) for this page — used
+ *                         ONLY to build the same-origin form action path and
+ *                         the per-page CSRF form name.
+ * @return string  A complete, self-contained HTML document.
+ */
+function g2ml_linkspageRenderAgeGateInterstitial(string $slug): string
+{
+    $escapedSlug = g2ml_linkspageEscape($slug);
+
+    if (function_exists('__'))
+    {
+        $pageTitle    = __('linkspage.agegate_title');
+        $headingText  = __('linkspage.agegate_heading');
+        $bodyText     = __('linkspage.agegate_body');
+        $confirmLabel = __('linkspage.agegate_confirm');
+        $leaveLabel   = __('linkspage.agegate_leave');
+    }
+    else
+    {
+        $pageTitle    = 'Age Verification Required';
+        $headingText  = 'Age Verification Required';
+        $bodyText     = 'This page contains age-restricted content. Please confirm you are of legal age (18+) to continue.';
+        $confirmLabel = 'I am 18 or older — Continue';
+        $leaveLabel   = 'Leave this site';
+    }
+
+    $csrfFieldHTML = '';
+
+    if (function_exists('g2ml_csrfField'))
+    {
+        $csrfFieldHTML = g2ml_csrfField('linkspage_agegate_confirm_' . $slug);
+    }
+
+    $escapedTitle   = htmlspecialchars($pageTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $escapedHeading = htmlspecialchars($headingText, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $escapedBody    = htmlspecialchars($bodyText, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $escapedConfirm = htmlspecialchars($confirmLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $escapedLeave   = htmlspecialchars($leaveLabel, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+
+    $html  = '<!DOCTYPE html>' . "\n";
+    $html .= '<html lang="en">' . "\n";
+    $html .= '<head>' . "\n";
+    $html .= '    <meta charset="UTF-8">' . "\n";
+    $html .= '    <meta name="viewport" content="width=device-width, initial-scale=1.0">' . "\n";
+    $html .= '    <meta name="robots" content="noindex, nofollow">' . "\n";
+    $html .= '    <title>' . $escapedTitle . '</title>' . "\n";
+    $html .= '    <style>' . "\n";
+    $html .= '        body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f8f9fa; color: #212529; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 1.5rem; box-sizing: border-box; }' . "\n";
+    $html .= '        .lp-agegate-container { max-width: 480px; width: 100%; text-align: center; background: #ffffff; border: 1px solid #dee2e6; border-radius: 12px; padding: 2rem 1.75rem; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08); }' . "\n";
+    $html .= '        .lp-agegate-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }' . "\n";
+    $html .= '        .lp-agegate-heading { font-size: 1.4rem; font-weight: 700; margin: 0 0 0.75rem; }' . "\n";
+    $html .= '        .lp-agegate-body { font-size: 1rem; color: #495057; margin: 0 0 1.5rem; line-height: 1.5; }' . "\n";
+    $html .= '        .lp-agegate-actions { display: flex; flex-direction: column; gap: 0.75rem; }' . "\n";
+    $html .= '        .lp-agegate-confirm { display: block; width: 100%; padding: 0.75rem 1.25rem; background: #1E88E5; color: #ffffff; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; }' . "\n";
+    $html .= '        .lp-agegate-confirm:hover, .lp-agegate-confirm:focus { background: #1668ab; }' . "\n";
+    $html .= '        .lp-agegate-confirm:focus-visible { outline: 3px solid #0d47a1; outline-offset: 2px; }' . "\n";
+    $html .= '        .lp-agegate-leave { display: block; padding: 0.6rem 1.25rem; background: transparent; color: #495057; border: 1px solid #adb5bd; border-radius: 8px; font-weight: 600; font-size: 0.95rem; text-decoration: none; }' . "\n";
+    $html .= '        .lp-agegate-leave:hover, .lp-agegate-leave:focus { background: #e9ecef; }' . "\n";
+    $html .= '        .lp-agegate-leave:focus-visible { outline: 3px solid #495057; outline-offset: 2px; }' . "\n";
+    $html .= '    </style>' . "\n";
+    $html .= '</head>' . "\n";
+    $html .= '<body>' . "\n";
+    $html .= '    <main class="lp-agegate-container" aria-labelledby="lp-agegate-heading">' . "\n";
+    $html .= '        <div class="lp-agegate-icon" aria-hidden="true">&#128286;</div>' . "\n";
+    $html .= '        <h1 id="lp-agegate-heading" class="lp-agegate-heading">' . $escapedHeading . '</h1>' . "\n";
+    $html .= '        <p class="lp-agegate-body">' . $escapedBody . '</p>' . "\n";
+    $html .= '        <div class="lp-agegate-actions">' . "\n";
+    $html .= '            <form method="POST" action="/' . $escapedSlug . '">' . "\n";
+    $html .= '                ' . $csrfFieldHTML . "\n";
+    $html .= '                <input type="hidden" name="g2ml_agegate_confirm" value="1">' . "\n";
+    $html .= '                <button type="submit" class="lp-agegate-confirm" autofocus>' . $escapedConfirm . '</button>' . "\n";
+    $html .= '            </form>' . "\n";
+    $html .= '            <a class="lp-agegate-leave" href="https://go2my.link">' . $escapedLeave . '</a>' . "\n";
+    $html .= '        </div>' . "\n";
+    $html .= '    </main>' . "\n";
+    $html .= '</body>' . "\n";
+    $html .= '</html>';
+
+    return $html;
 }

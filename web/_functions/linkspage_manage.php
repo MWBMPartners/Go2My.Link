@@ -107,11 +107,26 @@
  *     - g2ml_linkspageManageListItemsForPage()
  *     - g2ml_linkspageManageGetItemForOwner()
  *     - g2ml_linkspageManageListShortURLsForUser()
+ *     - _g2ml_linkspageManageResolveRequiresAgeGate() — C.5/#50 auto-flag resolver
  *     - g2ml_linkspageManageAddItem()
  *     - g2ml_linkspageManageUpdateItem()
  *     - g2ml_linkspageManageDeleteItem()
  *     - g2ml_linkspageManageToggleItemActive()
  *     - g2ml_linkspageManageMoveItem()
+ *
+ * 🔒 SECURITY / PRIVACY — age verification auto-flag (C.5, #50):
+ *   - g2ml_linkspageManageAddItem() / g2ml_linkspageManageUpdateItem() both
+ *     resolve the item's FINAL requiresAgeGate value via
+ *     _g2ml_linkspageManageResolveRequiresAgeGate(): the owner's own
+ *     submitted checkbox choice is honoured, EXCEPT that a destination whose
+ *     host matches the curated/operator-configured adult-domain allowlist
+ *     (web/_functions/adult_content.php's g2ml_isAdultDomain()) always forces
+ *     the gate ON — a known-adult destination cannot be silently left
+ *     unprotected by leaving a form checkbox unticked. For any other
+ *     destination the owner has full manual control (their checkbox choice
+ *     is used as-is), which is the "the owner can still toggle it" freedom.
+ *   - No date of birth or other personal data is collected/stored anywhere
+ *     in this file — requiresAgeGate is a single boolean column.
  *
  * Dependencies: db_query.php (dbSelect/dbSelectOne/dbInsert/dbUpdate/dbDelete/
  *               dbBeginTransaction/dbCommit/dbRollback/dbLastErrno), security.php
@@ -123,18 +138,23 @@
  *               CALLING admin page has loaded it (web/Lnks.page/_functions/
  *               linkspage_renderer.php) — guarded by function_exists(), never
  *               require()d from this file itself.
+ *               OPTIONAL (C.5, #50): _g2ml_linkspageManageResolveRequiresAgeGate()
+ *               calls web/_functions/adult_content.php's g2ml_isAdultDomain()
+ *               when loaded — guarded by function_exists(); page_init.php
+ *               already loads adult_content.php application-wide.
  *
  * @package    Go2My.Link
  * @subpackage Functions
  * @author     MWBM Partners Ltd (MWservices)
- * @version    1.0.0
- * @since      v1.2.0 — Phase 8 (#48)
+ * @version    1.1.0
+ * @since      v1.2.0 — Phase 8 (#48; age-gate auto-flag #50)
  *
  * 📖 References:
  *     - Schema:          web/_sql/schema/032_linkspage.sql
  *     - Public resolver:  web/Lnks.page/_functions/linkspage_resolver.php (#45)
  *     - Public renderer:  web/Lnks.page/_functions/linkspage_renderer.php (#45)
  *     - Entitlement gate: web/_functions/entitlements.php (#146) — maxLinksPages
+ *     - Adult-domain detection / age-gate cookie: web/_functions/adult_content.php (#50)
  * ============================================================================
  */
 
@@ -1261,6 +1281,51 @@ function g2ml_linkspageManageListShortURLsForUser(int $userUID): array
 }
 
 // ============================================================================
+// 🔞 Items — age-gate auto-flag resolver (Component C.5, #50)
+// ============================================================================
+
+/**
+ * Resolve the FINAL requiresAgeGate value for an item being added or edited.
+ *
+ * Auto-flag: if the resolved destination URL's host matches the curated (or
+ * operator-configured) adult-domain allowlist — see
+ * web/_functions/adult_content.php's g2ml_isAdultDomain() — the gate is
+ * FORCED on regardless of the owner's submitted checkbox state. This is a
+ * deliberate, protective default: automatic age-gating for a verified
+ * known-adult destination cannot be silently bypassed by simply leaving the
+ * item form's checkbox unticked.
+ *
+ * For any OTHER destination, the owner's own explicit checkbox choice is
+ * honoured exactly as submitted — this is the "the owner can still toggle
+ * it" freedom described in the file header: full manual control over the
+ * gate for anything not on the curated list.
+ *
+ * @param  bool        $ownerRequestedGate  Whether the item form's
+ *                                           requiresAgeGate checkbox was
+ *                                           submitted checked.
+ * @param  string|null $resolvedURL         The item's FINAL resolved
+ *                                           destination URL (already
+ *                                           scheme-validated by the caller).
+ * @return int  1 or 0, ready to bind into tblLinksPageItems.requiresAgeGate.
+ */
+function _g2ml_linkspageManageResolveRequiresAgeGate(bool $ownerRequestedGate, ?string $resolvedURL): int
+{
+    $autoDetectedAdultDomain = false;
+
+    if (function_exists('g2ml_isAdultDomain'))
+    {
+        $autoDetectedAdultDomain = g2ml_isAdultDomain($resolvedURL);
+    }
+
+    if ($ownerRequestedGate === true || $autoDetectedAdultDomain === true)
+    {
+        return 1;
+    }
+
+    return 0;
+}
+
+// ============================================================================
 // 🔗 Items — mutations
 // ============================================================================
 
@@ -1273,11 +1338,17 @@ function g2ml_linkspageManageListShortURLsForUser(int $userUID): array
  *     short URL's own domain + code, never taken from client input.
  *   - 'manual': $input['manualURL'] is scheme-validated via g2ml_sanitiseURL().
  *
+ * requiresAgeGate (C.5, #50) is resolved via
+ * _g2ml_linkspageManageResolveRequiresAgeGate() — the owner's own submitted
+ * checkbox is honoured UNLESS the resolved destination matches the curated
+ * adult-domain allowlist, in which case the gate is force-enabled.
+ *
  * @param  int   $userUID  The ACTING user's own userUID.
  * @param  int   $pageUID
  * @param  array $input    ['source' => 'shorturl'|'manual', 'urlUID' => int|null,
  *                          'manualURL' => string|null, 'itemTitle' => string,
- *                          'itemDescription' => string|null, 'itemIcon' => string|null]
+ *                          'itemDescription' => string|null, 'itemIcon' => string|null,
+ *                          'requiresAgeGate' => bool|null]
  * @return array  ['success' => bool, 'itemUID' => int|null, 'error' => string|null]
  */
 function g2ml_linkspageManageAddItem(int $userUID, int $pageUID, array $input): array
@@ -1457,6 +1528,19 @@ function g2ml_linkspageManageAddItem(int $userUID, int $pageUID, array $input): 
         $itemIconValue = $sanitisedIcon;
     }
 
+    // 🔞 C.5/#50 — resolve the auto-flag: the owner's own checkbox is
+    // honoured UNLESS the destination matches the curated adult-domain
+    // allowlist, in which case the gate is force-enabled. See
+    // _g2ml_linkspageManageResolveRequiresAgeGate()'s docblock.
+    $ownerRequestedAgeGate = false;
+
+    if (isset($input['requiresAgeGate']) && $input['requiresAgeGate'] === true)
+    {
+        $ownerRequestedAgeGate = true;
+    }
+
+    $requiresAgeGateValue = _g2ml_linkspageManageResolveRequiresAgeGate($ownerRequestedAgeGate, $resolvedItemURL);
+
     $maxSortRow = dbSelectOne(
         "SELECT MAX(sortOrder) AS maxSort FROM tblLinksPageItems WHERE pageUID = ?",
         'i',
@@ -1472,9 +1556,9 @@ function g2ml_linkspageManageAddItem(int $userUID, int $pageUID, array $input): 
 
     $insertedItemUID = dbInsert(
         "INSERT INTO tblLinksPageItems
-            (pageUID, urlUID, itemTitle, itemURL, itemDescription, itemIcon, sortOrder)
-         VALUES (?, ?, ?, ?, ?, ?, ?)",
-        'iissssi',
+            (pageUID, urlUID, itemTitle, itemURL, itemDescription, itemIcon, requiresAgeGate, sortOrder)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        'iissssii',
         [
             $pageUID,
             $resolvedURLUID,
@@ -1482,6 +1566,7 @@ function g2ml_linkspageManageAddItem(int $userUID, int $pageUID, array $input): 
             $resolvedItemURL,
             $itemDescriptionValue,
             $itemIconValue,
+            $requiresAgeGateValue,
             $nextSortOrder,
         ]
     );
@@ -1517,10 +1602,17 @@ function g2ml_linkspageManageAddItem(int $userUID, int $pageUID, array $input): 
  * edit_link's read-only short-code convention) — edit the short URL itself
  * to change where it points.
  *
+ * requiresAgeGate (C.5, #50) is re-resolved via
+ * _g2ml_linkspageManageResolveRequiresAgeGate() against the item's FINAL
+ * destination URL every time it is edited — the owner's own submitted
+ * checkbox is honoured unless that destination matches the curated
+ * adult-domain allowlist, in which case the gate stays force-enabled.
+ *
  * @param  int   $userUID  The ACTING user's own userUID.
  * @param  int   $itemUID
  * @param  array $input    ['itemTitle' => string, 'itemDescription' => string|null,
- *                          'itemIcon' => string|null, 'manualURL' => string|null]
+ *                          'itemIcon' => string|null, 'manualURL' => string|null,
+ *                          'requiresAgeGate' => bool|null]
  * @return array  ['success' => bool, 'error' => string|null]
  */
 function g2ml_linkspageManageUpdateItem(int $userUID, int $itemUID, array $input): array
@@ -1637,17 +1729,29 @@ function g2ml_linkspageManageUpdateItem(int $userUID, int $itemUID, array $input
         $itemURLValue = $existingItem['itemURL'];
     }
 
+    // 🔞 C.5/#50 — re-resolve the auto-flag against the FINAL destination
+    // URL. See _g2ml_linkspageManageResolveRequiresAgeGate()'s docblock.
+    $ownerRequestedAgeGate = false;
+
+    if (isset($input['requiresAgeGate']) && $input['requiresAgeGate'] === true)
+    {
+        $ownerRequestedAgeGate = true;
+    }
+
+    $requiresAgeGateValue = _g2ml_linkspageManageResolveRequiresAgeGate($ownerRequestedAgeGate, $itemURLValue);
+
     // 🔒 Ownership enforced again on the UPDATE itself via a correlated
     // subquery scoped to pages owned by the acting user.
     $affectedRows = dbUpdate(
-        "UPDATE tblLinksPageItems SET itemTitle = ?, itemURL = ?, itemDescription = ?, itemIcon = ?
+        "UPDATE tblLinksPageItems SET itemTitle = ?, itemURL = ?, itemDescription = ?, itemIcon = ?, requiresAgeGate = ?
          WHERE itemUID = ? AND pageUID IN (SELECT pageUID FROM tblLinksPages WHERE userUID = ?)",
-        'ssssii',
+        'ssssiii',
         [
             $itemTitleRaw,
             $itemURLValue,
             $itemDescriptionValue,
             $itemIconValue,
+            $requiresAgeGateValue,
             $itemUID,
             $userUID,
         ]
