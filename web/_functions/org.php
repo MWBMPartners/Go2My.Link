@@ -852,6 +852,36 @@ function addOrgDomain(string $orgHandle, string $domain, string $type = 'primary
 }
 
 /**
+ * Look up TXT records for a DNS host.
+ *
+ * Thin wrapper around dns_get_record(..., DNS_TXT) used by BOTH verifyDomain()
+ * (tblOrgDomains) and verifyOrgShortDomain() (tblOrgShortDomains) so the two
+ * ownership-verification flows share one tested code path.
+ *
+ * Testability seam: integration tests cannot rely on real DNS propagation, so
+ * a test may inject a fake resolver by setting
+ * $GLOBALS['g2ml_dns_txt_lookup_override'] to a callable of shape
+ * `(string $host): array|false`. When unset (the normal runtime case), this
+ * always calls the real dns_get_record().
+ *
+ * @param  string $host  Fully-qualified host to query TXT records for
+ * @return array|false   dns_get_record()-shaped result rows, or false on failure
+ *
+ * 📖 Reference: https://www.php.net/manual/en/function.dns-get-record.php
+ */
+function g2ml_lookupDnsTxtRecords(string $host): array|false
+{
+    if (isset($GLOBALS['g2ml_dns_txt_lookup_override']) && is_callable($GLOBALS['g2ml_dns_txt_lookup_override']))
+    {
+        $override = $GLOBALS['g2ml_dns_txt_lookup_override'];
+
+        return $override($host);
+    }
+
+    return @dns_get_record($host, DNS_TXT);
+}
+
+/**
  * Verify a custom domain via DNS TXT record lookup.
  *
  * Checks for a TXT record at _g2ml-verify.{domain} matching the stored token.
@@ -884,7 +914,7 @@ function verifyDomain(int $domainUID, string $orgHandle): array
     $lookupHost = $prefix . '.' . $domain['domainName'];
 
     // Perform DNS TXT lookup
-    $records = @dns_get_record($lookupHost, DNS_TXT);
+    $records = g2ml_lookupDnsTxtRecords($lookupHost);
 
     if ($records === false || empty($records))
     {
@@ -995,9 +1025,17 @@ function getOrgDomains(string $orgHandle): array
 /**
  * Add a custom short domain to an organisation.
  *
+ * 🔒 #91 ownership-verification: the new row starts UNVERIFIED and NOT
+ * routable (verificationStatus='pending', isActive=0) — sp_lookupShortURL /
+ * getOrgByDomain both require verificationStatus='verified' AND isActive=1
+ * before a Host header maps to this org, so simply adding a domain here can
+ * never make it live; the org must prove DNS control via
+ * verifyOrgShortDomain() first.
+ *
  * @param  string $orgHandle
  * @param  string $domain     Short domain (e.g., "camsda.link")
- * @return array  ['success' => bool, 'error' => string|null]
+ * @return array  ['success' => bool, 'error' => string|null,
+ *                 'verificationToken' => string|null, 'dnsRecords' => array|null]
  */
 function addOrgShortDomain(string $orgHandle, string $domain): array
 {
@@ -1024,23 +1062,45 @@ function addOrgShortDomain(string $orgHandle, string $domain): array
         return ['success' => false, 'error' => 'This short domain is already registered.'];
     }
 
-    // Check if this is the first short domain (make it default)
+    // ------------------------------------------------------------------------
+    // Quota (wires the previously dead org.max_short_domains setting) AND the
+    // "is this the org's first ever short domain" check share the same COUNT.
+    // The count is over ALL of the org's rows (not just isActive=1) — a
+    // pending/unverified domain still occupies a quota slot, and it is still
+    // eligible to become "the" default once verified.
+    // ------------------------------------------------------------------------
     $currentCount = dbSelectOne(
-        "SELECT COUNT(*) AS cnt FROM tblOrgShortDomains WHERE orgHandle = ? AND isActive = 1",
+        "SELECT COUNT(*) AS cnt FROM tblOrgShortDomains WHERE orgHandle = ?",
         's',
         [$orgHandle]
     );
-    if (((int) ($currentCount['cnt'] ?? 0) === 0)) {
+    $existingDomainCount = (int) ($currentCount['cnt'] ?? 0);
+
+    $maxShortDomains = (int) getSetting('org.max_short_domains', '0');
+
+    if ($maxShortDomains > 0 && $existingDomainCount >= $maxShortDomains)
+    {
+        return ['success' => false, 'error' => "Your plan allows a maximum of {$maxShortDomains} short domains."];
+    }
+
+    if ($existingDomainCount === 0)
+    {
         $isDefault = 1;
-    } else {
+    }
+    else
+    {
         $isDefault = 0;
     }
 
+    // Per-domain, unguessable verification token (32 random bytes → 64 hex chars).
+    $verificationToken = g2ml_generateToken(32);
+
     $insertResult = dbInsert(
-        "INSERT INTO tblOrgShortDomains (orgHandle, shortDomain, isDefault, isActive)
-         VALUES (?, ?, ?, 1)",
-        'ssi',
-        [$orgHandle, $domain, $isDefault]
+        "INSERT INTO tblOrgShortDomains
+            (orgHandle, shortDomain, isDefault, isActive, verificationStatus, verificationToken)
+         VALUES (?, ?, ?, 0, 'pending', ?)",
+        'ssis',
+        [$orgHandle, $domain, $isDefault, $verificationToken]
     );
 
     if ($insertResult === false)
@@ -1054,7 +1114,136 @@ function addOrgShortDomain(string $orgHandle, string $domain): array
         'logData' => ['orgHandle' => $orgHandle, 'shortDomain' => $domain],
     ]);
 
-    return ['success' => true];
+    $dnsPrefix = getSetting('org.dns_verify_prefix', '_g2ml-verify');
+
+    return [
+        'success'           => true,
+        'verificationToken' => $verificationToken,
+        'dnsRecords'        => [
+            'txt' => [
+                'type'  => 'TXT',
+                'host'  => $dnsPrefix . '.' . $domain,
+                'value' => $verificationToken,
+            ],
+            'routing' => [
+                'type'  => 'CNAME (subdomain) or A/ALIAS (apex/root)',
+                'host'  => $domain,
+                'value' => 'g2my.link (CNAME) — or your Dreamhost server IP for an apex/root domain (A/ALIAS)',
+            ],
+        ],
+    ];
+}
+
+/**
+ * Verify a custom short domain's ownership via DNS TXT record lookup.
+ *
+ * Org-scoped: only ever verifies a domain that belongs to $orgHandle. On
+ * success this is the ONLY code path (besides migration 013's one-time
+ * grandfather backfill) that ever flips isActive back to 1 for a domain added
+ * through addOrgShortDomain() — it is the actual gate the redirect hot path
+ * (sp_lookupShortURL) and getOrgByDomain() rely on before routing a Host
+ * header into this org's namespace.
+ *
+ * @param  int    $shortDomainUID
+ * @param  string $orgHandle
+ * @return array  ['success' => bool, 'verified' => bool, 'error' => string|null]
+ *
+ * 📖 Reference: https://www.php.net/manual/en/function.dns-get-record.php
+ */
+function verifyOrgShortDomain(int $shortDomainUID, string $orgHandle): array
+{
+    if (!canManageOrg($orgHandle))
+    {
+        return ['success' => false, 'verified' => false, 'error' => 'You do not have permission to verify short domains.'];
+    }
+
+    $domain = dbSelectOne(
+        "SELECT * FROM tblOrgShortDomains WHERE shortDomainUID = ? AND orgHandle = ? LIMIT 1",
+        'is',
+        [$shortDomainUID, $orgHandle]
+    );
+
+    if ($domain === null || $domain === false)
+    {
+        return ['success' => false, 'verified' => false, 'error' => 'Short domain not found.'];
+    }
+
+    if ($domain['verificationToken'] === null || $domain['verificationToken'] === '')
+    {
+        return [
+            'success'  => false,
+            'verified' => false,
+            'error'    => 'This domain has no verification token on record. Remove and re-add it to generate one.',
+        ];
+    }
+
+    $prefix     = getSetting('org.dns_verify_prefix', '_g2ml-verify');
+    $lookupHost = $prefix . '.' . $domain['shortDomain'];
+
+    // Perform DNS TXT lookup (injectable seam — see g2ml_lookupDnsTxtRecords()).
+    $records = g2ml_lookupDnsTxtRecords($lookupHost);
+
+    if ($records === false || empty($records))
+    {
+        dbUpdate(
+            "UPDATE tblOrgShortDomains SET verificationStatus = 'pending' WHERE shortDomainUID = ?",
+            'i',
+            [$shortDomainUID]
+        );
+
+        return [
+            'success'  => true,
+            'verified' => false,
+            'error'    => 'No TXT record found. Please add the DNS record and try again.',
+        ];
+    }
+
+    // Check if any TXT record matches the verification token
+    $verified = false;
+    foreach ($records as $record)
+    {
+        if (isset($record['txt']) && $record['txt'] === $domain['verificationToken'])
+        {
+            $verified = true;
+            break;
+        }
+    }
+
+    if ($verified)
+    {
+        dbUpdate(
+            "UPDATE tblOrgShortDomains
+             SET verificationStatus = 'verified', isActive = 1, verifiedAt = NOW()
+             WHERE shortDomainUID = ?",
+            'i',
+            [$shortDomainUID]
+        );
+
+        $currentUser = getCurrentUser();
+        logActivity('verify_org_short_domain', 'success', 200, [
+            'userUID' => $currentUser['userUID'],
+            'logData' => ['orgHandle' => $orgHandle, 'shortDomain' => $domain['shortDomain']],
+        ]);
+
+        return ['success' => true, 'verified' => true, 'error' => null];
+    }
+
+    // Token mismatch — mark failed. Deliberately does NOT touch isActive: a
+    // domain that was previously verified and is merely failing a
+    // re-verification check stays exactly as routable as it was before this
+    // call; only a fresh, never-verified domain (isActive already 0) is
+    // affected by this branch in practice today.
+    dbUpdate(
+        "UPDATE tblOrgShortDomains SET verificationStatus = 'failed' WHERE shortDomainUID = ?",
+        'i',
+        [$shortDomainUID]
+    );
+
+    return [
+        'success'  => true,
+        'verified' => false,
+        'error'    => 'TXT record found but the value does not match. Please check the verification token.',
+    ];
 }
 
 /**
@@ -1158,7 +1347,10 @@ function setDefaultShortDomain(int $shortDomainUID, string $orgHandle): array
 }
 
 /**
- * Get all short domains for an organisation.
+ * Get all short domains for an organisation, regardless of verification
+ * status — deliberately NOT filtered to isActive=1 (#91), otherwise a newly
+ * added domain (isActive=0 until verified) would never appear in the admin
+ * list for the org to click "Verify" on.
  *
  * @param  string $orgHandle
  * @return array
@@ -1166,12 +1358,56 @@ function setDefaultShortDomain(int $shortDomainUID, string $orgHandle): array
 function getOrgShortDomains(string $orgHandle): array
 {
     $rows = dbSelect(
-        "SELECT * FROM tblOrgShortDomains WHERE orgHandle = ? AND isActive = 1 ORDER BY isDefault DESC, createdAt ASC",
+        "SELECT * FROM tblOrgShortDomains WHERE orgHandle = ? ORDER BY isDefault DESC, createdAt ASC",
         's',
         [$orgHandle]
     );
 
     return $rows ?: [];
+}
+
+/**
+ * Render a static, provider-specific "how to add these DNS records" reference
+ * block for the short-domain admin UI (#91). Pure presentation — no user
+ * input, no database access — so every string here is a hardcoded literal and
+ * needs no output escaping.
+ *
+ * @return string  Self-contained Bootstrap HTML fragment
+ */
+function g2ml_dnsProviderHintsHTML(): string
+{
+    return '<div class="accordion mb-2" id="dnsProviderHintsAccordion">'
+        . '<div class="accordion-item">'
+        . '<h3 class="accordion-header" id="dnsHintCloudflareHeading">'
+        . '<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" '
+        . 'data-bs-target="#dnsHintCloudflare" aria-expanded="false" aria-controls="dnsHintCloudflare">'
+        . 'Cloudflare</button></h3>'
+        . '<div id="dnsHintCloudflare" class="accordion-collapse collapse" aria-labelledby="dnsHintCloudflareHeading">'
+        . '<div class="accordion-body small">DNS → Records → Add record. Set <strong>Type</strong> to TXT or '
+        . 'CNAME/A as shown above, <strong>Name</strong> to the Host value (Cloudflare appends your zone '
+        . 'automatically — enter just the prefix, e.g. <code>_g2ml-verify</code>, not the full domain), and '
+        . '<strong>Content</strong> to the Value. For the routing CNAME, set <strong>Proxy status</strong> to '
+        . '"DNS only" (grey cloud) unless you are deliberately using Cloudflare-for-SaaS.</div></div></div>'
+        . '<div class="accordion-item">'
+        . '<h3 class="accordion-header" id="dnsHintGoDaddyHeading">'
+        . '<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" '
+        . 'data-bs-target="#dnsHintGoDaddy" aria-expanded="false" aria-controls="dnsHintGoDaddy">'
+        . 'GoDaddy</button></h3>'
+        . '<div id="dnsHintGoDaddy" class="accordion-collapse collapse" aria-labelledby="dnsHintGoDaddyHeading">'
+        . '<div class="accordion-body small">My Products → DNS → Add New Record. GoDaddy also wants just the '
+        . 'Host prefix (not the full domain) in the <strong>Name</strong> field. Leave TTL at its default (1 '
+        . 'hour) unless you need faster propagation while testing.</div></div></div>'
+        . '<div class="accordion-item">'
+        . '<h3 class="accordion-header" id="dnsHintNamecheapHeading">'
+        . '<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" '
+        . 'data-bs-target="#dnsHintNamecheap" aria-expanded="false" aria-controls="dnsHintNamecheap">'
+        . 'Namecheap</button></h3>'
+        . '<div id="dnsHintNamecheap" class="accordion-collapse collapse" aria-labelledby="dnsHintNamecheapHeading">'
+        . '<div class="accordion-body small">Domain List → Manage → Advanced DNS → Add New Record. For an apex '
+        . '(root) domain, Namecheap does not support CNAME — use their "ALIAS" or "URL Redirect" record type '
+        . 'pointed at the routing value instead, or use a subdomain (e.g. <code>links.yourdomain.com</code>) '
+        . 'which supports a plain CNAME.</div></div></div>'
+        . '</div>';
 }
 
 // ============================================================================

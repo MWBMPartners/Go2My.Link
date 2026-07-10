@@ -43,14 +43,25 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 // 🌐 getOrgByDomain — Map a request domain to an organisation handle
 // ============================================================================
 // Looks up tblOrgShortDomains to find which organisation owns the requesting
-// domain. Falls back to '[default]' if the domain is not registered.
+// domain. Falls back to '[default]' only when NO domain row exists at all
+// (i.e. this is the system's own default host, g2my.link, or a stray/unknown
+// host) — mirrors the same three-way outcome as sp_lookupShortURL (#91):
+//
+//   1. No row for this host at all  → '[default]'.
+//   2. A row exists, verified+active → that org's handle.
+//   3. A row exists but NOT verified+active → null. SECURITY: an org that has
+//      merely claimed a host (by adding it in the dashboard) but has not yet
+//      proven DNS control must NEVER be treated as '[default]', nor as any
+//      other org — callers must check for null and skip org-specific
+//      behaviour rather than assuming a string org handle.
 //
 // 📖 Reference: https://www.php.net/manual/en/mysqli-stmt.bind-param.php
 //
 // @param  string $domain  The request domain (e.g., 'g2my.link', 'camsda.link')
-// @return string          The org handle (e.g., '[default]', 'camsda')
+// @return string|null     The org handle (e.g., '[default]', 'camsda'), or
+//                         null when the host is claimed but not yet verified
 // ============================================================================
-function getOrgByDomain(string $domain): string
+function getOrgByDomain(string $domain): ?string
 {
     // Normalise domain — lowercase, strip www. prefix
     // 📖 Reference: https://www.php.net/manual/en/function.strtolower.php
@@ -61,24 +72,33 @@ function getOrgByDomain(string $domain): string
         $domain = substr($domain, 4);
     }
 
-    // Query tblOrgShortDomains for active domain mapping
+    // Query tblOrgShortDomains for ANY row matching this host (not filtered
+    // by isActive here — the verification-status check below needs to see an
+    // unverified/inactive claim too, in order to distinguish it from "no row
+    // at all").
     $row = dbSelectOne(
-        "SELECT orgHandle
+        "SELECT orgHandle, verificationStatus, isActive
          FROM tblOrgShortDomains
          WHERE shortDomain = ?
-           AND isActive = 1
          LIMIT 1",
         's',
         [$domain]
     );
 
-    if ($row !== null && $row !== false && !empty($row['orgHandle']))
+    if ($row === null || $row === false)
+    {
+        // No custom short domain claims this host — default organisation.
+        return '[default]';
+    }
+
+    if ($row['verificationStatus'] === 'verified' && (int) $row['isActive'] === 1)
     {
         return $row['orgHandle'];
     }
 
-    // Default organisation for unmapped domains (g2my.link, etc.)
-    return '[default]';
+    // Claimed but not verified+active — never leak into '[default]' or any
+    // org's namespace.
+    return null;
 }
 
 // ============================================================================

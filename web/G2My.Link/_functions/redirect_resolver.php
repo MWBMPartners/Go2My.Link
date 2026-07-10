@@ -58,7 +58,16 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 // @param  string $code    The short code to resolve (e.g., 'abc123')
 // @return array           ['destination' => ?string, 'status' => string, 'orgHandle' => ?string]
 //                         Status values: success, not_found, inactive, expired,
-//                         not_yet_active, no_destination, max_hops_exceeded, error
+//                         not_yet_active, no_destination, max_hops_exceeded,
+//                         domain_not_configured, error
+//
+//                         domain_not_configured (#91): the requesting Host has
+//                         been claimed as an org's custom short domain but has
+//                         NOT passed DNS-TXT ownership verification yet (or has
+//                         since failed re-verification). orgHandle is always
+//                         null in this case — the caller must NOT treat it as
+//                         '[default]' or resolve anything, only show a branded
+//                         "domain not configured" page.
 // ============================================================================
 function resolveShortCode(string $domain, string $code): array
 {

@@ -83,8 +83,12 @@ $orgHandle = getOrgByDomain($requestDomain);
 // ============================================================================
 // 🏢 Try org-specific favicon
 // ============================================================================
+// getOrgByDomain() returns null (#91) when this host has been claimed as a
+// custom short domain but has not passed DNS-TXT ownership verification yet.
+// Treat that exactly like '[default]' here — fall through to the site-wide
+// favicon rather than guessing at branding for an unverified claim.
 
-if ($orgHandle !== '[default]')
+if ($orgHandle !== null && $orgHandle !== '[default]')
 {
     $orgFaviconPath = getOrgFavicon($orgHandle);
 

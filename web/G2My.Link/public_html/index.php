@@ -325,6 +325,18 @@ switch ($status)
         $errorMessage = 'This short link has no destination URL configured.';
         break;
 
+    case 'domain_not_configured':
+        // 🔒 #91 — a custom short domain that has NOT passed DNS-TXT ownership
+        // verification (or has since failed re-verification). orgHandle is
+        // always null for this status — sp_lookupShortURL deliberately never
+        // fell back to '[default]' here, so this branded message is the only
+        // response a caller of this Host can ever see; no short-code lookup
+        // in any org's namespace happened at all.
+        http_response_code(404);
+        $errorTitle   = 'Domain Not Configured';
+        $errorMessage = 'This domain is not yet verified for use with Go2My.Link. If you are the domain owner, finish DNS verification from your dashboard.';
+        break;
+
     default:
         http_response_code(404);
         $errorTitle   = 'Link Not Found';

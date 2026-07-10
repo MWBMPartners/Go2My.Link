@@ -28,10 +28,24 @@
 
 Organisations can use custom short domains (e.g., `camsda.link`, `tyney.link`). These require:
 
-1. 🌐 Organisation points their domain's A record to the Dreamhost IP
-2. ✅ DNS TXT verification record: `_gotomylink-verify.{domain}` → organisation handle
-3. ⚙️ Domain added in Dreamhost panel
-4. 🗄️ Domain registered in `tblOrgDomains` with verification status
+1. 🌐 Organisation points their domain's DNS at Go2My.Link (CNAME to `g2my.link`
+   for a subdomain, or A/ALIAS to the Dreamhost IP for an apex/root domain)
+2. ✅ DNS TXT verification record: `{org.dns_verify_prefix}.{domain}` → a
+   **per-domain random verification token** (the code's actual behaviour is
+   `_g2ml-verify.{domain}` by default — a prior draft of this doc said the
+   value was the organisation handle; it is not, it is `verificationToken`,
+   see `addOrgShortDomain()` / `verifyOrgShortDomain()` in
+   `web/_functions/org.php`)
+3. ⚙️ Domain added in the Dreamhost panel as a hosted domain (manual step
+   today — see `docs/CUSTOM_DOMAINS.md` for the full walkthrough and the
+   planned Cloudflare-for-SaaS automated path)
+4. 🗄️ Domain registered in `tblOrgShortDomains` (short-URL routing domains)
+   or `tblOrgDomains` (brand/primary/redirect/linkspage domains) with its own
+   verification status — **only a `verified` + active short domain is
+   routable** (#91); an unverified or unknown Host never falls back to the
+   `[default]` org's namespace
+
+📖 **Full partner-facing guide:** [`docs/CUSTOM_DOMAINS.md`](CUSTOM_DOMAINS.md).
 
 ## 📁 Document Root Mapping
 

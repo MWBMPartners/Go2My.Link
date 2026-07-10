@@ -139,13 +139,29 @@ CREATE TABLE IF NOT EXISTS `tblOrgShortDomains` (
     `isDefault`             TINYINT(1) UNSIGNED NOT NULL DEFAULT 0
         COMMENT 'Whether this is the default short domain for the org',
 
-    `isActive`              TINYINT(1) UNSIGNED NOT NULL DEFAULT 1,
+    `verificationStatus`    ENUM('pending', 'verified', 'failed')
+                            NOT NULL DEFAULT 'pending'
+        COMMENT 'DNS-TXT ownership verification status — only verified domains are routable (#91)',
+
+    `verificationToken`     VARCHAR(255)        DEFAULT NULL
+        COMMENT 'Per-domain unguessable DNS TXT record verification token',
+
+    `verifiedAt`            DATETIME            DEFAULT NULL
+        COMMENT 'When DNS ownership verification succeeded',
+
+    `tlsStatus`             ENUM('none', 'pending', 'active')
+                            NOT NULL DEFAULT 'none'
+        COMMENT 'TLS provisioning status — manual Dreamhost hosted-domain today (docs/CUSTOM_DOMAINS.md); Cloudflare-for-SaaS is the roadmap automated path',
+
+    `isActive`              TINYINT(1) UNSIGNED NOT NULL DEFAULT 1
+        COMMENT 'Routable flag — a NEWLY added domain starts at 0 until verified; grandfathered pre-verification domains keep resolving (see migration 013)',
     `createdAt`             DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updatedAt`             DATETIME            DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     PRIMARY KEY (`shortDomainUID`),
     UNIQUE KEY `UQ_short_domain` (`shortDomain`),
     INDEX `IDX_short_domain_org` (`orgHandle`),
+    INDEX `IDX_short_domain_status` (`verificationStatus`),
 
     CONSTRAINT `FK_short_domain_org`
         FOREIGN KEY (`orgHandle`)
