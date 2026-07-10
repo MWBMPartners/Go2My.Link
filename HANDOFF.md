@@ -3,7 +3,7 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `5d229d7` (+ this handoff commit).
+> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `8bc8dff` (+ this handoff commit).
 
 ---
 
@@ -104,9 +104,10 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
   (#114–119); (owner) #93 rotation, migration, legal.
 - **P1:** ✅ API framework **#38** (`34453d8`) → ✅ endpoints **#39** (`0d495c1`) → ✅ **CueRCode wiring #145**
   (`50f2427`) → ✅ **OpenAPI/Swagger #75** (`5d229d7`, spec + self-hosted Redoc at `/api/docs`) →
-  **⏭️ NEXT: API key management UI #40** (⚠️ the missing link — keys can only be minted via the backend
-  `g2ml_apiGenerateKey()` today; no dashboard UI, so users can't self-serve a key yet) → analytics
-  **#41/#42** → geo/UA **#43** → UTM **#92** → custom-domain verify+docs **#91** → API security cycle.
+  ✅ **key mgmt UI #40** (`8bc8dff`, create/list/revoke, one-time secret, CSRF, `canManageOrg` authz —
+  ⚠️ ordinary members can't mint keys yet) → **⏭️ NEXT: custom domains #91** (ownership verification +
+  routing unification + `docs/CUSTOM_DOMAINS.md` partner DNS/TLS guide) → analytics **#41/#42** → geo/UA
+  **#43** → UTM **#92** → API security cycle. Then P2 (entitlements → SIGNula OIDC → billing) → P3 Component C.
   - 🎉 **Milestone: public API + CueRCode integration READY.** CueRCode integrates via `/api/v1` with a
     `qr:link`-scoped key. `createShortURL()` accepts `createdVia`/`createdViaAPIKeyUID`/QR columns;
     `logActivity()` carries `scanSource`/`qrCodeExternalID` (bind-string re-verified 23=23=23).
