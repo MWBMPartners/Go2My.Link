@@ -15,13 +15,21 @@
 > `autopilot/2026-06-05` + `hardening/cycle-2` runs reached **VERIFY PASS / COMPLETE**
 > (merged PR #130; cycle-2 = commit `46fe7a5`). **~19–24 launch-hardening issues are
 > fixed in CODE but still OPEN on GitHub** — close them with commit refs. A+B are
-> **code-complete for launch**. NEW **P0 blocker #135** found this pass: `loginUser()`
-> selects a non-existent `avatarURL` column (schema is `avatarPath`) → login broken on
-> fresh install (fix in flight). Remaining launch work is small: #135, #93 (manual DB
-> cred rotation on host), 480-URL migration dry-run, legal sign-off, issue close-out.
-> Big roadmap (API #38/#39 → CueRCode, custom domains #91, tiers, SIGNula OIDC,
-> Component C) is **fast-follow P1–P3** — see the Launch Plan. Do **NOT** merge stale
-> local `main` (it would resurrect the legacy engine + #93 credential file).
+> **code-complete for launch**. Found + fixed **3 launch-blockers** (#135 login
+> `avatarURL`→`avatarPath`, #136 registration missing `NOT NULL username`, #138 GDPR export
+> non-existent cols) + a column-audit sweep (0 remaining P0). Closed 21 verified-fixed issues;
+> filed 6 enhancement issues (#139–144).
+> 🎉 **P1 API milestone shipped (2026-07-10):** #38 framework (key auth/scopes/DB rate-limit/log/
+> envelope — `web/_functions/api_auth.php` + `api_ratelimit.php`, `public_html/api/v1/`) → #39
+> endpoints (URL CRUD/bulk/list + org, BOLA-safe) → #145 CueRCode wiring (QR-link create/re-point/
+> scan attribution; `createShortURL()` + `logActivity()` extended) → #75 OpenAPI 3.1 + self-hosted
+> Redoc at `/api/docs`. All security-reviewed; 244 unit / 74 integration green. **CueRCode integrates
+> via `/api/v1` with a `qr:link`-scoped key.**
+> **Remaining:** owner ops/legal deferred (#93 cred rotation, 480-URL migration, legal sign-off);
+> next dev = **#40 API-key mgmt UI** (keys are backend-only today) → analytics #41/#42 → custom
+> domains #91 → P2 (entitlements → SIGNula OIDC → multi-provider billing) → P3 Component C.
+> See **[HANDOFF.md](../../HANDOFF.md)** for the live pick-up point. Do **NOT** merge stale local
+> `main` (would resurrect the legacy engine + #93 credential file).
 
 ## 📋 Project Overview
 
