@@ -1,0 +1,1406 @@
+openapi: "3.1.0"
+info:
+  title: Go2My.Link Public API
+  version: "1.0.0"
+  summary: Versioned public API for the Go2My.Link URL-shortening platform.
+  description: |
+    The `/api/v1/*` public API lets an authenticated organisation create,
+    read, update and soft-delete short URLs, read its own account and
+    organisation summary, and (for partners with the CueRCode dynamic-QR
+    integration enabled) link a short URL to an externally-managed QR code.
+
+    This document is generated directly from the shipped PHP implementation
+    (`web/Go2My.Link/public_html/api/v1/index.php` and its `handlers/*.php`,
+    `web/_functions/api_auth.php`, `web/_functions/api_response.php`,
+    `web/_functions/api_ratelimit.php`) — every field, status code and
+    validation rule below reflects what the code actually does, not an
+    aspirational design.
+
+    ### Request pipeline
+
+    Every request passes through the same ordered pipeline before a handler
+    ever runs. Each step's failure short-circuits to a response (and is still
+    logged to the audit trail regardless of outcome):
+
+    1. HTTPS enforcement (`403` if not secure, non-local environments only).
+    2. Route sanitisation (an unrecognised or malformed route is treated as
+       `404`, never as a different error).
+    3. The `api.public_enabled` master switch (`503` when the operator has
+       disabled the public API entirely).
+    4. Pre-authentication IP failed-auth backoff (`429` — see "Rate limiting
+       and backoff" below).
+    5. Bearer / `X-API-Key` extraction (`401` when neither header carries a
+       key).
+    6. Key verification (`401` when the key is invalid, expired, revoked,
+       suspended, or its owning user/organisation is inactive).
+    7. Per-key rate limiting (`429` with `Retry-After`).
+    8. Route + scope dispatch (`404` for an unknown method/path combination,
+       `403` when the authenticated key lacks the endpoint's required
+       scope).
+    9. JSON body decoding for `POST`/`PUT` requests (`400` on malformed
+       JSON; an empty body decodes to `{}` rather than failing outright —
+       handlers reject a missing *required* field on their own terms with a
+       field-specific `422`).
+    10. Handler invocation. An expected, client-facing failure (`404`,
+        `409`, `422`, etc.) is raised deliberately by the handler with a
+        specific message and (optionally) an offending field name. Any
+        other exception is mapped generically to `500` and never leaks its
+        underlying cause to the caller.
+
+    ### Authentication
+
+    Every endpoint requires a valid API key, presented as **either**:
+
+    - `Authorization: Bearer g2ml_<8-char prefix>_<43-char secret>` — the
+      canonical form, checked first; **or**
+    - `X-API-Key: g2ml_<8-char prefix>_<43-char secret>` — a documented
+      alias, only consulted when no Bearer token was presented.
+
+    The key format is `g2ml_` followed by an 8-character base64url prefix
+    (used for an O(1) indexed lookup; carries no secrecy value), an
+    underscore, and a 43-character base64url secret (256 bits of entropy).
+    The full plaintext key is shown to its owner exactly once, at creation,
+    and is never stored, logged, or reconstructable server-side — only a
+    SHA-256 hash of the whole presented string is persisted and compared via
+    a timing-safe `hash_equals()`.
+
+    Every rejection path (unknown prefix, wrong secret, inactive key,
+    expired key, suspended/inactive owning user, inactive organisation)
+    returns the identical generic `401` — a caller can never distinguish
+    *why* a key was rejected, which prevents prefix/secret enumeration.
+
+    ### Scopes
+
+    Each key carries an explicit list of scope strings (its
+    `permissions`). An endpoint that requires a scope the key does not
+    carry returns `403`. The scopes actually enforced by the shipped
+    handlers are:
+
+    | Scope | Grants |
+    | --- | --- |
+    | `account:read` | `GET /account` |
+    | `org:read` | `GET /org` |
+    | `urls:read` | `GET /urls`, `GET /urls/{code}` |
+    | `urls:write` | `POST /urls`, `PUT /urls/{code}`, `POST /urls/bulk` |
+    | `urls:delete` | `DELETE /urls/{code}` |
+    | `qr:link` | Additional scope required (on top of `urls:write`) to use
+      the CueRCode dynamic-QR create fields on `POST /urls` — enforced by
+      the handler itself, not by the front-controller's route table. |
+
+    `GET /ping` requires no scope — any valid, non-rate-limited key can call
+    it, purely to prove authentication and the response envelope work
+    end to end.
+
+    ### Multi-tenancy (BOLA / IDOR defence)
+
+    Every query in the `urls` and `org` handlers is scoped by the
+    **authenticated key's own** `orgHandle` — never by anything the client
+    supplies. A short code that exists but belongs to a different
+    organisation is indistinguishable from one that does not exist at all:
+    both return the exact same generic `404`, so a caller can never use
+    response-shape or status differences to enumerate another tenant's
+    short codes.
+
+    ### Rate limiting and backoff
+
+    Two independent, DB-backed windows are enforced per key (there is no
+    background daemon on the Dreamhost shared-hosting target, so limits are
+    computed from recent rows in the request-log table itself):
+
+    - **Daily** — the key's own `rateLimitOverride` if set, otherwise the
+      `api.default_daily_limit` setting (ships as `5000`), over a rolling
+      24-hour window.
+    - **Burst** — the `api.default_per_minute` setting (ships as `60`),
+      over a rolling 60-second window, applied to every key regardless of
+      any daily override.
+
+    Exceeding either window returns `429` with a `Retry-After` header
+    (`86400` seconds for the daily window, `60` for the burst window) and a
+    plain error body — **no** `meta` block is present on an error response.
+
+    On every **successful** response, `meta.rateLimit` reports
+    `{limit, remaining, resetAt}` for the tighter of the two windows — this
+    is the only place rate-limit state is exposed; no `X-RateLimit-*`
+    headers are sent.
+
+    Separately, a **pre-authentication** IP backoff runs *before* the
+    Bearer/`X-API-Key` header is even parsed: once a single IP address has
+    produced `api.preauth_fail_per_minute` (ships as `20`) failed-auth
+    (`401`) responses within a rolling 60-second window, every further
+    request from that IP receives `429` + `Retry-After: 60` *without* the
+    cost of a key-verification attempt — and, because the response code is
+    now `429` rather than `401`, it stops feeding the very count that
+    tripped the guard.
+
+    ### Response envelope
+
+    Every response — success or error, and regardless of endpoint — shares
+    one of exactly two shapes:
+
+    - **Success:** `{"status": "success", "data": ..., "meta": {"timestamp",
+      "requestId", "rateLimit"}}`
+    - **Error:** `{"status": "error", "error": {"code", "message", "field"}}`
+      (`field` is `null` unless the error is attributable to one specific
+      request field.)
+
+    ### Content negotiation (JSON / XML)
+
+    JSON is the default and only format most integrations need. Any
+    request — success or error path, any endpoint — may instead request an
+    XML rendering of the identical envelope by adding `?format=xml` to the
+    URL, or sending `Accept: application/xml` or `Accept: text/xml`. The
+    XML document is otherwise structurally identical to the JSON body
+    (each key becomes an element; arrays become repeated `<item>`
+    elements).
+
+    ### CueRCode dynamic-QR integration
+
+    `POST /urls` accepts an additional pair of fields — `qr_external_id`
+    and `qr_external_uuid` — that opt the request into linking the new
+    short URL to an externally-managed QR code (CueRCode is a separate,
+    first-party QR service; Go2My.Link stores only the link, never the QR
+    image). Supplying *either* field makes *both* required. This path is
+    gated, before any field-level validation runs, on:
+
+    - the `cuercode.integration_enabled` operator setting (ships **off**;
+      `403` when disabled), and
+    - the calling key's own `qr:link` scope (`403` when absent) — this is
+      *in addition to* the base `urls:write` scope the route itself
+      requires.
+
+    A `qr_external_uuid` collision with an already-linked short URL returns
+    `409` with `field: "qr_external_uuid"`, distinct from a normal
+    `custom_code` collision (`409` with `field: "custom_code"`).
+  contact:
+    name: MWBM Partners Ltd (MWservices) — Go2My.Link support
+    email: support@go2my.link
+    url: https://go2my.link/contact
+  license:
+    name: Proprietary — MWBM Partners Ltd (MWservices). All rights reserved. Not for redistribution.
+    url: https://go2my.link/legal/terms
+servers:
+  - url: https://go2my.link/api/v1
+    description: Production (Component A — go2my.link)
+security:
+  - bearerAuth: []
+  - apiKeyAuth: []
+tags:
+  - name: Ping
+    description: Scope-free framework exerciser.
+  - name: Account
+    description: The authenticated key's own account/user summary.
+  - name: Organisation
+    description: The authenticated key's own organisation summary.
+  - name: URLs
+    description: Short-URL create, read, update, soft-delete, list, and bulk create.
+paths:
+  /ping:
+    get:
+      tags:
+        - Ping
+      operationId: getPing
+      summary: Framework liveness check
+      description: |
+        Scope-free exerciser endpoint. Reachable by any authenticated,
+        non-rate-limited key, purely to prove that authentication, rate
+        limiting, the response envelope, and request logging all work
+        end to end without touching any product data.
+      x-required-scope: null
+      responses:
+        "200":
+          description: The framework is reachable and this key is valid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PingSuccessEnvelope"
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/PingSuccessEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /account:
+    get:
+      tags:
+        - Account
+      operationId: getAccount
+      summary: Get the authenticated key's own account
+      description: |
+        Requires the `account:read` scope. Returns only the authenticated
+        key's own user/org/key metadata — every value is derived from the
+        verified key row or a lookup keyed on that row's own `userUID`, so
+        there is no client-suppliable identifier anywhere in this endpoint
+        (a key can never be used to read another user's or another
+        organisation's account).
+      x-required-scope: account:read
+      responses:
+        "200":
+          description: The authenticated key's own account summary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountSuccessEnvelope"
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/AccountSuccessEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /org:
+    get:
+      tags:
+        - Organisation
+      operationId: getOrg
+      summary: Get the authenticated key's own organisation
+      description: |
+        Requires the `org:read` scope. Returns only the authenticated key's
+        own organisation summary, looked up strictly by the verified key
+        row's own `orgHandle` — there is no client-suppliable identifier
+        anywhere in this endpoint (a key can never be used to read another
+        organisation's summary).
+      x-required-scope: org:read
+      responses:
+        "200":
+          description: The authenticated key's own organisation summary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgSuccessEnvelope"
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/OrgSuccessEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /urls:
+    get:
+      tags:
+        - URLs
+      operationId: listUrls
+      summary: List short URLs (cursor-paginated)
+      description: |
+        Requires the `urls:read` scope. Returns short URLs belonging to the
+        authenticated key's own organisation, ordered by `urlUID` ascending
+        and cursor-paginated (never offset-paginated, so pages stay stable
+        under concurrent inserts).
+
+        List items carry `url_uid` (needed as the pagination cursor) but,
+        unlike `GET /urls/{code}`, do **not** carry `start_date` or
+        `end_date` — the list query does not select those columns.
+      x-required-scope: urls:read
+      parameters:
+        - $ref: "#/components/parameters/FormatParam"
+        - name: limit
+          in: query
+          required: false
+          description: |
+            Maximum number of items to return. Must be a positive integer
+            when supplied. Values above 100 are silently clamped to 100.
+            Defaults to 50 when omitted or when supplied as `0`.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+          example: 25
+        - name: after
+          in: query
+          required: false
+          description: |
+            Cursor for the next page — the `nextCursor` value returned by
+            the previous page (the previous page's last `url_uid`). Must be
+            a non-negative integer when supplied. Omit for the first page.
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          example: 1042
+        - name: active
+          in: query
+          required: false
+          description: Filter to only active (`1`) or only inactive (`0`) short URLs.
+          schema:
+            type: string
+            enum: ["0", "1"]
+          example: "1"
+        - name: tag
+          in: query
+          required: false
+          description: |
+            Filter to short URLs carrying this tag (matched by the tag's
+            slug within the key's own organisation). A tag value that
+            slugifies to an empty string returns an empty page rather than
+            an error.
+          schema:
+            type: string
+          example: campaign-2026
+      responses:
+        "200":
+          description: A page of short URLs.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShortUrlListSuccessEnvelope"
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/ShortUrlListSuccessEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags:
+        - URLs
+      operationId: createUrl
+      summary: Create a short URL
+      description: |
+        Requires the `urls:write` scope. Creates a new short URL owned by
+        the authenticated key's own organisation and user — the request
+        body can never supply an organisation or user identity.
+
+        Supplying `qr_external_id` and/or `qr_external_uuid` opts the
+        request into the CueRCode dynamic-QR create path — see "CueRCode
+        dynamic-QR integration" above. That path also requires the
+        `qr:link` scope and the `cuercode.integration_enabled` operator
+        setting, and returns a different success payload shape (no
+        `destination_url` field; a `qr_code_external_uuid` field instead).
+
+        A caller-supplied `custom_code` is honoured on a normal create.
+        On a CueRCode create it is only honoured when the operator has
+        separately enabled `cuercode.allow_external_shortcode`; otherwise
+        it is silently ignored and Go2My.Link generates the code itself.
+      x-required-scope: urls:write
+      parameters:
+        - $ref: "#/components/parameters/FormatParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShortUrlCreateRequest"
+            examples:
+              standard:
+                summary: Standard create
+                value:
+                  destination_url: "https://example.com/a-very-long-landing-page-url"
+                  custom_code: "launch-2026"
+                  title: "Product launch landing page"
+                  tags: ["campaign-2026", "launch"]
+              cuercodeQrLink:
+                summary: CueRCode dynamic-QR create
+                value:
+                  destination_url: "https://example.com/a-very-long-landing-page-url"
+                  title: "Storefront window QR"
+                  qr_external_id: 48213
+                  qr_external_uuid: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+      responses:
+        "201":
+          description: The short URL (or CueRCode QR-link) was created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShortUrlCreateSuccessEnvelope"
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/ShortUrlCreateSuccessEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: |
+            Missing `urls:write` scope, OR (CueRCode create only) the
+            `cuercode.integration_enabled` operator setting is off, OR the
+            key lacks the additional `qr:link` scope.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: |
+            `custom_code` is already taken in this organisation
+            (`field: "custom_code"`), OR — CueRCode create only —
+            `qr_external_uuid` is already linked to a different short URL
+            (`field: "qr_external_uuid"`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /urls/{code}:
+    parameters:
+      - name: code
+        in: path
+        required: true
+        description: |
+          The short code, e.g. the `abc123` in `https://g2my.link/abc123`.
+          Must match `^[A-Za-z0-9_-]{1,50}$`.
+        schema:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{1,50}$"
+          maxLength: 50
+        example: launch-2026
+      - $ref: "#/components/parameters/FormatParam"
+    get:
+      tags:
+        - URLs
+      operationId: getUrl
+      summary: Get a short URL
+      description: |
+        Requires the `urls:read` scope. A code that exists but belongs to a
+        different organisation is indistinguishable from one that does not
+        exist at all — both return the same generic `404`.
+      x-required-scope: urls:read
+      responses:
+        "200":
+          description: The short URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShortUrlSuccessEnvelope"
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/ShortUrlSuccessEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    put:
+      tags:
+        - URLs
+      operationId: updateUrl
+      summary: Update a short URL
+      description: |
+        Requires the `urls:write` scope. At least one of `destination_url`,
+        `title`, or `tags` must be supplied. A replacement
+        `destination_url` is re-validated with the same sanitisation and
+        SSRF/scheme allow-list checks used at create time before it is
+        ever written. Supplying `title` as an empty string clears the
+        stored title to `NULL`. A code that exists but belongs to a
+        different organisation 404s exactly like `GET`/`DELETE` — the
+        update is never partially applied to another tenant's link.
+      x-required-scope: urls:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShortUrlUpdateRequest"
+            examples:
+              default:
+                value:
+                  destination_url: "https://example.com/updated-landing-page"
+                  title: "Updated title"
+                  tags: ["campaign-2026"]
+      responses:
+        "200":
+          description: The updated short URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShortUrlSuccessEnvelope"
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/ShortUrlSuccessEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      tags:
+        - URLs
+      operationId: deleteUrl
+      summary: Soft-delete (deactivate) a short URL
+      description: |
+        Requires the `urls:delete` scope. Soft-deletes the short URL
+        (`isActive = 0`); the row and its click history are never removed.
+        Idempotent: deactivating an already-inactive link in this
+        organisation succeeds again (rather than 404ing), but a code that
+        does not exist in this organisation — including one that belongs
+        to a different organisation — still 404s.
+      x-required-scope: urls:delete
+      responses:
+        "200":
+          description: The short URL is now inactive (or already was).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShortUrlDeleteSuccessEnvelope"
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/ShortUrlDeleteSuccessEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /urls/bulk:
+    post:
+      tags:
+        - URLs
+      operationId: bulkCreateUrls
+      summary: Bulk-create short URLs (partial success)
+      description: |
+        Requires the `urls:write` scope. Creates up to 100 short URLs in a
+        single request. This is a plain sequential loop, **not** an
+        all-or-nothing database transaction — the endpoint's whole point is
+        partial success: one row's failure (a taken alias, a rejected
+        destination) never rolls back rows that already succeeded. Every
+        row's outcome is reported independently in `data.results`, in the
+        same order as the submitted `items`, addressed by `input_index`.
+        The HTTP status is `201` even when some (or all) individual rows
+        failed — check each result entry's own `success` field.
+
+        Unlike `POST /urls`, bulk items do **not** support the CueRCode
+        `qr_external_id` / `qr_external_uuid` fields.
+      x-required-scope: urls:write
+      parameters:
+        - $ref: "#/components/parameters/FormatParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShortUrlBulkCreateRequest"
+            examples:
+              default:
+                value:
+                  items:
+                    - destination_url: "https://example.com/page-one"
+                      title: "Page one"
+                    - destination_url: "https://example.com/page-two"
+                      custom_code: "page-two"
+                      tags: ["batch-import"]
+      responses:
+        "201":
+          description: |
+            The batch was processed (individual rows may still have
+            failed — see `data.results[].success`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ShortUrlBulkSuccessEnvelope"
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/ShortUrlBulkSuccessEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          description: |
+            `items` is missing, not a list-shaped array, empty, or exceeds
+            100 entries. This is a request-shape failure raised BEFORE any
+            row is processed — it is distinct from a single row failing
+            inside `data.results`, which is still reported as `201`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+        "500":
+          $ref: "#/components/responses/InternalError"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: "g2ml_<8-char base64url prefix>_<43-char base64url secret>"
+      description: |
+        Canonical form: `Authorization: Bearer g2ml_<prefix>_<secret>`.
+        Checked before `X-API-Key`; when both headers are present, the
+        Bearer token wins.
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        Documented alias for the same key, e.g.
+        `X-API-Key: g2ml_<prefix>_<secret>`. Only consulted when no
+        `Authorization: Bearer` header was presented.
+  parameters:
+    FormatParam:
+      name: format
+      in: query
+      required: false
+      description: |
+        Set to `xml` to receive the response as XML instead of JSON (the
+        same effect as sending `Accept: application/xml` or
+        `Accept: text/xml`). JSON is the default for every request that
+        does not explicitly ask for XML.
+      schema:
+        type: string
+        enum: [xml]
+      example: xml
+  responses:
+    Unauthorized:
+      description: |
+        No API key was presented (neither `Authorization: Bearer` nor
+        `X-API-Key`), or the presented key is invalid, expired, revoked,
+        or its owning user/organisation is inactive or suspended. Every
+        rejection reason maps to this identical generic message.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          examples:
+            missingKey:
+              value:
+                status: error
+                error:
+                  code: 401
+                  message: "An API key is required (Authorization: Bearer <key> or X-API-Key)."
+                  field: null
+            invalidKey:
+              value:
+                status: error
+                error:
+                  code: 401
+                  message: "Invalid or expired API key."
+                  field: null
+        application/xml:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    Forbidden:
+      description: |
+        The authenticated key does not carry the scope this endpoint
+        requires.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            status: error
+            error:
+              code: 403
+              message: "This API key does not have the required scope."
+              field: null
+        application/xml:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    NotFound:
+      description: |
+        No such endpoint (unknown method/path combination), or — for
+        `urls/{code}` routes — no short URL with that code exists in the
+        authenticated key's own organisation. A code belonging to a
+        different organisation is deliberately indistinguishable from one
+        that does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            status: error
+            error:
+              code: 404
+              message: "No such short URL in this account."
+              field: null
+        application/xml:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    ValidationError:
+      description: |
+        The request body or a query parameter failed validation. `error.field`
+        names the offending field when the failure is attributable to one
+        (for example `destination_url`, `title`, `tags`, `custom_code`,
+        `qr_external_id`, `qr_external_uuid`, `items`, `limit`, `after`, or
+        `active`); it is `null` for a whole-body failure such as "at least
+        one field must be supplied".
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            status: error
+            error:
+              code: 422
+              message: "destination_url is required and must be a non-empty string."
+              field: destination_url
+        application/xml:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    TooManyRequests:
+      description: |
+        Either the per-IP pre-authentication failed-auth backoff, or the
+        authenticated key's own daily or per-minute rate limit, was
+        exceeded. A `Retry-After` header (seconds) is always sent alongside
+        this response; the body carries no `meta` block.
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying (60 for a burst/backoff trip, 86400 for the daily limit).
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          examples:
+            rateLimited:
+              value:
+                status: error
+                error:
+                  code: 429
+                  message: "Rate limit exceeded."
+                  field: null
+            backoff:
+              value:
+                status: error
+                error:
+                  code: 429
+                  message: "Too many failed authentication attempts from this address. Try again shortly."
+                  field: null
+        application/xml:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    ServiceUnavailable:
+      description: The `api.public_enabled` operator switch is currently off.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            status: error
+            error:
+              code: 503
+              message: "The public API is temporarily unavailable."
+              field: null
+        application/xml:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+    InternalError:
+      description: |
+        An unexpected server-side failure. The underlying cause is logged
+        server-side only and never included in the response.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+          example:
+            status: error
+            error:
+              code: 500
+              message: "An unexpected error occurred."
+              field: null
+        application/xml:
+          schema:
+            $ref: "#/components/schemas/ErrorEnvelope"
+  schemas:
+    ResponseMeta:
+      type: object
+      description: Present on every success response.
+      required:
+        - timestamp
+        - requestId
+        - rateLimit
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+          description: UTC timestamp the response was generated, `Y-m-d\TH:i:s\Z` format.
+          example: "2026-07-09T14:32:07Z"
+        requestId:
+          type: string
+          description: An 8-character base64url token unique to this request, useful for support correlation.
+          example: "aZ3xQ9mK"
+        rateLimit:
+          $ref: "#/components/schemas/RateLimitMeta"
+    RateLimitMeta:
+      type: object
+      required:
+        - limit
+        - remaining
+        - resetAt
+      properties:
+        limit:
+          type: integer
+          description: The tighter of the key's daily and burst limits, as evaluated for this request.
+          example: 60
+        remaining:
+          type: integer
+          description: Requests remaining in the tighter of the two windows.
+          example: 59
+        resetAt:
+          type: string
+          format: date-time
+          description: UTC time the reported window resets.
+          example: "2026-07-09T14:33:00Z"
+    ErrorEnvelope:
+      type: object
+      required:
+        - status
+        - error
+      properties:
+        status:
+          type: string
+          const: error
+        error:
+          type: object
+          required:
+            - code
+            - message
+            - field
+          properties:
+            code:
+              type: integer
+              description: Echoes the HTTP status code.
+              example: 422
+            message:
+              type: string
+              description: A generic, non-leaking, human-readable message.
+              example: "destination_url is required and must be a non-empty string."
+            field:
+              type: ["string", "null"]
+              description: The offending request field, or null when not field-specific.
+              example: destination_url
+    PingResult:
+      type: object
+      required:
+        - pong
+        - requestId
+      properties:
+        pong:
+          type: boolean
+          const: true
+        requestId:
+          type: string
+          example: "aZ3xQ9mK"
+    PingSuccessEnvelope:
+      type: object
+      required:
+        - status
+        - data
+        - meta
+      properties:
+        status:
+          type: string
+          const: success
+        data:
+          $ref: "#/components/schemas/PingResult"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    Account:
+      type: object
+      description: The authenticated key's own user/org/key metadata.
+      required:
+        - userUID
+        - email
+        - displayName
+        - orgHandle
+        - keyName
+        - scopes
+      properties:
+        userUID:
+          type: integer
+          example: 4821
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        displayName:
+          type: string
+          description: Falls back to "firstName lastName" when no display name is set.
+          example: "Jordan Lee"
+        orgHandle:
+          type: string
+          example: "acme-corp"
+        keyName:
+          type: string
+          description: The human-friendly label the key was created with.
+          example: "CI pipeline"
+        scopes:
+          type: array
+          items:
+            type: string
+          example: ["urls:read", "urls:write", "account:read"]
+    AccountSuccessEnvelope:
+      type: object
+      required:
+        - status
+        - data
+        - meta
+      properties:
+        status:
+          type: string
+          const: success
+        data:
+          $ref: "#/components/schemas/Account"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    Org:
+      type: object
+      description: The authenticated key's own organisation summary.
+      required:
+        - org_handle
+        - org_name
+        - tier_id
+        - tier_name
+        - is_verified
+        - created_at
+      properties:
+        org_handle:
+          type: string
+          example: "acme-corp"
+        org_name:
+          type: string
+          example: "Acme Corporation"
+        tier_id:
+          type: ["integer", "null"]
+          example: 2
+        tier_name:
+          type: ["string", "null"]
+          example: "Premium"
+        is_verified:
+          type: boolean
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-11-02T09:15:00Z"
+    OrgSuccessEnvelope:
+      type: object
+      required:
+        - status
+        - data
+        - meta
+      properties:
+        status:
+          type: string
+          const: success
+        data:
+          $ref: "#/components/schemas/Org"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ShortUrl:
+      type: object
+      description: |
+        The shape returned by `GET /urls/{code}` and `PUT /urls/{code}`.
+        Carries `start_date`/`end_date` (unlike the list-item shape, which
+        does not select those columns).
+      required:
+        - short_code
+        - destination_url
+        - title
+        - is_active
+        - click_count
+        - created_at
+        - updated_at
+      properties:
+        short_code:
+          type: string
+          example: "launch-2026"
+        destination_url:
+          type: string
+          format: uri
+          example: "https://example.com/a-very-long-landing-page-url"
+        title:
+          type: ["string", "null"]
+          example: "Product launch landing page"
+        is_active:
+          type: boolean
+          example: true
+        click_count:
+          type: integer
+          example: 128
+        start_date:
+          type: ["string", "null"]
+          format: date-time
+        end_date:
+          type: ["string", "null"]
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-06-01T10:00:00Z"
+        updated_at:
+          type: ["string", "null"]
+          format: date-time
+          example: "2026-06-02T08:30:00Z"
+    ShortUrlSuccessEnvelope:
+      type: object
+      required:
+        - status
+        - data
+        - meta
+      properties:
+        status:
+          type: string
+          const: success
+        data:
+          $ref: "#/components/schemas/ShortUrl"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ShortUrlListItem:
+      type: object
+      description: |
+        The shape used inside `GET /urls` list items. Carries `url_uid`
+        (the pagination cursor value for this row) but, unlike the single
+        `ShortUrl` shape, does not carry `start_date`/`end_date`.
+      required:
+        - short_code
+        - destination_url
+        - title
+        - is_active
+        - click_count
+        - created_at
+        - updated_at
+        - url_uid
+      properties:
+        short_code:
+          type: string
+          example: "launch-2026"
+        destination_url:
+          type: string
+          format: uri
+          example: "https://example.com/a-very-long-landing-page-url"
+        title:
+          type: ["string", "null"]
+          example: "Product launch landing page"
+        is_active:
+          type: boolean
+          example: true
+        click_count:
+          type: integer
+          example: 128
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-06-01T10:00:00Z"
+        updated_at:
+          type: ["string", "null"]
+          format: date-time
+          example: "2026-06-02T08:30:00Z"
+        url_uid:
+          type: integer
+          description: Pass as `after` on the next request to fetch the following page.
+          example: 1042
+    ShortUrlListResult:
+      type: object
+      required:
+        - items
+        - nextCursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShortUrlListItem"
+        nextCursor:
+          type: ["string", "null"]
+          description: The last row's `url_uid` as a string, or null when this is the final page.
+          example: "1042"
+    ShortUrlListSuccessEnvelope:
+      type: object
+      required:
+        - status
+        - data
+        - meta
+      properties:
+        status:
+          type: string
+          const: success
+        data:
+          $ref: "#/components/schemas/ShortUrlListResult"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ShortUrlCreateRequest:
+      type: object
+      required:
+        - destination_url
+      properties:
+        destination_url:
+          type: string
+          description: The long URL to shorten. Must be a non-empty, valid HTTP/HTTPS URL not pointing back at this service.
+          example: "https://example.com/a-very-long-landing-page-url"
+        custom_code:
+          type: string
+          description: |
+            A caller-chosen short code, 3–50 characters
+            (`[A-Za-z0-9_-]`). Rejected with `409` if already taken in
+            this organisation. On a CueRCode create this is only honoured
+            when the operator has enabled `cuercode.allow_external_shortcode`;
+            otherwise it is silently ignored.
+          example: "launch-2026"
+        title:
+          type: string
+          maxLength: 255
+          description: Optional descriptive title.
+          example: "Product launch landing page"
+        tags:
+          description: One tag (string) or several (array of strings).
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+          example: ["campaign-2026", "launch"]
+        qr_external_id:
+          description: |
+            CueRCode dynamic-QR create only. A positive integer (or a
+            numeric string). Required if `qr_external_uuid` is supplied.
+          oneOf:
+            - type: integer
+              minimum: 1
+            - type: string
+              pattern: "^[0-9]+$"
+          example: 48213
+        qr_external_uuid:
+          type: string
+          description: |
+            CueRCode dynamic-QR create only. A well-formed 36-character
+            UUID (8-4-4-4-12 hyphenated hex). Required if
+            `qr_external_id` is supplied. Rejected with `409` if already
+            linked to a different short URL.
+          pattern: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+    ShortUrlCreateResultNonQr:
+      type: object
+      description: Returned by a normal (non-CueRCode) create.
+      required:
+        - short_code
+        - short_url
+        - destination_url
+      properties:
+        short_code:
+          type: string
+          example: "launch-2026"
+        short_url:
+          type: string
+          format: uri
+          description: "The full short link, `https://<short-domain>/<short_code>`."
+          example: "https://g2my.link/launch-2026"
+        destination_url:
+          type: string
+          format: uri
+          description: The canonically-stored (sanitised) destination, re-read from the database after create.
+          example: "https://example.com/a-very-long-landing-page-url"
+    ShortUrlCreateResultQr:
+      type: object
+      description: Returned by a CueRCode dynamic-QR create (either `qr_external_id` or `qr_external_uuid` was supplied).
+      required:
+        - short_code
+        - short_url
+        - qr_code_external_uuid
+      properties:
+        short_code:
+          type: string
+          example: "qr8f2a1"
+        short_url:
+          type: string
+          format: uri
+          example: "https://g2my.link/qr8f2a1"
+        qr_code_external_uuid:
+          type: string
+          example: "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+    ShortUrlCreateSuccessEnvelope:
+      type: object
+      required:
+        - status
+        - data
+        - meta
+      properties:
+        status:
+          type: string
+          const: success
+        data:
+          oneOf:
+            - $ref: "#/components/schemas/ShortUrlCreateResultNonQr"
+            - $ref: "#/components/schemas/ShortUrlCreateResultQr"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ShortUrlUpdateRequest:
+      type: object
+      description: At least one of destination_url, title, or tags must be supplied.
+      properties:
+        destination_url:
+          type: string
+          description: A non-empty string, re-validated with the same sanitisation/allow-list checks used at create time.
+          example: "https://example.com/updated-landing-page"
+        title:
+          type: string
+          maxLength: 255
+          description: An empty string clears the stored title to null.
+          example: "Updated title"
+        tags:
+          description: One tag (string) or several (array of strings). Applied additively; a tag-attach failure never fails the whole update.
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+          example: ["campaign-2026"]
+    ShortUrlDeleteResult:
+      type: object
+      required:
+        - short_code
+        - is_active
+      properties:
+        short_code:
+          type: string
+          example: "launch-2026"
+        is_active:
+          type: boolean
+          const: false
+    ShortUrlDeleteSuccessEnvelope:
+      type: object
+      required:
+        - status
+        - data
+        - meta
+      properties:
+        status:
+          type: string
+          const: success
+        data:
+          $ref: "#/components/schemas/ShortUrlDeleteResult"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    ShortUrlBulkCreateItem:
+      type: object
+      required:
+        - destination_url
+      properties:
+        destination_url:
+          type: string
+          example: "https://example.com/page-one"
+        custom_code:
+          type: string
+          example: "page-two"
+        title:
+          type: string
+          example: "Page one"
+        tags:
+          description: One tag (string) or several (array of strings).
+          oneOf:
+            - type: string
+            - type: array
+              items:
+                type: string
+          example: ["batch-import"]
+    ShortUrlBulkCreateRequest:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          description: Up to 100 entries. Each is validated and created independently — see `data.results`.
+          items:
+            $ref: "#/components/schemas/ShortUrlBulkCreateItem"
+    ShortUrlBulkResultItem:
+      type: object
+      required:
+        - input_index
+        - success
+      properties:
+        input_index:
+          type: integer
+          description: This row's zero-based position in the submitted `items` array.
+          example: 0
+        success:
+          type: boolean
+        short_code:
+          type: string
+          description: Present only when `success` is true.
+          example: "page-one"
+        short_url:
+          type: string
+          format: uri
+          description: Present only when `success` is true.
+          example: "https://g2my.link/page-one"
+        error:
+          type: string
+          description: Present only when `success` is false.
+          example: "That alias is already taken. Please choose another."
+    ShortUrlBulkResult:
+      type: object
+      required:
+        - results
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/ShortUrlBulkResultItem"
+    ShortUrlBulkSuccessEnvelope:
+      type: object
+      required:
+        - status
+        - data
+        - meta
+      properties:
+        status:
+          type: string
+          const: success
+        data:
+          $ref: "#/components/schemas/ShortUrlBulkResult"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"

@@ -1,0 +1,32 @@
+# Copyright (c) 2024–2026 MWBM Partners Ltd (MWservices).
+# All rights reserved.
+#
+# This source code is proprietary and confidential.
+# Unauthorised copying, modification, or distribution is strictly prohibited.
+
+# =============================================================================
+# Go2My.Link — .htaccess for public_html/api (OpenAPI spec content type, #75)
+# =============================================================================
+#
+# Serves openapi.yaml with the correct media type. Apache's stock mime.types
+# does not map .yaml/.yml on every hosting environment (Dreamhost included),
+# so without this it would fall back to text/plain or
+# application/octet-stream — neither of which is what an OpenAPI tooling
+# client (Redoc, Swagger clients, codegen) expects when content-negotiating
+# or simply trusting the served Content-Type.
+#
+# This directory inherits every rewrite/security-header rule from the parent
+# public_html/.htaccess unchanged — it only ADDS the type mapping below. The
+# CSP relaxation needed for the Redoc-powered docs UI is scoped to api/docs/
+# only (see api/docs/.htaccess), never applied here.
+#
+# @package    Go2My.Link
+# @subpackage Configuration
+# @author     MWBM Partners Ltd (MWservices)
+# @version    1.0.0
+# @since      v1.1.0 — Phase 7 (#75)
+# =============================================================================
+<IfModule mod_mime.c>
+    AddType application/yaml .yaml
+    AddType application/yaml .yml
+</IfModule>
