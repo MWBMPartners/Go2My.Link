@@ -646,6 +646,186 @@ function g2ml_linkspageBuildDocument(string $escapedTitle, string $escapedDescri
 }
 
 // ============================================================================
+// 🧨 Custom-HTML render path (Component C.6, #49)
+// ============================================================================
+
+/**
+ * Does this resolved page model carry PERMITTED custom HTML that should render
+ * INSTEAD OF the system template?
+ *
+ * True ONLY when the page model contains a non-empty customHTML string AND the
+ * sanitiser (g2ml_sanitiseUserHTML) is actually loaded. The resolver only ever
+ * places customHTML in the model when the operator kill-switch is on AND the
+ * org's tier permits it (see linkspage_resolver.php's gated fetch), so the
+ * presence of a non-empty customHTML here is the single, auditable signal that
+ * the custom path is authorised. If the sanitiser is somehow not loaded, this
+ * returns false and the caller falls back to the safe system-template render.
+ *
+ * The PUBLIC entry point (web/Lnks.page/public_html/index.php) uses this to
+ * decide whether to emit the strict `script-src 'none'` CSP
+ * (g2ml_linkspageCustomHtmlCSP()) before echoing the page.
+ *
+ * @param  array $pageModel
+ * @return bool
+ */
+function g2ml_linkspageModelUsesCustomHTML(array $pageModel): bool
+{
+    if (!function_exists('g2ml_sanitiseUserHTML'))
+    {
+        return false;
+    }
+
+    $page = $pageModel['page'] ?? [];
+
+    if (!is_array($page))
+    {
+        return false;
+    }
+
+    if (!isset($page['customHTML']) || !is_string($page['customHTML']))
+    {
+        return false;
+    }
+
+    if (trim($page['customHTML']) === '')
+    {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Build a complete, self-contained HTML document from an owner's PERMITTED
+ * custom HTML/CSS.
+ *
+ * 🔒 The stored customHTML/customCSS were already sanitised on INPUT
+ * (web/_functions/linkspage_manage.php's save path). This function
+ * RE-SANITISES both on OUTPUT — belt and braces — via g2ml_sanitiseUserHTML()
+ * / g2ml_sanitiseUserCSS(), so a value is never trusted merely because it is
+ * already in the database. The document ships NO scripts of any kind; the
+ * public entry point additionally serves it under a strict `script-src 'none'`
+ * CSP (g2ml_linkspageCustomHtmlCSP()).
+ *
+ * The custom CSS is injected into a single <style> block and the custom HTML
+ * body is wrapped in a `.g2ml-lp-custom` container. Because this is a
+ * STANDALONE document (the custom HTML replaces the whole page, not part of a
+ * shared one), the CSS is inherently page-scoped — it cannot affect any other
+ * Go2My.Link page.
+ *
+ * @param  array $page  The page row (must include a non-empty customHTML; may
+ *                       include customCSS, pageTitle, pageDescription).
+ * @return string  A complete HTML document.
+ */
+function g2ml_linkspageBuildCustomDocument(array $page): string
+{
+    $customHTMLRaw = '';
+
+    if (isset($page['customHTML']) && is_string($page['customHTML']))
+    {
+        $customHTMLRaw = $page['customHTML'];
+    }
+
+    $customCSSRaw = '';
+
+    if (isset($page['customCSS']) && is_string($page['customCSS']))
+    {
+        $customCSSRaw = $page['customCSS'];
+    }
+
+    // 🔒 Re-sanitise on OUTPUT (defence in depth) — never trust the stored value.
+    if (function_exists('g2ml_sanitiseUserHTML'))
+    {
+        $safeHTML = g2ml_sanitiseUserHTML($customHTMLRaw);
+    }
+    else
+    {
+        // Fail safe: with no sanitiser available, emit escaped text only.
+        $safeHTML = htmlspecialchars(strip_tags($customHTMLRaw), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+
+    if (function_exists('g2ml_sanitiseUserCSS'))
+    {
+        $safeCSS = g2ml_sanitiseUserCSS($customCSSRaw);
+    }
+    else
+    {
+        $safeCSS = '';
+    }
+
+    $pageTitleRaw = null;
+
+    if (isset($page['pageTitle']) && is_string($page['pageTitle']))
+    {
+        $pageTitleRaw = $page['pageTitle'];
+    }
+
+    $pageDescriptionRaw = null;
+
+    if (isset($page['pageDescription']) && is_string($page['pageDescription']))
+    {
+        $pageDescriptionRaw = $page['pageDescription'];
+    }
+
+    $escapedTitle       = g2ml_linkspageEscape($pageTitleRaw);
+    $escapedDescription = g2ml_linkspageEscape($pageDescriptionRaw);
+
+    $siteName = 'Lnks.page';
+
+    if (function_exists('getSetting'))
+    {
+        $configuredSiteName = getSetting('site.name', null);
+
+        if (is_string($configuredSiteName) && trim($configuredSiteName) !== '')
+        {
+            $siteName = $configuredSiteName;
+        }
+    }
+
+    $titleTag = $escapedTitle;
+
+    if ($titleTag === '')
+    {
+        $titleTag = htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8');
+    }
+
+    $html  = '<!DOCTYPE html>' . "\n";
+    $html .= '<html lang="en">' . "\n";
+    $html .= '<head>' . "\n";
+    $html .= '    <meta charset="UTF-8">' . "\n";
+    $html .= '    <meta name="viewport" content="width=device-width, initial-scale=1.0">' . "\n";
+    $html .= '    <meta name="robots" content="index, follow">' . "\n";
+    $html .= '    <title>' . $titleTag . '</title>' . "\n";
+
+    if ($escapedDescription !== '')
+    {
+        $html .= '    <meta name="description" content="' . $escapedDescription . '">' . "\n";
+        $html .= '    <meta property="og:description" content="' . $escapedDescription . '">' . "\n";
+    }
+
+    $html .= '    <meta property="og:type" content="profile">' . "\n";
+    $html .= '    <meta property="og:title" content="' . $titleTag . '">' . "\n";
+    $html .= '    <link rel="icon" type="image/x-icon" href="/favicon.ico">' . "\n";
+    $html .= '    <style>' . "\n";
+
+    if ($safeCSS !== '')
+    {
+        $html .= $safeCSS . "\n";
+    }
+
+    $html .= '    </style>' . "\n";
+    $html .= '</head>' . "\n";
+    $html .= '<body>' . "\n";
+    $html .= '<div class="g2ml-lp-custom">' . "\n";
+    $html .= $safeHTML . "\n";
+    $html .= '</div>' . "\n";
+    $html .= '</body>' . "\n";
+    $html .= '</html>';
+
+    return $html;
+}
+
+// ============================================================================
 // 🚀 Top-level render entry point
 // ============================================================================
 
@@ -653,12 +833,30 @@ function g2ml_linkspageBuildDocument(string $escapedTitle, string $escapedDescri
  * Render a resolved LinksPage model into a complete, self-contained HTML
  * document.
  *
+ * 🔒 Component C.6 (#49): if the model carries PERMITTED custom HTML (see
+ * g2ml_linkspageModelUsesCustomHTML() — the resolver only ever populates it
+ * when the kill-switch is on AND the org's tier permits it), that custom HTML
+ * is rendered (re-sanitised on output) INSTEAD OF the system template.
+ * Otherwise the existing, unchanged system-template path (C.1) runs.
+ *
  * @param  array $pageModel  The structure returned by g2ml_resolveLinksPage():
  *                            ['page' => array, 'template' => array, 'items' => array].
  * @return string
  */
 function g2ml_renderLinksPage(array $pageModel): string
 {
+    // 🧨 Custom-HTML path (Component C.6, #49) — only when authorised (the
+    // resolver gate) and the sanitiser is loaded.
+    if (g2ml_linkspageModelUsesCustomHTML($pageModel))
+    {
+        $customPage = $pageModel['page'] ?? [];
+
+        if (is_array($customPage))
+        {
+            return g2ml_linkspageBuildCustomDocument($customPage);
+        }
+    }
+
     $page     = $pageModel['page'] ?? [];
     $template = $pageModel['template'] ?? [];
     $items    = $pageModel['items'] ?? [];

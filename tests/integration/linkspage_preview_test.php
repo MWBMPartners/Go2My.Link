@@ -38,10 +38,11 @@
  *     exist (IDOR denied);
  *   - an XSS payload in pageTitle is HTML-escaped in the rendered output, not
  *     emitted raw;
- *   - customHTML stored on the page row is NEVER read by
- *     g2ml_linkspageManageGetPageForOwner() (it is not in that function's
- *     SELECT list at all) and therefore never reaches the rendered preview,
- *     even though the column holds a sentinel value in the database;
+ *   - stored customHTML (C.6, #49) is returned to its OWNER by
+ *     g2ml_linkspageManageGetPageForOwner() (their own data, for the editor)
+ *     but is NOT rendered into the preview unless the org is permitted
+ *     (g2ml_linkspageCustomHtmlAllowedForOrg() — kill-switch + premium); with
+ *     the feature off the preview falls back to the system template;
  *   - a page with no templateUID falls back to the default active system
  *     template, exactly like the public resolver.
  *
@@ -543,12 +544,21 @@ test('owner preview: an XSS payload in pageTitle is HTML-escaped in the rendered
     g2ml_lppreview_test_delete_page($db, $pageUID);
 });
 
-test('owner preview: customHTML stored on the page row is NEVER read or emitted, even though it exists in the database', function () use ($db, $g2mlLpPreviewOrgHandle): void
+test('owner preview: stored customHTML is NOT rendered unless the org is permitted (C.6 #49 gate)', function () use ($db, $g2mlLpPreviewOrgHandle): void
 {
+    // 🧨 Contract change (C.6, #49): g2ml_linkspageManageGetPageForOwner() now
+    // DOES return the owner's OWN customHTML/customCSS (the editor needs them to
+    // prefill, and the preview to render them WHEN PERMITTED) — it is the
+    // owner's own, ownership-enforced data, not a leak. The security guarantee
+    // moved: g2ml_linkspageBuildOwnerPreviewModel() strips the customHTML from
+    // the preview model UNLESS g2ml_linkspageCustomHtmlAllowedForOrg() is true
+    // (operator kill-switch ON + premium hasCustomHTML entitlement). In this
+    // suite the kill-switch is OFF (the sibling C.6 test resets it), so the
+    // preview must fall back to the system template and NEVER emit the sentinel.
     $marker  = g2ml_lppreview_test_marker('customhtml-preview');
     $userUID = g2ml_lppreview_test_insert_user($db, $g2mlLpPreviewOrgHandle, $marker);
 
-    $customHTMLSentinel = '<div id="should-never-appear-in-preview-customhtml-sentinel">DEFERRED TO C.6</div>';
+    $customHTMLSentinel = '<div id="should-never-appear-in-preview-customhtml-sentinel">C6 GATED CONTENT</div>';
 
     $pageUID = g2ml_lppreview_test_insert_page(
         $db,
@@ -563,14 +573,17 @@ test('owner preview: customHTML stored on the page row is NEVER read or emitted,
 
     $ownedPage = g2ml_linkspageManageGetPageForOwner($pageUID, $userUID);
 
-    assert_false(array_key_exists('customHTML', $ownedPage), 'g2ml_linkspageManageGetPageForOwner() must never SELECT customHTML at all — it is structurally absent from the owner-verified row the preview route works with');
+    // The owner CAN retrieve their own stored customHTML (for editing).
+    assert_true(array_key_exists('customHTML', $ownedPage), 'The owner-verified row now includes the owner\'s own customHTML (for the C.6 editor/preview)');
 
     $ownedItems   = g2ml_linkspageManageListItemsForPage($pageUID, $userUID);
     $previewModel = g2ml_linkspageBuildOwnerPreviewModel($ownedPage, $ownedItems);
     $renderedHTML = g2ml_renderLinksPage($previewModel);
 
-    assert_false(str_contains($renderedHTML, 'should-never-appear-in-preview-customhtml-sentinel'), 'customHTML must NEVER reach the rendered preview output, even though it is present in the database row');
-    assert_false(str_contains($renderedHTML, 'DEFERRED TO C.6'), 'The customHTML sentinel text must never appear in the rendered preview');
+    // With the feature NOT permitted (kill-switch off), the preview strips
+    // customHTML and renders the system template — the sentinel never appears.
+    assert_false(str_contains($renderedHTML, 'should-never-appear-in-preview-customhtml-sentinel'), 'An UNPERMITTED org\'s customHTML must NOT reach the rendered preview');
+    assert_false(str_contains($renderedHTML, 'C6 GATED CONTENT'), 'The gated customHTML sentinel text must not appear when the feature is not permitted');
 
     g2ml_lppreview_test_delete_page($db, $pageUID);
 });

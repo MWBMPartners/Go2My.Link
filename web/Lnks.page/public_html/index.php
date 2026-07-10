@@ -36,11 +36,13 @@
  *      e. Found (and not gated, or already confirmed) → render
  *         (g2ml_renderLinksPage()) and emit the HTML.
  *
- * 🔒 SECURITY: customHTML/customCSS are NEVER read here (deferred to C.6/#49
- *    — see linkspage_resolver.php / linkspage_renderer.php file headers).
- *    Only SYSTEM templates are ever consumed. See web/_functions/adult_content.php
- *    for the age-gate cookie's signing/verification and the "no DOB, ever"
- *    privacy posture.
+ * 🔒 SECURITY: customHTML/customCSS (Component C.6, #49) are consumed ONLY
+ *    through the resolver's GATED path (operator kill-switch + premium
+ *    hasCustomHTML entitlement), sanitised on input AND output, and — see
+ *    Step 9.5 — served under a strict `script-src 'none'` CSP. A page with no
+ *    permitted custom HTML falls back to the escaped SYSTEM-template render
+ *    unchanged. See web/_functions/adult_content.php for the age-gate cookie's
+ *    signing/verification and the "no DOB, ever" privacy posture.
  *
  * @package    Go2My.Link
  * @subpackage ComponentC
@@ -321,6 +323,25 @@ logActivity('linkspage_view', 'success', 200, [
         'pageUID' => $pageModel['page']['pageUID'] ?? null,
     ],
 ]);
+
+// ============================================================================
+// 🧨 Step 9.5: Strict CSP backstop for a custom-HTML page (Component C.6, #49)
+// ============================================================================
+// When this page renders owner-supplied custom HTML (the resolver only puts it
+// in the model when the kill-switch is on AND the org's tier permits it), serve
+// it under a strict per-response Content-Security-Policy whose `script-src
+// 'none'` guarantees NO inline/external script and NO inline event handler can
+// execute even if a payload slipped past the DOM allowlist sanitiser. This is
+// set from PHP so it AUTHORITATIVELY overrides the component's baseline .htaccess
+// policy for this response only (the .htaccess CSP uses `Header setifempty`, so
+// a PHP-set header wins) — no other page is weakened.
+if (function_exists('g2ml_linkspageModelUsesCustomHTML')
+    && function_exists('g2ml_linkspageCustomHtmlCSP')
+    && g2ml_linkspageModelUsesCustomHTML($pageModel))
+{
+    header('Content-Security-Policy: ' . g2ml_linkspageCustomHtmlCSP());
+    header('X-Content-Type-Options: nosniff');
+}
 
 echo g2ml_renderLinksPage($pageModel);
 exit;

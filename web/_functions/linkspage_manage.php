@@ -33,13 +33,22 @@
  *     single, generic "not found" outcome), so this layer never leaks
  *     whether a given pageUID/itemUID exists for someone else.
  *
- * 🔒 SECURITY — no raw HTML:
- *   - There is no customHTML/customCSS field anywhere in this file. Every
- *     managed field is a discrete, validated, structured value (slug, title,
- *     description, avatar URL, template selection, hex colour, font family,
- *     a fixed social-network URL set, item title/url/description/icon).
- *     Free-form HTML/WYSIWYG editing is C.6 (#49) — deliberately NOT built
- *     here, and deliberately not wired to tblLinksPages.customHTML/customCSS.
+ * 🔒 SECURITY — structured fields vs. gated custom HTML:
+ *   - The page/item CRUD fields are all discrete, validated, structured values
+ *     (slug, title, description, avatar URL, template selection, hex colour,
+ *     font family, a fixed social-network URL set, item title/url/description/
+ *     icon) — never free-form HTML.
+ *   - The ONLY free-form HTML path is the Component C.6 (#49) custom-HTML/CSS
+ *     editor: g2ml_linkspageManageSaveCustomHTML() /
+ *     g2ml_linkspageManageSaveCustomHTMLFromUpload(), sharing
+ *     _g2ml_linkspageManageStoreSanitisedCustom(). Every such write is
+ *     ownership-checked, GATED (operator kill-switch + premium hasCustomHTML
+ *     entitlement, both via g2ml_linkspageCustomHtmlAllowedForOrg()), and
+ *     SANITISED on input with g2ml_sanitiseUserHTML()/g2ml_sanitiseUserCSS()
+ *     (web/_functions/html_sanitiser.php) BEFORE storage — the SANITISED form
+ *     is what lands in tblLinksPages.customHTML/customCSS, never the raw
+ *     submission. It is re-sanitised again on output by the renderer and served
+ *     under a strict `script-src 'none'` CSP.
  *
  * 🔒 SECURITY — template picker + owner preview (C.3, #47):
  *   - g2ml_linkspageManageRenderTemplateCardThumbnail() builds each picker
@@ -590,7 +599,7 @@ function g2ml_linkspageManageGetPageForOwner(int $pageUID, int $userUID): ?array
 {
     $row = dbSelectOne(
         "SELECT pageUID, userUID, orgHandle, slug, pageTitle, pageDescription, avatarPath,
-                templateUID, themeColour, backgroundColour, fontFamily, showSocialIcons,
+                templateUID, customHTML, customCSS, themeColour, backgroundColour, fontFamily, showSocialIcons,
                 socialLinks, isPublished, isActive, createdAt, updatedAt
          FROM tblLinksPages
          WHERE pageUID = ? AND userUID = ?
@@ -1981,4 +1990,365 @@ function g2ml_linkspageManageMoveItem(int $userUID, int $itemUID, string $direct
         'moved'   => true,
         'error'   => null,
     ];
+}
+
+// ============================================================================
+// 🧨 Custom HTML / CSS (Component C.6, #49)
+// ============================================================================
+// The single highest stored-XSS surface in the product. Every write here is:
+//   1. OWNERSHIP-checked (the page must belong to the acting user);
+//   2. GATED — the operator kill-switch (linkspage.custom_html_enabled) must be
+//      ON *and* the PAGE'S OWN org tier must grant hasCustomHTML — via
+//      g2ml_linkspageCustomHtmlAllowedForOrg() (web/_functions/html_sanitiser.php).
+//      A non-premium org (or the whole feature being off) means the value is
+//      NEITHER sanitised-and-stored NOR rendered;
+//   3. SANITISED on input with g2ml_sanitiseUserHTML()/g2ml_sanitiseUserCSS()
+//      (DOM allowlist + mXSS fixed-point) — the SANITISED form is what is
+//      stored, never the raw submission;
+//   4. re-sanitised again on OUTPUT by the renderer, and served under a strict
+//      `script-src 'none'` CSP.
+// Clearing custom HTML (submitting empty) is ALWAYS allowed (it is safe and
+// simply reverts the page to its system template), even for a non-premium org.
+// ============================================================================
+
+/**
+ * Shared gate + sanitise + store for a custom-HTML/CSS write. Internal — both
+ * the textarea save and the file-upload save delegate here so the security
+ * logic exists in exactly one place.
+ *
+ * @param  int    $userUID       The ACTING user's own userUID.
+ * @param  int    $pageUID
+ * @param  string $customHTMLRaw The raw (un-sanitised) HTML submission.
+ * @param  string $customCSSRaw  The raw (un-sanitised) CSS submission.
+ * @return array  ['success' => bool, 'error' => string|null, 'errorCode' => string|null,
+ *                 'customHTML' => string|null, 'customCSS' => string|null]
+ */
+function _g2ml_linkspageManageStoreSanitisedCustom(int $userUID, int $pageUID, string $customHTMLRaw, string $customCSSRaw): array
+{
+    $ownedPage = g2ml_linkspageManageGetPageForOwner($pageUID, $userUID);
+
+    if ($ownedPage === null)
+    {
+        return [
+            'success'    => false,
+            'error'      => 'LinksPage not found, or you do not have permission to edit it.',
+            'errorCode'  => 'not_found',
+            'customHTML' => null,
+            'customCSS'  => null,
+        ];
+    }
+
+    $isClearing = false;
+
+    if (trim($customHTMLRaw) === '' && trim($customCSSRaw) === '')
+    {
+        $isClearing = true;
+    }
+
+    $orgHandle = null;
+
+    if (isset($ownedPage['orgHandle']) && is_string($ownedPage['orgHandle']))
+    {
+        $orgHandle = $ownedPage['orgHandle'];
+    }
+
+    // 🔒 Enforce the gate for a SET; a CLEAR (empty submission) is always safe
+    // and is allowed regardless of tier/kill-switch.
+    if ($isClearing === false)
+    {
+        $allowed = false;
+
+        if (function_exists('g2ml_linkspageCustomHtmlAllowedForOrg'))
+        {
+            $allowed = g2ml_linkspageCustomHtmlAllowedForOrg($orgHandle);
+        }
+
+        if ($allowed !== true)
+        {
+            return [
+                'success'    => false,
+                'error'      => 'Custom HTML is not available on your current plan, or has been disabled by the administrator.',
+                'errorCode'  => 'feature_unavailable',
+                'customHTML' => null,
+                'customCSS'  => null,
+            ];
+        }
+    }
+
+    // Size caps on the RAW submission (before sanitisation) — reject oversized
+    // input outright rather than silently truncating.
+    if (defined('G2ML_CUSTOM_HTML_MAX_BYTES') && strlen($customHTMLRaw) > G2ML_CUSTOM_HTML_MAX_BYTES)
+    {
+        return [
+            'success'    => false,
+            'error'      => 'The custom HTML is too large. Please keep it under ' . (int) (G2ML_CUSTOM_HTML_MAX_BYTES / 1000) . ' KB.',
+            'errorCode'  => 'too_large',
+            'customHTML' => null,
+            'customCSS'  => null,
+        ];
+    }
+
+    if (defined('G2ML_CUSTOM_CSS_MAX_BYTES') && strlen($customCSSRaw) > G2ML_CUSTOM_CSS_MAX_BYTES)
+    {
+        return [
+            'success'    => false,
+            'error'      => 'The custom CSS is too large. Please keep it under ' . (int) (G2ML_CUSTOM_CSS_MAX_BYTES / 1000) . ' KB.',
+            'errorCode'  => 'too_large',
+            'customHTML' => null,
+            'customCSS'  => null,
+        ];
+    }
+
+    // 🔒 SANITISE ON INPUT — store the SANITISED form, never the raw submission.
+    if (function_exists('g2ml_sanitiseUserHTML'))
+    {
+        $sanitisedHTML = g2ml_sanitiseUserHTML($customHTMLRaw);
+    }
+    else
+    {
+        // Fail closed: with no sanitiser available, refuse the write entirely
+        // rather than store un-sanitised HTML.
+        return [
+            'success'    => false,
+            'error'      => 'The custom HTML editor is temporarily unavailable. Please try again later.',
+            'errorCode'  => 'sanitiser_unavailable',
+            'customHTML' => null,
+            'customCSS'  => null,
+        ];
+    }
+
+    if (function_exists('g2ml_sanitiseUserCSS'))
+    {
+        $sanitisedCSS = g2ml_sanitiseUserCSS($customCSSRaw);
+    }
+    else
+    {
+        $sanitisedCSS = '';
+    }
+
+    // Empty sanitised values are stored as NULL (revert to the system template).
+    if (trim($sanitisedHTML) === '')
+    {
+        $htmlToStore = null;
+    }
+    else
+    {
+        $htmlToStore = $sanitisedHTML;
+    }
+
+    if (trim($sanitisedCSS) === '')
+    {
+        $cssToStore = null;
+    }
+    else
+    {
+        $cssToStore = $sanitisedCSS;
+    }
+
+    // 🔒 Ownership enforced again on the UPDATE itself via "AND userUID = ?".
+    $affectedRows = dbUpdate(
+        "UPDATE tblLinksPages SET customHTML = ?, customCSS = ? WHERE pageUID = ? AND userUID = ?",
+        'ssii',
+        [$htmlToStore, $cssToStore, $pageUID, $userUID]
+    );
+
+    if ($affectedRows === false)
+    {
+        return [
+            'success'    => false,
+            'error'      => 'Could not save the custom HTML. Please try again.',
+            'errorCode'  => 'server_error',
+            'customHTML' => null,
+            'customCSS'  => null,
+        ];
+    }
+
+    if (function_exists('logActivity'))
+    {
+        if ($isClearing === true)
+        {
+            $customLogStatus = 'cleared';
+        }
+        else
+        {
+            $customLogStatus = 'saved';
+        }
+
+        logActivity('update_linkspage_custom_html', 'success', 200, [
+            'userUID' => $userUID,
+            'logData' => ['pageUID' => $pageUID, 'action' => $customLogStatus],
+        ]);
+    }
+
+    return [
+        'success'    => true,
+        'error'      => null,
+        'errorCode'  => null,
+        'customHTML' => $htmlToStore,
+        'customCSS'  => $cssToStore,
+    ];
+}
+
+/**
+ * Save custom HTML/CSS typed into the editor's source textareas.
+ *
+ * @param  int    $userUID       The ACTING user's own userUID.
+ * @param  int    $pageUID
+ * @param  string $customHTMLRaw
+ * @param  string $customCSSRaw
+ * @return array  See _g2ml_linkspageManageStoreSanitisedCustom().
+ */
+function g2ml_linkspageManageSaveCustomHTML(int $userUID, int $pageUID, string $customHTMLRaw, string $customCSSRaw): array
+{
+    return _g2ml_linkspageManageStoreSanitisedCustom($userUID, $pageUID, $customHTMLRaw, $customCSSRaw);
+}
+
+/**
+ * Save custom HTML from an UPLOADED .html file (plus optional CSS from the
+ * editor textarea). The file is read and run through the SAME sanitiser — the
+ * raw upload is NEVER stored. Enforces a size cap and rejects non-HTML files.
+ *
+ * @param  int         $userUID      The ACTING user's own userUID.
+ * @param  int         $pageUID
+ * @param  array       $file         One entry from $_FILES (name/type/tmp_name/error/size).
+ * @param  string      $customCSSRaw Optional CSS from the editor textarea.
+ * @return array  See _g2ml_linkspageManageStoreSanitisedCustom().
+ */
+function g2ml_linkspageManageSaveCustomHTMLFromUpload(int $userUID, int $pageUID, array $file, string $customCSSRaw): array
+{
+    $uploadError = UPLOAD_ERR_NO_FILE;
+
+    if (isset($file['error']))
+    {
+        $uploadError = (int) $file['error'];
+    }
+
+    if ($uploadError === UPLOAD_ERR_NO_FILE)
+    {
+        return [
+            'success'    => false,
+            'error'      => 'Please choose an HTML file to upload.',
+            'errorCode'  => 'no_file',
+            'customHTML' => null,
+            'customCSS'  => null,
+        ];
+    }
+
+    if ($uploadError !== UPLOAD_ERR_OK)
+    {
+        return [
+            'success'    => false,
+            'error'      => 'The file upload did not complete. Please try again.',
+            'errorCode'  => 'upload_error',
+            'customHTML' => null,
+            'customCSS'  => null,
+        ];
+    }
+
+    $fileSize = 0;
+
+    if (isset($file['size']))
+    {
+        $fileSize = (int) $file['size'];
+    }
+
+    $maxBytes = 100000;
+
+    if (defined('G2ML_CUSTOM_HTML_MAX_BYTES'))
+    {
+        $maxBytes = G2ML_CUSTOM_HTML_MAX_BYTES;
+    }
+
+    if ($fileSize <= 0 || $fileSize > $maxBytes)
+    {
+        return [
+            'success'    => false,
+            'error'      => 'The HTML file must be between 1 byte and ' . (int) ($maxBytes / 1000) . ' KB.',
+            'errorCode'  => 'too_large',
+            'customHTML' => null,
+            'customCSS'  => null,
+        ];
+    }
+
+    // Reject non-HTML by extension (defence in depth — the content is
+    // sanitised regardless, but there is no reason to accept a .php/.js/etc.).
+    $fileName = '';
+
+    if (isset($file['name']) && is_string($file['name']))
+    {
+        $fileName = $file['name'];
+    }
+
+    $extension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+    if ($extension !== 'html' && $extension !== 'htm')
+    {
+        return [
+            'success'    => false,
+            'error'      => 'Only .html files are accepted.',
+            'errorCode'  => 'wrong_type',
+            'customHTML' => null,
+            'customCSS'  => null,
+        ];
+    }
+
+    $tmpName = '';
+
+    if (isset($file['tmp_name']) && is_string($file['tmp_name']))
+    {
+        $tmpName = $file['tmp_name'];
+    }
+
+    // Only ever read a genuine uploaded temp file (blocks a caller passing an
+    // arbitrary server path). In the CLI/test context is_uploaded_file() is
+    // false, so a test override global is honoured there instead.
+    $isRealUpload = is_uploaded_file($tmpName);
+
+    if ($isRealUpload === false && !isset($GLOBALS['g2ml_linkspage_test_allow_plain_upload']))
+    {
+        return [
+            'success'    => false,
+            'error'      => 'The uploaded file could not be read. Please try again.',
+            'errorCode'  => 'not_uploaded_file',
+            'customHTML' => null,
+            'customCSS'  => null,
+        ];
+    }
+
+    if ($tmpName === '' || !is_readable($tmpName))
+    {
+        return [
+            'success'    => false,
+            'error'      => 'The uploaded file could not be read. Please try again.',
+            'errorCode'  => 'unreadable',
+            'customHTML' => null,
+            'customCSS'  => null,
+        ];
+    }
+
+    $contents = file_get_contents($tmpName, false, null, 0, $maxBytes + 1);
+
+    if ($contents === false)
+    {
+        return [
+            'success'    => false,
+            'error'      => 'The uploaded file could not be read. Please try again.',
+            'errorCode'  => 'unreadable',
+            'customHTML' => null,
+            'customCSS'  => null,
+        ];
+    }
+
+    if (strlen($contents) > $maxBytes)
+    {
+        return [
+            'success'    => false,
+            'error'      => 'The HTML file is too large. Please keep it under ' . (int) ($maxBytes / 1000) . ' KB.',
+            'errorCode'  => 'too_large',
+            'customHTML' => null,
+            'customCSS'  => null,
+        ];
+    }
+
+    return _g2ml_linkspageManageStoreSanitisedCustom($userUID, $pageUID, $contents, $customCSSRaw);
 }

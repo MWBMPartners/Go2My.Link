@@ -165,6 +165,7 @@ else
 
 // Layer 1 — Zero dependencies (depend only on auth_creds.php constants)
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'security.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'html_sanitiser.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'db_connect.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'db_query.php';
 

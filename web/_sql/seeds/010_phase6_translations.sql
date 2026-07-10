@@ -1201,6 +1201,26 @@ VALUES
 ('en-GB', 'linkspage.title', 'LinksPage', 'LinksPage management (admin)', 1);
 
 -- ============================================================================
+-- 🧨 LinksPage custom HTML/CSS editor (linkspage.custom_html_*) — C.6 (#49)
+-- ============================================================================
+
+INSERT IGNORE INTO tblTranslations (localeCode, translationKey, translationValue, context, isVerified)
+VALUES
+('en-GB', 'linkspage.custom_html_heading', 'Custom HTML / CSS', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_label', 'Custom HTML', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_css_label', 'Custom CSS', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_help', 'Allowed tags include headings, paragraphs, lists, links, images, and basic layout elements. Scripts, iframes, forms, and event handlers are removed. Leave both boxes empty to revert to a built-in template.', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_save', 'Save Custom HTML', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_saved', 'Custom HTML saved. It was sanitised for safety before saving.', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_safety_note', 'Your HTML and CSS are sanitised before saving and again when rendered: scripts, event handlers, iframes, forms, and unsafe URLs are removed, and the page is served with a strict security policy that blocks all scripts. The preview below shows the sanitised result.', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_unavailable', 'Custom HTML/CSS is a premium feature and is not available on your current plan (or has been disabled by the administrator). Your page uses one of the safe built-in templates.', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_upload_label', 'Upload an HTML file', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_upload_help', 'Upload a .html file (max 100 KB). It is sanitised the same way and replaces the HTML above — the raw file is never stored.', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_upload_button', 'Upload & Sanitise', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_preview_heading', 'Sanitised live preview', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_preview_iframe_title', 'Sanitised preview of your custom HTML', 'LinksPage custom HTML (C.6, #49)', 1);
+
+-- ============================================================================
 -- 🔐 Login Page (login.*)
 -- ============================================================================
 

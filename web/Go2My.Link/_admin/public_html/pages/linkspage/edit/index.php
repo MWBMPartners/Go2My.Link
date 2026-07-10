@@ -20,8 +20,15 @@
  * Template selection is a visual PICKER (Component C.3, #47): a gallery of
  * the active system templates as selectable cards, each with a LIVE-rendered
  * thumbnail (the Component C renderer, reused not reimplemented — see
- * g2ml_linkspageManageRenderTemplateCardThumbnail()). There is no raw
- * HTML/CSS field — WYSIWYG editing is C.6 / #49.
+ * g2ml_linkspageManageRenderTemplateCardThumbnail()).
+ *
+ * 🧨 Component C.6 (#49) adds a GATED custom-HTML/CSS editor (source textareas
+ * + .html upload + a SANITISED sandboxed live preview). It is shown ONLY when
+ * g2ml_linkspageCustomHtmlAllowedForOrg() is true (operator kill-switch ON +
+ * premium hasCustomHTML entitlement); the save/upload run
+ * g2ml_sanitiseUserHTML()/g2ml_sanitiseUserCSS() and store the SANITISED form.
+ * A full drag-drop WYSIWYG is a follow-up — a source editor plus a sanitised
+ * live preview is the pragmatic, safe MVP under the strict CSP.
  *
  * Also links to the owner-only page preview (pages/linkspage/preview/index.php,
  * #47), which renders this page's ACTUAL content — including while still a
@@ -107,6 +114,8 @@ $pageFormError   = '';
 $pageFormSuccess = false;
 $itemFormError   = '';
 $itemFormSuccess = false;
+$customFormError   = '';
+$customFormSuccess = false;
 
 // ============================================================================
 // Handle POST actions
@@ -134,6 +143,14 @@ if ($pageData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
 
         case 'add_item':
             $csrfFormName = 'linkspage_add_item_' . $pageUID;
+            break;
+
+        case 'save_custom_html':
+            $csrfFormName = 'linkspage_custom_html_' . $pageUID;
+            break;
+
+        case 'upload_custom_html':
+            $csrfFormName = 'linkspage_custom_html_upload_' . $pageUID;
             break;
 
         case 'update_item':
@@ -166,6 +183,10 @@ if ($pageData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
         if ($actionType === 'add_item' || $actionType === 'update_item')
         {
             $itemFormError = 'Your session has expired. Please reload the page and try again.';
+        }
+        elseif ($actionType === 'save_custom_html' || $actionType === 'upload_custom_html')
+        {
+            $customFormError = 'Your session has expired. Please reload the page and try again.';
         }
         else
         {
@@ -231,6 +252,55 @@ if ($pageData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
                 else
                 {
                     $pageFormError = $updateResult['error'];
+                }
+                break;
+
+            case 'save_custom_html':
+
+                $saveCustomResult = g2ml_linkspageManageSaveCustomHTML(
+                    $userUID,
+                    $pageUID,
+                    (string) ($_POST['custom_html'] ?? ''),
+                    (string) ($_POST['custom_css'] ?? '')
+                );
+
+                if ($saveCustomResult['success'] === true)
+                {
+                    $customFormSuccess = true;
+                    $pageData          = g2ml_linkspageManageGetPageForOwner($pageUID, $userUID);
+                }
+                else
+                {
+                    $customFormError = $saveCustomResult['error'];
+                }
+                break;
+
+            case 'upload_custom_html':
+
+                if (isset($_FILES['custom_html_file']) && is_array($_FILES['custom_html_file']))
+                {
+                    $uploadedFileEntry = $_FILES['custom_html_file'];
+                }
+                else
+                {
+                    $uploadedFileEntry = [];
+                }
+
+                $uploadCustomResult = g2ml_linkspageManageSaveCustomHTMLFromUpload(
+                    $userUID,
+                    $pageUID,
+                    $uploadedFileEntry,
+                    (string) ($_POST['custom_css'] ?? '')
+                );
+
+                if ($uploadCustomResult['success'] === true)
+                {
+                    $customFormSuccess = true;
+                    $pageData          = g2ml_linkspageManageGetPageForOwner($pageUID, $userUID);
+                }
+                else
+                {
+                    $customFormError = $uploadCustomResult['error'];
                 }
                 break;
 
@@ -385,6 +455,54 @@ if ($pageData !== null)
 else
 {
     $storedSocialLinks = [];
+}
+
+// ============================================================================
+// 🧨 Custom HTML/CSS editor state (Component C.6, #49)
+// ============================================================================
+// The card is shown ONLY when the page's org is permitted right now (operator
+// kill-switch ON + premium hasCustomHTML entitlement). Otherwise an upgrade /
+// disabled note is shown, and no editor is rendered.
+$customHtmlAllowed   = false;
+$customHtmlValue     = '';
+$customCssValue      = '';
+$customPreviewSrcDoc = '';
+
+if ($pageData !== null)
+{
+    $pageOrgHandle = null;
+
+    if (isset($pageData['orgHandle']) && is_string($pageData['orgHandle']))
+    {
+        $pageOrgHandle = $pageData['orgHandle'];
+    }
+
+    if (function_exists('g2ml_linkspageCustomHtmlAllowedForOrg'))
+    {
+        $customHtmlAllowed = g2ml_linkspageCustomHtmlAllowedForOrg($pageOrgHandle);
+    }
+
+    if (isset($pageData['customHTML']) && is_string($pageData['customHTML']))
+    {
+        $customHtmlValue = $pageData['customHTML'];
+    }
+
+    if (isset($pageData['customCSS']) && is_string($pageData['customCSS']))
+    {
+        $customCssValue = $pageData['customCSS'];
+    }
+
+    // Build the SANITISED live preview (what a visitor would actually see) only
+    // when permitted and non-empty. The whole rendered document is embedded via
+    // a sandboxed <iframe srcdoc> — sandbox="" blocks all script regardless, and
+    // the document itself is re-sanitised by g2ml_linkspageBuildCustomDocument().
+    if ($customHtmlAllowed === true
+        && trim($customHtmlValue) !== ''
+        && function_exists('g2ml_linkspageBuildCustomDocument'))
+    {
+        $customPreviewDocument = g2ml_linkspageBuildCustomDocument($pageData);
+        $customPreviewSrcDoc   = htmlspecialchars($customPreviewDocument, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
 }
 ?>
 
@@ -654,6 +772,120 @@ else
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+
+                <!-- ======================================================== -->
+                <!-- Custom HTML / CSS (Component C.6, #49)                    -->
+                <!-- ======================================================== -->
+
+                <?php if ($customFormSuccess === true) { ?>
+                <div class="alert alert-success" role="status">
+                    <i class="fas fa-check-circle" aria-hidden="true"></i>
+                    <?php if (function_exists('__')) { echo __('linkspage.custom_html_saved'); } else { echo 'Custom HTML saved. It was sanitised for safety before saving.'; } ?>
+                </div>
+                <?php } ?>
+
+                <?php if ($customFormError !== '') { ?>
+                <div class="alert alert-danger" role="alert">
+                    <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
+                    <?php echo g2ml_sanitiseOutput($customFormError); ?>
+                </div>
+                <?php } ?>
+
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header">
+                        <h2 class="h5 mb-0">
+                            <i class="fas fa-code" aria-hidden="true"></i>
+                            <?php if (function_exists('__')) { echo __('linkspage.custom_html_heading'); } else { echo 'Custom HTML / CSS'; } ?>
+                        </h2>
+                    </div>
+                    <div class="card-body p-4">
+
+                        <?php if ($customHtmlAllowed !== true) { ?>
+                        <div class="alert alert-info mb-0" role="note">
+                            <i class="fas fa-lock" aria-hidden="true"></i>
+                            <?php if (function_exists('__')) { echo __('linkspage.custom_html_unavailable'); } else { echo 'Custom HTML/CSS is a premium feature and is not available on your current plan (or has been disabled by the administrator). Your page uses one of the safe built-in templates.'; } ?>
+                        </div>
+                        <?php } else { ?>
+
+                        <div class="alert alert-warning" role="note">
+                            <i class="fas fa-shield-alt" aria-hidden="true"></i>
+                            <?php if (function_exists('__')) { echo __('linkspage.custom_html_safety_note'); } else { echo 'Your HTML and CSS are sanitised before saving and again when rendered: scripts, event handlers, iframes, forms, and unsafe URLs are removed, and the page is served with a strict security policy that blocks all scripts. The preview below shows the sanitised result.'; } ?>
+                        </div>
+
+                        <form action="/linkspage/edit?id=<?php echo (int) $pageUID; ?>" method="POST" novalidate>
+                            <?php echo g2ml_csrfField('linkspage_custom_html_' . $pageUID); ?>
+                            <input type="hidden" name="action_type" value="save_custom_html">
+
+                            <div class="mb-3">
+                                <label for="custom-html" class="form-label">
+                                    <?php if (function_exists('__')) { echo __('linkspage.custom_html_label'); } else { echo 'Custom HTML'; } ?>
+                                </label>
+                                <textarea class="form-control font-monospace" id="custom-html" name="custom_html" rows="10" spellcheck="false"
+                                    placeholder="&lt;h1&gt;My page&lt;/h1&gt;&#10;&lt;p&gt;Welcome&lt;/p&gt;"><?php echo g2ml_sanitiseOutput($customHtmlValue); ?></textarea>
+                                <div class="form-text">
+                                    <?php if (function_exists('__')) { echo __('linkspage.custom_html_help'); } else { echo 'Allowed tags include headings, paragraphs, lists, links, images, and basic layout elements. Scripts, iframes, forms, and event handlers are removed. Leave both boxes empty to revert to a built-in template.'; } ?>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="custom-css" class="form-label">
+                                    <?php if (function_exists('__')) { echo __('linkspage.custom_css_label'); } else { echo 'Custom CSS'; } ?>
+                                </label>
+                                <textarea class="form-control font-monospace" id="custom-css" name="custom_css" rows="8" spellcheck="false"
+                                    placeholder=".my-class { color: #333; }"><?php echo g2ml_sanitiseOutput($customCssValue); ?></textarea>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save" aria-hidden="true"></i>
+                                    <?php if (function_exists('__')) { echo __('linkspage.custom_html_save'); } else { echo 'Save Custom HTML'; } ?>
+                                </button>
+                            </div>
+                        </form>
+
+                        <hr class="my-4">
+
+                        <form action="/linkspage/edit?id=<?php echo (int) $pageUID; ?>" method="POST" enctype="multipart/form-data" novalidate>
+                            <?php echo g2ml_csrfField('linkspage_custom_html_upload_' . $pageUID); ?>
+                            <input type="hidden" name="action_type" value="upload_custom_html">
+
+                            <div class="mb-3">
+                                <label for="custom-html-file" class="form-label">
+                                    <?php if (function_exists('__')) { echo __('linkspage.custom_html_upload_label'); } else { echo 'Upload an HTML file'; } ?>
+                                </label>
+                                <input type="file" class="form-control" id="custom-html-file" name="custom_html_file" accept=".html,.htm,text/html">
+                                <div class="form-text">
+                                    <?php if (function_exists('__')) { echo __('linkspage.custom_html_upload_help'); } else { echo 'Upload a .html file (max 100 KB). It is sanitised the same way and replaces the HTML above — the raw file is never stored.'; } ?>
+                                </div>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-outline-primary">
+                                    <i class="fas fa-upload" aria-hidden="true"></i>
+                                    <?php if (function_exists('__')) { echo __('linkspage.custom_html_upload_button'); } else { echo 'Upload &amp; Sanitise'; } ?>
+                                </button>
+                            </div>
+                        </form>
+
+                        <?php if ($customPreviewSrcDoc !== '') { ?>
+                        <hr class="my-4">
+                        <h3 class="h6">
+                            <i class="fas fa-eye" aria-hidden="true"></i>
+                            <?php if (function_exists('__')) { echo __('linkspage.custom_html_preview_heading'); } else { echo 'Sanitised live preview'; } ?>
+                        </h3>
+                        <div class="lp-preview-frame-wrapper">
+                            <iframe
+                                class="lp-preview-frame"
+                                srcdoc="<?php echo $customPreviewSrcDoc; ?>"
+                                title="<?php if (function_exists('__')) { echo __('linkspage.custom_html_preview_iframe_title'); } else { echo 'Sanitised preview of your custom HTML'; } ?>"
+                                sandbox="">
+                            </iframe>
+                        </div>
+                        <?php } ?>
+
+                        <?php } ?>
                     </div>
                 </div>
 

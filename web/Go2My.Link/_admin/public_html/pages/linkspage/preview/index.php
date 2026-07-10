@@ -36,9 +36,13 @@
  *
  * 🔒 SECURITY — rendering:
  *   - g2ml_renderLinksPage() (Component C's renderer, #45) is REUSED, never
- *     reimplemented — every user-authored string is escaped, every URL is
- *     scheme-validated, customHTML/customCSS are never read (deferred to
- *     C.6/#49) exactly as they are for the public page.
+ *     reimplemented — every user-authored string is escaped and every URL is
+ *     scheme-validated exactly as for the public page. C.6 (#49): if the org
+ *     is permitted (and the page has custom HTML), g2ml_linkspageBuildOwnerPreviewModel()
+ *     keeps the SANITISED customHTML/customCSS and the renderer re-sanitises it
+ *     on output; if NOT permitted it is stripped so the preview matches the
+ *     public system-template render. The sandbox="" iframe below blocks all
+ *     script regardless, so the preview is safe even for custom HTML.
  *   - The rendered document is embedded via `<iframe srcdoc="...">` — the
  *     ENTIRE document string is additionally attribute-escaped
  *     (htmlspecialchars ENT_QUOTES) so it sits safely inside srcdoc="...".

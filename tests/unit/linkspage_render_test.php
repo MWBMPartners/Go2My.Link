@@ -346,9 +346,12 @@ test('renderLinksPage: a synthetic page model renders a complete, escaped docume
             'fontFamily'       => null,
             'showSocialIcons'  => 0,
             'socialLinks'      => null,
-            // A caller mistake: customHTML present in the array. The renderer
-            // must NEVER read this key at all.
-            'customHTML'       => '<div>SHOULD-NEVER-APPEAR</div>',
+            // No customHTML on this model — this test exercises the SYSTEM
+            // template path (C.1). The C.6 (#49) custom-HTML path is only ever
+            // taken when the resolver ATTACHES permitted, gated customHTML to
+            // the model (see linkspage_resolver.php's
+            // _g2ml_linkspageMaybeAttachCustomHtml() and the integration tests
+            // in tests/integration/linkspage_custom_html_test.php).
         ],
         'template' => [
             'templateHTML' => '<div class="lp-x"><img src="{{avatar}}" alt="{{name}}"><h1>{{name}}</h1><p>{{bio}}</p><div>{{links}}</div><div>{{social}}</div></div>',
@@ -367,7 +370,72 @@ test('renderLinksPage: a synthetic page model renders a complete, escaped docume
     assert_contains('#123abc', $html, 'The valid theme colour must be injected');
     assert_contains('Link One', $html, 'The item must render');
     assert_contains('https://example.com/one', $html, 'The item URL must render as an href');
-    assert_false(str_contains($html, 'SHOULD-NEVER-APPEAR'), 'customHTML must NEVER be read or emitted, even if present in the array');
+});
+
+// ============================================================================
+// 🧨 C.6 (#49) — custom-HTML render path (renderer contract)
+// ============================================================================
+// NB: tests/unit/html_sanitiser_test.php loads web/_functions/html_sanitiser.php,
+// so g2ml_sanitiseUserHTML() IS defined when the whole unit suite runs — which
+// is exactly the production condition under which the renderer takes the custom
+// path. These tests assert the renderer's contract: when a model carries
+// PERMITTED custom HTML (the resolver only attaches it when authorised), it is
+// rendered (re-sanitised) INSTEAD OF the system template.
+
+test('renderLinksPage: a model with permitted customHTML renders the sanitised custom document, not the system template', function (): void
+{
+    if (!function_exists('g2ml_sanitiseUserHTML'))
+    {
+        // Defensive: without the sanitiser loaded the renderer must fall back
+        // to the system template (safe). Nothing to assert about the custom
+        // path in that configuration.
+        return;
+    }
+
+    $pageModel = [
+        'page' => [
+            'pageTitle'       => 'Custom Jane',
+            'pageDescription' => 'bio',
+            'customHTML'      => '<h1>Hello</h1><script>alert(1)</script><p>World</p>',
+            'customCSS'       => 'h1 { color: #ff0000; } .x { background: url(javascript:alert(1)); }',
+        ],
+        'template' => [
+            'templateHTML' => '<div class="SYSTEM-TEMPLATE-MARKER">{{name}}</div>',
+            'templateCSS'  => '.system {}',
+        ],
+        'items' => [],
+    ];
+
+    assert_true(g2ml_linkspageModelUsesCustomHTML($pageModel), 'A non-empty customHTML in the model signals the custom path');
+
+    $html = g2ml_renderLinksPage($pageModel);
+
+    assert_contains('<!DOCTYPE html>', $html, 'A full document is returned');
+    assert_contains('<h1>Hello</h1>', $html, 'The benign custom HTML is rendered');
+    assert_contains('World', $html, 'Custom body text is rendered');
+    assert_false(str_contains($html, 'SYSTEM-TEMPLATE-MARKER'), 'The system template must NOT be used when custom HTML is present');
+    assert_false(str_contains($html, '<script'), 'The re-sanitiser strips <script on output');
+    assert_false(str_contains($html, 'javascript:'), 'The CSS re-sanitiser strips url(javascript:) on output');
+});
+
+test('renderLinksPage: an empty customHTML falls back to the system template', function (): void
+{
+    $pageModel = [
+        'page' => [
+            'pageTitle'  => 'Jane',
+            'customHTML' => '   ',
+        ],
+        'template' => [
+            'templateHTML' => '<div class="SYSTEM-TEMPLATE-MARKER">{{name}}</div>',
+            'templateCSS'  => '',
+        ],
+        'items' => [],
+    ];
+
+    assert_false(g2ml_linkspageModelUsesCustomHTML($pageModel), 'A blank customHTML does not trigger the custom path');
+
+    $html = g2ml_renderLinksPage($pageModel);
+    assert_contains('SYSTEM-TEMPLATE-MARKER', $html, 'The system template is used when customHTML is blank');
 });
 
 test('renderLinksPage: an invalid theme/background colour falls back to the safe defaults', function (): void

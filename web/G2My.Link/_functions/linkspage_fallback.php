@@ -30,10 +30,14 @@
  *     domain row still points at it. There is no way to reach a draft page
  *     through a custom domain.
  *   - The renderer itself (g2ml_renderLinksPage(), #45) is REUSED, never
- *     reimplemented — every user-authored string is escaped, every URL is
- *     scheme-validated, customHTML/customCSS are never read (deferred to
- *     C.6/#49), exactly as for the public lnks.page/<slug> route and the
- *     admin owner-preview route (C.3/#47).
+ *     reimplemented — every user-authored string is escaped and every URL is
+ *     scheme-validated, exactly as for the public lnks.page/<slug> route and
+ *     the admin owner-preview route (C.3/#47). C.6 (#49): custom HTML/CSS is
+ *     consumed only through the resolver's GATED path (kill-switch + premium
+ *     hasCustomHTML), sanitised on input and output; when a designated page
+ *     renders custom HTML, this route serves it under the SAME strict
+ *     `script-src 'none'` CSP (g2ml_linkspageCustomHtmlCSP()) as the primary
+ *     lnks.page route (see below).
  *
  * 🔒 HOT-PATH RULE: this file is ONLY ever require_once'd from index.php on
  * the two branches that are ALREADY off the normal successful-redirect path
@@ -220,6 +224,20 @@ function g2ml_renderCustomDomainLinksPageFallback(string $requestDomain): bool
     if (!headers_sent())
     {
         http_response_code(200);
+
+        // 🧨 C.6 (#49): if this designated page renders owner-supplied CUSTOM
+        // HTML (the resolver only attaches it when the kill-switch is on AND the
+        // org's tier permits it), serve it under the strict `script-src 'none'`
+        // CSP — identical to the lnks.page/<slug> route (index.php Step 9.5). The
+        // Component B .htaccess CSP uses `Header setifempty`, so this PHP-set
+        // header AUTHORITATIVELY wins for this response only, without weakening
+        // any redirect/error page.
+        if (function_exists('g2ml_linkspageModelUsesCustomHTML')
+            && function_exists('g2ml_linkspageCustomHtmlCSP')
+            && g2ml_linkspageModelUsesCustomHTML($pageModel))
+        {
+            header('Content-Security-Policy: ' . g2ml_linkspageCustomHtmlCSP());
+        }
     }
 
     echo g2ml_renderLinksPage($pageModel);

@@ -139,6 +139,10 @@ INSERT INTO `tblSettings` (
  'default', 'default', 'Default template for new LinksPages',
  'string', 0, 1),
 
+('linkspage.custom_html_enabled', 'Default', NULL,
+ '0', '0', 'Master kill-switch for LinksPage custom HTML/CSS (Component C.6, #49). OFF by default — the single highest stored-XSS-risk feature. Even when ON, custom HTML is premium-gated (hasCustomHTML), sanitised on input and output, and served under a strict script-src none CSP.',
+ 'boolean', 0, 1),
+
 ('linkspage.adult_domains', 'Default', NULL,
  '["onlyfans.com","fansly.com","pornhub.com","xvideos.com","xnxx.com","chaturbate.com","youporn.com","redtube.com"]',
  '["onlyfans.com","fansly.com","pornhub.com","xvideos.com","xnxx.com","chaturbate.com","youporn.com","redtube.com"]',

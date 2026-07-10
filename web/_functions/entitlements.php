@@ -75,6 +75,7 @@ if (!defined('G2ML_ENTITLEMENT_FEATURE_FLAGS'))
         'hasQRCodes',
         'hasAPIAccess',
         'hasPrioritySupport',
+        'hasCustomHTML',
     ]);
 }
 
@@ -120,7 +121,7 @@ function _g2ml_fetchOrgTierRow(string $orgHandle): array|null|false
         "SELECT t.tierID, t.tierName, t.maxLinks, t.maxCustomDomains,
                 t.maxAPIRequestsPerDay, t.maxLinksPages, t.hasAdvancedRedirects,
                 t.hasAnalytics, t.hasQRCodes, t.hasAPIAccess, t.hasPrioritySupport,
-                t.isActive
+                t.hasCustomHTML, t.isActive
          FROM tblOrganisations o
          INNER JOIN tblSubscriptionTiers t ON o.tierID = t.tierID
          WHERE o.orgHandle = ?
@@ -154,7 +155,7 @@ function _g2ml_fetchFallbackTierRow(): array|null|false
     return dbSelectOne(
         "SELECT tierID, tierName, maxLinks, maxCustomDomains, maxAPIRequestsPerDay,
                 maxLinksPages, hasAdvancedRedirects, hasAnalytics, hasQRCodes,
-                hasAPIAccess, hasPrioritySupport, isActive
+                hasAPIAccess, hasPrioritySupport, hasCustomHTML, isActive
          FROM tblSubscriptionTiers
          WHERE isActive = 1
          ORDER BY sortOrder ASC
@@ -246,6 +247,7 @@ function _g2ml_entitlementsNormaliseTierRow(array $row, string $source): array
         'hasQRCodes'           => _g2ml_entitlementsNormaliseBool($row['hasQRCodes'] ?? 0),
         'hasAPIAccess'         => _g2ml_entitlementsNormaliseBool($row['hasAPIAccess'] ?? 0),
         'hasPrioritySupport'   => _g2ml_entitlementsNormaliseBool($row['hasPrioritySupport'] ?? 0),
+        'hasCustomHTML'        => _g2ml_entitlementsNormaliseBool($row['hasCustomHTML'] ?? 0),
         'unlimited'            => false,
         'source'               => $source,
     ];
@@ -274,6 +276,7 @@ function _g2ml_entitlementsUnlimitedTier(string $source): array
         'hasQRCodes'           => true,
         'hasAPIAccess'         => true,
         'hasPrioritySupport'   => true,
+        'hasCustomHTML'        => true,
         'unlimited'            => true,
         'source'               => $source,
     ];

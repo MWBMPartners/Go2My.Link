@@ -23,7 +23,7 @@ INSERT INTO `tblSubscriptionTiers` (
     `tierID`, `tierName`, `tierDescription`,
     `tierPriceMonthly`, `tierPriceAnnual`, `tierCurrency`,
     `maxLinks`, `maxCustomDomains`, `maxAPIRequestsPerDay`, `maxLinksPages`,
-    `hasAdvancedRedirects`, `hasAnalytics`, `hasQRCodes`, `hasAPIAccess`, `hasPrioritySupport`,
+    `hasAdvancedRedirects`, `hasAnalytics`, `hasQRCodes`, `hasAPIAccess`, `hasPrioritySupport`, `hasCustomHTML`,
     `sortOrder`, `isActive`
 ) VALUES
 -- Free tier
@@ -34,7 +34,7 @@ INSERT INTO `tblSubscriptionTiers` (
     0,     -- maxCustomDomains
     100,   -- maxAPIRequestsPerDay
     1,     -- maxLinksPages
-    0, 0, 1, 0, 0,  -- no advanced, no analytics, yes QR (ext. service), no API, no support
+    0, 0, 1, 0, 0, 0,  -- no advanced, no analytics, yes QR (ext. service), no API, no support, no custom HTML
     1, 1
 ),
 -- Basic tier
@@ -45,7 +45,7 @@ INSERT INTO `tblSubscriptionTiers` (
     1,     -- maxCustomDomains
     5000,  -- maxAPIRequestsPerDay
     3,     -- maxLinksPages
-    0, 1, 1, 1, 0,  -- no advanced, yes analytics, yes QR (ext. service), yes API, no support
+    0, 1, 1, 1, 0, 0,  -- no advanced, yes analytics, yes QR (ext. service), yes API, no support, no custom HTML
     2, 1
 ),
 -- Premium tier
@@ -56,7 +56,7 @@ INSERT INTO `tblSubscriptionTiers` (
     5,     -- maxCustomDomains
     50000, -- maxAPIRequestsPerDay
     10,    -- maxLinksPages
-    1, 1, 1, 1, 1,  -- all features
+    1, 1, 1, 1, 1, 1,  -- all features incl. custom HTML (Component C.6, #49)
     3, 1
 ),
 -- Enterprise tier
@@ -67,7 +67,7 @@ INSERT INTO `tblSubscriptionTiers` (
     NULL,  -- unlimited custom domains (treated as unlimited when NULL)
     NULL,  -- unlimited API requests
     NULL,  -- unlimited LinksPages
-    1, 1, 1, 1, 1,  -- all features
+    1, 1, 1, 1, 1, 1,  -- all features incl. custom HTML (Component C.6, #49)
     4, 1
 )
 ON DUPLICATE KEY UPDATE

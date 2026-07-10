@@ -48,8 +48,17 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
     # Awesome (cdnjs, incl. webfonts) and use small inline FOUC/countdown scripts,
     # so those origins and 'unsafe-inline' are permitted here. Nonce-based script
     # hardening is tracked for post-launch.
+    #
+    # 🧨 Component C.6 (#49): `Header setifempty` (NOT `Header set`) so the C.4
+    # custom-domain LinksPage fallback (web/G2My.Link/_functions/linkspage_fallback.php)
+    # can serve a page rendering owner-supplied CUSTOM HTML under the STRICTER
+    # per-response policy (script-src 'none' — g2ml_linkspageCustomHtmlCSP())
+    # set from PHP, WITHOUT this weaker baseline clobbering it. No Component B
+    # PHP sets a CSP otherwise, so setifempty applies this baseline to every
+    # existing page (redirects, 404, expired, validating) exactly as before —
+    # nothing is weakened.
     # 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
-    Header set Content-Security-Policy "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src https://cdnjs.cloudflare.com; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'"
+    Header setifempty Content-Security-Policy "default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src https://cdnjs.cloudflare.com; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'"
 
     # HSTS — enforce HTTPS for 1 year
     Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"

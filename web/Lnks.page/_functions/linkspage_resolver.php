@@ -260,6 +260,120 @@ function g2ml_linkspageServiceEnabled(): bool
 }
 
 // ============================================================================
+// 🧨 Gated custom-HTML fetch (Component C.6, #49)
+// ============================================================================
+
+/**
+ * Load the SANITISED customHTML/customCSS for a page — ONLY through this
+ * explicitly gated function, so the codebase keeps the auditable property that
+ * the public resolver's main SELECT never touches customHTML.
+ *
+ * The caller has already decided the org is permitted
+ * (g2ml_linkspageCustomHtmlAllowedForOrg()); this function performs the
+ * separate, targeted read. Returns ['customHTML' => string, 'customCSS' =>
+ * string|null] or null when there is no usable custom HTML.
+ *
+ * @param  int $pageUID
+ * @return array|null
+ */
+function g2ml_linkspageLoadCustomHtmlForPage(int $pageUID): ?array
+{
+    if ($pageUID <= 0)
+    {
+        return null;
+    }
+
+    $row = dbSelectOne(
+        "SELECT customHTML, customCSS FROM tblLinksPages WHERE pageUID = ? LIMIT 1",
+        'i',
+        [$pageUID]
+    );
+
+    if ($row === null || $row === false)
+    {
+        return null;
+    }
+
+    if (!isset($row['customHTML']) || !is_string($row['customHTML']) || trim($row['customHTML']) === '')
+    {
+        return null;
+    }
+
+    $customCSS = null;
+
+    if (isset($row['customCSS']) && is_string($row['customCSS']))
+    {
+        $customCSS = $row['customCSS'];
+    }
+
+    return [
+        'customHTML' => $row['customHTML'],
+        'customCSS'  => $customCSS,
+    ];
+}
+
+/**
+ * If (and only if) the page's org is permitted to use custom HTML right now
+ * (operator kill-switch on AND premium tier), attach the stored, sanitised
+ * customHTML/customCSS onto the page model so the renderer (C.6) renders it
+ * INSTEAD OF the system template. When not permitted, or unavailable, the
+ * model is returned untouched and the system-template path (C.1) renders.
+ *
+ * @param  array $pageModel  A model shaped like _g2ml_linkspageBuildPublicModelFromRow()'s return.
+ * @return array  The same model, possibly with page.customHTML/page.customCSS added.
+ */
+function _g2ml_linkspageMaybeAttachCustomHtml(array $pageModel): array
+{
+    $page = $pageModel['page'] ?? [];
+
+    if (!is_array($page))
+    {
+        return $pageModel;
+    }
+
+    // The gate lives in web/_functions/html_sanitiser.php (loaded application-
+    // wide via page_init.php). Guarded so this file stays require-able in
+    // isolation (unit tests) — with the gate absent, custom HTML is simply
+    // never attached (safe default).
+    if (!function_exists('g2ml_linkspageCustomHtmlAllowedForOrg'))
+    {
+        return $pageModel;
+    }
+
+    $orgHandle = null;
+
+    if (isset($page['orgHandle']) && is_string($page['orgHandle']))
+    {
+        $orgHandle = $page['orgHandle'];
+    }
+
+    if (!g2ml_linkspageCustomHtmlAllowedForOrg($orgHandle))
+    {
+        return $pageModel;
+    }
+
+    $pageUID = 0;
+
+    if (isset($page['pageUID']))
+    {
+        $pageUID = (int) $page['pageUID'];
+    }
+
+    $custom = g2ml_linkspageLoadCustomHtmlForPage($pageUID);
+
+    if ($custom === null)
+    {
+        return $pageModel;
+    }
+
+    $page['customHTML']    = $custom['customHTML'];
+    $page['customCSS']     = $custom['customCSS'];
+    $pageModel['page']     = $page;
+
+    return $pageModel;
+}
+
+// ============================================================================
 // 🧱 Shared public-model builder (template + items) — internal
 // ============================================================================
 
@@ -321,11 +435,16 @@ function _g2ml_linkspageBuildPublicModelFromRow(array $pageRow): ?array
         $itemRows = [];
     }
 
-    return [
+    $model = [
         'page'     => $pageRow,
         'template' => $templateRow,
         'items'    => $itemRows,
     ];
+
+    // 🧨 C.6 (#49): attach permitted custom HTML/CSS (kill-switch + premium
+    // gated). A no-op for the overwhelming majority of pages (feature off by
+    // default), so the system-template path stays the norm.
+    return _g2ml_linkspageMaybeAttachCustomHtml($model);
 }
 
 // ============================================================================
@@ -498,6 +617,31 @@ function g2ml_linkspageBuildOwnerPreviewModel(array $pageRow, array $itemRows): 
     {
         error_log('[Go2My.Link] ERROR: g2ml_linkspageBuildOwnerPreviewModel — no active system template available for pageUID: ' . (string) ($pageRow['pageUID'] ?? '?'));
         return null;
+    }
+
+    // 🧨 C.6 (#49): the preview must show EXACTLY what a visitor would see. If
+    // the org is NOT (or no longer) permitted to use custom HTML (kill-switch
+    // off, or a downgraded tier), strip any stored customHTML/customCSS from
+    // the preview model so it falls back to the system template — identical to
+    // what the PUBLIC resolver would do. Only keep custom HTML when permitted.
+    $customAllowed = false;
+
+    if (function_exists('g2ml_linkspageCustomHtmlAllowedForOrg'))
+    {
+        $previewOrgHandle = null;
+
+        if (isset($pageRow['orgHandle']) && is_string($pageRow['orgHandle']))
+        {
+            $previewOrgHandle = $pageRow['orgHandle'];
+        }
+
+        $customAllowed = g2ml_linkspageCustomHtmlAllowedForOrg($previewOrgHandle);
+    }
+
+    if ($customAllowed !== true)
+    {
+        unset($pageRow['customHTML']);
+        unset($pageRow['customCSS']);
     }
 
     return [
