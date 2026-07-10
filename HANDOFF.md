@@ -3,7 +3,7 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `34453d8` (+ this handoff commit).
+> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `0d495c1` (+ this handoff commit).
 
 ---
 
@@ -92,10 +92,12 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
 
 - **P0:** finish #135; close ~24 issues; reconcile doc drift + stale `main`; low a11y/hygiene
   (#114–119); (owner) #93 rotation, migration, legal.
-- **P1:** ✅ API framework **#38** (done+reviewed `34453d8`) → **⏳ endpoints #39** (URL CRUD/bulk/list
-  + pre-auth IP throttle) → key UI **#40** → **CueRCode wiring** (createShortURL/logActivity QR fields)
-  → analytics **#41/#42** → geo/UA **#43** → UTM **#92** → custom-domain verify+docs **#91**
-  → **OpenAPI/Swagger #75** (capstone) → API security cycle.
+- **P1:** ✅ API framework **#38** (`34453d8`) → ✅ endpoints **#39** (`0d495c1`, incl. pre-auth backoff +
+  a #38 prefix-parsing bug fix) → **⏳ CueRCode wiring** (QR fields on create + logActivity scan
+  attribution + `qr:link` scope + kill-switch) → key UI **#40** → analytics **#41/#42** → geo/UA **#43**
+  → UTM **#92** → custom-domain verify+docs **#91** → **OpenAPI/Swagger #75** (capstone) → API security cycle.
+  - Note: `createShortURL()` now accepts `createdVia`/`createdViaAPIKeyUID` (added in #39), so the
+    CueRCode create path is largely unblocked — remaining is the QR-specific columns + scan logging.
 - **P2:** entitlement/gating layer → pricing/usage UI → **SIGNula OIDC** → billing (Stripe or SIGNula).
 - **P3:** Component C (#45–50) → advanced redirects (#51–56).
 - **P4:** roadmap + `for consideration` enhancement ideas (plan §9).
