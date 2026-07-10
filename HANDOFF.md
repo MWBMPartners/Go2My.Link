@@ -3,7 +3,7 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `b90b55f` (+ this handoff commit).
+> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `9522d96` (+ this handoff commit).
 
 ---
 
@@ -112,11 +112,16 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
   custom domains + analytics).
 - **P1 follow-ups (smaller):** UTM #92 (hot-path capture/forward); geo #43 **needs owner decision** (MaxMind
   GeoLite2 DB ~70MB + license — do NOT auto-build); an API adversarial security cycle over the full surface.
-- **P2 (⏭️ STARTING NOW): feature-entitlement / premium-tier gating layer** (`entitlements.php`:
-  `g2ml_getOrgTier`/`canUseFeature`/`checkLimit`; enforce `maxLinks`/API/domains/feature-flags server-side
-  from `tblSubscriptionTiers`) → pricing-page reconcile + usage meters → SIGNula OIDC (needs owner: SIGNula
-  endpoints/client creds) → multi-provider billing Stripe+PayPal+SIGNula (needs owner: provider keys).
-- **P3:** Component C (LinksPage) — large greenfield.
+- **P2:** ✅ **entitlement/gating layer #146** (`9522d96`, `entitlements.php` fail-open; enforces
+  `maxLinks`/API-daily/domain-cap from `tblSubscriptionTiers`; 317u/109i green). ⚠️ **Free tier now
+  ENFORCED** (`maxLinks=50`, `maxCustomDomains=0`) — migrated orgs (default `'free'`) need paid tiers
+  assigned or they can't create >50 links / any custom domain. → next: pricing-page reconcile + usage
+  meters (needs owner: final tier naming/currency) → SIGNula OIDC (needs owner: endpoints/client creds)
+  → multi-provider billing Stripe+PayPal+SIGNula (needs owner: provider keys).
+- **P1 follow-ups still open:** UTM #92 (buildable), API adversarial security cycle (buildable),
+  geo #43 (needs owner: MaxMind GeoLite2 license).
+- **P3:** Component C (LinksPage) — large greenfield (renderer/UI/templates/custom-domain fallback/
+  age-gate/WYSIWYG — the HTML-upload piece is the highest stored-XSS risk in the whole product).
   - 🎉 **Milestone: public API + CueRCode integration READY.** CueRCode integrates via `/api/v1` with a
     `qr:link`-scoped key. `createShortURL()` accepts `createdVia`/`createdViaAPIKeyUID`/QR columns;
     `logActivity()` carries `scanSource`/`qrCodeExternalID` (bind-string re-verified 23=23=23).
