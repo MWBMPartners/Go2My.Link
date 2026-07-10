@@ -291,6 +291,32 @@ g2ml_apikey_test_exec(
     . "ON DUPLICATE KEY UPDATE `orgFallbackURL` = VALUES(`orgFallbackURL`), `tierID` = VALUES(`tierID`)"
 );
 
+// A second dedicated tight tier + two dedicated orgs (#149.1) for the
+// per-org daily budget tests below: orgapikey149a holds TWO keys that must
+// SHARE one daily budget; orgapikey149b holds a single key that must stay
+// completely unaffected by orgapikey149a's exhausted budget. sortOrder=999
+// for the same reason as apikey146tier above.
+g2ml_apikey_test_exec(
+    $db,
+    "INSERT INTO `tblSubscriptionTiers` (`tierID`, `tierName`, `maxLinks`, `maxCustomDomains`, `maxAPIRequestsPerDay`, `maxLinksPages`, `sortOrder`, `isActive`) "
+    . "VALUES ('apikey149tier', 'API Key Test Tier (#149.1)', NULL, NULL, 4, NULL, 999, 1) "
+    . "ON DUPLICATE KEY UPDATE `maxAPIRequestsPerDay` = VALUES(`maxAPIRequestsPerDay`), `sortOrder` = VALUES(`sortOrder`)"
+);
+
+g2ml_apikey_test_exec(
+    $db,
+    "INSERT INTO `tblOrganisations` (`orgHandle`, `orgName`, `orgFallbackURL`, `tierID`, `isActive`) "
+    . "VALUES ('orgapikey149a', 'Org A (#149.1 per-org budget test)', 'https://go2my.link/orgapikey149a', 'apikey149tier', 1) "
+    . "ON DUPLICATE KEY UPDATE `orgFallbackURL` = VALUES(`orgFallbackURL`), `tierID` = VALUES(`tierID`)"
+);
+
+g2ml_apikey_test_exec(
+    $db,
+    "INSERT INTO `tblOrganisations` (`orgHandle`, `orgName`, `orgFallbackURL`, `tierID`, `isActive`) "
+    . "VALUES ('orgapikey149b', 'Org B (#149.1 per-org budget test)', 'https://go2my.link/orgapikey149b', 'apikey149tier', 1) "
+    . "ON DUPLICATE KEY UPDATE `orgFallbackURL` = VALUES(`orgFallbackURL`), `tierID` = VALUES(`tierID`)"
+);
+
 // ============================================================================
 // 🔑 Generate -> verify round-trip
 // ============================================================================
@@ -767,6 +793,133 @@ test('rateLimit (#146): a simulated tier-lookup failure fails OPEN (falls back t
     g2ml_apikey_test_exec($db, 'DELETE FROM `tblAPIKeys` WHERE `apiKeyUID` = ' . (int) $created['apiKeyUID']);
     g2ml_apikey_test_exec($db, 'DELETE FROM `tblUsers` WHERE `userUID` = ' . $userUID);
     g2ml_clearOrgTierCache('orgapikey146');
+});
+
+// ============================================================================
+// 🏢 #149.1 — the tier/global-default daily budget is per-ORG, not per-key
+// ============================================================================
+
+test('rateLimit (#149.1): two keys in the SAME org share one daily budget; an independent org is unaffected', function () use ($db): void
+{
+    $markerA1 = 'apikey_' . substr(hash('sha256', (string) microtime(true) . 'rl149-a1'), 0, 12);
+    $markerA2 = 'apikey_' . substr(hash('sha256', (string) microtime(true) . 'rl149-a2'), 0, 12);
+    $markerB1 = 'apikey_' . substr(hash('sha256', (string) microtime(true) . 'rl149-b1'), 0, 12);
+
+    $userA1 = g2ml_apikey_test_insert_user($db, 'orgapikey149a', $markerA1);
+    $userA2 = g2ml_apikey_test_insert_user($db, 'orgapikey149a', $markerA2);
+    $userB1 = g2ml_apikey_test_insert_user($db, 'orgapikey149b', $markerB1);
+
+    $createdA1 = g2ml_apiGenerateKey($userA1, 'orgapikey149a', 'Org A key 1', ['account:read'], null);
+    $createdA2 = g2ml_apiGenerateKey($userA2, 'orgapikey149a', 'Org A key 2', ['account:read'], null);
+    $createdB1 = g2ml_apiGenerateKey($userB1, 'orgapikey149b', 'Org B key 1', ['account:read'], null);
+
+    $verifiedA1 = g2ml_apiVerifyKey($createdA1['plaintextKey']);
+    $verifiedA2 = g2ml_apiVerifyKey($createdA2['plaintextKey']);
+    $verifiedB1 = g2ml_apiVerifyKey($createdB1['plaintextKey']);
+
+    assert_same(null, $verifiedA1['rateLimitOverride'], 'Precondition: no per-key override on org A key 1');
+    assert_same(null, $verifiedA2['rateLimitOverride'], 'Precondition: no per-key override on org A key 2');
+    assert_same(null, $verifiedB1['rateLimitOverride'], 'Precondition: no per-key override on org B key 1');
+
+    g2ml_clearOrgTierCache('orgapikey149a');
+    g2ml_clearOrgTierCache('orgapikey149b');
+    g2ml_apikey_test_clear_log($db, (int) $createdA1['apiKeyUID']);
+    g2ml_apikey_test_clear_log($db, (int) $createdA2['apiKeyUID']);
+    g2ml_apikey_test_clear_log($db, (int) $createdB1['apiKeyUID']);
+
+    // Org A's tier caps the org at 4/day. Split exactly that many requests
+    // across its TWO keys (2 each) — individually, NEITHER key has reached
+    // even half of the cap, but the ORG has reached all of it.
+    g2ml_apikey_test_seed_log_row($db, (int) $createdA1['apiKeyUID'], '3 HOUR');
+    g2ml_apikey_test_seed_log_row($db, (int) $createdA1['apiKeyUID'], '2 HOUR');
+    g2ml_apikey_test_seed_log_row($db, (int) $createdA2['apiKeyUID'], '1 HOUR');
+    g2ml_apikey_test_seed_log_row($db, (int) $createdA2['apiKeyUID'], '30 MINUTE');
+
+    // Org B has the SAME tier/cap but only ONE request logged against its
+    // own single key — its budget must be entirely independent of org A's.
+    g2ml_apikey_test_seed_log_row($db, (int) $createdB1['apiKeyUID'], '1 HOUR');
+
+    $rateLimitA1 = g2ml_apiCheckRateLimit($verifiedA1);
+    $rateLimitA2 = g2ml_apiCheckRateLimit($verifiedA2);
+    $rateLimitB1 = g2ml_apiCheckRateLimit($verifiedB1);
+
+    assert_false($rateLimitA1['allowed'], 'Org A key 1 must be denied — the ORG total (4) has reached the tier cap (4), even though key 1 alone only logged 2');
+    assert_same(4, $rateLimitA1['limit'], 'The reported limit must be org A\'s tier cap');
+    assert_same(0, $rateLimitA1['remaining'], 'remaining must be 0 once the ORG total reaches the cap');
+
+    assert_false($rateLimitA2['allowed'], 'Org A key 2 must ALSO be denied — the shared org budget is exhausted regardless of which of org A\'s keys checks it');
+    assert_same(4, $rateLimitA2['limit'], 'Org A key 2 must report the same org-wide limit as key 1');
+
+    assert_true($rateLimitB1['allowed'], 'Org B\'s key must be allowed — its own org has only 1 of its 4 daily requests used, wholly unaffected by org A being at its cap');
+    assert_same(3, $rateLimitB1['remaining'], 'Org B\'s remaining must reflect ONLY its own org\'s usage (4 - 1 = 3), never org A\'s');
+
+    g2ml_apikey_test_clear_log($db, (int) $createdA1['apiKeyUID']);
+    g2ml_apikey_test_clear_log($db, (int) $createdA2['apiKeyUID']);
+    g2ml_apikey_test_clear_log($db, (int) $createdB1['apiKeyUID']);
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblAPIKeys` WHERE `apiKeyUID` = ' . (int) $createdA1['apiKeyUID']);
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblAPIKeys` WHERE `apiKeyUID` = ' . (int) $createdA2['apiKeyUID']);
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblAPIKeys` WHERE `apiKeyUID` = ' . (int) $createdB1['apiKeyUID']);
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblUsers` WHERE `userUID` = ' . $userA1);
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblUsers` WHERE `userUID` = ' . $userA2);
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblUsers` WHERE `userUID` = ' . $userB1);
+    g2ml_clearOrgTierCache('orgapikey149a');
+    g2ml_clearOrgTierCache('orgapikey149b');
+});
+
+test('rateLimit (#149.1): a per-key rateLimitOverride still counts ONLY that key, even when a sibling key shares the org', function () use ($db): void
+{
+    $markerOverride = 'apikey_' . substr(hash('sha256', (string) microtime(true) . 'rl149-override'), 0, 12);
+    $markerSibling  = 'apikey_' . substr(hash('sha256', (string) microtime(true) . 'rl149-sibling'), 0, 12);
+
+    $userOverride = g2ml_apikey_test_insert_user($db, 'orgapikey149a', $markerOverride);
+    $userSibling  = g2ml_apikey_test_insert_user($db, 'orgapikey149a', $markerSibling);
+
+    $createdOverride = g2ml_apiGenerateKey($userOverride, 'orgapikey149a', 'Org A override key', ['account:read'], null);
+    $createdSibling  = g2ml_apiGenerateKey($userSibling, 'orgapikey149a', 'Org A sibling key', ['account:read'], null);
+
+    // A generous per-key override (10) — far above the org tier's cap of 4 —
+    // so if the override were EVER counted org-wide instead of per-key, the
+    // sibling's own requests below would wrongly push it over 4 and deny it.
+    g2ml_apikey_test_exec($db, 'UPDATE `tblAPIKeys` SET `rateLimitOverride` = 10 WHERE `apiKeyUID` = ' . (int) $createdOverride['apiKeyUID']);
+
+    $verifiedOverride = g2ml_apiVerifyKey($createdOverride['plaintextKey']);
+    $verifiedSibling   = g2ml_apiVerifyKey($createdSibling['plaintextKey']);
+
+    assert_same(10, (int) $verifiedOverride['rateLimitOverride'], 'The override must round-trip through verify');
+    assert_same(null, $verifiedSibling['rateLimitOverride'], 'Precondition: the sibling key has no override of its own');
+
+    g2ml_clearOrgTierCache('orgapikey149a');
+    g2ml_apikey_test_clear_log($db, (int) $createdOverride['apiKeyUID']);
+    g2ml_apikey_test_clear_log($db, (int) $createdSibling['apiKeyUID']);
+
+    // 5 requests on the OVERRIDE key alone (under its own limit of 10) and
+    // 3 on the sibling (under the org tier's 4).
+    for ($overrideRequestIndex = 0; $overrideRequestIndex < 5; $overrideRequestIndex++)
+    {
+        g2ml_apikey_test_seed_log_row($db, (int) $createdOverride['apiKeyUID'], (string) (60 + $overrideRequestIndex) . ' MINUTE');
+    }
+
+    g2ml_apikey_test_seed_log_row($db, (int) $createdSibling['apiKeyUID'], '10 MINUTE');
+    g2ml_apikey_test_seed_log_row($db, (int) $createdSibling['apiKeyUID'], '20 MINUTE');
+    g2ml_apikey_test_seed_log_row($db, (int) $createdSibling['apiKeyUID'], '30 MINUTE');
+
+    $rateLimitOverride = g2ml_apiCheckRateLimit($verifiedOverride);
+    $rateLimitSibling   = g2ml_apiCheckRateLimit($verifiedSibling);
+
+    assert_true($rateLimitOverride['allowed'], 'The override key must be judged ONLY against its own 5 requests vs its own limit of 10, never the org total');
+    assert_same(10, $rateLimitOverride['limit'], 'The override key must report its own override, not the org tier');
+
+    assert_true($rateLimitSibling['allowed'], 'The sibling key must be judged against the ORG total (3 + 0 own-org-tier-counted requests from the override key = 3), well under the tier cap of 4');
+    assert_same(4, $rateLimitSibling['limit'], 'The sibling key must report the org tier\'s limit, not the sibling\'s own override (it has none)');
+    assert_same(1, $rateLimitSibling['remaining'], 'The sibling\'s org-wide count must be its own 3 requests only (4 - 3 = 1) — the override key\'s 5 requests must NOT be counted into the org total');
+
+    g2ml_apikey_test_clear_log($db, (int) $createdOverride['apiKeyUID']);
+    g2ml_apikey_test_clear_log($db, (int) $createdSibling['apiKeyUID']);
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblAPIKeys` WHERE `apiKeyUID` = ' . (int) $createdOverride['apiKeyUID']);
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblAPIKeys` WHERE `apiKeyUID` = ' . (int) $createdSibling['apiKeyUID']);
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblUsers` WHERE `userUID` = ' . $userOverride);
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblUsers` WHERE `userUID` = ' . $userSibling);
+    g2ml_clearOrgTierCache('orgapikey149a');
 });
 
 // ============================================================================

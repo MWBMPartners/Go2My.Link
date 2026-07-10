@@ -53,9 +53,7 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 /**
  * Check a verified key against its daily and per-minute (burst) rate limits.
  *
- * Counts tblAPIRequestLog rows for this apiKeyUID over two windows (24 hours
- * and 60 seconds) via IDX_apireq_key_created, a single composite-index range
- * scan per window. The daily limit is resolved in this priority order (#146):
+ * The daily limit is resolved in this priority order (#146):
  *
  *   1. The key's own `rateLimitOverride`, when set (a per-key override always
  *      wins — an operator who set one explicitly wants it honoured verbatim).
@@ -64,8 +62,25 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
  *   3. The `api.default_daily_limit` setting, when the tier ALSO has no cap
  *      (NULL) — preserves pre-#146 behaviour for every key on an unlimited tier.
  *
- * The burst limit is always `api.default_per_minute` (unaffected by #146 —
- * tiers do not model a burst rate).
+ * COUNTING SCOPE (#149.1): a daily limit sourced from the tier or the global
+ * default (cases 2 and 3) is a budget for the ORGANISATION, not the
+ * individual key — otherwise an org could multiply its daily allowance
+ * without limit simply by minting more keys (each starting a fresh
+ * per-key counter). Those cases count every tblAPIRequestLog row logged by
+ * ANY key belonging to this key's orgHandle (a JOIN against tblAPIKeys) —
+ * EXCEPT rows from a sibling key that carries its own `rateLimitOverride`,
+ * which is excluded from the shared pool entirely. A `rateLimitOverride`
+ * (case 1) is a deliberate, explicit exception an operator set on ONE
+ * specific key: that key's usage stays scoped to itself alone in both
+ * directions — counting it org-wide would silently widen an intentionally
+ * narrow per-key grant, AND letting it draw from/count against the shared
+ * org pool would mean one heavily-used override key could exhaust every
+ * OTHER regular key's shared budget.
+ *
+ * The burst limit is always `api.default_per_minute`, counted PER-KEY
+ * (unaffected by #146/#149.1 — tiers do not model a burst rate, and the
+ * burst window exists specifically to stop one key from hogging the
+ * connection in a short window, which a per-org count would defeat).
  *
  * @param  array $keyRow  A verified key row (see g2ml_apiVerifyKey()); reads
  *                         `apiKeyUID`, `rateLimitOverride`, and `orgHandle`.
@@ -83,9 +98,19 @@ function g2ml_apiCheckRateLimit(array $keyRow): array
 {
     $apiKeyUID = (int) $keyRow['apiKeyUID'];
 
+    $keyOrgHandle = '[default]';
+
+    if (isset($keyRow['orgHandle']) && is_string($keyRow['orgHandle']) && $keyRow['orgHandle'] !== '')
+    {
+        $keyOrgHandle = $keyRow['orgHandle'];
+    }
+
+    $dailyLimitIsPerKeyOverride = false;
+
     if (isset($keyRow['rateLimitOverride']) && $keyRow['rateLimitOverride'] !== null)
     {
-        $dailyLimit = (int) $keyRow['rateLimitOverride'];
+        $dailyLimit                 = (int) $keyRow['rateLimitOverride'];
+        $dailyLimitIsPerKeyOverride = true;
     }
     else
     {
@@ -97,13 +122,6 @@ function g2ml_apiCheckRateLimit(array $keyRow): array
 
         if (function_exists('g2ml_getOrgTier'))
         {
-            $keyOrgHandle = '[default]';
-
-            if (isset($keyRow['orgHandle']) && is_string($keyRow['orgHandle']) && $keyRow['orgHandle'] !== '')
-            {
-                $keyOrgHandle = $keyRow['orgHandle'];
-            }
-
             $tier           = g2ml_getOrgTier($keyOrgHandle);
             $tierDailyLimit = $tier['maxAPIRequestsPerDay'] ?? null;
         }
@@ -120,12 +138,39 @@ function g2ml_apiCheckRateLimit(array $keyRow): array
 
     $burstLimit = (int) getSetting('api.default_per_minute', 60);
 
-    $dailyRow = dbSelectOne(
-        'SELECT COUNT(*) AS cnt FROM tblAPIRequestLog '
-        . 'WHERE apiKeyUID = ? AND createdAt >= DATE_SUB(NOW(), INTERVAL 1 DAY)',
-        'i',
-        [$apiKeyUID]
-    );
+    if ($dailyLimitIsPerKeyOverride)
+    {
+        // Case 1 — explicit per-key override: count only THIS key's own
+        // requests, via IDX_apireq_key_created (apiKeyUID, createdAt).
+        $dailyRow = dbSelectOne(
+            'SELECT COUNT(*) AS cnt FROM tblAPIRequestLog '
+            . 'WHERE apiKeyUID = ? AND createdAt >= DATE_SUB(NOW(), INTERVAL 1 DAY)',
+            'i',
+            [$apiKeyUID]
+        );
+    }
+    else
+    {
+        // Cases 2/3 — tier or global-default daily budget: count across
+        // EVERY key belonging to this org (#149.1), so minting additional
+        // keys can never multiply the org's daily allowance. A sibling key
+        // that carries its OWN rateLimitOverride is excluded from this
+        // shared pool entirely (k.rateLimitOverride IS NULL) — an override
+        // deliberately carves that one key out onto its own isolated
+        // allowance (case 1 above), so its usage must neither draw from nor
+        // count against the org's shared tier budget. Indexed via
+        // IDX_api_key_org (tblAPIKeys.orgHandle) to find the org's keys,
+        // then IDX_apireq_key_created (tblAPIRequestLog.apiKeyUID, createdAt)
+        // for each key's own range scan.
+        $dailyRow = dbSelectOne(
+            'SELECT COUNT(*) AS cnt FROM tblAPIRequestLog rl '
+            . 'INNER JOIN tblAPIKeys k ON k.apiKeyUID = rl.apiKeyUID '
+            . 'WHERE k.orgHandle = ? AND k.rateLimitOverride IS NULL '
+            . 'AND rl.createdAt >= DATE_SUB(NOW(), INTERVAL 1 DAY)',
+            's',
+            [$keyOrgHandle]
+        );
+    }
 
     if ($dailyRow !== null && $dailyRow !== false)
     {
