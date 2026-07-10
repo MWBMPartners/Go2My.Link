@@ -17,18 +17,21 @@
  * and redirect response building.
  *
  * Functions:
- *   - resolveShortCode()             — Resolve a short code to its destination
+ *   - resolveShortCode()               — Resolve a short code to its destination
+ *   - g2ml_resolveScanSource()         — Detect a CueRCode QR-scan marker (#145)
+ *   - g2ml_appendUtmToDestination()    — Forward the link's UTM params onto the destination (#92)
+ *   - g2ml_extractTrackingParams()     — Whitelist-extract tracking params from the incoming request (#92)
  *   - g2ml_buildPinnedDestinationUrl() — Rebuild a URL against a resolved IP
- *   - validateDestination()          — HTTP HEAD check for destination URL
- *   - buildRedirectResponse()        — Issue the HTTP redirect and exit
+ *   - validateDestination()           — HTTP HEAD check for destination URL
+ *   - buildRedirectResponse()         — Issue the HTTP redirect and exit
  *
  * Dependencies: db_query.php, settings.php (loaded via page_init.php)
  *
  * @package    Go2My.Link
  * @subpackage ComponentB
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.4.0
- * @since      Phase 3
+ * @version    0.5.0
+ * @since      Phase 3 (UTM capture/forward added v1.1.0 / #92)
  * ============================================================================
  */
 
@@ -56,7 +59,9 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 //
 // @param  string $domain  The requesting domain (e.g., 'g2my.link', 'camsda.link')
 // @param  string $code    The short code to resolve (e.g., 'abc123')
-// @return array           ['destination' => ?string, 'status' => string, 'orgHandle' => ?string]
+// @return array           ['destination' => ?string, 'status' => string, 'orgHandle' => ?string,
+//                          'utmSource' => ?string, 'utmMedium' => ?string, 'utmCampaign' => ?string,
+//                          'utmTerm' => ?string, 'utmContent' => ?string]
 //                         Status values: success, not_found, inactive, expired,
 //                         not_yet_active, no_destination, max_hops_exceeded,
 //                         domain_not_configured, error
@@ -68,6 +73,16 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 //                         null in this case — the caller must NOT treat it as
 //                         '[default]' or resolve anything, only show a branded
 //                         "domain not configured" page.
+//
+//                         utmSource/utmMedium/utmCampaign/utmTerm/utmContent
+//                         (#92): the link's OWN configured tblShortURLs.utm*
+//                         columns (never visitor-supplied). Only ever non-null
+//                         when status === 'success' — every other status
+//                         returns all five as null. The caller decides whether
+//                         to actually forward them onto the destination (see
+//                         g2ml_appendUtmToDestination() below), gated by the
+//                         redirect.forward_utm_params setting; this function
+//                         always returns whatever the stored link has.
 // ============================================================================
 function resolveShortCode(string $domain, string $code): array
 {
@@ -77,7 +92,16 @@ function resolveShortCode(string $domain, string $code): array
         'sp_lookupShortURL',
         [$domain, $code],
         'ss',
-        ['@outputDestination', '@outputStatus', '@outputOrgHandle']
+        [
+            '@outputDestination',
+            '@outputStatus',
+            '@outputOrgHandle',
+            '@outputUtmSource',
+            '@outputUtmMedium',
+            '@outputUtmCampaign',
+            '@outputUtmTerm',
+            '@outputUtmContent',
+        ]
     );
 
     // Handle SP call failure (database error, connection issue, etc.)
@@ -93,6 +117,11 @@ function resolveShortCode(string $domain, string $code): array
             'destination' => null,
             'status'      => 'error',
             'orgHandle'   => null,
+            'utmSource'   => null,
+            'utmMedium'   => null,
+            'utmCampaign' => null,
+            'utmTerm'     => null,
+            'utmContent'  => null,
         ];
     }
 
@@ -101,6 +130,11 @@ function resolveShortCode(string $domain, string $code): array
         'destination' => $result['@outputDestination'] ?? null,
         'status'      => $result['@outputStatus'] ?? 'not_found',
         'orgHandle'   => $result['@outputOrgHandle'] ?? null,
+        'utmSource'   => $result['@outputUtmSource'] ?? null,
+        'utmMedium'   => $result['@outputUtmMedium'] ?? null,
+        'utmCampaign' => $result['@outputUtmCampaign'] ?? null,
+        'utmTerm'     => $result['@outputUtmTerm'] ?? null,
+        'utmContent'  => $result['@outputUtmContent'] ?? null,
     ];
 }
 
@@ -153,6 +187,258 @@ function g2ml_resolveScanSource(string $scanSourceParam, string $scanSourceExpec
     }
 
     return $scanSource;
+}
+
+// ============================================================================
+// 🔗 g2ml_appendUtmToDestination — Forward the link's UTM params onto the
+//    destination URL (#92)
+// ============================================================================
+// Pure function — no database access, no state — so it stays unit-testable
+// without a database connection. Appends the link owner's OWN configured
+// tblShortURLs.utm* values (NEVER visitor-supplied query-string data — that is
+// g2ml_extractTrackingParams()'s job, and it is a completely separate,
+// untrusted data path) onto the destination URL's query string.
+//
+// OVERRIDE SEMANTICS: if the destination already has a same-named query
+// parameter (e.g. the owner's destination URL itself contains
+// "?utm_source=direct"), the LINK's configured value wins and replaces it.
+// This is deliberate — the link owner configured this value on this specific
+// short link on purpose, so it is treated as the more specific, more recent
+// intent versus whatever happens to already be baked into the destination.
+//
+// Every other part of the destination (scheme, user/pass, host, port, path,
+// fragment) is preserved byte-for-byte from the original — only the query
+// string is rebuilt. http_build_query() is used (never string concatenation)
+// so every appended value is correctly percent-encoded, which also means a
+// value that somehow contained CR/LF or other control characters can never
+// break out of the query string or inject additional header lines into the
+// eventual `Location:` response.
+//
+// 📖 Reference: https://www.php.net/manual/en/function.parse-url.php
+// 📖 Reference: https://www.php.net/manual/en/function.http-build-query.php
+// 📖 Reference: https://www.php.net/manual/en/function.parse-str.php
+//
+// @param  string $destinationURL  The link's stored destination URL.
+// @param  array  $linkUtm         Map with the (possibly absent/empty) keys
+//                                 'utmSource', 'utmMedium', 'utmCampaign',
+//                                 'utmTerm', 'utmContent' — the SAME shape
+//                                 resolveShortCode() returns.
+// @return string                  The destination URL with the link's non-empty
+//                                 UTM values appended/overridden onto its query
+//                                 string. Returns $destinationURL UNCHANGED
+//                                 (byte-for-byte) when it cannot be safely
+//                                 parsed, or when $linkUtm has no non-empty
+//                                 values to apply.
+// ============================================================================
+function g2ml_appendUtmToDestination(string $destinationURL, array $linkUtm): string
+{
+    $urlParts = parse_url($destinationURL);
+
+    // An unparseable destination, or one missing a scheme/host, is left
+    // completely untouched rather than risk emitting a corrupted redirect
+    // target — this mirrors the defensive posture already used by
+    // g2ml_buildPinnedDestinationUrl() below.
+    if ($urlParts === false || !is_array($urlParts))
+    {
+        return $destinationURL;
+    }
+
+    if (!isset($urlParts['scheme']) || !isset($urlParts['host']))
+    {
+        return $destinationURL;
+    }
+
+    // Map the tblShortURLs column names (as returned by resolveShortCode())
+    // onto the query-string parameter names marketers actually expect.
+    $utmColumnToQueryParam = [
+        'utmSource'   => 'utm_source',
+        'utmMedium'   => 'utm_medium',
+        'utmCampaign' => 'utm_campaign',
+        'utmTerm'     => 'utm_term',
+        'utmContent'  => 'utm_content',
+    ];
+
+    $utmValuesToApply = [];
+
+    foreach ($utmColumnToQueryParam as $linkColumnName => $queryParamName)
+    {
+        if (!isset($linkUtm[$linkColumnName]))
+        {
+            continue;
+        }
+
+        $linkColumnValue = $linkUtm[$linkColumnName];
+
+        if (!is_string($linkColumnValue))
+        {
+            continue;
+        }
+
+        if ($linkColumnValue === '')
+        {
+            continue;
+        }
+
+        $utmValuesToApply[$queryParamName] = $linkColumnValue;
+    }
+
+    // Nothing configured on this link — return the destination untouched.
+    if (count($utmValuesToApply) === 0)
+    {
+        return $destinationURL;
+    }
+
+    $existingQueryParams = [];
+
+    if (isset($urlParts['query']) && $urlParts['query'] !== '')
+    {
+        parse_str($urlParts['query'], $existingQueryParams);
+    }
+
+    // The link's configured value deliberately overrides a same-named
+    // parameter already present on the destination (see the override
+    // semantics note in the function header above).
+    $mergedQueryParams = array_merge($existingQueryParams, $utmValuesToApply);
+
+    $rebuiltQuery = http_build_query($mergedQueryParams, '', '&', PHP_QUERY_RFC3986);
+
+    $rebuiltUrl = $urlParts['scheme'] . '://';
+
+    if (isset($urlParts['user']))
+    {
+        $rebuiltUrl = $rebuiltUrl . $urlParts['user'];
+
+        if (isset($urlParts['pass']))
+        {
+            $rebuiltUrl = $rebuiltUrl . ':' . $urlParts['pass'];
+        }
+
+        $rebuiltUrl = $rebuiltUrl . '@';
+    }
+
+    $rebuiltUrl = $rebuiltUrl . $urlParts['host'];
+
+    if (isset($urlParts['port']))
+    {
+        $rebuiltUrl = $rebuiltUrl . ':' . $urlParts['port'];
+    }
+
+    if (isset($urlParts['path']))
+    {
+        $rebuiltUrl = $rebuiltUrl . $urlParts['path'];
+    }
+
+    if ($rebuiltQuery !== '')
+    {
+        $rebuiltUrl = $rebuiltUrl . '?' . $rebuiltQuery;
+    }
+
+    if (isset($urlParts['fragment']))
+    {
+        $rebuiltUrl = $rebuiltUrl . '#' . $urlParts['fragment'];
+    }
+
+    return $rebuiltUrl;
+}
+
+// ============================================================================
+// 📥 g2ml_extractTrackingParams — Whitelist-extract tracking params from the
+//    INCOMING visit query string (#92)
+// ============================================================================
+// Pure function — no database access, no state, no rendering — so it stays
+// unit-testable without a database connection. The input ($_GET at the
+// caller) is UNTRUSTED visitor-controlled data, so this function is
+// deliberately conservative:
+//
+//   - Only a fixed WHITELIST of tracking-related keys is ever inspected —
+//     every other query-string parameter is silently ignored, regardless of
+//     name or value.
+//   - Only scalar (string/int/float/bool) values are accepted; an
+//     array-style parameter (e.g. "utm_source[]=x") is ignored rather than
+//     coerced, so a crafted request can never smuggle an array into the
+//     eventual json_encode() call in logActivity().
+//   - Each accepted value is cast to a string and capped to $maxValueLength
+//     characters.
+//   - The combined size of all captured values is capped to $maxTotalLength;
+//     once accumulating further values would exceed that cap, remaining
+//     whitelisted keys are dropped (not further truncated) so what IS stored
+//     is always a whole, un-mangled value.
+//
+// The caller is responsible for storing the result ONLY (e.g. inside
+// logActivity()'s logData JSON column) — this function performs no escaping
+// for HTML/attribute contexts, because it never renders anything itself; the
+// analytics dashboard that later displays this data is responsible for
+// escaping on output.
+//
+// 📖 Reference: web/_functions/activity_logger.php — logActivity() 'logData' context key
+//
+// @param  array $queryParams  Typically $_GET.
+// @return array               Associative array of whitelisted key => capped
+//                             string value. Empty when nothing whitelisted is
+//                             present (a normal redirect with no tracking
+//                             params at all).
+// ============================================================================
+function g2ml_extractTrackingParams(array $queryParams): array
+{
+    $allowedTrackingKeys = [
+        'utm_source',
+        'utm_medium',
+        'utm_campaign',
+        'utm_term',
+        'utm_content',
+        'gclid',
+        'fbclid',
+        'msclkid',
+    ];
+
+    $maxValueLength = 255;
+    $maxTotalLength = 2000;
+
+    $extractedParams     = [];
+    $accumulatedLength   = 0;
+
+    foreach ($allowedTrackingKeys as $trackingKey)
+    {
+        if (!isset($queryParams[$trackingKey]))
+        {
+            continue;
+        }
+
+        $rawValue = $queryParams[$trackingKey];
+
+        // Reject non-scalar values (e.g. utm_source[]=x arrives as an array)
+        // outright rather than coercing them — untrusted input must never
+        // reach json_encode() as anything other than a plain capped string.
+        if (!is_scalar($rawValue))
+        {
+            continue;
+        }
+
+        $stringValue = (string) $rawValue;
+
+        if ($stringValue === '')
+        {
+            continue;
+        }
+
+        if (strlen($stringValue) > $maxValueLength)
+        {
+            $stringValue = substr($stringValue, 0, $maxValueLength);
+        }
+
+        // Stop accumulating once the total captured size would exceed the
+        // cap. Remaining whitelisted keys (if any) are dropped rather than
+        // further truncated, so every value that IS stored is left whole.
+        if (($accumulatedLength + strlen($stringValue)) > $maxTotalLength)
+        {
+            break;
+        }
+
+        $extractedParams[$trackingKey] = $stringValue;
+        $accumulatedLength              = $accumulatedLength + strlen($stringValue);
+    }
+
+    return $extractedParams;
 }
 
 // ============================================================================

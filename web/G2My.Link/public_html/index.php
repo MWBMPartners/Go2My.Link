@@ -22,14 +22,18 @@
  *   1. Extract short code from ?code= (set by .htaccess)
  *   2. Resolve the short code via resolver functions (→ sp_lookupShortURL)
  *   3. Optionally validate destination URL accessibility
- *   4. Log the activity (respecting DNT and analytics setting)
- *   5. Issue 302 redirect (or show branded error page)
+ *   4. Log the activity (respecting DNT and analytics setting), optionally
+ *      capturing whitelisted tracking params from the request (#92, OFF by
+ *      default — analytics.capture_tracking_params)
+ *   5. Optionally forward the link's own configured UTM params onto the
+ *      destination (#92, OFF by default — redirect.forward_utm_params)
+ *   6. Issue 302 redirect (or show branded error page)
  *
  * @package    Go2My.Link
  * @subpackage ComponentB
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.4.0
- * @since      Phase 2 (refactored Phase 3)
+ * @version    0.5.0
+ * @since      Phase 2 (refactored Phase 3; UTM capture/forward added v1.1.0 / #92)
  * ============================================================================
  */
 
@@ -256,12 +260,40 @@ if ($status === 'success' && $destination !== null && $destination !== '')
             }
         }
 
+        // ====================================================================
+        // 📥 Tracking-param capture (#92) — OFF by default
+        // (analytics.capture_tracking_params). Only computed when we are
+        // actually going to log, exactly like scanSource above. Extraction is
+        // a pure in-memory whitelist check ($_GET only) — no additional
+        // database round trip either way, so this adds negligible CPU and
+        // ZERO extra queries to the hot path even when the setting is on.
+        // When the setting is off (default), this block is skipped entirely
+        // and $logDataForRedirect stays null, so the INSERT below is
+        // byte-for-byte identical to before this feature existed.
+        //
+        // 📖 Reference: web/G2My.Link/_functions/redirect_resolver.php — g2ml_extractTrackingParams()
+        // ====================================================================
+        $logDataForRedirect = null;
+
+        $shouldCaptureTrackingParams = getSetting('analytics.capture_tracking_params', false);
+
+        if ($shouldCaptureTrackingParams)
+        {
+            $capturedTrackingParams = g2ml_extractTrackingParams($_GET);
+
+            if (count($capturedTrackingParams) > 0)
+            {
+                $logDataForRedirect = ['trackingParams' => $capturedTrackingParams];
+            }
+        }
+
         logActivity('redirect', 'success', $redirectCode, [
             'orgHandle'        => $orgHandle,
             'shortCode'        => $shortCode,
             'destinationURL'   => $destination,
             'scanSource'       => $scanSource,
             'qrCodeExternalID' => $qrCodeExternalIDForLog,
+            'logData'          => $logDataForRedirect,
         ]);
     }
 
@@ -277,8 +309,52 @@ if ($status === 'success' && $destination !== null && $destination !== '')
         [$shortCode, $orgHandle]
     );
 
+    // ========================================================================
+    // 🔗 UTM forwarding (#92) — OFF by default (redirect.forward_utm_params).
+    // Computed here, just before emitting the Location header, so the
+    // destination logged above and validated earlier (if
+    // redirect.validate_destination is on) is always the RAW stored
+    // destination — only the actual outbound redirect target is decorated.
+    // When the setting is off (default), or the link has no configured UTM
+    // values at all, $destinationForRedirect is set to $destination
+    // unchanged, so the emitted Location header is byte-for-byte identical
+    // to before this feature existed.
+    //
+    // 📖 Reference: web/G2My.Link/_functions/redirect_resolver.php — g2ml_appendUtmToDestination()
+    // ========================================================================
+    $destinationForRedirect = $destination;
+
+    $shouldForwardUtm = getSetting('redirect.forward_utm_params', false);
+
+    if ($shouldForwardUtm)
+    {
+        $linkUtm = [
+            'utmSource'   => $result['utmSource'],
+            'utmMedium'   => $result['utmMedium'],
+            'utmCampaign' => $result['utmCampaign'],
+            'utmTerm'     => $result['utmTerm'],
+            'utmContent'  => $result['utmContent'],
+        ];
+
+        $linkHasAnyUtmValue = false;
+
+        foreach ($linkUtm as $linkUtmValue)
+        {
+            if ($linkUtmValue !== null && $linkUtmValue !== '')
+            {
+                $linkHasAnyUtmValue = true;
+                break;
+            }
+        }
+
+        if ($linkHasAnyUtmValue)
+        {
+            $destinationForRedirect = g2ml_appendUtmToDestination($destination, $linkUtm);
+        }
+    }
+
     // 🚀 Issue the redirect
-    buildRedirectResponse($destination, $redirectCode);
+    buildRedirectResponse($destinationForRedirect, $redirectCode);
     // buildRedirectResponse calls exit — execution stops here
 }
 

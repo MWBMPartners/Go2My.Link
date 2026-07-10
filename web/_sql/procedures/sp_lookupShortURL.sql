@@ -37,11 +37,25 @@
 --      caller (redirect_resolver.php / index.php) renders a branded
 --      "domain not configured" page rather than resolving anything.
 --
+-- 🔗 #92 UTM forwarding: the link's configured tblShortURLs.utm* columns are
+-- projected as five extra OUT parameters alongside the existing three. This
+-- is added to the SAME per-hop SELECT that already reads destinationURL —
+-- NOT a second query — so a normal redirect still pays for exactly one
+-- lookup. The values are only ever populated on the 'success' outcome (the
+-- final resolved hop of an alias chain); every other status leaves them NULL,
+-- so a caller can safely treat "any outputUtm* is non-NULL" as "this was a
+-- successful resolution AND the link owner configured at least one value".
+-- The caller (resolveShortCode() in redirect_resolver.php) decides whether to
+-- actually forward them onto the destination, gated by the
+-- redirect.forward_utm_params setting — this procedure just returns what is
+-- stored, unconditionally.
+--
 -- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
--- @version    0.3.0
--- @since      Phase 1 (ownership-verification gate added v1.1.0 / #91)
+-- @version    0.4.0
+-- @since      Phase 1 (ownership-verification gate added v1.1.0 / #91; UTM
+--             projection added v1.1.0 / #92)
 --
 -- Reference: https://dev.mysql.com/doc/refman/8.0/en/create-procedure.html
 -- =============================================================================
@@ -57,10 +71,15 @@ CREATE PROCEDURE `sp_lookupShortURL`(
     IN  `inputShortCode`    VARCHAR(50),
     OUT `outputDestination`  TEXT,
     OUT `outputStatus`       VARCHAR(50),
-    OUT `outputOrgHandle`    VARCHAR(50)
+    OUT `outputOrgHandle`    VARCHAR(50),
+    OUT `outputUtmSource`    VARCHAR(255),
+    OUT `outputUtmMedium`    VARCHAR(255),
+    OUT `outputUtmCampaign`  VARCHAR(255),
+    OUT `outputUtmTerm`      VARCHAR(255),
+    OUT `outputUtmContent`   VARCHAR(255)
 )
     READS SQL DATA
-    COMMENT 'Resolve a short code to its destination URL with alias chain support (max 3 hops)'
+    COMMENT 'Resolve a short code to its destination URL with alias chain support (max 3 hops); also projects the link''s configured UTM columns (#92)'
 BEGIN
     -- Local variables
     -- (MySQL requires all variable DECLAREs to appear BEFORE any handler DECLARE)
@@ -79,6 +98,11 @@ BEGIN
     DECLARE v_domainFound     TINYINT         DEFAULT 0;
     DECLARE v_domainVerified  VARCHAR(20)     DEFAULT NULL;
     DECLARE v_domainIsActive  TINYINT         DEFAULT 0;
+    DECLARE v_utmSource       VARCHAR(255)    DEFAULT NULL;
+    DECLARE v_utmMedium       VARCHAR(255)    DEFAULT NULL;
+    DECLARE v_utmCampaign     VARCHAR(255)    DEFAULT NULL;
+    DECLARE v_utmTerm         VARCHAR(255)    DEFAULT NULL;
+    DECLARE v_utmContent      VARCHAR(255)    DEFAULT NULL;
 
     -- Exception handler: return error status on any SQL failure
     -- (declared AFTER the variables above, as MySQL requires)
@@ -87,6 +111,11 @@ BEGIN
         SET outputDestination = NULL;
         SET outputStatus = 'error';
         SET outputOrgHandle = NULL;
+        SET outputUtmSource = NULL;
+        SET outputUtmMedium = NULL;
+        SET outputUtmCampaign = NULL;
+        SET outputUtmTerm = NULL;
+        SET outputUtmContent = NULL;
     END;
 
     -- Ensure UTC timezone for date comparisons
@@ -115,6 +144,11 @@ BEGIN
         SET outputDestination = NULL;
         SET outputStatus = 'domain_not_configured';
         SET outputOrgHandle = NULL;
+        SET outputUtmSource = NULL;
+        SET outputUtmMedium = NULL;
+        SET outputUtmCampaign = NULL;
+        SET outputUtmTerm = NULL;
+        SET outputUtmContent = NULL;
     END IF;
 
     -- =========================================================================
@@ -143,6 +177,11 @@ BEGIN
             SET v_isActive = 0;
             SET v_startDate = NULL;
             SET v_endDate = NULL;
+            SET v_utmSource = NULL;
+            SET v_utmMedium = NULL;
+            SET v_utmCampaign = NULL;
+            SET v_utmTerm = NULL;
+            SET v_utmContent = NULL;
 
             SELECT
                 s.destinationURL,
@@ -150,6 +189,11 @@ BEGIN
                 s.isActive,
                 s.startDate,
                 s.endDate,
+                s.utmSource,
+                s.utmMedium,
+                s.utmCampaign,
+                s.utmTerm,
+                s.utmContent,
                 1
             INTO
                 v_destination,
@@ -157,6 +201,11 @@ BEGIN
                 v_isActive,
                 v_startDate,
                 v_endDate,
+                v_utmSource,
+                v_utmMedium,
+                v_utmCampaign,
+                v_utmTerm,
+                v_utmContent,
                 v_found
             FROM   tblShortURLs s
             WHERE  s.shortCode = v_currentCode
@@ -168,6 +217,11 @@ BEGIN
                 SET outputDestination = v_orgFallback;
                 SET outputStatus = 'not_found';
                 SET outputOrgHandle = v_orgHandle;
+                SET outputUtmSource = NULL;
+                SET outputUtmMedium = NULL;
+                SET outputUtmCampaign = NULL;
+                SET outputUtmTerm = NULL;
+                SET outputUtmContent = NULL;
                 LEAVE resolve_loop;
             END IF;
 
@@ -176,6 +230,11 @@ BEGIN
                 SET outputDestination = v_orgFallback;
                 SET outputStatus = 'inactive';
                 SET outputOrgHandle = v_orgHandle;
+                SET outputUtmSource = NULL;
+                SET outputUtmMedium = NULL;
+                SET outputUtmCampaign = NULL;
+                SET outputUtmTerm = NULL;
+                SET outputUtmContent = NULL;
                 LEAVE resolve_loop;
             END IF;
 
@@ -184,6 +243,11 @@ BEGIN
                 SET outputDestination = v_orgFallback;
                 SET outputStatus = 'not_yet_active';
                 SET outputOrgHandle = v_orgHandle;
+                SET outputUtmSource = NULL;
+                SET outputUtmMedium = NULL;
+                SET outputUtmCampaign = NULL;
+                SET outputUtmTerm = NULL;
+                SET outputUtmContent = NULL;
                 LEAVE resolve_loop;
             END IF;
 
@@ -191,6 +255,11 @@ BEGIN
                 SET outputDestination = v_orgFallback;
                 SET outputStatus = 'expired';
                 SET outputOrgHandle = v_orgHandle;
+                SET outputUtmSource = NULL;
+                SET outputUtmMedium = NULL;
+                SET outputUtmCampaign = NULL;
+                SET outputUtmTerm = NULL;
+                SET outputUtmContent = NULL;
                 LEAVE resolve_loop;
             END IF;
 
@@ -206,6 +275,15 @@ BEGIN
                 SET outputDestination = v_destination;
                 SET outputStatus = 'success';
                 SET outputOrgHandle = v_orgHandle;
+                -- #92: only the FINAL resolved hop's UTM columns are ever
+                -- surfaced — an alias chain's intermediate hops never
+                -- contribute (each iteration resets v_utm* to NULL above, so
+                -- these are always this hop's own stored values).
+                SET outputUtmSource = v_utmSource;
+                SET outputUtmMedium = v_utmMedium;
+                SET outputUtmCampaign = v_utmCampaign;
+                SET outputUtmTerm = v_utmTerm;
+                SET outputUtmContent = v_utmContent;
                 LEAVE resolve_loop;
             END IF;
 
@@ -213,6 +291,11 @@ BEGIN
             SET outputDestination = v_orgFallback;
             SET outputStatus = 'no_destination';
             SET outputOrgHandle = v_orgHandle;
+            SET outputUtmSource = NULL;
+            SET outputUtmMedium = NULL;
+            SET outputUtmCampaign = NULL;
+            SET outputUtmTerm = NULL;
+            SET outputUtmContent = NULL;
             LEAVE resolve_loop;
 
         END WHILE;
@@ -222,6 +305,11 @@ BEGIN
             SET outputDestination = v_orgFallback;
             SET outputStatus = 'max_hops_exceeded';
             SET outputOrgHandle = v_orgHandle;
+            SET outputUtmSource = NULL;
+            SET outputUtmMedium = NULL;
+            SET outputUtmCampaign = NULL;
+            SET outputUtmTerm = NULL;
+            SET outputUtmContent = NULL;
         END IF;
 
     END IF;

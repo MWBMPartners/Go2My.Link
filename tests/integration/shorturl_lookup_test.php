@@ -62,13 +62,19 @@ function g2ml_test_exec(mysqli $db, string $sql): void
  * @param  string|null $startDate    DATETIME string or null.
  * @param  string|null $endDate      DATETIME string or null.
  * @param  int         $isActive
+ * @param  string|null $utmSource    (#92) Configured UTM columns — null by default.
+ * @param  string|null $utmMedium    (#92)
+ * @param  string|null $utmCampaign  (#92)
+ * @param  string|null $utmTerm      (#92)
+ * @param  string|null $utmContent   (#92)
  * @return void
  */
-function g2ml_test_insert_shorturl(mysqli $db, string $shortCode, ?string $destinationURL, ?string $startDate, ?string $endDate, int $isActive): void
+function g2ml_test_insert_shorturl(mysqli $db, string $shortCode, ?string $destinationURL, ?string $startDate, ?string $endDate, int $isActive, ?string $utmSource = null, ?string $utmMedium = null, ?string $utmCampaign = null, ?string $utmTerm = null, ?string $utmContent = null): void
 {
     $sql = 'INSERT INTO `tblShortURLs` '
-        . '(`orgHandle`, `shortCode`, `destinationURL`, `destinationType`, `startDate`, `endDate`, `isActive`) '
-        . 'VALUES (?, ?, ?, ?, ?, ?, ?)';
+        . '(`orgHandle`, `shortCode`, `destinationURL`, `destinationType`, `startDate`, `endDate`, `isActive`, '
+        . '`utmSource`, `utmMedium`, `utmCampaign`, `utmTerm`, `utmContent`) '
+        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
     $statement = mysqli_prepare($db, $sql);
 
@@ -82,14 +88,19 @@ function g2ml_test_insert_shorturl(mysqli $db, string $shortCode, ?string $desti
 
     mysqli_stmt_bind_param(
         $statement,
-        'ssssssi',
+        'ssssssisssss',
         $orgHandle,
         $shortCode,
         $destinationURL,
         $destinationType,
         $startDate,
         $endDate,
-        $isActive
+        $isActive,
+        $utmSource,
+        $utmMedium,
+        $utmCampaign,
+        $utmTerm,
+        $utmContent
     );
 
     $executed = mysqli_stmt_execute($statement);
@@ -105,16 +116,23 @@ function g2ml_test_insert_shorturl(mysqli $db, string $shortCode, ?string $desti
 }
 
 /**
- * CALL sp_lookupShortURL and return its OUT parameters.
+ * CALL sp_lookupShortURL and return its OUT parameters, including the five
+ * UTM projection columns added by #92.
  *
  * @param  mysqli $db
  * @param  string $domain
  * @param  string $shortCode
- * @return array{destination: ?string, status: ?string, orgHandle: ?string}
+ * @return array{destination: ?string, status: ?string, orgHandle: ?string,
+ *               utmSource: ?string, utmMedium: ?string, utmCampaign: ?string,
+ *               utmTerm: ?string, utmContent: ?string}
  */
 function g2ml_test_lookup(mysqli $db, string $domain, string $shortCode): array
 {
-    $statement = mysqli_prepare($db, 'CALL sp_lookupShortURL(?, ?, @outDest, @outStatus, @outOrg)');
+    $statement = mysqli_prepare(
+        $db,
+        'CALL sp_lookupShortURL(?, ?, @outDest, @outStatus, @outOrg, '
+        . '@outUtmSource, @outUtmMedium, @outUtmCampaign, @outUtmTerm, @outUtmContent)'
+    );
 
     if ($statement === false)
     {
@@ -134,7 +152,12 @@ function g2ml_test_lookup(mysqli $db, string $domain, string $shortCode): array
 
     mysqli_stmt_close($statement);
 
-    $result = mysqli_query($db, 'SELECT @outDest AS destination, @outStatus AS status, @outOrg AS orgHandle');
+    $result = mysqli_query(
+        $db,
+        'SELECT @outDest AS destination, @outStatus AS status, @outOrg AS orgHandle, '
+        . '@outUtmSource AS utmSource, @outUtmMedium AS utmMedium, @outUtmCampaign AS utmCampaign, '
+        . '@outUtmTerm AS utmTerm, @outUtmContent AS utmContent'
+    );
 
     if ($result === false)
     {
@@ -153,6 +176,11 @@ function g2ml_test_lookup(mysqli $db, string $domain, string $shortCode): array
         'destination' => $row['destination'],
         'status'      => $row['status'],
         'orgHandle'   => $row['orgHandle'],
+        'utmSource'   => $row['utmSource'],
+        'utmMedium'   => $row['utmMedium'],
+        'utmCampaign' => $row['utmCampaign'],
+        'utmTerm'     => $row['utmTerm'],
+        'utmContent'  => $row['utmContent'],
     );
 }
 
@@ -187,7 +215,7 @@ function g2ml_register_integration_tests(mysqli $db): void
     );
 
     // Clean any leftover rows from a previous run so the suite is repeatable.
-    g2ml_test_exec($db, "DELETE FROM `tblShortURLs` WHERE `shortCode` IN ('itlive', 'itgone', 'itsoon')");
+    g2ml_test_exec($db, "DELETE FROM `tblShortURLs` WHERE `shortCode` IN ('itlive', 'itgone', 'itsoon', 'itutm', 'itutmgone')");
 
     // (a) A live row pointing at a known destination.
     g2ml_test_insert_shorturl($db, 'itlive', 'https://example.com/live-destination', null, null, 1);
@@ -197,6 +225,37 @@ function g2ml_register_integration_tests(mysqli $db): void
 
     // (c) A not-yet-active row — startDate in the future (bonus characterisation).
     g2ml_test_insert_shorturl($db, 'itsoon', 'https://example.com/future-destination', '2999-01-01 00:00:00', null, 1);
+
+    // (d) #92 — a live row with all five UTM columns configured.
+    g2ml_test_insert_shorturl(
+        $db,
+        'itutm',
+        'https://example.com/utm-destination',
+        null,
+        null,
+        1,
+        'newsletter',
+        'email',
+        'spring-sale',
+        'shortlinks',
+        'variant-a'
+    );
+
+    // (e) #92 — an EXPIRED row that ALSO has UTM columns configured, to prove
+    // the projection is success-only (see resolve_loop in sp_lookupShortURL.sql).
+    g2ml_test_insert_shorturl(
+        $db,
+        'itutmgone',
+        'https://example.com/utm-expired-destination',
+        null,
+        '2000-01-01 00:00:00',
+        1,
+        'newsletter',
+        'email',
+        'spring-sale',
+        'shortlinks',
+        'variant-a'
+    );
 
     // ------------------------------------------------------------------------
     // (a) Live short code → status 'success', destination matches.
@@ -208,6 +267,45 @@ function g2ml_register_integration_tests(mysqli $db): void
         assert_same('success', $outcome['status'], 'A live, active, in-window code resolves to success');
         assert_same('https://example.com/live-destination', $outcome['destination'], 'The destination URL is returned verbatim');
         assert_same('[default]', $outcome['orgHandle'], 'Unknown domain falls back to the [default] org');
+        assert_same(null, $outcome['utmSource'], '(#92) A link with no configured UTM values returns utmSource as null');
+        assert_same(null, $outcome['utmMedium'], '(#92) A link with no configured UTM values returns utmMedium as null');
+        assert_same(null, $outcome['utmCampaign'], '(#92) A link with no configured UTM values returns utmCampaign as null');
+        assert_same(null, $outcome['utmTerm'], '(#92) A link with no configured UTM values returns utmTerm as null');
+        assert_same(null, $outcome['utmContent'], '(#92) A link with no configured UTM values returns utmContent as null');
+    });
+
+    // ------------------------------------------------------------------------
+    // (d) #92 — a live code with configured UTM values returns all five on
+    //     success — the SAME single lookup query, no extra round trip.
+    // ------------------------------------------------------------------------
+    test('sp_lookupShortURL: (#92) a live code with configured UTM values returns them all on success', function () use ($db): void
+    {
+        $outcome = g2ml_test_lookup($db, 'g2my.link', 'itutm');
+
+        assert_same('success', $outcome['status'], 'The UTM-configured row still resolves normally');
+        assert_same('https://example.com/utm-destination', $outcome['destination'], 'The destination URL is unaffected by UTM projection');
+        assert_same('newsletter', $outcome['utmSource'], 'utmSource is projected verbatim');
+        assert_same('email', $outcome['utmMedium'], 'utmMedium is projected verbatim');
+        assert_same('spring-sale', $outcome['utmCampaign'], 'utmCampaign is projected verbatim');
+        assert_same('shortlinks', $outcome['utmTerm'], 'utmTerm is projected verbatim');
+        assert_same('variant-a', $outcome['utmContent'], 'utmContent is projected verbatim');
+    });
+
+    // ------------------------------------------------------------------------
+    // (e) #92 — an expired code with configured UTM values still returns
+    //     status=expired AND all five UTM outputs as null — the projection is
+    //     success-only, so a broken/expired link is never forwarded onto.
+    // ------------------------------------------------------------------------
+    test('sp_lookupShortURL: (#92) an expired code with configured UTM values returns status=expired with all UTM fields null', function () use ($db): void
+    {
+        $outcome = g2ml_test_lookup($db, 'g2my.link', 'itutmgone');
+
+        assert_same('expired', $outcome['status'], 'The row still resolves to expired, unaffected by having UTM columns set');
+        assert_same(null, $outcome['utmSource'], '(#92) UTM projection is success-only — expired must return null, never the stored value');
+        assert_same(null, $outcome['utmMedium'], '(#92) UTM projection is success-only — expired must return null, never the stored value');
+        assert_same(null, $outcome['utmCampaign'], '(#92) UTM projection is success-only — expired must return null, never the stored value');
+        assert_same(null, $outcome['utmTerm'], '(#92) UTM projection is success-only — expired must return null, never the stored value');
+        assert_same(null, $outcome['utmContent'], '(#92) UTM projection is success-only — expired must return null, never the stored value');
     });
 
     // ------------------------------------------------------------------------
