@@ -3,7 +3,7 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `50f2427` (+ this handoff commit).
+> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `5d229d7` (+ this handoff commit).
 
 ---
 
@@ -92,16 +92,20 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
   defect (base64url `_` in prefix broke ~1/9 keys). 234 unit / 60 integration green.
 - **Built CueRCode wiring (#145)** — `50f2427`. QR-link create (kill-switch + `qr:link` scope +
   UUID-uniqueness 409), re-point, scan attribution (forge-proof); `logActivity()` hot-path INSERT
-  extended safely (23=23=23 bind-string verified). 244 unit / 74 integration green. **Milestone:
-  public API + CueRCode integration ready.**
+  extended safely (23=23=23 bind-string verified). 244 unit / 74 integration green.
+- **Built OpenAPI/Swagger docs (#75)** — `5d229d7`. OpenAPI 3.1 spec (9 endpoints, 26 schemas,
+  authored from the handlers, validated by redocly + openapi-spec-validator) + self-hosted Redoc
+  at `/api/docs` (vendored 2.5.3 after catching CVE-2024-57083; directory-scoped CSP; site-wide
+  CSP untouched). **Milestone: public API + CueRCode integration + API docs all READY.**
 
 ## ⏭️ Immediate next steps (execution queue — see plan §10)
 
 - **P0:** finish #135; close ~24 issues; reconcile doc drift + stale `main`; low a11y/hygiene
   (#114–119); (owner) #93 rotation, migration, legal.
 - **P1:** ✅ API framework **#38** (`34453d8`) → ✅ endpoints **#39** (`0d495c1`) → ✅ **CueRCode wiring #145**
-  (`50f2427`, QR-link create + re-point + scan attribution, security-verified) → **⏳ OpenAPI/Swagger #75**
-  (explicitly requested — now unblocked since the API surface exists) → key UI **#40** → analytics
+  (`50f2427`) → ✅ **OpenAPI/Swagger #75** (`5d229d7`, spec + self-hosted Redoc at `/api/docs`) →
+  **⏭️ NEXT: API key management UI #40** (⚠️ the missing link — keys can only be minted via the backend
+  `g2ml_apiGenerateKey()` today; no dashboard UI, so users can't self-serve a key yet) → analytics
   **#41/#42** → geo/UA **#43** → UTM **#92** → custom-domain verify+docs **#91** → API security cycle.
   - 🎉 **Milestone: public API + CueRCode integration READY.** CueRCode integrates via `/api/v1` with a
     `qr:link`-scoped key. `createShortURL()` accepts `createdVia`/`createdViaAPIKeyUID`/QR columns;
