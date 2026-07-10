@@ -259,6 +259,13 @@ $limitStatus      = g2ml_checkLimit($orgHandle, 'maxLinksPages', $currentPageCou
                                 </time>
                             </td>
                             <td class="text-end">
+                                <a href="/linkspage/preview?id=<?php echo (int) $pageRow['pageUID']; ?>"
+                                   class="btn btn-sm btn-outline-primary"
+                                   title="<?php if (function_exists('__')) { echo __('linkspage.preview_link'); } else { echo 'Preview'; } ?>"
+                                   aria-label="<?php if (function_exists('__')) { echo __('linkspage.preview_link'); } else { echo 'Preview'; } ?> <?php echo g2ml_sanitiseOutput($pageRow['pageTitle']); ?>">
+                                    <i class="fas fa-eye" aria-hidden="true"></i>
+                                </a>
+
                                 <a href="/linkspage/edit?id=<?php echo (int) $pageRow['pageUID']; ?>"
                                    class="btn btn-sm btn-outline-primary"
                                    title="Edit" aria-label="Edit <?php echo g2ml_sanitiseOutput($pageRow['pageTitle']); ?>">

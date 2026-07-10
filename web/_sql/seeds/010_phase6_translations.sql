@@ -15,6 +15,8 @@
 -- @since      Phase 6
 -- ============================================================================
 
+USE `mwtools_Go2MyLink`;
+
 -- ============================================================================
 -- 🔧 Accessibility (a11y.*)
 -- ============================================================================
@@ -1179,6 +1181,18 @@ VALUES
 ('en-GB', 'linkspage.limit_reached', 'You have reached your plan''s LinksPage limit. Please upgrade your plan to create more LinksPages.', 'LinksPage management (admin)', 1),
 ('en-GB', 'linkspage.no_pages', 'You have not created a LinksPage yet.', 'LinksPage management (admin)', 1),
 ('en-GB', 'linkspage.not_found', 'This LinksPage does not exist or has not been set up yet.', 'LinksPage', 1),
+('en-GB', 'linkspage.preview_back_to_edit', 'Back to Edit', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.preview_banner_draft_body', 'This page has not been published yet — nobody else can see it until you publish it.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.preview_banner_draft_title', 'Preview — not yet public.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.preview_banner_published', 'This LinksPage is already published and publicly visible.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.preview_description', 'Preview your LinksPage before publishing it.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.preview_heading', 'Preview LinksPage', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.preview_iframe_title', 'Live preview of your LinksPage', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.preview_link', 'Preview', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.preview_title', 'Preview LinksPage', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.template_default_option', 'Site Default', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.template_picker_help', 'Each preview uses sample content so you can compare styles before choosing.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.template_picker_legend', 'Choose a Template', 'LinksPage management (admin)', 1),
 ('en-GB', 'linkspage.title', 'LinksPage', 'LinksPage management (admin)', 1);
 
 -- ============================================================================

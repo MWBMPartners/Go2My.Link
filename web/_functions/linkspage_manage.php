@@ -41,6 +41,32 @@
  *     Free-form HTML/WYSIWYG editing is C.6 (#49) — deliberately NOT built
  *     here, and deliberately not wired to tblLinksPages.customHTML/customCSS.
  *
+ * 🔒 SECURITY — template picker + owner preview (C.3, #47):
+ *   - g2ml_linkspageManageRenderTemplateCardThumbnail() builds each picker
+ *     card's LIVE-rendered thumbnail by calling the Component C renderer's
+ *     g2ml_renderLinksPage() (web/Lnks.page/_functions/linkspage_renderer.php)
+ *     — REUSED, never reimplemented, so the exact same escaping/URL-allowlist/
+ *     hex/font validation the public page uses also protects this preview.
+ *     It is guarded by function_exists('g2ml_renderLinksPage') and falls
+ *     back to the template's templateThumbnail image (or a static
+ *     placeholder) whenever the renderer has not been loaded by the caller —
+ *     this file itself never require()s the Component C renderer (Component
+ *     A/Admin and Component C remain independently requirable trees; only
+ *     the calling admin page decides to load the renderer).
+ *   - g2ml_linkspageManageBuildTemplatePreviewSampleModel() uses ONLY a
+ *     fixed, hard-coded sample name/bio/links/social — never the current
+ *     user's in-progress form input — so a template preview can never carry
+ *     anything an authenticated user typed before it was validated/saved.
+ *   - The OWNER PAGE preview itself (a live render of a user's own, possibly
+ *     UNPUBLISHED page) is assembled by
+ *     web/Lnks.page/_functions/linkspage_resolver.php's
+ *     g2ml_linkspageBuildOwnerPreviewModel() — NOT by this file. That
+ *     function takes an ALREADY ownership-verified page/items pair (see
+ *     g2ml_linkspageManageGetPageForOwner() / g2ml_linkspageManageListItemsForPage()
+ *     below) and never queries tblLinksPages itself, so it can never be used
+ *     to loosen the public resolver's `isPublished = 1` filter — the caller
+ *     (the admin preview route) is solely responsible for the ownership check.
+ *
  * 🔒 SECURITY — validation parity with the PUBLIC renderer:
  *   - slug / hex-colour / font-family validation here is a DELIBERATE mirror
  *     of web/Lnks.page/_functions/linkspage_resolver.php
@@ -64,9 +90,11 @@
  *     - g2ml_linkspageManageValidateHexColour()
  *     - g2ml_linkspageManageValidateFontFamily()
  *     - g2ml_linkspageManageValidateSocialLinks()
- *   Templates:
+ *   Templates (Component C.2/#48; picker + live preview added by C.3/#47):
  *     - g2ml_linkspageManageListSystemTemplates()
  *     - g2ml_linkspageManageIsValidSystemTemplate()
+ *     - g2ml_linkspageManageBuildTemplatePreviewSampleModel()
+ *     - g2ml_linkspageManageRenderTemplateCardThumbnail()
  *   Pages:
  *     - g2ml_linkspageManageListPagesForUser()
  *     - g2ml_linkspageManageGetPageForOwner()
@@ -90,6 +118,11 @@
  *               (g2ml_sanitiseInput/g2ml_sanitiseURL), entitlements.php
  *               (g2ml_checkLimit), activity_logger.php (logActivity) — all
  *               already loaded by page_init.php before this file.
+ *               OPTIONAL (C.3, #47): g2ml_linkspageManageRenderTemplateCardThumbnail()
+ *               calls the Component C renderer's g2ml_renderLinksPage() when the
+ *               CALLING admin page has loaded it (web/Lnks.page/_functions/
+ *               linkspage_renderer.php) — guarded by function_exists(), never
+ *               require()d from this file itself.
  *
  * @package    Go2My.Link
  * @subpackage Functions
@@ -297,18 +330,26 @@ function g2ml_linkspageManageValidateSocialLinks(array $rawSocialLinks): array
 // ============================================================================
 
 /**
- * List every active SYSTEM template, for the management form's dropdown.
+ * List every active SYSTEM template, for the management form's visual picker
+ * (C.3, #47 — previously a plain dropdown, C.2/#48).
  *
  * Only isSystem = 1 rows are ever offered — user-authored/custom templates
  * (not built anywhere yet) would need a completely separate ownership-aware
  * listing, not this one.
+ *
+ * templateHTML/templateCSS/templateThumbnail are included (widened from the
+ * original name/description-only SELECT) so the picker can render a LIVE
+ * thumbnail of each template with sample data — see
+ * g2ml_linkspageManageRenderTemplateCardThumbnail(). These are SYSTEM
+ * (isSystem = 1, operator-authored, trusted) template bodies, never
+ * user-supplied HTML.
  *
  * @return array
  */
 function g2ml_linkspageManageListSystemTemplates(): array
 {
     $rows = dbSelect(
-        "SELECT templateUID, templateName, templateDescription
+        "SELECT templateUID, templateName, templateDescription, templateHTML, templateCSS, templateThumbnail
          FROM tblLinksPageTemplates
          WHERE isSystem = 1 AND isActive = 1
          ORDER BY sortOrder ASC, templateUID ASC"
@@ -342,6 +383,146 @@ function g2ml_linkspageManageIsValidSystemTemplate(int $templateUID): bool
     }
 
     return true;
+}
+
+/**
+ * Build a FIXED, safe sample page model for the template picker's live-render
+ * thumbnails (C.3, #47).
+ *
+ * Deliberately static: a hard-coded sample name/bio/items/social — NEVER the
+ * current user's in-progress create/edit form input, and never anything
+ * read from the database beyond the template row itself. This guarantees a
+ * template preview is identical for every user and can never carry
+ * unvalidated data.
+ *
+ * @param  array $templateRow  A row shaped like g2ml_linkspageManageListSystemTemplates()'s
+ *                              return (must include templateHTML/templateCSS).
+ * @return array  ['page' => array, 'template' => array, 'items' => array] ready for g2ml_renderLinksPage().
+ */
+function g2ml_linkspageManageBuildTemplatePreviewSampleModel(array $templateRow): array
+{
+    $sampleTemplateUID = null;
+
+    if (isset($templateRow['templateUID']))
+    {
+        $sampleTemplateUID = (int) $templateRow['templateUID'];
+    }
+
+    return [
+        'page' => [
+            'pageTitle'        => 'Jane Doe',
+            'pageDescription'  => 'Photographer and digital creator — sharing my favourite links below.',
+            'avatarPath'       => null,
+            'templateUID'      => $sampleTemplateUID,
+            'themeColour'      => '#1E88E5',
+            'backgroundColour' => '#FFFFFF',
+            'fontFamily'       => null,
+            'showSocialIcons'  => 1,
+            'socialLinks'      => json_encode([
+                'twitter'   => 'https://example.com/sample-profile',
+                'instagram' => 'https://example.com/sample-profile',
+            ]),
+        ],
+        'template' => $templateRow,
+        'items'    => [
+            [
+                'itemUID'         => 0,
+                'itemTitle'       => 'My Website',
+                'itemURL'         => 'https://example.com/website',
+                'itemDescription' => null,
+                'itemIcon'        => null,
+                'faviconCacheURL' => null,
+                'requiresAgeGate' => 0,
+            ],
+            [
+                'itemUID'         => 0,
+                'itemTitle'       => 'Latest Project',
+                'itemURL'         => 'https://example.com/project',
+                'itemDescription' => 'A short sample description',
+                'itemIcon'        => null,
+                'faviconCacheURL' => null,
+                'requiresAgeGate' => 0,
+            ],
+            [
+                'itemUID'         => 0,
+                'itemTitle'       => 'Get in Touch',
+                'itemURL'         => 'https://example.com/contact',
+                'itemDescription' => null,
+                'itemIcon'        => null,
+                'faviconCacheURL' => null,
+                'requiresAgeGate' => 0,
+            ],
+        ],
+    ];
+}
+
+/**
+ * Render one template picker card's thumbnail markup (C.3, #47).
+ *
+ * Prefers a LIVE render of the template (via the Component C renderer's
+ * g2ml_renderLinksPage() — REUSED, never reimplemented here) with the fixed
+ * sample model above, embedded as a sandboxed, scaled-down `<iframe srcdoc>`
+ * so visitors compare templates using the SAME escaping/validation the
+ * public page uses. Falls back to the template's own templateThumbnail
+ * image, and finally to a static placeholder icon, whenever a live render is
+ * not practical (the renderer not loaded, or no templateHTML stored).
+ *
+ * The iframe is `aria-hidden="true"` and `tabindex="-1"` — it is purely
+ * decorative; the accessible name of the picker card comes from the visible
+ * template name/description text in its `<label>`, not from this markup.
+ * `sandbox=""` (no tokens) fully sandboxes the framed content: no scripts,
+ * no forms, no top-navigation, unique/opaque origin — appropriate for
+ * static, escaped, system-template HTML that never needs script execution.
+ *
+ * @param  array $templateRow  A row shaped like g2ml_linkspageManageListSystemTemplates()'s
+ *                              return (templateUID/templateName/templateHTML/
+ *                              templateCSS/templateThumbnail).
+ * @return string  Safe HTML for the card's thumbnail area (always non-empty).
+ */
+function g2ml_linkspageManageRenderTemplateCardThumbnail(array $templateRow): string
+{
+    $templateHTMLValue = '';
+
+    if (isset($templateRow['templateHTML']) && is_string($templateRow['templateHTML']))
+    {
+        $templateHTMLValue = trim($templateRow['templateHTML']);
+    }
+
+    if ($templateHTMLValue !== '' && function_exists('g2ml_renderLinksPage'))
+    {
+        $sampleModel = g2ml_linkspageManageBuildTemplatePreviewSampleModel($templateRow);
+        $renderedHTML = g2ml_renderLinksPage($sampleModel);
+
+        // htmlspecialchars(ENT_QUOTES) makes the ENTIRE rendered document safe
+        // to embed as the value of the srcdoc="..." attribute — this is
+        // attribute escaping of the outer page, not a weakening of the
+        // renderer's own escaping of the sample data inside the document.
+        $safeSrcDoc = htmlspecialchars($renderedHTML, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+
+        return '<span class="lp-picker-thumb lp-picker-thumb-live">'
+            . '<iframe class="lp-picker-thumb-iframe" srcdoc="' . $safeSrcDoc . '" '
+            . 'tabindex="-1" aria-hidden="true" loading="lazy" scrolling="no" sandbox="" '
+            . 'title=""></iframe>'
+            . '</span>';
+    }
+
+    $templateThumbnailValue = '';
+
+    if (isset($templateRow['templateThumbnail']) && is_string($templateRow['templateThumbnail']))
+    {
+        $templateThumbnailValue = trim($templateRow['templateThumbnail']);
+    }
+
+    if ($templateThumbnailValue !== '')
+    {
+        return '<span class="lp-picker-thumb lp-picker-thumb-static">'
+            . '<img src="' . htmlspecialchars($templateThumbnailValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '" alt="" loading="lazy">'
+            . '</span>';
+    }
+
+    return '<span class="lp-picker-thumb lp-picker-thumb-placeholder" aria-hidden="true">'
+        . '<i class="fas fa-image" aria-hidden="true"></i>'
+        . '</span>';
 }
 
 // ============================================================================

@@ -10,6 +10,7 @@
 /**
  * ============================================================================
  * 🧪 Unit tests — LinksPage management pure validators (Component C.2, #48)
+ *                  + template picker pure helpers (Component C.3, #47)
  * ============================================================================
  *
  * Pure, DB-free tests for the validators in web/_functions/linkspage_manage.php:
@@ -29,9 +30,18 @@
  * linkspage_render_test.php) so g2ml_linkspageManageValidateSocialLinks()
  * exercises the REAL g2ml_sanitiseURL() integration, not a fallback.
  *
+ * Also DB-free, and also added here (since linkspage_renderer.php is already
+ * loaded above), the C.3 (#47) template picker helpers:
+ *   - g2ml_linkspageManageBuildTemplatePreviewSampleModel() — the FIXED,
+ *     non-user sample model used for a picker card's live-render thumbnail.
+ *   - g2ml_linkspageManageRenderTemplateCardThumbnail() — live-render
+ *     (via the REAL g2ml_renderLinksPage()), static-thumbnail, and
+ *     placeholder fallback paths, plus escaping of the fallback path's
+ *     stored templateThumbnail value.
+ *
  * @package    Go2My.Link
  * @subpackage Tests
- * @since      v1.2.0 — Phase 8 (#48)
+ * @since      v1.2.0 — Phase 8 (#48; picker helpers #47)
  * ============================================================================
  */
 
@@ -228,4 +238,112 @@ test('manage socialLinks: multiple allowlisted networks are all kept independent
 test('manage socialLinks: an empty input array yields an empty result', function (): void
 {
     assert_same([], g2ml_linkspageManageValidateSocialLinks([]), 'An empty submission must validate to an empty array');
+});
+
+// ============================================================================
+// 🎨 g2ml_linkspageManageBuildTemplatePreviewSampleModel — C.3, #47
+// ============================================================================
+
+test('picker sample model: returns a fixed page/template/items shape', function (): void
+{
+    $templateRow = [
+        'templateUID'  => 42,
+        'templateName' => 'Sample',
+        'templateHTML' => '<div>{{name}}</div>',
+        'templateCSS'  => '',
+    ];
+
+    $model = g2ml_linkspageManageBuildTemplatePreviewSampleModel($templateRow);
+
+    assert_true(isset($model['page']) && isset($model['template']) && isset($model['items']), 'The sample model must have page/template/items keys');
+    assert_same('Jane Doe', $model['page']['pageTitle'], 'The sample page title must be the fixed sample value');
+    assert_same(42, $model['page']['templateUID'], 'The sample model must carry the caller\'s templateUID through');
+    assert_same($templateRow, $model['template'], 'The template row must be passed through unchanged');
+    assert_true(count($model['items']) > 0, 'The sample model must include sample items');
+});
+
+test('picker sample model: the sample content is static — no key here is derived from anything but the template row', function (): void
+{
+    $templateRowOne = ['templateUID' => 1, 'templateHTML' => 'x'];
+    $templateRowTwo = ['templateUID' => 2, 'templateHTML' => 'y'];
+
+    $modelOne = g2ml_linkspageManageBuildTemplatePreviewSampleModel($templateRowOne);
+    $modelTwo = g2ml_linkspageManageBuildTemplatePreviewSampleModel($templateRowTwo);
+
+    assert_same($modelOne['page']['pageTitle'], $modelTwo['page']['pageTitle'], 'The sample page title must be identical regardless of template');
+    assert_same($modelOne['page']['pageDescription'], $modelTwo['page']['pageDescription'], 'The sample bio must be identical regardless of template');
+    assert_same($modelOne['items'], $modelTwo['items'], 'The sample items must be identical regardless of template');
+});
+
+// ============================================================================
+// 🖼️ g2ml_linkspageManageRenderTemplateCardThumbnail — C.3, #47
+// ============================================================================
+
+test('picker thumbnail: a live-renderable template produces a sandboxed, escaped iframe srcdoc', function (): void
+{
+    $templateRow = [
+        'templateUID'       => 1,
+        'templateName'      => 'Default',
+        'templateHTML'      => '<div class="lp-container"><h1>{{name}}</h1><div>{{links}}</div></div>',
+        'templateCSS'       => '.lp-container { color: {{theme}}; }',
+        'templateThumbnail' => null,
+    ];
+
+    $thumbnailHTML = g2ml_linkspageManageRenderTemplateCardThumbnail($templateRow);
+
+    assert_contains('<iframe', $thumbnailHTML, 'A live-renderable template must produce an <iframe> thumbnail');
+    assert_contains('srcdoc="', $thumbnailHTML, 'The thumbnail must embed the rendered document via srcdoc');
+    assert_contains('sandbox=""', $thumbnailHTML, 'The thumbnail iframe must be fully sandboxed (no allow-scripts token)');
+    assert_contains('aria-hidden="true"', $thumbnailHTML, 'The decorative thumbnail must be hidden from assistive tech (the card label carries the accessible name)');
+    assert_contains('Jane Doe', $thumbnailHTML, 'The escaped sample name must appear inside the srcdoc attribute');
+    assert_false(str_contains($thumbnailHTML, '<h1>Jane Doe</h1>'), 'The inner document must be attribute-escaped, not embedded as raw unescaped HTML');
+});
+
+test('picker thumbnail: falls back to templateThumbnail when templateHTML is blank', function (): void
+{
+    $templateRow = [
+        'templateUID'       => 2,
+        'templateName'      => 'Legacy',
+        'templateHTML'      => '',
+        'templateCSS'       => '',
+        'templateThumbnail' => '/images/templates/legacy-thumb.png',
+    ];
+
+    $thumbnailHTML = g2ml_linkspageManageRenderTemplateCardThumbnail($templateRow);
+
+    assert_contains('<img', $thumbnailHTML, 'A blank templateHTML with a stored thumbnail must fall back to a static <img>');
+    assert_contains('/images/templates/legacy-thumb.png', $thumbnailHTML, 'The stored thumbnail path must be used');
+    assert_false(str_contains($thumbnailHTML, '<iframe'), 'The static fallback must not attempt a live render');
+});
+
+test('picker thumbnail: a templateThumbnail value is HTML-escaped, never emitted raw', function (): void
+{
+    $templateRow = [
+        'templateUID'       => 4,
+        'templateName'      => 'Escaped',
+        'templateHTML'      => '',
+        'templateCSS'       => '',
+        'templateThumbnail' => '"><script>alert(1)</script>',
+    ];
+
+    $thumbnailHTML = g2ml_linkspageManageRenderTemplateCardThumbnail($templateRow);
+
+    assert_false(str_contains($thumbnailHTML, '<script>alert(1)</script>'), 'A raw script payload in templateThumbnail must never be emitted unescaped');
+});
+
+test('picker thumbnail: falls back to a placeholder when neither a live render nor a stored thumbnail is available', function (): void
+{
+    $templateRow = [
+        'templateUID'       => 3,
+        'templateName'      => 'Empty',
+        'templateHTML'      => '',
+        'templateCSS'       => '',
+        'templateThumbnail' => null,
+    ];
+
+    $thumbnailHTML = g2ml_linkspageManageRenderTemplateCardThumbnail($templateRow);
+
+    assert_contains('lp-picker-thumb-placeholder', $thumbnailHTML, 'With neither a live render nor a stored thumbnail, a placeholder must be shown');
+    assert_false(str_contains($thumbnailHTML, '<iframe'), 'The placeholder fallback must not attempt a live render');
+    assert_false(str_contains($thumbnailHTML, '<img'), 'The placeholder fallback must not reference a missing image');
 });

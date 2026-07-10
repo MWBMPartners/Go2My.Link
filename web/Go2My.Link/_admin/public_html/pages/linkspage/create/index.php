@@ -17,6 +17,12 @@
  * Every field is a discrete, validated, structured value — there is no raw
  * HTML/CSS field here (WYSIWYG editing is C.6 / #49, deliberately not built).
  *
+ * The template field is a visual PICKER (Component C.3, #47): a gallery of
+ * the active system templates as selectable cards, each with a LIVE-rendered
+ * thumbnail (the Component C renderer, reused not reimplemented — see
+ * g2ml_linkspageManageRenderTemplateCardThumbnail()). Selecting a card sets
+ * the same `template_uid` radio value the old plain <select> submitted.
+ *
  * Gated by the maxLinksPages entitlement (web/_functions/entitlements.php,
  * #146) via g2ml_linkspageManageCreatePage() — an over-limit submission is
  * rejected server-side with no insert, regardless of what this form allows
@@ -24,14 +30,37 @@
  *
  * @package    Go2My.Link
  * @subpackage ComponentA_Admin
- * @version    1.0.0
- * @since      v1.2.0 — Phase 8 (#48)
+ * @version    1.1.0
+ * @since      v1.2.0 — Phase 8 (#48; template picker added by #47)
  *
  * 📖 References:
- *     - Backend:     web/_functions/linkspage_manage.php (#48)
+ *     - Backend:     web/_functions/linkspage_manage.php (#48, picker helpers #47)
+ *     - Renderer:    web/Lnks.page/_functions/linkspage_renderer.php (#45, reused for picker thumbnails)
  *     - Modelled on: web/Go2My.Link/_admin/public_html/pages/links/create/index.php
  * ============================================================================
  */
+
+// ============================================================================
+// 🎨 Load the Component C LinksPage renderer (#45) for the template picker's
+// live-render thumbnails (#47) — REUSED, never reimplemented. Component A
+// Admin and Component C (Lnks.page) are channel-split only for their
+// public_html/ web roots; everything else (including Lnks.page/_functions)
+// deploys to the SAME remote root (see .github/workflows/sftp-deploy.yml),
+// so this relative require is deploy-safe. Guarded so a missing file (e.g. a
+// stripped-down local checkout) degrades gracefully to the thumbnail-image/
+// placeholder fallback in g2ml_linkspageManageRenderTemplateCardThumbnail()
+// rather than a fatal error.
+// ============================================================================
+
+$linkspageRendererPath = dirname(__DIR__, 6)
+    . DIRECTORY_SEPARATOR . 'Lnks.page'
+    . DIRECTORY_SEPARATOR . '_functions'
+    . DIRECTORY_SEPARATOR . 'linkspage_renderer.php';
+
+if (file_exists($linkspageRendererPath) && !function_exists('g2ml_renderLinksPage'))
+{
+    require_once $linkspageRendererPath;
+}
 
 if (function_exists('__')) {
     $pageTitle = __('linkspage.create_title');
@@ -162,6 +191,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 }
 ?>
 
+<link rel="stylesheet" href="/css/linkspage-picker.css">
+
 <section class="py-4" aria-labelledby="linkspage-create-heading">
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -253,21 +284,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                             ]);
                             ?>
 
-                            <div class="mb-3">
-                                <label for="template-uid" class="form-label">Template</label>
-                                <select class="form-select" id="template-uid" name="template_uid">
-                                    <option value="">Default</option>
-                                    <?php foreach ($systemTemplates as $templateRow) { ?>
-                                    <option value="<?php echo (int) $templateRow['templateUID']; ?>"
-                                        <?php if ($formTemplateUID === (string) $templateRow['templateUID']) { echo 'selected'; } ?>>
-                                        <?php echo g2ml_sanitiseOutput($templateRow['templateName']); ?>
-                                    </option>
-                                    <?php } ?>
-                                </select>
-                                <div class="form-text">
-                                    A basic template picker — visual previews and custom templates are coming in a later update.
+                            <fieldset class="mb-4">
+                                <legend class="form-label h6" id="template-picker-legend-create">
+                                    <?php if (function_exists('__')) { echo __('linkspage.template_picker_legend'); } else { echo 'Choose a Template'; } ?>
+                                </legend>
+                                <div class="form-text mb-2">
+                                    <?php if (function_exists('__')) { echo __('linkspage.template_picker_help'); } else { echo 'Each preview uses sample content so you can compare styles before choosing.'; } ?>
                                 </div>
-                            </div>
+
+                                <div class="row row-cols-2 row-cols-md-3 g-3" role="radiogroup" aria-labelledby="template-picker-legend-create">
+
+                                    <div class="col">
+                                        <input type="radio" class="visually-hidden lp-picker-radio" name="template_uid" id="template-uid-create-default" value=""
+                                            <?php if ($formTemplateUID === '') { echo 'checked'; } ?>>
+                                        <label class="lp-picker-card" for="template-uid-create-default">
+                                            <span class="lp-picker-thumb lp-picker-thumb-placeholder" aria-hidden="true">
+                                                <i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i>
+                                            </span>
+                                            <span class="lp-picker-name">
+                                                <?php if (function_exists('__')) { echo __('linkspage.template_default_option'); } else { echo 'Site Default'; } ?>
+                                            </span>
+                                        </label>
+                                    </div>
+
+                                    <?php foreach ($systemTemplates as $templateRow) { ?>
+                                    <?php
+                                    $pickerTemplateUID = (int) $templateRow['templateUID'];
+                                    $pickerRadioID      = 'template-uid-create-' . $pickerTemplateUID;
+                                    ?>
+                                    <div class="col">
+                                        <input type="radio" class="visually-hidden lp-picker-radio" name="template_uid" id="<?php echo $pickerRadioID; ?>" value="<?php echo $pickerTemplateUID; ?>"
+                                            <?php if ($formTemplateUID === (string) $pickerTemplateUID) { echo 'checked'; } ?>>
+                                        <label class="lp-picker-card" for="<?php echo $pickerRadioID; ?>">
+                                            <?php echo g2ml_linkspageManageRenderTemplateCardThumbnail($templateRow); ?>
+                                            <span class="lp-picker-name"><?php echo g2ml_sanitiseOutput($templateRow['templateName']); ?></span>
+                                            <?php if (!empty($templateRow['templateDescription'])) { ?>
+                                            <span class="lp-picker-desc"><?php echo g2ml_sanitiseOutput($templateRow['templateDescription']); ?></span>
+                                            <?php } ?>
+                                        </label>
+                                    </div>
+                                    <?php } ?>
+
+                                </div>
+                            </fieldset>
 
                             <div class="row">
                                 <div class="col-md-6">

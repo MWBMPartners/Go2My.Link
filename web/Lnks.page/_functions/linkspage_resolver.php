@@ -28,12 +28,29 @@
  *   - Every query is a prepared statement (MySQLi via dbSelect()/dbSelectOne()) —
  *     the slug is bound as a parameter, never interpolated.
  *
+ * 🔒 SECURITY (C.3, #47 — owner-only page preview):
+ *   - g2ml_linkspageBuildOwnerPreviewModel() is the "adjusted renderer entry"
+ *     the admin dashboard's preview route (pages/linkspage/preview/index.php)
+ *     uses to show an owner their OWN page — including an UNPUBLISHED draft —
+ *     through this SAME rendering pipeline. It deliberately takes an
+ *     ALREADY ownership-verified $pageRow/$itemRows pair (from
+ *     web/_functions/linkspage_manage.php's g2ml_linkspageManageGetPageForOwner()
+ *     / g2ml_linkspageManageListItemsForPage(), both scoped by `userUID = ?`
+ *     in SQL) and NEVER itself queries tblLinksPages — so it can never be
+ *     used to loosen g2ml_resolveLinksPage()'s public `isPublished = 1`
+ *     filter above. Ownership enforcement is entirely the CALLER's
+ *     responsibility; this function only resolves the template and shapes
+ *     the page model, reusing g2ml_linkspageLoadSystemTemplate() /
+ *     g2ml_linkspageLoadDefaultSystemTemplate() rather than duplicating that
+ *     lookup.
+ *
  * Functions:
- *   - g2ml_linkspageIsValidSlug()            — charset/length guard for the URL slug
- *   - g2ml_linkspageDefaultTemplateSlug()     — the operator-configured fallback template slug
- *   - g2ml_linkspageLoadSystemTemplate()      — load ONE system template row by templateUID
+ *   - g2ml_linkspageIsValidSlug()              — charset/length guard for the URL slug
+ *   - g2ml_linkspageDefaultTemplateSlug()       — the operator-configured fallback template slug
+ *   - g2ml_linkspageLoadSystemTemplate()        — load ONE system template row by templateUID
  *   - g2ml_linkspageLoadDefaultSystemTemplate() — load the default (or first active) system template
- *   - g2ml_resolveLinksPage()                 — the main resolver (DB-touching)
+ *   - g2ml_resolveLinksPage()                   — the main PUBLIC resolver (DB-touching)
+ *   - g2ml_linkspageBuildOwnerPreviewModel()     — C.3/#47 OWNER PREVIEW model builder (pre-verified input only)
  *
  * Dependencies: web/_functions/db_query.php (dbSelect()/dbSelectOne()) and
  *               web/_functions/settings.php (getSetting()) — both already
@@ -278,6 +295,75 @@ function g2ml_resolveLinksPage(string $slug): ?array
     if ($itemRows === false)
     {
         $itemRows = [];
+    }
+
+    return [
+        'page'     => $pageRow,
+        'template' => $templateRow,
+        'items'    => $itemRows,
+    ];
+}
+
+// ============================================================================
+// 👁️ Owner-only page preview model (Component C.3, #47)
+// ============================================================================
+
+/**
+ * Build a render-ready page model for an OWNER PREVIEW of a page that has
+ * ALREADY been fetched and verified as belonging to the acting user —
+ * including an UNPUBLISHED draft, which g2ml_resolveLinksPage() above would
+ * never return (its `isPublished = 1` filter is deliberately never touched
+ * or bypassed by this function).
+ *
+ * 🔒 This function does NOT query tblLinksPages or tblLinksPageItems at all —
+ * it trusts $pageRow/$itemRows completely. The caller MUST have obtained
+ * both via an ownership-scoped lookup (web/_functions/linkspage_manage.php's
+ * g2ml_linkspageManageGetPageForOwner() / g2ml_linkspageManageListItemsForPage(),
+ * both of which bind `userUID = ?` in SQL — a pageUID belonging to another
+ * user returns null/empty from those, identically to a pageUID that does not
+ * exist). Passing an un-verified $pageRow here would be an IDOR bug in the
+ * CALLER, not something this function can detect or prevent.
+ *
+ * Template resolution mirrors g2ml_resolveLinksPage() exactly — the same
+ * templateUID -> g2ml_linkspageLoadSystemTemplate() -> (on miss)
+ * g2ml_linkspageLoadDefaultSystemTemplate() fallback chain, so an owner's
+ * preview always matches what the public page would actually show once
+ * published, using the identical SYSTEM (isSystem = 1) template resolution —
+ * REUSED here, not reimplemented.
+ *
+ * @param  array $pageRow   An ownership-verified row shaped like
+ *                           g2ml_linkspageManageGetPageForOwner()'s return
+ *                           (pageUID, pageTitle, pageDescription, avatarPath,
+ *                           templateUID, themeColour, backgroundColour,
+ *                           fontFamily, showSocialIcons, socialLinks, ...).
+ *                           customHTML/customCSS are irrelevant even if
+ *                           present — g2ml_renderLinksPage() never reads them.
+ * @param  array $itemRows  Rows shaped like
+ *                           g2ml_linkspageManageListItemsForPage()'s return.
+ * @return array|null  ['page' => array, 'template' => array, 'items' => array]
+ *                      ready for g2ml_renderLinksPage(), or null when no
+ *                      usable active SYSTEM template exists at all (a
+ *                      misconfigured install — mirrors g2ml_resolveLinksPage()'s
+ *                      own "cannot render safely" outcome).
+ */
+function g2ml_linkspageBuildOwnerPreviewModel(array $pageRow, array $itemRows): ?array
+{
+    $templateRow = null;
+
+    if (isset($pageRow['templateUID']) && $pageRow['templateUID'] !== null && $pageRow['templateUID'] !== '')
+    {
+        $templateRow = g2ml_linkspageLoadSystemTemplate((int) $pageRow['templateUID']);
+    }
+
+    if ($templateRow === null)
+    {
+        $templateRow = g2ml_linkspageLoadDefaultSystemTemplate();
+    }
+
+    if ($templateRow === null)
+    {
+        error_log('[Go2My.Link] ERROR: g2ml_linkspageBuildOwnerPreviewModel — no active system template available for pageUID: ' . (string) ($pageRow['pageUID'] ?? '?'));
+        return null;
     }
 
     return [
