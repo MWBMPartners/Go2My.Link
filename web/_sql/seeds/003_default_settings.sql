@@ -109,10 +109,6 @@ INSERT INTO `tblSettings` (
  '1', '1', 'Whether to log redirect activity',
  'boolean', 0, 1),
 
-('analytics.geoip_enabled', 'Default', NULL,
- '1', '1', 'Whether GeoIP lookup is enabled for analytics',
- 'boolean', 0, 1),
-
 ('analytics.ua_parsing_enabled', 'Default', NULL,
  '1', '1', 'Whether User-Agent parsing is enabled for analytics',
  'boolean', 0, 1),
