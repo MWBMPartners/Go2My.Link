@@ -413,8 +413,28 @@ function g2ml_attachTagsToShortURL(int $urlUID, string $orgHandle, string|array 
 //                  key minted this code (#39). Only meaningful alongside
 //                  createdVia='api'/'cuercode'; null (the column's default)
 //                  when absent, exactly like every pre-#39 caller.
+//   - qrCodeExternalID:   (int|null) CueRCode's own numeric QR id (#145).
+//                  Bound into the existing tblShortURLs.qrCodeExternalID
+//                  column; null (the column's default) when absent, which is
+//                  every caller before #145.
+//   - qrCodeExternalUUID: (string|null) CueRCode's QR UUID (#145). Bound into
+//                  the existing tblShortURLs.qrCodeExternalUUID column, which
+//                  carries a UNIQUE constraint (UQ_url_qr_uuid). A duplicate
+//                  value does NOT fall into the shortCode collision retry —
+//                  see Steps 4/5 below — it fails the create outright with
+//                  $result['qrUuidTaken'] === true so the API layer can map it
+//                  to a distinct HTTP 409. An empty string is treated the same
+//                  as absent (null). FORMAT validation (36-char UUID shape) is
+//                  the API handler's job — that is the boundary that sees
+//                  untrusted client input.
+//   - qrCodeLinkedAt:     (string|null) DATETIME string for the existing
+//                  tblShortURLs.qrCodeLinkedAt column (#145); null (the
+//                  column's default) when absent.
 // @return array  ['success' => bool, 'shortCode' => ?string,
-//                 'shortURL' => ?string, 'error' => ?string]
+//                 'shortURL' => ?string, 'error' => ?string,
+//                 'qrUuidTaken' => ?bool] — qrUuidTaken is only present and
+//                 true when the failure was a qrCodeExternalUUID collision
+//                 (#145); absent for every other outcome.
 // ============================================================================
 function createShortURL(string $longURL, array $options = []): array
 {
@@ -567,6 +587,40 @@ function createShortURL(string $longURL, array $options = []): array
         $createdViaAPIKeyUIDOption = (int) $createdViaAPIKeyUIDOption;
     }
 
+    // ========================================================================
+    // 🔗 Step 3a-2: qrCodeExternalID / qrCodeExternalUUID / qrCodeLinkedAt
+    //               (#145 — CueRCode dynamic-QR wiring)
+    // ========================================================================
+    // These three existing tblShortURLs columns are bound whenever the caller
+    // supplies them (the API layer only does so for a verified qr:link-scoped
+    // create); every other caller gets NULL, exactly the column defaults.
+    // ========================================================================
+    $qrCodeExternalIDOption = $options['qrCodeExternalID'] ?? null;
+
+    if ($qrCodeExternalIDOption !== null)
+    {
+        $qrCodeExternalIDOption = (int) $qrCodeExternalIDOption;
+    }
+
+    $qrCodeExternalUUIDOption = $options['qrCodeExternalUUID'] ?? null;
+
+    if ($qrCodeExternalUUIDOption !== null)
+    {
+        $qrCodeExternalUUIDOption = trim((string) $qrCodeExternalUUIDOption);
+
+        if ($qrCodeExternalUUIDOption === '')
+        {
+            $qrCodeExternalUUIDOption = null;
+        }
+    }
+
+    $qrCodeLinkedAtOption = $options['qrCodeLinkedAt'] ?? null;
+
+    if ($qrCodeLinkedAtOption !== null)
+    {
+        $qrCodeLinkedAtOption = (string) $qrCodeLinkedAtOption;
+    }
+
     // Custom alias (FG-001): empty/absent means "generate a random code".
     $customCode = trim((string) ($options['customCode'] ?? ''));
 
@@ -646,6 +700,7 @@ function createShortURL(string $longURL, array $options = []): array
     $insertResult         = false;
     $generationFailed     = false;
     $customCodeTaken      = false;
+    $qrUuidTaken          = false;
 
     // A custom alias gets exactly one attempt (no regeneration); the random path
     // keeps its bounded retry budget.
@@ -663,11 +718,13 @@ function createShortURL(string $longURL, array $options = []): array
     $insertSQL = "INSERT INTO tblShortURLs
         (orgHandle, shortCode, destinationURL, destinationType,
          createdByUserUID, title, categoryID, urlNotes,
-         startDate, endDate, isActive, createdVia, createdViaAPIKeyUID, createdAt, updatedAt)
+         startDate, endDate, isActive, createdVia, createdViaAPIKeyUID,
+         qrCodeExternalID, qrCodeExternalUUID, qrCodeLinkedAt, createdAt, updatedAt)
         VALUES
         (?, ?, ?, 'url',
          ?, ?, ?, ?,
-         ?, ?, ?, ?, ?, NOW(), NOW())";
+         ?, ?, ?, ?, ?,
+         ?, ?, ?, NOW(), NOW())";
 
     for ($attempt = 1; $attempt <= $maxAttempts; $attempt++)
     {
@@ -753,6 +810,26 @@ function createShortURL(string $longURL, array $options = []): array
             $params[] = null;
         }
 
+        // qrCodeExternalID (nullable integer — #145)
+        if ($qrCodeExternalIDOption !== null)
+        {
+            $types   .= 'i';
+            $params[] = $qrCodeExternalIDOption;
+        }
+        else
+        {
+            $types   .= 's';
+            $params[] = null;
+        }
+
+        // qrCodeExternalUUID (nullable string; UNIQUE UQ_url_qr_uuid — #145)
+        $types   .= 's';
+        $params[] = $qrCodeExternalUUIDOption;
+
+        // qrCodeLinkedAt (nullable DATETIME string — #145)
+        $types   .= 's';
+        $params[] = $qrCodeLinkedAtOption;
+
         $insertResult = dbInsert($insertSQL, $types, $params);
 
         if ($insertResult !== false)
@@ -761,12 +838,44 @@ function createShortURL(string $longURL, array $options = []): array
             break;
         }
 
-        // The insert failed. A duplicate-key collision on the short code is
-        // handled differently for the two paths: a random code is regenerated
-        // and retried; a user-chosen alias must NOT be changed, so we record
-        // that it is taken and stop without any fallback.
+        // The insert failed on a duplicate key (1062). Two DIFFERENT unique
+        // constraints can produce this SAME errno — UQ_shortcode_org (the
+        // short code) and, when qrCodeExternalUUID was supplied, the QR-UUID
+        // uniqueness guard (UQ_url_qr_uuid, #145) — and they must be handled
+        // completely differently: a QR-UUID collision means CueRCode's QR is
+        // ALREADY linked to a (different) short URL, which regenerating a new
+        // random short code would never fix, so it must fail outright rather
+        // than fall into the shortCode retry/alias-taken paths below.
+        //
+        // Disambiguate with a direct, targeted lookup on the QR-UUID itself
+        // (never by parsing the driver's error text, which is not a stable
+        // contract) — only meaningful when qrCodeExternalUUID was actually
+        // supplied, since MySQL never treats two NULLs as equal for a unique
+        // key, so a NULL qrCodeExternalUUID can never be the cause of a 1062.
+        //
+        // 📖 Reference: web/_sql/migrations/009_cuercode_qr_integration.sql (UQ_url_qr_uuid)
         if (dbLastErrno() === $duplicateKeyErrno)
         {
+            if ($qrCodeExternalUUIDOption !== null)
+            {
+                $qrUuidCollisionRow = dbSelectOne(
+                    "SELECT urlUID FROM tblShortURLs WHERE qrCodeExternalUUID = ? LIMIT 1",
+                    's',
+                    [$qrCodeExternalUUIDOption]
+                );
+
+                if ($qrUuidCollisionRow !== null && $qrUuidCollisionRow !== false)
+                {
+                    error_log('[Go2My.Link] INFO: CueRCode qrCodeExternalUUID already linked (1062) — uuid: ' . $qrCodeExternalUUIDOption . ', org: ' . $orgHandle);
+                    $qrUuidTaken = true;
+                    break;
+                }
+            }
+
+            // A duplicate-key collision on the short code is handled
+            // differently for the two paths: a random code is regenerated
+            // and retried; a user-chosen alias must NOT be changed, so we
+            // record that it is taken and stop without any fallback.
             if ($useCustomCode === true)
             {
                 error_log('[Go2My.Link] INFO: custom alias already taken (1062) — code: ' . $shortCode . ', org: ' . $orgHandle);
@@ -781,6 +890,22 @@ function createShortURL(string $longURL, array $options = []): array
 
         error_log('[Go2My.Link] ERROR: Failed to insert short URL (non-duplicate) — code: ' . $shortCode . ', org: ' . $orgHandle);
         break;
+    }
+
+    // A QR UUID that is already linked to another short URL gets its own
+    // distinguishable error and NEVER falls back to a random-code retry
+    // (#145) — checked first since the qrUuidTaken path always takes
+    // precedence over a same-attempt customCodeTaken flag (see the collision
+    // handling above: only one of the two flags can ever be set per create).
+    if ($qrUuidTaken === true)
+    {
+        return [
+            'success'     => false,
+            'shortCode'   => null,
+            'shortURL'    => null,
+            'error'       => 'That QR code is already linked to a short URL.',
+            'qrUuidTaken' => true,
+        ];
     }
 
     // A taken custom alias gets its own clear error and never falls back to a

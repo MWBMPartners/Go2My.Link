@@ -206,6 +206,75 @@ function _g2ml_apiUrlsValidateTags(array $body): string|array|null
 }
 
 // ============================================================================
+// 🔗 CueRCode dynamic-QR field validators (#145)
+// ============================================================================
+
+/**
+ * Validate the REQUIRED 'qr_external_id' field of a CueRCode QR-link create.
+ *
+ * @param  array $body
+ * @return int                       A positive integer.
+ *
+ * @throws G2mlApiHandlerException  422 when absent, non-numeric, or not positive.
+ */
+function _g2ml_apiUrlsValidateQrExternalId(array $body): int
+{
+    if (!isset($body['qr_external_id']))
+    {
+        throw new G2mlApiHandlerException(422, 'qr_external_id is required when linking a CueRCode QR code.', 'qr_external_id');
+    }
+
+    $rawValue = $body['qr_external_id'];
+
+    $isPlainInteger        = is_int($rawValue);
+    $isNumericStringLooking = (is_string($rawValue) && preg_match('/^[0-9]+$/', $rawValue) === 1);
+
+    if (!$isPlainInteger && !$isNumericStringLooking)
+    {
+        throw new G2mlApiHandlerException(422, 'qr_external_id must be a positive integer.', 'qr_external_id');
+    }
+
+    $qrExternalId = (int) $rawValue;
+
+    if ($qrExternalId <= 0)
+    {
+        throw new G2mlApiHandlerException(422, 'qr_external_id must be a positive integer.', 'qr_external_id');
+    }
+
+    return $qrExternalId;
+}
+
+/**
+ * Validate the REQUIRED 'qr_external_uuid' field of a CueRCode QR-link create.
+ *
+ * Enforces the canonical 36-character UUID shape (8-4-4-4-12 hyphenated hex)
+ * to match the tblShortURLs.qrCodeExternalUUID CHAR(36) column — this is the
+ * boundary that sees untrusted client input, so the format check lives here
+ * rather than in createShortURL().
+ *
+ * @param  array $body
+ * @return string                    The validated, trimmed UUID string.
+ *
+ * @throws G2mlApiHandlerException  422 when absent, not a string, or malformed.
+ */
+function _g2ml_apiUrlsValidateQrExternalUuid(array $body): string
+{
+    if (!isset($body['qr_external_uuid']) || !is_string($body['qr_external_uuid']))
+    {
+        throw new G2mlApiHandlerException(422, 'qr_external_uuid is required and must be a string.', 'qr_external_uuid');
+    }
+
+    $qrExternalUuid = trim($body['qr_external_uuid']);
+
+    if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $qrExternalUuid) !== 1)
+    {
+        throw new G2mlApiHandlerException(422, 'qr_external_uuid must be a well-formed 36-character UUID.', 'qr_external_uuid');
+    }
+
+    return $qrExternalUuid;
+}
+
+// ============================================================================
 // ✨ POST /api/v1/urls — create (scope urls:write)
 // ============================================================================
 
@@ -217,11 +286,23 @@ function _g2ml_apiUrlsValidateTags(array $body): string|array|null
  * binds the verified key's own org/user/key identity into the create, NEVER
  * a client-supplied orgHandle/userUID.
  *
+ * CueRCode dynamic-QR create (#145): the presence of EITHER 'qr_external_id'
+ * or 'qr_external_uuid' in the body opts this request into the QR-link path,
+ * gated — BEFORE any field-level validation runs — on the master kill-switch
+ * (cuercode.integration_enabled) and the calling key's own 'qr:link' scope
+ * (the front controller has already enforced the base 'urls:write' scope for
+ * this route; 'qr:link' is an ADDITIONAL scope this handler enforces itself).
+ * A normal (non-QR) create is entirely unaffected: createdVia stays 'api' and
+ * the response shape stays {short_code, short_url, destination_url}.
+ *
  * @param  array $keyRow   The verified API key row.
  * @param  array $context  Request context; 'body' carries the decoded JSON.
- * @return array            {short_code, short_url, destination_url}
+ * @return array            Non-QR: {short_code, short_url, destination_url}.
+ *                           QR-link (#145): {short_code, short_url, qr_code_external_uuid}.
  *
- * @throws G2mlApiHandlerException  422 on validation failure, 409 on alias collision.
+ * @throws G2mlApiHandlerException  403 (QR kill-switch off / missing qr:link scope),
+ *                                   409 (alias OR qr_external_uuid collision),
+ *                                   422 on validation failure.
  */
 function g2ml_apiHandleUrlsCreate(array $keyRow, array $context): array
 {
@@ -234,6 +315,32 @@ function g2ml_apiHandleUrlsCreate(array $keyRow, array $context): array
 
     $destinationURL = trim($body['destination_url']);
 
+    // ========================================================================
+    // 🔗 CueRCode dynamic-QR gate (#145) — checked BEFORE any QR field is
+    // validated, so an unauthorised/disabled attempt gets a 403 rather than a
+    // field-level 422 (never leaks which field would otherwise be wrong).
+    // ========================================================================
+    $isQrLinkRequest = (isset($body['qr_external_id']) || isset($body['qr_external_uuid']));
+
+    $qrExternalId   = null;
+    $qrExternalUuid = null;
+
+    if ($isQrLinkRequest === true)
+    {
+        if (getSetting('cuercode.integration_enabled', false) !== true)
+        {
+            throw new G2mlApiHandlerException(403, 'The CueRCode integration is currently disabled.');
+        }
+
+        if (g2ml_apiKeyHasScope($keyRow, 'qr:link') !== true)
+        {
+            throw new G2mlApiHandlerException(403, 'This API key does not have the required qr:link scope.');
+        }
+
+        $qrExternalId   = _g2ml_apiUrlsValidateQrExternalId($body);
+        $qrExternalUuid = _g2ml_apiUrlsValidateQrExternalUuid($body);
+    }
+
     $customCode = null;
 
     if (isset($body['custom_code']))
@@ -244,6 +351,17 @@ function g2ml_apiHandleUrlsCreate(array $keyRow, array $context): array
         }
 
         $customCode = trim($body['custom_code']);
+    }
+
+    // A QR-link create only honours a caller-supplied custom_code when the
+    // operator has explicitly opted in via cuercode.allow_external_shortcode
+    // — otherwise it is silently dropped (Go2My.Link generates the code, same
+    // as any non-QR create would). This is the feature's own on/off switch,
+    // not a security control — the field itself is still format-validated
+    // above whenever it is present, regardless of this setting.
+    if ($isQrLinkRequest === true && getSetting('cuercode.allow_external_shortcode', false) !== true)
+    {
+        $customCode = null;
     }
 
     $title = _g2ml_apiUrlsValidateTitle($body);
@@ -260,6 +378,14 @@ function g2ml_apiHandleUrlsCreate(array $keyRow, array $context): array
         'createdVia'          => 'api',
         'createdViaAPIKeyUID' => $apiKeyUID,
     ];
+
+    if ($isQrLinkRequest === true)
+    {
+        $createOptions['createdVia']        = 'cuercode';
+        $createOptions['qrCodeExternalID']   = $qrExternalId;
+        $createOptions['qrCodeExternalUUID'] = $qrExternalUuid;
+        $createOptions['qrCodeLinkedAt']     = gmdate('Y-m-d H:i:s');
+    }
 
     if ($customCode !== null && $customCode !== '')
     {
@@ -282,12 +408,30 @@ function g2ml_apiHandleUrlsCreate(array $keyRow, array $context): array
             $errorMessage = $created['error'];
         }
 
+        // A qrCodeExternalUUID collision is distinguished by createShortURL()
+        // via the qrUuidTaken flag — checked FIRST and NEVER folded into the
+        // 'already taken' (custom-alias) branch below, per #145: the two
+        // collisions are different fields and must map to different 409s.
+        if (($created['qrUuidTaken'] ?? false) === true)
+        {
+            throw new G2mlApiHandlerException(409, $errorMessage, 'qr_external_uuid');
+        }
+
         if (str_contains($errorMessage, 'already taken'))
         {
             throw new G2mlApiHandlerException(409, $errorMessage, 'custom_code');
         }
 
         throw new G2mlApiHandlerException(422, $errorMessage, 'destination_url');
+    }
+
+    if ($isQrLinkRequest === true)
+    {
+        return [
+            'short_code'            => $created['shortCode'],
+            'short_url'             => $created['shortURL'],
+            'qr_code_external_uuid' => $qrExternalUuid,
+        ];
     }
 
     // Re-read the canonically-stored destination (createShortURL() sanitises

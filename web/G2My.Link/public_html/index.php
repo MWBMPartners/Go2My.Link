@@ -219,10 +219,49 @@ if ($status === 'success' && $destination !== null && $destination !== '')
 
     if ($shouldLog)
     {
+        // ====================================================================
+        // 🔗 CueRCode scan attribution (#145) — only computed when we are
+        // actually going to log (never wastes a DB round trip when DNT/GPC or
+        // the analytics.log_activity switch has logging off).
+        //
+        // qrCodeExternalID is NEVER taken from the query string — it is
+        // looked up from the STORED short URL row for the code that was
+        // actually requested (scoped to the resolved org), so a visitor can
+        // never forge attribution to an arbitrary QR id by guessing a
+        // qrCodeExternalID in the URL. This adds one indexed lookup
+        // (UQ_shortcode_org) ONLY on the scan-tagged path — a normal redirect
+        // (no matching scan-source param) never reaches it.
+        //
+        // 📖 Reference: web/G2My.Link/_functions/redirect_resolver.php — g2ml_resolveScanSource()
+        // ====================================================================
+        $scanSource = g2ml_resolveScanSource(
+            (string) getSetting('cuercode.scan_source_param', 'src'),
+            (string) getSetting('cuercode.scan_source_value', 'qr'),
+            $_GET
+        );
+
+        $qrCodeExternalIDForLog = null;
+
+        if ($scanSource !== null)
+        {
+            $qrLinkRow = dbSelectOne(
+                "SELECT qrCodeExternalID FROM tblShortURLs WHERE shortCode = ? AND orgHandle = ? LIMIT 1",
+                'ss',
+                [$shortCode, $orgHandle]
+            );
+
+            if ($qrLinkRow !== null && $qrLinkRow !== false && $qrLinkRow['qrCodeExternalID'] !== null)
+            {
+                $qrCodeExternalIDForLog = (int) $qrLinkRow['qrCodeExternalID'];
+            }
+        }
+
         logActivity('redirect', 'success', $redirectCode, [
-            'orgHandle'      => $orgHandle,
-            'shortCode'      => $shortCode,
-            'destinationURL' => $destination,
+            'orgHandle'        => $orgHandle,
+            'shortCode'        => $shortCode,
+            'destinationURL'   => $destination,
+            'scanSource'       => $scanSource,
+            'qrCodeExternalID' => $qrCodeExternalIDForLog,
         ]);
     }
 

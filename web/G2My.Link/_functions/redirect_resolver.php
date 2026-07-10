@@ -96,6 +96,57 @@ function resolveShortCode(string $domain, string $code): array
 }
 
 // ============================================================================
+// 🔗 g2ml_resolveScanSource — Detect a CueRCode QR-scan marker (#145)
+// ============================================================================
+// Pure function — no database access, no state — so it stays unit-testable
+// without a database connection. Deliberately separate from the
+// qrCodeExternalID lookup (which DOES need the database): the caller only
+// pays for that lookup when this function actually reports a scan.
+//
+// SECURITY (#145): the scan-source query-string parameter is UNTRUSTED input.
+// This function never returns the raw query-string value — once it matches
+// the operator-configured expected value, it returns THAT configured value
+// (capped to the tblActivityLog.scanSource VARCHAR(50) column width), never
+// anything an attacker supplied. A mismatch (or either setting being blank)
+// returns null, so a normal redirect is unaffected.
+//
+// 📖 Reference: web/_sql/seeds/013_cuercode_settings.sql — cuercode.scan_source_param / cuercode.scan_source_value
+// 📖 Reference: web/_functions/activity_logger.php — logActivity() scanSource column (VARCHAR(50))
+//
+// @param  string $scanSourceParam          getSetting('cuercode.scan_source_param'), e.g. 'src'.
+// @param  string $scanSourceExpectedValue  getSetting('cuercode.scan_source_value'), e.g. 'qr'.
+// @param  array  $queryParams              Typically $_GET.
+// @return string|null                      The scan-source value to log, or null when this
+//                                          request is not a marked QR scan.
+// ============================================================================
+function g2ml_resolveScanSource(string $scanSourceParam, string $scanSourceExpectedValue, array $queryParams): ?string
+{
+    if ($scanSourceParam === '' || $scanSourceExpectedValue === '')
+    {
+        return null;
+    }
+
+    if (!isset($queryParams[$scanSourceParam]) || !is_string($queryParams[$scanSourceParam]))
+    {
+        return null;
+    }
+
+    if ($queryParams[$scanSourceParam] !== $scanSourceExpectedValue)
+    {
+        return null;
+    }
+
+    $scanSource = $scanSourceExpectedValue;
+
+    if (strlen($scanSource) > 50)
+    {
+        $scanSource = substr($scanSource, 0, 50);
+    }
+
+    return $scanSource;
+}
+
+// ============================================================================
 // 🧷 g2ml_buildPinnedDestinationUrl — Rebuild a URL against a resolved IP
 // ============================================================================
 // Reconstructs a request URL with the host component replaced by an already
