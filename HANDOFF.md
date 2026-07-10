@@ -3,7 +3,7 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `0d495c1` (+ this handoff commit).
+> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `50f2427` (+ this handoff commit).
 
 ---
 
@@ -87,17 +87,25 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
   migration 011 (composite index), seed 015, 28 unit + 16 integration tests. Key auth
   (prefix + sha256/`hash_equals`), scopes, DB rate-limiting, redacted request log, envelope.
   **Passed adversarial review** (see #38 comment); residual pre-auth IP throttle folded into #39.
+- **Built API endpoints (#39)** — `0d495c1`. URL CRUD/bulk/list + org read, cursor-paginated,
+  BOLA-safe org-scoping (cross-org → generic 404), pre-auth IP backoff. Found+fixed a real #38
+  defect (base64url `_` in prefix broke ~1/9 keys). 234 unit / 60 integration green.
+- **Built CueRCode wiring (#145)** — `50f2427`. QR-link create (kill-switch + `qr:link` scope +
+  UUID-uniqueness 409), re-point, scan attribution (forge-proof); `logActivity()` hot-path INSERT
+  extended safely (23=23=23 bind-string verified). 244 unit / 74 integration green. **Milestone:
+  public API + CueRCode integration ready.**
 
 ## ⏭️ Immediate next steps (execution queue — see plan §10)
 
 - **P0:** finish #135; close ~24 issues; reconcile doc drift + stale `main`; low a11y/hygiene
   (#114–119); (owner) #93 rotation, migration, legal.
-- **P1:** ✅ API framework **#38** (`34453d8`) → ✅ endpoints **#39** (`0d495c1`, incl. pre-auth backoff +
-  a #38 prefix-parsing bug fix) → **⏳ CueRCode wiring** (QR fields on create + logActivity scan
-  attribution + `qr:link` scope + kill-switch) → key UI **#40** → analytics **#41/#42** → geo/UA **#43**
-  → UTM **#92** → custom-domain verify+docs **#91** → **OpenAPI/Swagger #75** (capstone) → API security cycle.
-  - Note: `createShortURL()` now accepts `createdVia`/`createdViaAPIKeyUID` (added in #39), so the
-    CueRCode create path is largely unblocked — remaining is the QR-specific columns + scan logging.
+- **P1:** ✅ API framework **#38** (`34453d8`) → ✅ endpoints **#39** (`0d495c1`) → ✅ **CueRCode wiring #145**
+  (`50f2427`, QR-link create + re-point + scan attribution, security-verified) → **⏳ OpenAPI/Swagger #75**
+  (explicitly requested — now unblocked since the API surface exists) → key UI **#40** → analytics
+  **#41/#42** → geo/UA **#43** → UTM **#92** → custom-domain verify+docs **#91** → API security cycle.
+  - 🎉 **Milestone: public API + CueRCode integration READY.** CueRCode integrates via `/api/v1` with a
+    `qr:link`-scoped key. `createShortURL()` accepts `createdVia`/`createdViaAPIKeyUID`/QR columns;
+    `logActivity()` carries `scanSource`/`qrCodeExternalID` (bind-string re-verified 23=23=23).
 - **P2:** entitlement/gating layer → pricing/usage UI → **SIGNula OIDC** → billing (Stripe or SIGNula).
 - **P3:** Component C (#45–50) → advanced redirects (#51–56).
 - **P4:** roadmap + `for consideration` enhancement ideas (plan §9).
