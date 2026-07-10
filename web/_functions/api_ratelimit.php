@@ -332,6 +332,59 @@ function g2ml_apiRedactRequestBody(array $body): array
 }
 
 // ============================================================================
+// ✂️ Audit-column bounding (security — an oversized field must NEVER be able to
+// fail the audit-log INSERT)
+// ============================================================================
+
+/**
+ * Bound an untrusted string to a destination column's width, stripping any
+ * control characters (including CR/LF) first.
+ *
+ * Pure and DB-free so it is directly unit-testable.
+ *
+ * SECURITY: tblAPIRequestLog.endpoint (VARCHAR 255), httpMethod (VARCHAR 10)
+ * and ipAddress (VARCHAR 45) are written from request-derived values — and the
+ * endpoint in particular embeds the RAW, unsanitised `_apiroute` so malformed
+ * attempts stay auditable. Under MySQL strict mode an over-length value makes
+ * the whole INSERT throw, which g2ml_apiLogRequest() swallows — silently
+ * dropping the audit row. Because the DB-backed rate limiter AND the pre-auth
+ * IP failed-auth backoff both COUNT rows in this same table, a dropped row is
+ * also an uncounted request: an attacker could otherwise send a flood of
+ * invalid-key requests (each still paying the full g2ml_apiVerifyKey() cost)
+ * carrying a >255-character route, none of which would ever be logged or count
+ * toward the backoff — defeating the very control that exists to stop that
+ * flood. Bounding every such field here makes the audit write robust against
+ * that sabotage. Stripping control characters additionally prevents a raw
+ * newline in a percent-decoded route from injecting a forged line into the
+ * server error log at any caller that also error_log()s the value.
+ *
+ * @param  string|null $value      The untrusted value, or null.
+ * @param  int         $maxLength  The destination column width (bytes).
+ * @return string|null             The stripped, length-capped value, or null.
+ */
+function g2ml_apiBoundLogValue(?string $value, int $maxLength): ?string
+{
+    if ($value === null)
+    {
+        return null;
+    }
+
+    $stripped = preg_replace('/[\x00-\x1F\x7F]/', '', $value);
+
+    if ($stripped === null)
+    {
+        $stripped = '';
+    }
+
+    if (strlen($stripped) > $maxLength)
+    {
+        $stripped = substr($stripped, 0, $maxLength);
+    }
+
+    return $stripped;
+}
+
+// ============================================================================
 // 📝 Request logging
 // ============================================================================
 
@@ -364,7 +417,18 @@ function g2ml_apiLogRequest(?int $apiKeyUID, string $endpoint, string $httpMetho
 
         if ($encodedCandidate !== false)
         {
-            $encodedBody = $encodedCandidate;
+            // The requestBody column is JSON, so it must stay VALID JSON — an
+            // over-length body is replaced with a small valid-JSON marker
+            // rather than truncated mid-structure (which would fail the JSON
+            // column's validation and drop the whole audit row).
+            if (strlen($encodedCandidate) > 60000)
+            {
+                $encodedBody = '{"_note":"request body omitted from audit log (too large)"}';
+            }
+            else
+            {
+                $encodedBody = $encodedCandidate;
+            }
         }
     }
 
@@ -375,12 +439,20 @@ function g2ml_apiLogRequest(?int $apiKeyUID, string $endpoint, string $httpMetho
         $truncatedUserAgent = substr($userAgent, 0, 500);
     }
 
+    // Bound every request-derived string to its column width (stripping control
+    // characters) so an oversized/hostile value can never fail the INSERT and
+    // silently drop the audit row — see g2ml_apiBoundLogValue() for why that
+    // would also let a failed-auth flood evade the pre-auth backoff.
+    $boundedEndpoint   = g2ml_apiBoundLogValue($endpoint, 255);
+    $boundedHttpMethod = g2ml_apiBoundLogValue($httpMethod, 10);
+    $boundedIpAddress  = g2ml_apiBoundLogValue($ipAddress, 45);
+
     dbInsert(
         'INSERT INTO tblAPIRequestLog '
         . '(apiKeyUID, endpoint, httpMethod, responseCode, responseTimeMs, ipAddress, userAgent, requestBody) '
         . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         'issiisss',
-        [$apiKeyUID, $endpoint, $httpMethod, $responseCode, $responseTimeMs, $ipAddress, $truncatedUserAgent, $encodedBody]
+        [$apiKeyUID, $boundedEndpoint, $boundedHttpMethod, $responseCode, $responseTimeMs, $boundedIpAddress, $truncatedUserAgent, $encodedBody]
     );
 
     // Probabilistic prune — Dreamhost cron is limited, so old rows are swept

@@ -170,7 +170,13 @@ if (isset($_GET['_apiroute']) && is_string($_GET['_apiroute']))
 
 $g2mlApiSanitisedRoute = g2ml_apiSanitiseRoute($g2mlApiRawRoute);
 
-$g2mlApiEndpointForLog = '/api/v1/' . $g2mlApiRawRoute;
+// The endpoint deliberately embeds the RAW (unsanitised) route so a malformed
+// attempt stays auditable, but it also flows into error_log() on the 500 path
+// below — so bound it to the tblAPIRequestLog.endpoint column width and strip
+// control characters here (g2ml_apiBoundLogValue(), loaded via page_init.php's
+// api_ratelimit.php) so an over-length route can never fail the audit INSERT
+// and a percent-decoded newline can never inject a forged server-log line.
+$g2mlApiEndpointForLog = g2ml_apiBoundLogValue('/api/v1/' . $g2mlApiRawRoute, 255);
 
 // ============================================================================
 // 🔒 Step 5: Enforce HTTPS
