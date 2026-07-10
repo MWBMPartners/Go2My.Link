@@ -10,7 +10,7 @@ The redirect engine that resolves short codes to their destination URLs.
 
 ```
 G2My.Link/
-├── _auth_keys/          ← Website-specific DB credentials (outside web root)
+├── .auth/               ← Website-specific DB credentials (outside web root)
 ├── _includes/           ← Website-specific shared includes
 ├── _functions/          ← Website-specific shared functions
 ├── _libraries/          ← Website-specific libraries

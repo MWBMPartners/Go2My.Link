@@ -30,11 +30,11 @@
 // 📦 Step 1: Load Component Auth Credentials
 // ============================================================================
 // Admin uses Component A's auth_creds.php (same database).
-// Path: Go2My.Link/_auth_keys/auth_creds.php (two levels up from _admin/public_html)
+// Path: Go2My.Link/.auth/auth_creds.php (two levels up from _admin/public_html)
 // ============================================================================
 
 $componentAuthPath = dirname(__DIR__, 2)
-    . DIRECTORY_SEPARATOR . '_auth_keys'
+    . DIRECTORY_SEPARATOR . '.auth'
     . DIRECTORY_SEPARATOR . 'auth_creds.php';
 
 if (file_exists($componentAuthPath))

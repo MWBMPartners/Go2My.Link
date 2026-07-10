@@ -270,7 +270,7 @@ Content Security Policy (CSP) is configured per-component to allow required CDN 
 - [ ] 🌐 Custom organisation domains working
 - [ ] 🔒 HTTPS enforced on all domains
 - [ ] 🛡️ Security headers in place
-- [ ] 🔒 Private directories (`_auth_keys`, `_includes`, `_functions`) not web-accessible
+- [ ] 🔒 Private directories (`_auth_keys`, `.auth`, `_includes`, `_functions`) not web-accessible
 - [ ] 🐛 Error logging to database working
 - [ ] ❌ Debug mode disabled in production
 - [ ] 🔒 `auth_creds.php` not accessible via browser

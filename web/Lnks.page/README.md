@@ -10,7 +10,7 @@ A LinkTree-like service for displaying curated lists of links on a single page.
 
 ```
 Lnks.page/
-├── _auth_keys/          ← Website-specific DB credentials (outside web root)
+├── .auth/               ← Website-specific DB credentials (outside web root)
 ├── _includes/           ← Website-specific shared includes
 ├── _functions/          ← Website-specific shared functions
 ├── _libraries/          ← Website-specific libraries

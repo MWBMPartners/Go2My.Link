@@ -75,7 +75,7 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 # =============================================================================
 # Block Private Directories
 # =============================================================================
-RewriteRule ^_auth_keys(/|$) - [F,L]
+RewriteRule ^\.auth(/|$) - [F,L]
 RewriteRule ^_includes(/|$) - [F,L]
 RewriteRule ^_functions(/|$) - [F,L]
 RewriteRule ^_libraries(/|$) - [F,L]

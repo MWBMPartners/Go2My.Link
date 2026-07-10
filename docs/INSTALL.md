@@ -38,7 +38,7 @@
 
 The installer writes **one** shared credentials file
 (`web/_auth_keys/auth_creds.php`); each component's
-`<Component>/_auth_keys/auth_creds.php` simply includes it, so all three sites
+`<Component>/.auth/auth_creds.php` simply includes it, so all three sites
 use the same database and keys automatically.
 
 ## 🔒 After installation (do this immediately)

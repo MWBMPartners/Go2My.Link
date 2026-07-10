@@ -30,8 +30,14 @@
 **/public_html_legacy/
 
 # Installer runtime artefacts (server-local; never commit)
+# The shared server-wide credentials dir stays "_auth_keys/"; each
+# component's own credential-override dir was renamed from "_auth_keys/" to
+# ".auth/". Both patterns are kept so a lock/token file is ignored regardless
+# of which directory it ends up in.
 **/_auth_keys/.install_token
 **/_auth_keys/.installed
+**/.auth/.install_token
+**/.auth/.installed
 
 # dev-team autopilot loop lock (runtime only; state file autopilot.json IS tracked)
 .dev-team/loop.lock/

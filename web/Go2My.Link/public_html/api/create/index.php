@@ -40,7 +40,7 @@
 // ============================================================================
 
 $componentAuthPath = dirname(__DIR__, 2)
-    . DIRECTORY_SEPARATOR . '_auth_keys'
+    . DIRECTORY_SEPARATOR . '.auth'
     . DIRECTORY_SEPARATOR . 'auth_creds.php';
 
 if (file_exists($componentAuthPath))

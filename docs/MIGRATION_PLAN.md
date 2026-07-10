@@ -324,7 +324,7 @@ Check **daily**:
 - [ ] `auth_creds.php` has production credentials
 - [ ] `ENCRYPTION_SALT` is a unique 64-character hex string
 - [ ] `auth_creds.php` not accessible via browser (returns redirect)
-- [ ] Private directories (`_auth_keys`, `_functions`, `_includes`) return 403
+- [ ] Private directories (`_auth_keys`, `.auth`, `_functions`, `_includes`) return 403
 - [ ] CSP headers present on all domains
 - [ ] CSRF protection working on all forms
 - [ ] Rate limiting active on URL creation and login
