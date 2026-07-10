@@ -57,9 +57,10 @@ CREATE TABLE IF NOT EXISTS `tblAPIKeys` (
 
     PRIMARY KEY (`apiKeyUID`),
     UNIQUE KEY `UQ_api_key` (`apiKey`),
+    UNIQUE KEY `UQ_apikey_prefix` (`apiKeyPrefix`)
+        COMMENT 'Prevents two keys from ever sharing a lookup prefix (#149.4) — a UNIQUE index also serves every lookup the old non-unique IDX_api_key_prefix provided',
     INDEX `IDX_api_key_user` (`userUID`),
     INDEX `IDX_api_key_org` (`orgHandle`),
-    INDEX `IDX_api_key_prefix` (`apiKeyPrefix`),
     INDEX `IDX_api_key_active` (`isActive`),
 
     CONSTRAINT `FK_apikey_user`

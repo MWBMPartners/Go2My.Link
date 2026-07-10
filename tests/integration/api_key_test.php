@@ -320,6 +320,89 @@ test('API key: generate -> verify round-trips to the correct owner/org/scopes', 
 });
 
 // ============================================================================
+// 🔁 apiKeyPrefix collision retry (#149.4 — UQ_apikey_prefix)
+// ============================================================================
+
+test('API key: a prefix collision (1062) is retried with a new key and succeeds', function () use ($db): void
+{
+    $marker  = 'apikey_' . substr(hash('sha256', (string) microtime(true) . 'prefixcollide'), 0, 12);
+    $userUID = g2ml_apikey_test_insert_user($db, '[default]', $marker);
+
+    // Reserve a fixed prefix by inserting a throwaway placeholder row, so the
+    // FIRST draw from the $GLOBALS['g2ml_api_prefix_override'] seam below
+    // collides against it on UQ_apikey_prefix (errno 1062).
+    $collidingPrefix  = 'colide01';
+    $placeholderHash  = hash('sha256', 'placeholder-collision-row-' . $marker);
+
+    g2ml_apikey_test_exec(
+        $db,
+        "INSERT INTO `tblAPIKeys` (`userUID`, `orgHandle`, `apiKey`, `apiKeyPrefix`, `keyName`) "
+        . "VALUES (" . (int) $userUID . ", '[default]', '" . $placeholderHash . "', '" . $collidingPrefix . "', 'Collision placeholder')"
+    );
+
+    $callCount = 0;
+
+    $GLOBALS['g2ml_api_prefix_override'] = function () use ($collidingPrefix, &$callCount): string
+    {
+        $callCount = $callCount + 1;
+
+        if ($callCount === 1)
+        {
+            return $collidingPrefix;
+        }
+
+        return _g2ml_apiBase64UrlToken(G2ML_API_KEY_PREFIX_BYTES);
+    };
+
+    $created = g2ml_apiGenerateKey($userUID, '[default]', 'Collision retry test key', ['account:read'], null);
+
+    unset($GLOBALS['g2ml_api_prefix_override']);
+
+    assert_true($created['success'], 'A single prefix collision must be transparently retried, never surfaced as a failure');
+    assert_same(2, $callCount, 'Exactly one retry must have occurred (collision on attempt 1, success on attempt 2)');
+    assert_not_same($collidingPrefix, $created['apiKeyPrefix'], 'The retried key must carry a DIFFERENT prefix from the one that collided');
+
+    $verified = g2ml_apiVerifyKey($created['plaintextKey']);
+    assert_true(is_array($verified), 'The retried key must verify successfully like any normally generated key');
+
+    g2ml_apikey_test_exec($db, "DELETE FROM `tblAPIKeys` WHERE `apiKeyPrefix` = '" . $collidingPrefix . "'");
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblAPIKeys` WHERE `apiKeyUID` = ' . (int) $created['apiKeyUID']);
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblUsers` WHERE `userUID` = ' . $userUID);
+});
+
+test('API key: exhausting every retry attempt on a persistent collision fails gracefully (never an unhandled error)', function () use ($db): void
+{
+    $marker  = 'apikey_' . substr(hash('sha256', (string) microtime(true) . 'prefixexhaust'), 0, 12);
+    $userUID = g2ml_apikey_test_insert_user($db, '[default]', $marker);
+
+    $stuckPrefix     = 'stuckabc';
+    $placeholderHash = hash('sha256', 'placeholder-exhaustion-row-' . $marker);
+
+    g2ml_apikey_test_exec(
+        $db,
+        "INSERT INTO `tblAPIKeys` (`userUID`, `orgHandle`, `apiKey`, `apiKeyPrefix`, `keyName`) "
+        . "VALUES (" . (int) $userUID . ", '[default]', '" . $placeholderHash . "', '" . $stuckPrefix . "', 'Exhaustion placeholder')"
+    );
+
+    // Every attempt draws the SAME already-taken prefix, so every one of the
+    // bounded retry loop's attempts collides on UQ_apikey_prefix.
+    $GLOBALS['g2ml_api_prefix_override'] = function () use ($stuckPrefix): string
+    {
+        return $stuckPrefix;
+    };
+
+    $created = g2ml_apiGenerateKey($userUID, '[default]', 'Collision exhaustion test key', ['account:read'], null);
+
+    unset($GLOBALS['g2ml_api_prefix_override']);
+
+    assert_false($created['success'], 'Persistent collisions across every retry attempt must fail cleanly, not throw or 500');
+    assert_true(isset($created['error']), 'A failed generation must still report an error message to the caller');
+
+    g2ml_apikey_test_exec($db, "DELETE FROM `tblAPIKeys` WHERE `apiKeyPrefix` = '" . $stuckPrefix . "'");
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblUsers` WHERE `userUID` = ' . $userUID);
+});
+
+// ============================================================================
 // 🚫 Rejection paths
 // ============================================================================
 

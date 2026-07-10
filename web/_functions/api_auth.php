@@ -102,6 +102,31 @@ function _g2ml_apiBase64UrlToken(int $bytes): string
     return $unpadded;
 }
 
+/**
+ * Draw a fresh apiKeyPrefix candidate.
+ *
+ * Testability seam (mirrors $GLOBALS['g2ml_geoip_reader_override'] in
+ * geolocation.php): when $GLOBALS['g2ml_api_prefix_override'] is set to a
+ * callable, its return value is used instead of a real random draw, so an
+ * integration test can force a deterministic sequence of prefixes (e.g. a
+ * pre-seeded colliding value, then a real random one) to exercise the
+ * duplicate-key retry loop in g2ml_apiGenerateKey() without waiting on a
+ * genuinely random 48-bit collision (#149.4).
+ *
+ * @return string  G2ML_API_KEY_PREFIX_LENGTH base64url characters.
+ */
+function _g2ml_apiGeneratePrefix(): string
+{
+    if (isset($GLOBALS['g2ml_api_prefix_override']) && is_callable($GLOBALS['g2ml_api_prefix_override']))
+    {
+        $override = $GLOBALS['g2ml_api_prefix_override'];
+
+        return $override();
+    }
+
+    return _g2ml_apiBase64UrlToken(G2ML_API_KEY_PREFIX_BYTES);
+}
+
 // ============================================================================
 // 🆕 Key generation
 // ============================================================================
@@ -127,14 +152,19 @@ function _g2ml_apiBase64UrlToken(int $bytes): string
  *   if ($created['success']) {
  *       // Show $created['plaintextKey'] to the user ONCE, then discard it.
  *   }
+ *
+ * Collision handling (#149.4): apiKeyPrefix is only a 48-bit random value
+ * (G2ML_API_KEY_PREFIX_BYTES = 6), guarded by the UNIQUE key
+ * UQ_apikey_prefix (web/_sql/migrations/017_apikey_prefix_unique.sql). A
+ * collision is astronomically unlikely but, unhandled, would surface as an
+ * unhandled dbInsert() failure. Since BOTH the prefix and the secret are
+ * freshly drawn together on every attempt, any duplicate-key (1062) failure
+ * — on either UQ_apikey_prefix or UQ_api_key — is retried with an entirely
+ * new key inside a small bounded loop, mirroring the shortCode TOCTOU retry
+ * pattern in web/Go2My.Link/_functions/shorturl_create.php.
  */
 function g2ml_apiGenerateKey(int $userUID, string $orgHandle, string $keyName, array $scopes, ?string $expiresAt = null): array
 {
-    $prefix       = _g2ml_apiBase64UrlToken(G2ML_API_KEY_PREFIX_BYTES); // -> G2ML_API_KEY_PREFIX_LENGTH base64url chars
-    $secret       = _g2ml_apiBase64UrlToken(32); // 32 bytes -> 43 base64url chars
-    $plaintextKey = 'g2ml_' . $prefix . '_' . $secret;
-    $hashedKey    = hash('sha256', $plaintextKey);
-
     $encodedScopes = json_encode(array_values($scopes));
 
     if ($encodedScopes === false)
@@ -142,12 +172,40 @@ function g2ml_apiGenerateKey(int $userUID, string $orgHandle, string $keyName, a
         $encodedScopes = '[]';
     }
 
-    $insertResult = dbInsert(
-        'INSERT INTO tblAPIKeys (userUID, orgHandle, apiKey, apiKeyPrefix, keyName, permissions, expiresAt) '
-        . 'VALUES (?, ?, ?, ?, ?, ?, ?)',
-        'issssss',
-        [$userUID, $orgHandle, $hashedKey, $prefix, $keyName, $encodedScopes, $expiresAt]
-    );
+    $duplicateKeyErrno = 1062;
+    $maxAttempts       = 5;
+    $insertResult      = false;
+    $prefix            = null;
+    $plaintextKey      = null;
+
+    for ($attempt = 1; $attempt <= $maxAttempts; $attempt++)
+    {
+        $prefix       = _g2ml_apiGeneratePrefix(); // -> G2ML_API_KEY_PREFIX_LENGTH base64url chars
+        $secret       = _g2ml_apiBase64UrlToken(32); // 32 bytes -> 43 base64url chars
+        $plaintextKey = 'g2ml_' . $prefix . '_' . $secret;
+        $hashedKey    = hash('sha256', $plaintextKey);
+
+        $insertResult = dbInsert(
+            'INSERT INTO tblAPIKeys (userUID, orgHandle, apiKey, apiKeyPrefix, keyName, permissions, expiresAt) '
+            . 'VALUES (?, ?, ?, ?, ?, ?, ?)',
+            'issssss',
+            [$userUID, $orgHandle, $hashedKey, $prefix, $keyName, $encodedScopes, $expiresAt]
+        );
+
+        if ($insertResult !== false)
+        {
+            break;
+        }
+
+        if (dbLastErrno() === $duplicateKeyErrno)
+        {
+            error_log('[Go2My.Link] WARNING: API key generation collision (1062) — user: ' . $userUID . ', org: ' . $orgHandle . ', attempt ' . $attempt . ' of ' . $maxAttempts);
+            continue;
+        }
+
+        error_log('[Go2My.Link] ERROR: Failed to insert API key (non-duplicate) — user: ' . $userUID . ', org: ' . $orgHandle);
+        break;
+    }
 
     if ($insertResult === false)
     {
