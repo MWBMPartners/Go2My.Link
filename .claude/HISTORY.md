@@ -6,6 +6,33 @@
 
 ---
 
+## 2026-07-10 — Execution: 3 launch-blockers, full public API, CueRCode, custom domains, analytics, premium tiers, Component C (in progress)
+
+Branch: **`launch-prep/2026-07-09`** — all committed, **NOT pushed**. Sequential Sonnet implementation agents, one issue + one commit + an Opus review per piece.
+
+### Launch-blockers found + fixed (all broke a fresh install; none were tracked)
+- **#135** login (`avatarURL`→`avatarPath`), **#136** registration (missing `NOT NULL username` → auto-derive unique), **#138** GDPR export (non-existent cols). Column-audit sweep → **0 remaining P0**. Also fixed `g2my.link` self-404 (custom-domain seed) + a redoc CVE + a `#38` key-prefix parse bug + seed-010 missing `USE`.
+
+### Public API (Phase 7) — built, documented, self-serve, security-reviewed
+- **#38** framework (`api_auth.php`/`api_ratelimit.php`, key auth `g2ml_<prefix>_<sha256>`, scopes, DB rate-limit, request log, envelope, `/api/v1` front controller). **#39** endpoints (URL CRUD/bulk/list + org, BOLA-safe org-scoping + pre-auth IP backoff). **#40** key-management dashboard (one-time secret). **#75** OpenAPI 3.1 spec + self-hosted Redoc at `/api/docs`.
+- **#145 CueRCode wiring** — QR-link create/re-point/scan attribution (`createShortURL()` + `logActivity()` extended, hot-path-safe). **CueRCode integrates via `/api/v1` with a `qr:link` key.**
+
+### Custom domains, analytics, tiers, UTM
+- **#91** ownership verification (DNS TXT) + verified-only routing (no namespace leak) + grandfather migration + `docs/CUSTOM_DOMAINS.md`.
+- **#41** analytics data layer + `/api/v1/analytics` + indexes (closed **#125**). **#42** analytics dashboard (Chart.js + accessible tables, theme-aware).
+- **#146** feature-entitlement/premium-tier gating (`entitlements.php`, fail-open; enforces `maxLinks`/API-daily/domain-cap). ⚠️ Free tier now ENFORCED — migrated orgs need paid tiers assigned.
+- **#92** UTM capture + forwarding on redirect (settings-gated, off by default, byte-identical-when-off).
+- **#147** CSRF token-overwrite bug (per-row same-named forms) — fixed across all 4 affected pages.
+
+### Component C (LinksPage) — 4/6 built
+- **#45** renderer (system templates + escaped 7 placeholders; `customHTML`/`customCSS` deferred to C.6), **#48** management UI (ownership-enforced CRUD, `maxLinksPages`-gated), **#47** template picker + owner-only IDOR-safe preview, **#46** custom-domain LinksPage fallback. Remaining: **#50 age-gate**, then **#49 WYSIWYG/HTML-upload** (Opus + dedicated security cycle — highest XSS surface).
+
+### Housekeeping
+- Closed **22** verified-fixed issues; filed enhancement issues **#139–144** + tracking issues **#145–147, #146** (entitlements). Test coverage grew **189/21 → 422 unit / 147 integration** (all green). Strategic plan `docs/LAUNCH_PLAN_2026-07-09.md`; `HANDOFF.md` kept current.
+- **Owner actions still pending (deferred):** #93 credential rotation, 480-URL migration (+ assign tiers), legal sign-off, push/review the branch.
+
+---
+
 ## 2026-07-09 — Launch-readiness review, strategic roadmap & P0 login-blocker
 
 Branch: **`launch-prep/2026-07-09`** (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) — committed, **not pushed**.
