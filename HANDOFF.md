@@ -3,7 +3,7 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `8bc8dff` (+ this handoff commit).
+> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `c52429e` (+ this handoff commit).
 
 ---
 
@@ -105,9 +105,11 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
 - **P1:** ✅ API framework **#38** (`34453d8`) → ✅ endpoints **#39** (`0d495c1`) → ✅ **CueRCode wiring #145**
   (`50f2427`) → ✅ **OpenAPI/Swagger #75** (`5d229d7`, spec + self-hosted Redoc at `/api/docs`) →
   ✅ **key mgmt UI #40** (`8bc8dff`, create/list/revoke, one-time secret, CSRF, `canManageOrg` authz —
-  ⚠️ ordinary members can't mint keys yet) → **⏭️ NEXT: custom domains #91** (ownership verification +
-  routing unification + `docs/CUSTOM_DOMAINS.md` partner DNS/TLS guide) → analytics **#41/#42** → geo/UA
-  **#43** → UTM **#92** → API security cycle. Then P2 (entitlements → SIGNula OIDC → billing) → P3 Component C.
+  ⚠️ ordinary members can't mint keys yet) → ✅ **custom domains #91** (`c52429e`, verify + verified-only
+  routing + grandfather migration + `docs/CUSTOM_DOMAINS.md`; caught a fresh-install g2my.link 404 bug) →
+  **⏭️ NEXT: analytics #41 (data fns + `/api/v1/analytics` endpoint + `(shortCode,createdAt)` index #125)
+  then #42 dashboard** → geo/UA **#43** → UTM **#92** → API security cycle. Then P2 (entitlements → SIGNula
+  OIDC → billing) → P3 Component C.
   - 🎉 **Milestone: public API + CueRCode integration READY.** CueRCode integrates via `/api/v1` with a
     `qr:link`-scoped key. `createShortURL()` accepts `createdVia`/`createdViaAPIKeyUID`/QR columns;
     `logActivity()` carries `scanSource`/`qrCodeExternalID` (bind-string re-verified 23=23=23).
