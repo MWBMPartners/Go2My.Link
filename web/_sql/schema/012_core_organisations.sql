@@ -155,6 +155,10 @@ CREATE TABLE IF NOT EXISTS `tblOrgShortDomains` (
 
     `isActive`              TINYINT(1) UNSIGNED NOT NULL DEFAULT 1
         COMMENT 'Routable flag — a NEWLY added domain starts at 0 until verified; grandfathered pre-verification domains keep resolving (see migration 013)',
+
+    `linksPageUID`          BIGINT UNSIGNED     DEFAULT NULL
+        COMMENT 'Component C.4 (#46) — the org''s published LinksPage shown at this domain''s root, or for a path that does not resolve to a short code, instead of a 404. FK to tblLinksPages.pageUID added as a deferred ALTER at the end of 032_linkspage.sql (tblLinksPages is defined later in import order). NULL = no fallback configured (existing 404 behaviour is unchanged).',
+
     `createdAt`             DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updatedAt`             DATETIME            DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
@@ -162,6 +166,7 @@ CREATE TABLE IF NOT EXISTS `tblOrgShortDomains` (
     UNIQUE KEY `UQ_short_domain` (`shortDomain`),
     INDEX `IDX_short_domain_org` (`orgHandle`),
     INDEX `IDX_short_domain_status` (`verificationStatus`),
+    INDEX `IDX_short_domain_linkspage` (`linksPageUID`),
 
     CONSTRAINT `FK_short_domain_org`
         FOREIGN KEY (`orgHandle`)

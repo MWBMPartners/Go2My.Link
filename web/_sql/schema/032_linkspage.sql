@@ -204,3 +204,24 @@ CREATE TABLE IF NOT EXISTS `tblLinksPageItems` (
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci
   COMMENT='Individual link items on a LinksPage';
+
+-- =============================================================================
+-- Deferred foreign key: tblOrgShortDomains.linksPageUID -> tblLinksPages
+-- =============================================================================
+-- Added here (after tblLinksPages exists) because tblOrgShortDomains is
+-- defined in 012_core_organisations.sql, which is imported before this file —
+-- mirrors the same deferred-FK pattern used for
+-- tblShortURLs.createdViaAPIKeyUID -> tblAPIKeys in 031_api.sql.
+--
+-- Component C.4 (#46): a custom short domain's designated LinksPage, shown at
+-- its root (or for a path that does not resolve to a short code) instead of a
+-- 404. ON DELETE SET NULL — deleting the LinksPage simply clears the
+-- domain's designation (reverting to the existing 404 behaviour) rather than
+-- blocking the delete or cascading anything.
+-- =============================================================================
+ALTER TABLE `tblOrgShortDomains`
+    ADD CONSTRAINT `FK_short_domain_linkspage`
+        FOREIGN KEY (`linksPageUID`)
+        REFERENCES `tblLinksPages` (`pageUID`)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL;

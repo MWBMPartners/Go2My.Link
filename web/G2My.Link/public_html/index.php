@@ -19,7 +19,9 @@
  * passes through this file. Minimal overhead, no template rendering.
  *
  * Flow:
- *   1. Extract short code from ?code= (set by .htaccess)
+ *   1. Extract short code from ?code= (set by .htaccess) — an EMPTY code (a
+ *      root/bare-domain request) first checks the custom-domain LinksPage
+ *      fallback (#46) before falling back to redirect.fallback_url
  *   2. Resolve the short code via resolver functions (→ sp_lookupShortURL)
  *   3. Optionally validate destination URL accessibility
  *   4. Log the activity (respecting DNT and analytics setting), optionally
@@ -27,13 +29,16 @@
  *      default — analytics.capture_tracking_params)
  *   5. Optionally forward the link's own configured UTM params onto the
  *      destination (#92, OFF by default — redirect.forward_utm_params)
- *   6. Issue 302 redirect (or show branded error page)
+ *   6. Issue 302 redirect, OR — for an otherwise-404 'not_found' code on a
+ *      verified custom domain with a designated published LinksPage (#46) —
+ *      render that LinksPage; otherwise show the branded error page
  *
  * @package    Go2My.Link
  * @subpackage ComponentB
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.5.0
- * @since      Phase 2 (refactored Phase 3; UTM capture/forward added v1.1.0 / #92)
+ * @version    0.6.0
+ * @since      Phase 2 (refactored Phase 3; UTM capture/forward added v1.1.0 /
+ *             #92; custom-domain LinksPage fallback added v1.2.0 / #46)
  * ============================================================================
  */
 
@@ -104,14 +109,64 @@ if ($respectDNT && $isDNT)
 }
 
 // ============================================================================
-// 🔀 Step 6: Extract Short Code
+// 🌐 Step 6: Determine Requesting Domain
+// ============================================================================
+// Custom org domains (camsda.link, tyney.link, etc.) are resolved to their
+// org handle by the sp_lookupShortURL stored procedure.
+//
+// Moved AHEAD of short-code extraction (below) so the empty-short-code /
+// root-request branch can consult the custom-domain LinksPage fallback
+// (#46) — which needs to know the Host — BEFORE falling back to the generic
+// redirect.fallback_url setting. This reordering does not touch the
+// successful-redirect path at all: $requestDomain was always computed
+// unconditionally on every request either way.
+// ============================================================================
+
+$requestDomain = $_SERVER['HTTP_HOST'] ?? 'g2my.link';
+
+// Strip port number if present (e.g., localhost:8080)
+// 📖 Reference: https://www.php.net/manual/en/function.strpos.php
+if (strpos($requestDomain, ':') !== false)
+{
+    $requestDomain = explode(':', $requestDomain)[0];
+}
+
+// ============================================================================
+// 🔀 Step 7: Extract Short Code
 // ============================================================================
 
 $shortCode = trim($_GET['code'] ?? '');
 
-// No short code provided — redirect to main website
+// No short code provided (a root / bare-domain request).
 if ($shortCode === '')
 {
+    // ------------------------------------------------------------------------
+    // 📄 Custom-domain LinksPage fallback (#46) — ONLY reached on this
+    // already-off-the-hot-path branch ($shortCode === ''). A normal
+    // short-code redirect never enters this if-block at all, so this adds
+    // ZERO overhead to the successful-redirect path (Step 9 below).
+    //
+    // g2ml_renderCustomDomainLinksPageFallback() independently re-checks the
+    // domain is verified+active (#91) and the designated page is still
+    // published+active (#46) — it returns false instantly, with nothing
+    // echoed, unless every condition is met, so falling through to the
+    // EXISTING fallback-URL redirect immediately below is always safe.
+    // 📖 Reference: web/G2My.Link/_functions/linkspage_fallback.php
+    // ------------------------------------------------------------------------
+    require_once $componentFunctionsDir . DIRECTORY_SEPARATOR . 'linkspage_fallback.php';
+
+    if (g2ml_renderCustomDomainLinksPageFallback($requestDomain))
+    {
+        if ($shouldLog)
+        {
+            logActivity('redirect', 'linkspage_fallback', 200, [
+                'logData' => ['reason' => 'Custom-domain LinksPage fallback (root request)', 'requestDomain' => $requestDomain],
+            ]);
+        }
+
+        exit;
+    }
+
     $fallbackURL = getSetting('redirect.fallback_url', 'https://go2my.link');
 
     if ($shouldLog)
@@ -123,22 +178,6 @@ if ($shortCode === '')
 
     buildRedirectResponse($fallbackURL, 302);
     // buildRedirectResponse calls exit — execution stops here
-}
-
-// ============================================================================
-// 🌐 Step 7: Determine Requesting Domain
-// ============================================================================
-// Custom org domains (camsda.link, tyney.link, etc.) are resolved to their
-// org handle by the sp_lookupShortURL stored procedure.
-// ============================================================================
-
-$requestDomain = $_SERVER['HTTP_HOST'] ?? 'g2my.link';
-
-// Strip port number if present (e.g., localhost:8080)
-// 📖 Reference: https://www.php.net/manual/en/function.strpos.php
-if (strpos($requestDomain, ':') !== false)
-{
-    $requestDomain = explode(':', $requestDomain)[0];
 }
 
 // ============================================================================
@@ -436,6 +475,32 @@ if ($destination !== null && $destination !== '')
 {
     buildRedirectResponse($destination, 302);
     // buildRedirectResponse calls exit
+}
+
+// ============================================================================
+// 📄 Custom-domain LinksPage fallback (#46) — "path does not resolve to a
+// short code" branch. Scoped STRICTLY to status === 'not_found' (the short
+// code genuinely does not exist in this org's namespace) — every OTHER
+// error status (inactive, expired, not_yet_active, no_destination,
+// max_hops_exceeded, domain_not_configured) keeps its EXISTING, distinct
+// behaviour completely untouched. domain_not_configured in particular can
+// never reach this: g2ml_renderCustomDomainLinksPageFallback() performs its
+// OWN independent verified+active check against tblOrgShortDomains, so an
+// unverified domain claim can never surface a LinksPage this way either.
+//
+// 🔒 HOT-PATH RULE: this is already inside the error-handling branch — the
+// successful-redirect path (Step 9 above) returns/exits long before this
+// code is ever reached, so it adds no overhead there.
+// 📖 Reference: web/G2My.Link/_functions/linkspage_fallback.php
+// ============================================================================
+if ($status === 'not_found')
+{
+    require_once $componentFunctionsDir . DIRECTORY_SEPARATOR . 'linkspage_fallback.php';
+
+    if (g2ml_renderCustomDomainLinksPageFallback($requestDomain))
+    {
+        exit;
+    }
 }
 
 // Show the appropriate branded error page

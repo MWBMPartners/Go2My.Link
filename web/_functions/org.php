@@ -13,7 +13,8 @@
  * ============================================================================
  *
  * CRUD operations for organisations, member management, invitations,
- * custom domain verification, and short domain management.
+ * custom domain verification, short domain management, and (#46) designating
+ * a verified short domain's custom-domain LinksPage fallback.
  *
  * Dependencies: security.php (g2ml_generateToken, g2ml_sanitiseInput),
  *               db_query.php (dbSelect, dbSelectOne, dbInsert, dbUpdate, dbDelete),
@@ -25,12 +26,13 @@
  * @package    Go2My.Link
  * @subpackage Functions
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.6.0
- * @since      Phase 5
+ * @version    0.7.0
+ * @since      Phase 5 (custom-domain LinksPage designation added v1.2.0 / #46)
  *
  * 📖 References:
  *     - tblOrganisations schema: web/_sql/schema/012_core_organisations.sql
  *     - tblOrgInvitations schema: web/_sql/schema/014_org_invitations.sql
+ *     - tblOrgShortDomains.linksPageUID: web/_sql/migrations/015_org_short_domain_linkspage.sql
  *     - DNS TXT records: https://www.php.net/manual/en/function.dns-get-record.php
  * ============================================================================
  */
@@ -1418,6 +1420,144 @@ function getOrgShortDomains(string $orgHandle): array
     );
 
     return $rows ?: [];
+}
+
+// ============================================================================
+// 📄 Custom-Domain LinksPage Fallback Designation (Component C.4, #46)
+// ============================================================================
+
+/**
+ * List an organisation's own PUBLISHED, active LinksPages — populates the
+ * short-domain "point this domain at a LinksPage" designation picker (#46).
+ *
+ * Deliberately scoped to isPublished = 1 AND isActive = 1: an unpublished
+ * draft must never be offered here. This is purely a convenience listing for
+ * the picker — the actual security boundary is enforced independently by
+ * setShortDomainLinksPage() (below) at WRITE time, and again by
+ * g2ml_resolveLinksPageByUID() (web/Lnks.page/_functions/linkspage_resolver.php)
+ * at every READ, so even if this listing were ever stale it could not itself
+ * cause a draft/other-org page to be designated or rendered.
+ *
+ * @param  string $orgHandle
+ * @return array  Rows: pageUID, slug, pageTitle.
+ */
+function getOrgPublishedLinksPages(string $orgHandle): array
+{
+    $rows = dbSelect(
+        "SELECT pageUID, slug, pageTitle
+         FROM tblLinksPages
+         WHERE orgHandle = ? AND isPublished = 1 AND isActive = 1
+         ORDER BY pageTitle ASC",
+        's',
+        [$orgHandle]
+    );
+
+    if ($rows === false)
+    {
+        return [];
+    }
+
+    return $rows;
+}
+
+/**
+ * Point (or clear) a VERIFIED custom short domain's designated LinksPage
+ * (#46) — the page rendered at that domain's root, or when a requested path
+ * does not resolve to a short code, instead of a 404. See
+ * web/G2My.Link/_functions/linkspage_fallback.php for the redirect
+ * hot-path's consuming side.
+ *
+ * 🔒 SECURITY — IDOR:
+ *   - canManageOrg($orgHandle) is checked first, exactly like every other
+ *     short-domain mutation in this file.
+ *   - The domain row itself is looked up scoped to `orgHandle = ?` — a
+ *     shortDomainUID belonging to another org is rejected as "not found",
+ *     identically to one that does not exist.
+ *   - Only a VERIFIED domain may be given a designation — an
+ *     unverified/claimed domain never routes any traffic at all (#91), so
+ *     designating one would be meaningless and confusing in the UI.
+ *   - When $linksPageUID is non-null it is RE-VERIFIED here, scoped to
+ *     `orgHandle = ? AND isPublished = 1 AND isActive = 1` against
+ *     tblLinksPages — a pageUID belonging to ANOTHER organisation, or one
+ *     that is not published/active, is rejected outright with the SAME
+ *     generic "not found" message as a pageUID that does not exist at all.
+ *     The client-supplied pageUID is NEVER trusted beyond this check — this
+ *     is the actual IDOR defence, not merely the picker in
+ *     getOrgPublishedLinksPages() only listing an org's own pages.
+ *
+ * @param  int      $shortDomainUID
+ * @param  string   $orgHandle
+ * @param  int|null $linksPageUID    The page to designate, or null to clear
+ *                                    the domain's designation ("None" — the
+ *                                    existing 404 behaviour is then unchanged).
+ * @return array  ['success' => bool, 'error' => string|null]
+ */
+function setShortDomainLinksPage(int $shortDomainUID, string $orgHandle, ?int $linksPageUID): array
+{
+    if (!canManageOrg($orgHandle))
+    {
+        return ['success' => false, 'error' => 'You do not have permission to manage short domains.'];
+    }
+
+    $domain = dbSelectOne(
+        "SELECT * FROM tblOrgShortDomains WHERE shortDomainUID = ? AND orgHandle = ? LIMIT 1",
+        'is',
+        [$shortDomainUID, $orgHandle]
+    );
+
+    if ($domain === null || $domain === false)
+    {
+        return ['success' => false, 'error' => 'Short domain not found.'];
+    }
+
+    if ($domain['verificationStatus'] !== 'verified')
+    {
+        return ['success' => false, 'error' => 'Only a verified domain can be pointed at a LinksPage.'];
+    }
+
+    if ($linksPageUID !== null)
+    {
+        // 🔒 IDOR defence — re-verify server-side; NEVER trust the client's
+        // pageUID beyond this check. A page belonging to another org, or one
+        // that is not published/active, is treated exactly like a page that
+        // does not exist at all — the caller learns nothing about WHY it was
+        // rejected beyond a single generic message.
+        $ownedPage = dbSelectOne(
+            "SELECT pageUID FROM tblLinksPages
+             WHERE pageUID = ? AND orgHandle = ? AND isPublished = 1 AND isActive = 1
+             LIMIT 1",
+            'is',
+            [$linksPageUID, $orgHandle]
+        );
+
+        if ($ownedPage === null || $ownedPage === false)
+        {
+            return ['success' => false, 'error' => 'That LinksPage was not found, is not published, or does not belong to your organisation.'];
+        }
+    }
+
+    $updateResult = dbUpdate(
+        "UPDATE tblOrgShortDomains SET linksPageUID = ? WHERE shortDomainUID = ? AND orgHandle = ?",
+        'iis',
+        [$linksPageUID, $shortDomainUID, $orgHandle]
+    );
+
+    if ($updateResult === false)
+    {
+        return ['success' => false, 'error' => 'Failed to update the LinksPage designation.'];
+    }
+
+    $currentUser = getCurrentUser();
+    logActivity('set_short_domain_linkspage', 'success', 200, [
+        'userUID' => $currentUser['userUID'],
+        'logData' => [
+            'orgHandle'    => $orgHandle,
+            'shortDomain'  => $domain['shortDomain'],
+            'linksPageUID' => $linksPageUID,
+        ],
+    ]);
+
+    return ['success' => true, 'error' => null];
 }
 
 /**

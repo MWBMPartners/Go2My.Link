@@ -44,13 +44,33 @@
  *     g2ml_linkspageLoadDefaultSystemTemplate() rather than duplicating that
  *     lookup.
  *
+ * 🔒 SECURITY (C.4, #46 — custom-domain LinksPage fallback):
+ *   - g2ml_resolveLinksPageByUID() is the second PUBLIC entry point, used by
+ *     web/G2My.Link/_functions/linkspage_fallback.php (Component B's redirect
+ *     hot path) to render an org's designated LinksPage at a verified custom
+ *     domain's root, or when a requested path does not resolve to a short
+ *     code, instead of a 404. It applies the EXACT SAME `isPublished = 1 AND
+ *     isActive = 1` filter as g2ml_resolveLinksPage() — a designated but
+ *     unpublished/inactive page can NEVER be surfaced through a custom
+ *     domain, even though the caller already trusts the pageUID came from
+ *     tblOrgShortDomains.linksPageUID (itself only ever settable by
+ *     setShortDomainLinksPage() in web/_functions/org.php, which re-verifies
+ *     ownership + isPublished at write time — this is deliberate
+ *     defence-in-depth against a page being unpublished AFTER it was
+ *     designated). Both public entry points share one internal model builder
+ *     (_g2ml_linkspageBuildPublicModelFromRow()) so the template-resolution
+ *     and items-lookup logic is written once, not duplicated.
+ *
  * Functions:
- *   - g2ml_linkspageIsValidSlug()              — charset/length guard for the URL slug
- *   - g2ml_linkspageDefaultTemplateSlug()       — the operator-configured fallback template slug
- *   - g2ml_linkspageLoadSystemTemplate()        — load ONE system template row by templateUID
- *   - g2ml_linkspageLoadDefaultSystemTemplate() — load the default (or first active) system template
- *   - g2ml_resolveLinksPage()                   — the main PUBLIC resolver (DB-touching)
- *   - g2ml_linkspageBuildOwnerPreviewModel()     — C.3/#47 OWNER PREVIEW model builder (pre-verified input only)
+ *   - g2ml_linkspageIsValidSlug()                 — charset/length guard for the URL slug
+ *   - g2ml_linkspageDefaultTemplateSlug()          — the operator-configured fallback template slug
+ *   - g2ml_linkspageLoadSystemTemplate()           — load ONE system template row by templateUID
+ *   - g2ml_linkspageLoadDefaultSystemTemplate()    — load the default (or first active) system template
+ *   - g2ml_linkspageServiceEnabled()                — the linkspage.enabled operator kill-switch check
+ *   - _g2ml_linkspageBuildPublicModelFromRow()      — shared template+items model builder (internal)
+ *   - g2ml_resolveLinksPage()                       — the main PUBLIC resolver, by slug (DB-touching)
+ *   - g2ml_resolveLinksPageByUID()                  — C.4/#46 PUBLIC resolver, by pageUID (DB-touching)
+ *   - g2ml_linkspageBuildOwnerPreviewModel()         — C.3/#47 OWNER PREVIEW model builder (pre-verified input only)
  *
  * Dependencies: web/_functions/db_query.php (dbSelect()/dbSelectOne()) and
  *               web/_functions/settings.php (getSetting()) — both already
@@ -59,8 +79,8 @@
  * @package    Go2My.Link
  * @subpackage ComponentC
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.1.0
- * @since      Phase 8 (#45)
+ * @version    0.2.0
+ * @since      Phase 8 (#45; by-pageUID public resolver added v1.2.0 / #46)
  * ============================================================================
  */
 
@@ -210,60 +230,63 @@ function g2ml_linkspageLoadDefaultSystemTemplate(): ?array
 }
 
 // ============================================================================
-// 📋 Main resolver
+// 🔌 Operator kill-switch
 // ============================================================================
 
 /**
- * Resolve a public lnks.page/<slug> request into a structured page model.
+ * The linkspage.enabled operator kill-switch — mirrors the
+ * cuercode.integration_enabled pattern used elsewhere in the codebase: when
+ * off, EVERY page (by slug or by pageUID) behaves as not-found rather than
+ * partially working. Shared by BOTH public resolvers below.
  *
- * @param  string $slug  The ALREADY shape-validated slug — see
- *                        g2ml_linkspageIsValidSlug(). Callers should reject an
- *                        invalid shape before ever calling this function.
- * @return array|null    ['page' => array, 'template' => array, 'items' => array],
- *                        or null when the slug does not resolve to a publicly
- *                        visible page (missing, unpublished, inactive, or the
- *                        service is administratively disabled).
+ * @return bool
  */
-function g2ml_resolveLinksPage(string $slug): ?array
+function g2ml_linkspageServiceEnabled(): bool
 {
-    if ($slug === '')
+    if (!function_exists('getSetting'))
     {
-        return null;
+        return true;
     }
 
-    // Operator kill-switch — mirrors the cuercode.integration_enabled pattern
-    // used elsewhere in the codebase: when off, EVERY slug behaves as
-    // not-found rather than partially working.
-    if (function_exists('getSetting'))
-    {
-        $serviceEnabled = getSetting('linkspage.enabled', true);
+    $serviceEnabled = getSetting('linkspage.enabled', true);
 
-        if ($serviceEnabled === false || $serviceEnabled === '0' || $serviceEnabled === 0)
-        {
-            return null;
-        }
+    if ($serviceEnabled === false || $serviceEnabled === '0' || $serviceEnabled === 0)
+    {
+        return false;
     }
 
-    // 🔒 customHTML / customCSS are deliberately NEVER selected — see the file
-    // header. Only the columns the renderer actually needs are read.
-    $pageRow = dbSelectOne(
-        "SELECT pageUID, userUID, orgHandle, slug, pageTitle, pageDescription, avatarPath,
-                templateUID, themeColour, backgroundColour, fontFamily, showSocialIcons, socialLinks
-         FROM tblLinksPages
-         WHERE slug = ? AND isPublished = 1 AND isActive = 1
-         LIMIT 1",
-        's',
-        [$slug]
-    );
+    return true;
+}
 
-    if ($pageRow === null || $pageRow === false)
-    {
-        return null;
-    }
+// ============================================================================
+// 🧱 Shared public-model builder (template + items) — internal
+// ============================================================================
 
+/**
+ * Resolve the template + items for an ALREADY-fetched, ALREADY publicly
+ * visible (isPublished = 1 AND isActive = 1) tblLinksPages row, and shape the
+ * complete page model g2ml_renderLinksPage() expects.
+ *
+ * Shared by g2ml_resolveLinksPage() (by slug) and g2ml_resolveLinksPageByUID()
+ * (by pageUID, #46) so the template-resolution and items-lookup logic is
+ * written exactly once. This function does NOT itself enforce the
+ * isPublished/isActive filter — both callers already applied it in their own
+ * tblLinksPages SELECT before calling this.
+ *
+ * @param  array $pageRow  A row shaped like g2ml_resolveLinksPage()'s own
+ *                          SELECT (pageUID, userUID, orgHandle, slug,
+ *                          pageTitle, pageDescription, avatarPath, templateUID,
+ *                          themeColour, backgroundColour, fontFamily,
+ *                          showSocialIcons, socialLinks).
+ * @return array|null    ['page' => array, 'template' => array, 'items' => array],
+ *                        or null when no usable active SYSTEM template exists
+ *                        at all (a misconfigured install).
+ */
+function _g2ml_linkspageBuildPublicModelFromRow(array $pageRow): ?array
+{
     $templateRow = null;
 
-    if ($pageRow['templateUID'] !== null)
+    if (isset($pageRow['templateUID']) && $pageRow['templateUID'] !== null)
     {
         $templateRow = g2ml_linkspageLoadSystemTemplate((int) $pageRow['templateUID']);
     }
@@ -279,7 +302,7 @@ function g2ml_resolveLinksPage(string $slug): ?array
         // with an empty/deactivated tblLinksPageTemplates) — the page cannot
         // be rendered safely, so treat it as not-found rather than emitting
         // a broken/empty page.
-        error_log('[Go2My.Link] ERROR: g2ml_resolveLinksPage — no active system template available for slug: ' . $slug);
+        error_log('[Go2My.Link] ERROR: _g2ml_linkspageBuildPublicModelFromRow — no active system template available for pageUID: ' . (string) ($pageRow['pageUID'] ?? '?'));
         return null;
     }
 
@@ -302,6 +325,116 @@ function g2ml_resolveLinksPage(string $slug): ?array
         'template' => $templateRow,
         'items'    => $itemRows,
     ];
+}
+
+// ============================================================================
+// 📋 Main resolver — by slug (public lnks.page/<slug>)
+// ============================================================================
+
+/**
+ * Resolve a public lnks.page/<slug> request into a structured page model.
+ *
+ * @param  string $slug  The ALREADY shape-validated slug — see
+ *                        g2ml_linkspageIsValidSlug(). Callers should reject an
+ *                        invalid shape before ever calling this function.
+ * @return array|null    ['page' => array, 'template' => array, 'items' => array],
+ *                        or null when the slug does not resolve to a publicly
+ *                        visible page (missing, unpublished, inactive, or the
+ *                        service is administratively disabled).
+ */
+function g2ml_resolveLinksPage(string $slug): ?array
+{
+    if ($slug === '')
+    {
+        return null;
+    }
+
+    if (!g2ml_linkspageServiceEnabled())
+    {
+        return null;
+    }
+
+    // 🔒 customHTML / customCSS are deliberately NEVER selected — see the file
+    // header. Only the columns the renderer actually needs are read.
+    $pageRow = dbSelectOne(
+        "SELECT pageUID, userUID, orgHandle, slug, pageTitle, pageDescription, avatarPath,
+                templateUID, themeColour, backgroundColour, fontFamily, showSocialIcons, socialLinks
+         FROM tblLinksPages
+         WHERE slug = ? AND isPublished = 1 AND isActive = 1
+         LIMIT 1",
+        's',
+        [$slug]
+    );
+
+    if ($pageRow === null || $pageRow === false)
+    {
+        return null;
+    }
+
+    return _g2ml_linkspageBuildPublicModelFromRow($pageRow);
+}
+
+// ============================================================================
+// 📋 Second public resolver — by pageUID (C.4, #46 — custom-domain fallback)
+// ============================================================================
+
+/**
+ * Resolve a page model BY pageUID, for the custom-domain LinksPage fallback
+ * (web/G2My.Link/_functions/linkspage_fallback.php, Component B). The
+ * pageUID comes from tblOrgShortDomains.linksPageUID — a value only ever
+ * written by setShortDomainLinksPage() (web/_functions/org.php), which itself
+ * re-verifies the page belongs to the requesting org AND is published at
+ * write time. This function independently re-applies the SAME
+ * `isPublished = 1 AND isActive = 1` filter g2ml_resolveLinksPage() uses
+ * regardless — defence-in-depth against a page being unpublished (or
+ * deactivated) AFTER it was designated, which must instantly stop it from
+ * being rendered here even though the domain's designation row still points
+ * at it.
+ *
+ * 🔒 This is a PUBLIC, org-agnostic read — it deliberately does NOT check
+ * which org owns the page. That is safe ONLY because the caller already
+ * restricts pageUID to one drawn from a specific tblOrgShortDomains row (a
+ * value nothing here lets a visitor supply directly) — this function itself
+ * performs no ownership check beyond isPublished/isActive, exactly mirroring
+ * how g2ml_resolveLinksPage() is like public "by slug" reads.
+ *
+ * @param  int $pageUID
+ * @return array|null    ['page' => array, 'template' => array, 'items' => array],
+ *                        or null when the pageUID does not resolve to a
+ *                        publicly visible page (missing, unpublished,
+ *                        inactive, or the service is administratively
+ *                        disabled).
+ */
+function g2ml_resolveLinksPageByUID(int $pageUID): ?array
+{
+    if ($pageUID <= 0)
+    {
+        return null;
+    }
+
+    if (!g2ml_linkspageServiceEnabled())
+    {
+        return null;
+    }
+
+    // 🔒 customHTML / customCSS are deliberately NEVER selected — see the file
+    // header. Same column set as g2ml_resolveLinksPage()'s own SELECT.
+    $pageRow = dbSelectOne(
+        "SELECT pageUID, userUID, orgHandle, slug, pageTitle, pageDescription, avatarPath,
+                templateUID, themeColour, backgroundColour, fontFamily, showSocialIcons, socialLinks
+         FROM tblLinksPages
+         WHERE pageUID = ? AND isPublished = 1 AND isActive = 1
+         LIMIT 1",
+        'i',
+        [$pageUID]
+    );
+
+    if ($pageRow === null || $pageRow === false)
+    {
+        return null;
+    }
+
+    return _g2ml_linkspageBuildPublicModelFromRow($pageRow);
 }
 
 // ============================================================================

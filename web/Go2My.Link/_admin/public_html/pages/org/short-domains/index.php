@@ -13,17 +13,29 @@
  * ============================================================================
  *
  * Add, verify (via DNS TXT ownership proof), remove, and set the default
- * short URL domain for an organisation.
+ * short URL domain for an organisation. A VERIFIED domain may also be
+ * pointed at one of the org's own PUBLISHED LinksPages (#46) — the page
+ * rendered at that domain's root, or for a path that does not resolve to a
+ * short code, instead of a 404 (see web/G2My.Link/_functions/
+ * linkspage_fallback.php for the redirect hot-path's consuming side).
  *
  * 🔒 #91 — a newly added domain is UNVERIFIED and NOT routable
  * (verificationStatus='pending', isActive=0) until its owner proves DNS
  * control via the Verify action, which calls verifyOrgShortDomain().
  * See docs/CUSTOM_DOMAINS.md for the full partner-facing walkthrough.
  *
+ * 🔒 #46 IDOR defence — the LinksPage designation picker below only ever
+ * LISTS this org's own published pages (getOrgPublishedLinksPages()), but the
+ * actual security boundary is setShortDomainLinksPage() (web/_functions/
+ * org.php) re-verifying server-side, at write time, that the submitted
+ * pageUID belongs to THIS org and is published — a tampered form value
+ * naming another org's page is rejected outright.
+ *
  * @package    Go2My.Link
  * @subpackage ComponentA_Admin
- * @version    0.7.0
- * @since      Phase 5 (ownership verification added v1.1.0 / #91)
+ * @version    0.8.0
+ * @since      Phase 5 (ownership verification added v1.1.0 / #91; custom-domain
+ *             LinksPage designation added v1.2.0 / #46)
  * ============================================================================
  */
 
@@ -84,6 +96,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     {
         $csrfFormName = 'remove_short_domain_' . $postDomainUID;
     }
+    elseif ($actionType === 'set_domain_linkspage')
+    {
+        // Per-row action, namespaced by domain UID — see #147 note above.
+        $csrfFormName = 'set_domain_linkspage_' . $postDomainUID;
+    }
     else
     {
         $csrfFormName = 'org_short_domains_form';
@@ -138,13 +155,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                 if ($result['success']) { $actionSuccess = 'Short domain removed.'; }
                 else { $actionError = $result['error']; }
                 break;
+
+            case 'set_domain_linkspage':
+                $domainUID = (int) ($_POST['domain_uid'] ?? 0);
+
+                // Type-check BEFORE any string coercion — a crafted array
+                // value (links_page_uid[]=x) is treated as absent rather than
+                // triggering an "Array to string conversion" warning.
+                if (isset($_POST['links_page_uid']) && is_string($_POST['links_page_uid']))
+                {
+                    $linksPageRaw = trim($_POST['links_page_uid']);
+                }
+                else
+                {
+                    $linksPageRaw = '';
+                }
+
+                // "" (the "None" option) clears the designation. A submitted
+                // pageUID is re-verified server-side inside
+                // setShortDomainLinksPage() — this raw (int) cast is NEVER
+                // trusted as proof of ownership on its own (#46 IDOR defence).
+                if ($linksPageRaw === '')
+                {
+                    $selectedLinksPageUID = null;
+                }
+                else
+                {
+                    $selectedLinksPageUID = (int) $linksPageRaw;
+                }
+
+                $result = setShortDomainLinksPage($domainUID, $orgHandle, $selectedLinksPageUID);
+
+                if ($result['success'])
+                {
+                    $actionSuccess = 'LinksPage designation updated.';
+                }
+                else
+                {
+                    $actionError = $result['error'];
+                }
+                break;
         }
     }
 }
 
 // Load data
-$shortDomains = getOrgShortDomains($orgHandle);
-$dnsPrefix    = getSetting('org.dns_verify_prefix', '_g2ml-verify');
+$shortDomains         = getOrgShortDomains($orgHandle);
+$dnsPrefix            = getSetting('org.dns_verify_prefix', '_g2ml-verify');
+$orgPublishedLinksPages = getOrgPublishedLinksPages($orgHandle);
 ?>
 
 <section class="py-4" aria-labelledby="short-domains-heading">
@@ -317,6 +375,42 @@ $dnsPrefix    = getSetting('org.dns_verify_prefix', '_g2ml-verify');
                                     </form>
                                     <?php } ?>
                                 </div>
+
+                                <?php if ($sd['verificationStatus'] === 'verified') { ?>
+                                <!-- ============================================================ -->
+                                <!-- Custom-domain LinksPage fallback designation (Component C.4, #46) -->
+                                <!-- Only offered for a VERIFIED domain — an unverified domain routes -->
+                                <!-- no traffic at all (#91), so a designation would be meaningless. -->
+                                <!-- ============================================================ -->
+                                <form action="/org/short-domains" method="POST" class="mt-2 d-flex flex-wrap align-items-end gap-2">
+                                    <?php echo g2ml_csrfField('set_domain_linkspage_' . (int) $sd['shortDomainUID']); ?>
+                                    <input type="hidden" name="action_type" value="set_domain_linkspage">
+                                    <input type="hidden" name="domain_uid" value="<?php echo (int) $sd['shortDomainUID']; ?>">
+                                    <div>
+                                        <label for="links-page-<?php echo (int) $sd['shortDomainUID']; ?>" class="form-label small mb-1">
+                                            LinksPage fallback
+                                        </label>
+                                        <select id="links-page-<?php echo (int) $sd['shortDomainUID']; ?>" name="links_page_uid" class="form-select form-select-sm">
+                                            <option value="">None (show 404 as normal)</option>
+                                            <?php foreach ($orgPublishedLinksPages as $lp) { ?>
+                                            <option value="<?php echo (int) $lp['pageUID']; ?>"
+                                                <?php if ($sd['linksPageUID'] !== null && (int) $sd['linksPageUID'] === (int) $lp['pageUID']) { echo ' selected'; } ?>>
+                                                <?php echo g2ml_sanitiseOutput($lp['pageTitle'] . ' (/' . $lp['slug'] . ')'); ?>
+                                            </option>
+                                            <?php } ?>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-save" aria-hidden="true"></i> Save
+                                    </button>
+                                </form>
+                                <?php if (empty($orgPublishedLinksPages)) { ?>
+                                <p class="small text-body-secondary mt-1 mb-0">
+                                    You have no published LinksPages yet — publish one from
+                                    <a href="/linkspage">LinksPage management</a> to offer it here.
+                                </p>
+                                <?php } ?>
+                                <?php } ?>
 
                                 <?php if ($sd['verificationStatus'] !== 'verified' && $sd['verificationToken'] !== null) { ?>
                                 <details class="mt-2">
