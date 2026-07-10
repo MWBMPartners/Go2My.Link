@@ -142,3 +142,85 @@ test('CSRF fix pattern: namespacing the form name by a row/item ID keeps BOTH to
     assert_true(g2ml_validateCSRFToken($rowOneValue, 'linkspage_item_delete_101'), 'Row one\'s own-ID-namespaced token must still validate, even after row two\'s form rendered afterwards');
     assert_true(g2ml_validateCSRFToken($rowTwoValue, 'linkspage_item_delete_202'), 'Row two\'s own-ID-namespaced token must also validate');
 });
+
+// ============================================================================
+// 🐛 #147 — Regression coverage for the multi-row-per-page CSRF fix
+// ============================================================================
+// The pages fixed for #147 (api-keys, links, org/domains) each render a
+// per-row action form whose name is now namespaced by that row's own primary
+// key (e.g. 'revoke_key_<apiKeyUID>', 'delete_link_<urlUID>',
+// 'verify_domain_<domainUID>' / 'remove_domain_<domainUID>'), instead of
+// reusing one shared form name across every row. The property those pages
+// depend on is exactly the one already demonstrated generically above for
+// 'linkspage_item_delete_101' / '_202': generating a token for one namespaced
+// form name must NOT invalidate a token already issued for a DIFFERENT
+// namespaced form name, even when the two forms are rendered back-to-back in
+// the same request/response (as they are, once per table row). These tests
+// pin that property using the ACTUAL form-name scheme adopted by the fixed
+// pages, so a future regression in that scheme fails here directly.
+// ============================================================================
+
+test('#147 fix: api-keys revoke forms — two different apiKeyUID rows keep independently-valid tokens', function (): void
+{
+    $keyOneToken = g2ml_csrfField('revoke_key_1');
+    $keyTwoToken = g2ml_csrfField('revoke_key_2');
+
+    preg_match('/value="([^"]+)"/', $keyOneToken, $keyOneMatches);
+    preg_match('/value="([^"]+)"/', $keyTwoToken, $keyTwoMatches);
+
+    $keyOneValue = $keyOneMatches[1];
+    $keyTwoValue = $keyTwoMatches[1];
+
+    assert_true(g2ml_validateCSRFToken($keyOneValue, 'revoke_key_1'), 'Generating a token for revoke_key_2 must not invalidate revoke_key_1\'s token');
+    assert_true(g2ml_validateCSRFToken($keyTwoValue, 'revoke_key_2'), 'revoke_key_2\'s own token must also still validate');
+});
+
+test('#147 fix: api-keys revoke vs create — distinct stable form name does not collide with per-row tokens', function (): void
+{
+    $revokeToken = g2ml_csrfField('revoke_key_5');
+    $createToken = g2ml_csrfField('api_keys_create');
+
+    preg_match('/value="([^"]+)"/', $revokeToken, $revokeMatches);
+    preg_match('/value="([^"]+)"/', $createToken, $createMatches);
+
+    assert_true(g2ml_validateCSRFToken($revokeMatches[1], 'revoke_key_5'), 'The per-row revoke token must still validate after the create form (a different form name) is rendered');
+    assert_true(g2ml_validateCSRFToken($createMatches[1], 'api_keys_create'), 'The create form\'s own token must also validate');
+});
+
+test('#147 fix: links delete forms — two different urlUID rows keep independently-valid tokens', function (): void
+{
+    $linkOneToken = g2ml_csrfField('delete_link_10');
+    $linkTwoToken = g2ml_csrfField('delete_link_20');
+
+    preg_match('/value="([^"]+)"/', $linkOneToken, $linkOneMatches);
+    preg_match('/value="([^"]+)"/', $linkTwoToken, $linkTwoMatches);
+
+    assert_true(g2ml_validateCSRFToken($linkOneMatches[1], 'delete_link_10'), 'Generating a token for delete_link_20 must not invalidate delete_link_10\'s token');
+    assert_true(g2ml_validateCSRFToken($linkTwoMatches[1], 'delete_link_20'), 'delete_link_20\'s own token must also still validate');
+});
+
+test('#147 fix: org/domains verify + remove forms — per-domainUID tokens for BOTH actions on the SAME row stay independent', function (): void
+{
+    // A single domain row renders TWO forms (verify + remove); each action
+    // gets its own form-name prefix, so even same-row tokens must not collide.
+    $verifyToken = g2ml_csrfField('verify_domain_7');
+    $removeToken = g2ml_csrfField('remove_domain_7');
+
+    preg_match('/value="([^"]+)"/', $verifyToken, $verifyMatches);
+    preg_match('/value="([^"]+)"/', $removeToken, $removeMatches);
+
+    assert_true(g2ml_validateCSRFToken($verifyMatches[1], 'verify_domain_7'), 'The verify form\'s token for domainUID 7 must still validate after the remove form (same row, different action) renders');
+    assert_true(g2ml_validateCSRFToken($removeMatches[1], 'remove_domain_7'), 'The remove form\'s own token for domainUID 7 must also validate');
+});
+
+test('#147 fix: org/domains — two different domainUID rows keep independently-valid remove tokens', function (): void
+{
+    $domainOneToken = g2ml_csrfField('remove_domain_1');
+    $domainTwoToken = g2ml_csrfField('remove_domain_2');
+
+    preg_match('/value="([^"]+)"/', $domainOneToken, $domainOneMatches);
+    preg_match('/value="([^"]+)"/', $domainTwoToken, $domainTwoMatches);
+
+    assert_true(g2ml_validateCSRFToken($domainOneMatches[1], 'remove_domain_1'), 'Generating a token for remove_domain_2 must not invalidate remove_domain_1\'s token');
+    assert_true(g2ml_validateCSRFToken($domainTwoMatches[1], 'remove_domain_2'), 'remove_domain_2\'s own token must also still validate');
+});

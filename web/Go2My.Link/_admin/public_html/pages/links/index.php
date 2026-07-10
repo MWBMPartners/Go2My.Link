@@ -47,7 +47,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 {
     $csrfToken = $_POST['_csrf_token'] ?? '';
 
-    if (!g2ml_validateCSRFToken($csrfToken, 'delete_link'))
+    // ========================================================================
+    // 🔒 #147 — CSRF form-name namespacing
+    // ========================================================================
+    // This delete form is rendered once PER ROW (one form per short link), so
+    // its CSRF token must be namespaced by the row's own urlUID. Otherwise
+    // g2ml_generateCSRFToken() (single-slot-per-form-name, see security.php)
+    // overwrites the previous row's token every time the loop renders the next
+    // row's form, and only the LAST-rendered row's delete action would still
+    // validate — every earlier row would fail with "Session expired".
+    // ========================================================================
+
+    $urlUID = (int) ($_POST['url_uid'] ?? 0);
+
+    if (!g2ml_validateCSRFToken($csrfToken, 'delete_link_' . $urlUID))
     {
         $deleteError = 'Session expired. Please try again.';
     }
@@ -347,8 +360,9 @@ if (function_exists('getDefaultShortDomain')) {
                                     </a>
                                     <form action="/links" method="POST" class="d-inline"
                                           onsubmit="return confirm('Deactivate this link?');">
-                                        <?php echo g2ml_csrfField('delete_link'); ?>
+                                        <?php echo g2ml_csrfField('delete_link_' . (int) $link['urlUID']); ?>
                                         <input type="hidden" name="action" value="delete">
+                                        <input type="hidden" name="url_uid" value="<?php echo (int) $link['urlUID']; ?>">
                                         <input type="hidden" name="short_code" value="<?php echo g2ml_sanitiseOutput($link['shortCode']); ?>">
                                         <button type="submit" class="btn btn-sm btn-outline-danger"
                                                 title="Deactivate" aria-label="Deactivate <?php echo g2ml_sanitiseOutput($link['shortCode']); ?>">

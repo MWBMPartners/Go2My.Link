@@ -110,7 +110,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     $csrfToken  = $_POST['_csrf_token'] ?? '';
     $actionType = $_POST['action_type'] ?? '';
 
-    if (!g2ml_validateCSRFToken($csrfToken, 'api_keys_form'))
+    // ========================================================================
+    // 🔒 #147 — CSRF form-name namespacing
+    // ========================================================================
+    // The "revoke" action is rendered once PER ROW (one form per API key), so
+    // its CSRF token must be namespaced by the row's own apiKeyUID. Otherwise
+    // g2ml_generateCSRFToken() (single-slot-per-form-name, see security.php)
+    // overwrites the previous row's token every time the loop renders the next
+    // row's form, and only the LAST-rendered row's revoke action would still
+    // validate. The "create" action has exactly one form on the page, so it
+    // keeps its own distinct, stable form name.
+    // ========================================================================
+
+    if ($actionType === 'revoke_key')
+    {
+        $apiKeyUID    = (int) ($_POST['api_key_uid'] ?? 0);
+        $csrfFormName = 'revoke_key_' . $apiKeyUID;
+    }
+    else
+    {
+        $csrfFormName = 'api_keys_create';
+    }
+
+    if (!g2ml_validateCSRFToken($csrfToken, $csrfFormName))
     {
         $actionError = 'Session expired. Please try again.';
     }
@@ -195,8 +217,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
             case 'revoke_key':
 
-                $apiKeyUID = (int) ($_POST['api_key_uid'] ?? 0);
-
+                // $apiKeyUID was already parsed above to build the namespaced
+                // CSRF form name for this row; reused here unchanged.
                 if ($apiKeyUID <= 0)
                 {
                     $actionError = 'Invalid API key.';
@@ -408,7 +430,7 @@ $apiKeys = g2ml_apiListKeys($orgHandle);
                                 <?php if (!$isRevoked) { ?>
                                 <form action="/api-keys" method="POST" class="d-inline"
                                       onsubmit="return confirm('Revoke this API key? Anything using it will stop working immediately. This cannot be undone.');">
-                                    <?php echo g2ml_csrfField('api_keys_form'); ?>
+                                    <?php echo g2ml_csrfField('revoke_key_' . (int) $keyRow['apiKeyUID']); ?>
                                     <input type="hidden" name="action_type" value="revoke_key">
                                     <input type="hidden" name="api_key_uid" value="<?php echo (int) $keyRow['apiKeyUID']; ?>">
                                     <button type="submit" class="btn btn-outline-danger btn-sm"
@@ -439,7 +461,7 @@ $apiKeys = g2ml_apiListKeys($orgHandle);
             </div>
             <div class="card-body">
                 <form action="/api-keys" method="POST" novalidate>
-                    <?php echo g2ml_csrfField('api_keys_form'); ?>
+                    <?php echo g2ml_csrfField('api_keys_create'); ?>
                     <input type="hidden" name="action_type" value="create_key">
 
                     <?php

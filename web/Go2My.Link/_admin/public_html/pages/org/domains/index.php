@@ -57,8 +57,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
     $csrfToken  = $_POST['_csrf_token'] ?? '';
     $actionType = $_POST['action_type'] ?? '';
+    $domainUID  = (int) ($_POST['domain_uid'] ?? 0);
 
-    if (!g2ml_validateCSRFToken($csrfToken, 'org_domains_form'))
+    // ========================================================================
+    // 🔒 #147 — CSRF form-name namespacing
+    // ========================================================================
+    // "verify" and "remove" are rendered once PER ROW (one form per custom
+    // domain), so their CSRF tokens must be namespaced by the row's own
+    // domainUID. Otherwise g2ml_generateCSRFToken() (single-slot-per-form-name,
+    // see security.php) overwrites the previous row's token every time the
+    // loop renders the next row's form, and only the LAST-rendered row's
+    // action would still validate. The "add" action has exactly one form on
+    // the page, so it keeps its own distinct, stable form name.
+    // ========================================================================
+
+    if ($actionType === 'verify_domain')
+    {
+        $csrfFormName = 'verify_domain_' . $domainUID;
+    }
+    elseif ($actionType === 'remove_domain')
+    {
+        $csrfFormName = 'remove_domain_' . $domainUID;
+    }
+    else
+    {
+        $csrfFormName = 'org_domains_add';
+    }
+
+    if (!g2ml_validateCSRFToken($csrfToken, $csrfFormName))
     {
         $actionError = 'Session expired. Please try again.';
     }
@@ -82,8 +108,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                 break;
 
             case 'verify_domain':
-                $domainUID = (int) ($_POST['domain_uid'] ?? 0);
-                $result    = verifyDomain($domainUID, $orgHandle);
+                // $domainUID was already parsed above to build the namespaced
+                // CSRF form name for this row; reused here unchanged.
+                $result = verifyDomain($domainUID, $orgHandle);
                 if ($result['verified'])
                 {
                     $actionSuccess = 'Domain verified successfully!';
@@ -95,8 +122,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                 break;
 
             case 'remove_domain':
-                $domainUID = (int) ($_POST['domain_uid'] ?? 0);
-                $result    = removeOrgDomain($domainUID, $orgHandle);
+                // $domainUID was already parsed above to build the namespaced
+                // CSRF form name for this row; reused here unchanged.
+                $result = removeOrgDomain($domainUID, $orgHandle);
                 if ($result['success'])
                 {
                     $actionSuccess = 'Domain removed.';
@@ -214,7 +242,7 @@ $dnsPrefix  = getSetting('org.dns_verify_prefix', '_g2ml-verify');
                                 <div class="d-flex gap-1">
                                     <?php if ($d['verificationStatus'] !== 'verified') { ?>
                                     <form action="/org/domains" method="POST" class="d-inline">
-                                        <?php echo g2ml_csrfField('org_domains_form'); ?>
+                                        <?php echo g2ml_csrfField('verify_domain_' . (int) $d['domainUID']); ?>
                                         <input type="hidden" name="action_type" value="verify_domain">
                                         <input type="hidden" name="domain_uid" value="<?php echo (int) $d['domainUID']; ?>">
                                         <button type="submit" class="btn btn-outline-success btn-sm" title="Verify DNS">
@@ -225,7 +253,7 @@ $dnsPrefix  = getSetting('org.dns_verify_prefix', '_g2ml-verify');
 
                                     <form action="/org/domains" method="POST" class="d-inline"
                                           onsubmit="return confirm('Remove this domain?');">
-                                        <?php echo g2ml_csrfField('org_domains_form'); ?>
+                                        <?php echo g2ml_csrfField('remove_domain_' . (int) $d['domainUID']); ?>
                                         <input type="hidden" name="action_type" value="remove_domain">
                                         <input type="hidden" name="domain_uid" value="<?php echo (int) $d['domainUID']; ?>">
                                         <button type="submit" class="btn btn-outline-danger btn-sm"
@@ -254,7 +282,7 @@ $dnsPrefix  = getSetting('org.dns_verify_prefix', '_g2ml-verify');
             </div>
             <div class="card-body">
                 <form action="/org/domains" method="POST" novalidate>
-                    <?php echo g2ml_csrfField('org_domains_form'); ?>
+                    <?php echo g2ml_csrfField('org_domains_add'); ?>
                     <input type="hidden" name="action_type" value="add_domain">
 
                     <div class="row g-3">
