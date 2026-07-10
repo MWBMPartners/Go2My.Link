@@ -60,6 +60,8 @@ VALUES
 ('en-GB', 'analytics.chart_browser_desc', 'Doughnut chart of clicks grouped by browser.', 'Analytics dashboard', 1),
 ('en-GB', 'analytics.chart_clicks_over_time', 'Clicks Over Time', 'Analytics dashboard', 1),
 ('en-GB', 'analytics.chart_clicks_over_time_desc', 'Line chart of click counts across the selected date range.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_country', 'Country Breakdown', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_country_desc', 'Doughnut chart of clicks grouped by country (requires IP geolocation to be enabled).', 'Analytics dashboard', 1),
 ('en-GB', 'analytics.chart_device', 'Device Type Breakdown', 'Analytics dashboard', 1),
 ('en-GB', 'analytics.chart_device_desc', 'Doughnut chart of clicks grouped by device type.', 'Analytics dashboard', 1),
 ('en-GB', 'analytics.chart_os', 'Operating System Breakdown', 'Analytics dashboard', 1),

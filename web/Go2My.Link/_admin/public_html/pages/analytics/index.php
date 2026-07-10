@@ -13,8 +13,11 @@
  * ============================================================================
  *
  * Org-wide (or single-link drill-down) click analytics: totals, a
- * clicks-over-time line chart, a top-links ranking, browser/OS/device-type
- * breakdowns, top referrers, and CueRCode QR scan-source attribution.
+ * clicks-over-time line chart, a top-links ranking, browser/OS/device-type/
+ * country breakdowns, top referrers, and CueRCode QR scan-source
+ * attribution. The country breakdown (#43) is populated only when IP
+ * geolocation is enabled AND a GeoIP database is deployed — otherwise it
+ * renders the same empty "no data" state as any other zero-row breakdown.
  *
  * Every aggregate is computed by the already-tested #41 data layer
  * (web/_functions/analytics.php) — this page adds NO new SQL. Its own job is
@@ -292,6 +295,12 @@ $osBreakdown       = g2ml_analyticsBreakdown($orgHandle, $shortCode, 'osName', $
 $deviceBreakdown   = g2ml_analyticsBreakdown($orgHandle, $shortCode, 'deviceType', $range['from'], $range['to'], 6);
 $refererBreakdown  = g2ml_analyticsBreakdown($orgHandle, $shortCode, 'requestReferer', $range['from'], $range['to'], 10);
 
+// countryCode (#43) — empty whenever geolocation has never run (the default,
+// until an operator turns analytics.geolocation_enabled on AND deploys a
+// GeoIP database); the widget below renders the same "no data" state as any
+// other breakdown with zero rows, so no extra handling is needed here.
+$countryBreakdown  = g2ml_analyticsBreakdown($orgHandle, $shortCode, 'countryCode', $range['from'], $range['to'], 8);
+
 // ============================================================================
 // 🧮 Human/bot percentages for the totals cards (guard divide-by-zero)
 // ============================================================================
@@ -332,6 +341,7 @@ $chartPayload = [
         'browserName' => $browserBreakdown,
         'osName'      => $osBreakdown,
         'deviceType'  => $deviceBreakdown,
+        'countryCode' => $countryBreakdown,
     ],
     'scanSources' => $scanSources,
 ];
@@ -672,6 +682,14 @@ if ($chartPayloadJSON === false)
                     'headingText' => 'Device Type Breakdown',
                     'descKey'     => 'analytics.chart_device_desc',
                     'descText'    => 'Doughnut chart of clicks grouped by device type.',
+                ],
+                [
+                    'canvasID'    => 'g2ml-chart-country',
+                    'items'       => $countryBreakdown,
+                    'headingKey'  => 'analytics.chart_country',
+                    'headingText' => 'Country Breakdown',
+                    'descKey'     => 'analytics.chart_country_desc',
+                    'descText'    => 'Doughnut chart of clicks grouped by country (requires IP geolocation to be enabled).',
                 ],
             ];
 

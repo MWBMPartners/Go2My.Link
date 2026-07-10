@@ -291,6 +291,7 @@ function g2ml_analyticstest_seedClick(array $overrides = []): void
         'ipAddress'      => '198.51.100.10',
         'isBot'          => 0,
         'scanSource'     => null,
+        'countryCode'    => null,
         'createdAt'      => '2026-06-01 12:00:00',
     ];
 
@@ -310,6 +311,7 @@ function g2ml_analyticstest_seedClick(array $overrides = []): void
         'ipAddress'      => 's',
         'isBot'          => 'i',
         'scanSource'     => 's',
+        'countryCode'    => 's',
         'createdAt'      => 's',
     ];
 
@@ -425,11 +427,14 @@ g2ml_analyticstest_clearActivity('analyticsA2');
 g2ml_analyticstest_clearActivity('analyticsB1');
 
 // --- analyticsA1 (org A) — 5 successful clicks across two days, plus one
-//     FAILED resolution that must be excluded from every aggregate. ---
-g2ml_analyticstest_seedClick(['shortCode' => 'analyticsA1', 'createdAt' => '2026-06-01 09:00:00', 'browserName' => 'Chrome', 'isBot' => 0, 'ipAddress' => '198.51.100.10']);
-g2ml_analyticstest_seedClick(['shortCode' => 'analyticsA1', 'createdAt' => '2026-06-01 10:00:00', 'browserName' => 'Chrome', 'isBot' => 0, 'ipAddress' => '198.51.100.11']);
-g2ml_analyticstest_seedClick(['shortCode' => 'analyticsA1', 'createdAt' => '2026-06-01 11:00:00', 'browserName' => 'Firefox', 'isBot' => 1, 'ipAddress' => '198.51.100.10', 'scanSource' => 'qr']);
-g2ml_analyticstest_seedClick(['shortCode' => 'analyticsA1', 'createdAt' => '2026-06-02 09:00:00', 'browserName' => 'Chrome', 'isBot' => 0, 'ipAddress' => '198.51.100.12']);
+//     FAILED resolution that must be excluded from every aggregate.
+//     countryCode (#43) is set on 4 of the 5 rows (3x US, 1x GB) and left
+//     NULL on one — mirroring how a real deploy would look with geolocation
+//     enabled only partway through the seeded window, or a lookup miss. ---
+g2ml_analyticstest_seedClick(['shortCode' => 'analyticsA1', 'createdAt' => '2026-06-01 09:00:00', 'browserName' => 'Chrome', 'isBot' => 0, 'ipAddress' => '198.51.100.10', 'countryCode' => 'US']);
+g2ml_analyticstest_seedClick(['shortCode' => 'analyticsA1', 'createdAt' => '2026-06-01 10:00:00', 'browserName' => 'Chrome', 'isBot' => 0, 'ipAddress' => '198.51.100.11', 'countryCode' => 'US']);
+g2ml_analyticstest_seedClick(['shortCode' => 'analyticsA1', 'createdAt' => '2026-06-01 11:00:00', 'browserName' => 'Firefox', 'isBot' => 1, 'ipAddress' => '198.51.100.10', 'scanSource' => 'qr', 'countryCode' => 'US']);
+g2ml_analyticstest_seedClick(['shortCode' => 'analyticsA1', 'createdAt' => '2026-06-02 09:00:00', 'browserName' => 'Chrome', 'isBot' => 0, 'ipAddress' => '198.51.100.12', 'countryCode' => 'GB']);
 g2ml_analyticstest_seedClick(['shortCode' => 'analyticsA1', 'createdAt' => '2026-06-02 10:00:00', 'browserName' => 'Safari', 'isBot' => 0, 'ipAddress' => '198.51.100.13', 'scanSource' => 'qr']);
 g2ml_analyticstest_seedClick(['shortCode' => 'analyticsA1', 'createdAt' => '2026-06-01 08:00:00', 'logStatus' => 'not_found', 'statusCode' => 404]);
 
@@ -550,11 +555,28 @@ test('analyticsBreakdown: browserName groups analyticsA1\'s clicks correctly', f
 
 test('analyticsBreakdown: an unwhitelisted dimension returns an empty array rather than ever reaching SQL', function () use ($g2mlAnalyticsFrom, $g2mlAnalyticsTo): void
 {
-    $breakdown = g2ml_analyticsBreakdown('[default]', 'analyticsA1', 'countryCode', $g2mlAnalyticsFrom, $g2mlAnalyticsTo, 10);
-    assert_same(0, count($breakdown), 'countryCode is not on the whitelist (geo is out of scope, #43) — must return empty, not error');
+    $breakdown = g2ml_analyticsBreakdown('[default]', 'analyticsA1', 'ipAddress', $g2mlAnalyticsFrom, $g2mlAnalyticsTo, 10);
+    assert_same(0, count($breakdown), 'ipAddress is a real column, but is not on the dimension whitelist — must return empty, not error');
 
     $injectionAttempt = g2ml_analyticsBreakdown('[default]', 'analyticsA1', 'shortCode`; DROP TABLE tblActivityLog; --', $g2mlAnalyticsFrom, $g2mlAnalyticsTo, 10);
     assert_same(0, count($injectionAttempt), 'An injection-shaped dimension must be rejected identically to any other unrecognised value');
+});
+
+test('analyticsBreakdown: (#43) countryCode groups analyticsA1\'s clicks correctly, NULL rows excluded', function () use ($g2mlAnalyticsFrom, $g2mlAnalyticsTo): void
+{
+    $breakdown = g2ml_analyticsBreakdown('[default]', 'analyticsA1', 'countryCode', $g2mlAnalyticsFrom, $g2mlAnalyticsTo, 10);
+
+    $byCountry = [];
+
+    foreach ($breakdown as $entry)
+    {
+        $byCountry[$entry['value']] = $entry['clicks'];
+    }
+
+    assert_same(2, count($byCountry), 'Two distinct countries appear (US, GB) — the NULL-countryCode row is excluded, not a third bucket');
+    assert_same(3, $byCountry['US'], 'US has 3 clicks');
+    assert_same(1, $byCountry['GB'], 'GB has 1 click');
+    assert_same('US', $breakdown[0]['value'], 'The uniquely highest count (US) sorts first');
 });
 
 // ============================================================================
@@ -647,9 +669,26 @@ test('apiHandleAnalyticsGet: ?dimension=browserName adds a breakdown block', fun
     $_GET = [];
 });
 
+test('apiHandleAnalyticsGet: ?dimension=countryCode (#43) adds a breakdown block', function () use ($g2mlAnalyticsKeyA, $g2mlAnalyticsFrom, $g2mlAnalyticsTo): void
+{
+    $_GET = [
+        'from'      => $g2mlAnalyticsFrom,
+        'to'        => $g2mlAnalyticsTo,
+        'dimension' => 'countryCode',
+    ];
+
+    $result = g2ml_apiHandleAnalyticsGet($g2mlAnalyticsKeyA, g2ml_analyticstest_context(['code' => 'analyticsA1']));
+
+    assert_true(isset($result['breakdown']), 'breakdown must be PRESENT when ?dimension=countryCode was supplied');
+    assert_same('countryCode', $result['breakdown']['dimension']);
+    assert_same(2, count($result['breakdown']['items']), 'US and GB — the NULL-countryCode row is excluded');
+
+    $_GET = [];
+});
+
 test('apiHandleAnalyticsGet: an invalid ?dimension= throws a 422', function () use ($g2mlAnalyticsKeyA): void
 {
-    $_GET = ['dimension' => 'countryCode'];
+    $_GET = ['dimension' => 'ipAddress'];
 
     assert_throws(function () use ($g2mlAnalyticsKeyA): void
     {

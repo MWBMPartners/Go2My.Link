@@ -36,6 +36,13 @@
 # dev-team autopilot loop lock (runtime only; state file autopilot.json IS tracked)
 .dev-team/loop.lock/
 
+# MaxMind GeoLite2 database (#43) — a large, licensed, frequently-updated
+# binary. NEVER committed; fetched at DEPLOY time by scripts/fetch-geoip.sh
+# (see .github/workflows/sftp-deploy.yml). The vendored PURE-PHP READER
+# library that reads this file (web/_libraries/maxminddb/*.php) IS tracked —
+# only the .mmdb data file itself is excluded here.
+*.mmdb
+
 *.env
 .env.*
 *.pem

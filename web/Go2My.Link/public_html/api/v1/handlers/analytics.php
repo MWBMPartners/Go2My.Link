@@ -45,8 +45,8 @@
  *                   inclusive whole-day range).
  *   ?bucket=        {code} only. One of day|week|month (default day).
  *   ?dimension=     {code} only. One of browserName|osName|deviceType|
- *                   requestReferer|scanSource — when supplied, adds a
- *                   `breakdown` block to the response.
+ *                   requestReferer|scanSource|countryCode — when supplied,
+ *                   adds a `breakdown` block to the response.
  *   ?limit=         Caps top_links (org summary) / breakdown items ({code}),
  *                   default 10, clamped 1-100.
  *

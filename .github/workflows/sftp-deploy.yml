@@ -79,13 +79,36 @@
 #   SFTP_BASE_PATH    Remote root that web/ maps onto (single path for all channels)
 #   SFTP_KEY          SSH private key (PREFERRED). If set & non-empty → key auth.
 #   SFTP_PASSWORD     SFTP password (FALLBACK, used only when SFTP_KEY is empty/unset)
+#   MAXMIND_LICENSE_KEY  (org secret, OPTIONAL) MaxMind GeoLite2 licence key
+#                     (#43). When set, scripts/fetch-geoip.sh downloads a
+#                     fresh GeoLite2-Country.mmdb before the mirror runs. When
+#                     unset, the fetch is skipped with a notice and the deploy
+#                     proceeds normally — see that script's own docblock for
+#                     the full graceful-failure contract. The application
+#                     itself (web/_functions/geolocation.php) is a total
+#                     no-op with no database present, so this is never a
+#                     required secret.
 #
 # VARIABLES (… → Variables)
 #   SFTP_ENABLED      Set to 'true' to arm deployment (kill switch; off by default)
 #
+# ---------------------------------------------------------------------------
+# GeoIP DATABASE DEPLOYMENT (#43) — read before touching the mirror commands
+# ---------------------------------------------------------------------------
+# web/_libraries/maxminddb/*.mmdb is EXCLUDED from every `--delete` mirror
+# below (COMMON_EXCLUDES has `--exclude \.mmdb$`) and is instead uploaded by
+# its own dedicated, NON-deleting `mirror` command, run ONLY when this run's
+# "Fetch GeoLite2-Country GeoIP database" step actually produced a fresh
+# file. This means a failed/skipped fetch (no licence key, MaxMind outage)
+# NEVER deletes a previously deployed, working database — it just leaves the
+# remote copy exactly as it was. Turning the feature on in production is a
+# separate, manual step: set analytics.geolocation_enabled = '1' (System
+# scope) only AFTER confirming a deploy has actually placed the database —
+# see web/_sql/seeds/017_geolocation_settings.sql.
+#
 # @package    Go2My.Link
 # @author     MWBM Partners Ltd (MWservices)
-# @since      v1.0.0 — Launch Hardening
+# @since      v1.0.0 — Launch Hardening (GeoIP fetch added v1.1.0 / #43)
 # =============================================================================
 
 name: SFTP Deploy
@@ -182,7 +205,11 @@ jobs:
     #
     #   COMMON_EXCLUDES  — applied to every mirror (repo cruft + live-state
     #                      protection: credentials, installer runtime, uploads,
-    #                      backups).
+    #                      backups). Also excludes *.mmdb (#43) so these
+    #                      `--delete` mirrors never touch the GeoIP database —
+    #                      it is uploaded separately, WITHOUT --delete, by the
+    #                      "Deploy GeoIP database" logic further down, only
+    #                      when this run's fetch step actually produced one.
     #   PHASE2_EXCLUDES  — extra excludes for the "everything else" mirror so it
     #                      never uploads OR --deletes the channel web roots
     #                      (those are owned by the per-component Phase-1 mirrors).
@@ -208,6 +235,7 @@ jobs:
         --exclude '(^|/)_auth_keys/'
         --exclude '(^|/)private_html/'
         --exclude '\.dh-diag$'
+        --exclude '\.mmdb$'
       # Anchored to the component roots so ONLY the three top-level
       # public_html/ web roots are held back (they are owned by Phase 1);
       # <Comp>/_admin/public_html/, public_html_landing/, public_html_redir/
@@ -222,6 +250,27 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      # ---------------------------------------------------------------------
+      # GeoIP database fetch (#43) — see scripts/fetch-geoip.sh for the full
+      # graceful-failure contract. This NEVER fails the job: when
+      # MAXMIND_LICENSE_KEY is unset or the download fails, the script exits
+      # 0 having written nothing, `fetched` comes out `false`, and the
+      # dedicated non-deleting upload step later in this job is skipped
+      # entirely — any previously deployed database is left untouched.
+      # ---------------------------------------------------------------------
+      - name: Fetch GeoLite2-Country GeoIP database (#43)
+        id: geoip
+        env:
+          MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
+        run: |
+          bash scripts/fetch-geoip.sh
+          if [[ -s web/_libraries/maxminddb/GeoLite2-Country.mmdb ]]
+          then
+            echo "fetched=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "fetched=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Configure lftp timeouts
         run: |
@@ -313,6 +362,7 @@ jobs:
           BASE: ${{ secrets.SFTP_BASE_PATH }}
           TARGET: ${{ steps.channel.outputs.target }}
           DRY: ${{ steps.dry.outputs.flag }}
+          GEOIP_FETCHED: ${{ steps.geoip.outputs.fetched }}
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "$SFTP_KEY" > ~/.ssh/deploy_key
@@ -324,8 +374,16 @@ jobs:
           mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/G2My.Link/public_html/ ${BASE}/G2My.Link/${TARGET}/
           mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/Lnks.page/public_html/ ${BASE}/Lnks.page/${TARGET}/
           mirror --reverse ${DRY} --no-empty-dirs $COMMON_EXCLUDES $PHASE2_EXCLUDES web/ ${BASE}/
-          bye
           LFTP_EOF
+          # GeoIP database (#43) — deliberately its OWN mirror command, with NO
+          # --delete, appended ONLY when this run's fetch step actually
+          # produced a fresh file. A failed/skipped fetch simply omits this
+          # line entirely, leaving any previously deployed database untouched.
+          if [[ "${GEOIP_FETCHED}" == "true" ]]
+          then
+            echo "mirror --reverse ${DRY} --no-empty-dirs web/_libraries/maxminddb/ ${BASE}/_libraries/maxminddb/" >> /tmp/lftp_deploy.txt
+          fi
+          echo "bye" >> /tmp/lftp_deploy.txt
           lftp -f /tmp/lftp_deploy.txt
           rm -f ~/.ssh/deploy_key
 
@@ -342,6 +400,7 @@ jobs:
           BASE: ${{ secrets.SFTP_BASE_PATH }}
           TARGET: ${{ steps.channel.outputs.target }}
           DRY: ${{ steps.dry.outputs.flag }}
+          GEOIP_FETCHED: ${{ steps.geoip.outputs.fetched }}
         run: |
           cat > /tmp/lftp_deploy.txt <<LFTP_EOF
           set sftp:auto-confirm yes
@@ -351,8 +410,14 @@ jobs:
           mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/G2My.Link/public_html/ ${BASE}/G2My.Link/${TARGET}/
           mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/Lnks.page/public_html/ ${BASE}/Lnks.page/${TARGET}/
           mirror --reverse ${DRY} --no-empty-dirs $COMMON_EXCLUDES $PHASE2_EXCLUDES web/ ${BASE}/
-          bye
           LFTP_EOF
+          # GeoIP database (#43) — see the matching comment in the "Deploy (SSH
+          # key)" step above; identical non-deleting, fetch-gated behaviour.
+          if [[ "${GEOIP_FETCHED}" == "true" ]]
+          then
+            echo "mirror --reverse ${DRY} --no-empty-dirs web/_libraries/maxminddb/ ${BASE}/_libraries/maxminddb/" >> /tmp/lftp_deploy.txt
+          fi
+          echo "bye" >> /tmp/lftp_deploy.txt
           lftp -f /tmp/lftp_deploy.txt
 
       - name: Deploy summary

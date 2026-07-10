@@ -855,7 +855,7 @@ components:
         parameter is absent.
       schema:
         type: string
-        enum: [browserName, osName, deviceType, requestReferer, scanSource]
+        enum: [browserName, osName, deviceType, requestReferer, scanSource, countryCode]
       example: browserName
     AnalyticsLimitParam:
       name: limit
@@ -1676,7 +1676,7 @@ components:
       properties:
         value:
           type: string
-          description: The dimension's distinct value (e.g. a browser name, OS name, device type, referrer, or scan source). NULL values for that column are excluded.
+          description: The dimension's distinct value (e.g. a browser name, OS name, device type, referrer, scan source, or ISO 3166-1 alpha-2 country code). NULL values for that column are excluded.
           example: Chrome
         clicks:
           type: integer

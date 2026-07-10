@@ -28,8 +28,17 @@ Branch: **`launch-prep/2026-07-09`** — all committed, **NOT pushed**. Sequenti
 - **#45** renderer (system templates + escaped 7 placeholders), **#48** management UI (ownership-enforced CRUD, `maxLinksPages`-gated), **#47** template picker + owner-only IDOR-safe preview, **#46** custom-domain LinksPage fallback, **#50** age-gate (good-faith signed-cookie + adult-domain auto-flag, no DOB), **#49** custom-HTML/WYSIWYG (Opus — DOM allowlist sanitiser + `script-src 'none'` CSP + premium-gated + kill-switch off by default; adversarial XSS battery passed).
 - ⚠️ **#49 deploy notes:** run **migration 016** before deploying to an existing DB (else `getOrgTier` fails-open → all gating disabled, since it now selects `hasCustomHTML`); keep custom-HTML OFF (default) until a human/security sign-off (highest XSS surface).
 
+### IP geolocation (#43)
+- Vendored the pure-PHP `MaxMind\Db\Reader` (maxmind-db/reader-php **v1.13.1**, Apache-2.0, checksum-documented) at `web/_libraries/maxminddb/` — no `ext-maxminddb` C extension required, matching Dreamhost's no-CLI/no-Composer constraint.
+- `web/_functions/geolocation.php` — `g2ml_geolocateIP()` behind `analytics.geolocation_enabled` (OFF by default) AND a `.mmdb` file-exists check (`analytics.geoip_db_path`); a `$GLOBALS['g2ml_geoip_reader_override']` seam (mirrors the DNS/entitlements idiom) lets tests fully avoid a real database. Private/reserved IPs (reuses `g2ml_isPrivateOrReservedIp()`) and any decoder failure resolve to all-null, never throw.
+- `logActivity()` INSERT extended from 23 → **26** bound columns (countryCode/regionCode/cityName trailing) — recounted and proven via an extended `activity_log_test.php`.
+- Wired into the Component B redirect hot path (`index.php`) — computed only inside the already-existing `$shouldLog` branch, so it adds zero new tracking surface and is byte-identical when off/absent (proven by 4 new end-to-end integration tests using a mocked reader).
+- `countryCode` added to the `g2ml_analyticsBreakdown()` whitelist (was explicitly out-of-scope pending this) + a country doughnut widget on the `#42` dashboard.
+- CI/deploy: `scripts/fetch-geoip.sh` (never fails the job) + a `sftp-deploy.yml` step using the `MAXMIND_LICENSE_KEY` org secret — the `.mmdb` is git-ignored and deployed via its OWN non-`--delete` mirror, so a failed/skipped fetch can never wipe a previously-working production database. The setting must be turned on manually, post-deploy, once the database has actually landed.
+- 502 unit / 171 integration tests green (up from 422/147).
+
 ### Housekeeping
-- Closed **22** verified-fixed issues; filed enhancement issues **#139–144** + tracking issues **#145–147, #146** (entitlements). Test coverage grew **189/21 → 422 unit / 147 integration** (all green). Strategic plan `docs/LAUNCH_PLAN_2026-07-09.md`; `HANDOFF.md` kept current.
+- Closed **22** verified-fixed issues; filed enhancement issues **#139–144** + tracking issues **#145–147, #146** (entitlements). Test coverage grew **189/21 → 502 unit / 171 integration** (all green). Strategic plan `docs/LAUNCH_PLAN_2026-07-09.md`; `HANDOFF.md` kept current.
 - **Owner actions still pending (deferred):** #93 credential rotation, 480-URL migration (+ assign tiers), legal sign-off, push/review the branch.
 
 ---

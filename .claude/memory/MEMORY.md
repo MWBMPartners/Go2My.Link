@@ -32,9 +32,21 @@
 > run **migration 016** before deploying to an existing DB (else `getOrgTier` fails-open, all gating off);
 > keep custom-HTML OFF (default) until a security sign-off (highest XSS surface). **Remaining dev needs owner
 > input:** SIGNula OIDC endpoints/creds, multi-provider billing (Stripe/PayPal/SIGNula keys), final tier
-> naming/currency; geo #43 unblocked (MaxMind org secret); an API adversarial security cycle is still
+> naming/currency; an API adversarial security cycle is still
 > pending. **Owner ops/legal deferred:** #93 cred rotation, 480-URL migration (+ assign tiers — Free tier
 > now enforced), legal sign-off, push/review the branch.
+> **🌍 #43 IP geolocation shipped (2026-07-10):** vendored pure-PHP `MaxMind\Db\Reader`
+> (maxmind-db/reader-php v1.13.1, Apache-2.0) at `web/_libraries/maxminddb/` — NO ext-maxminddb
+> C extension required. `web/_functions/geolocation.php` — `g2ml_geolocateIP()` behind the
+> `analytics.geolocation_enabled` setting (OFF by default) AND a file-exists check on the
+> `.mmdb` (`analytics.geoip_db_path`, seed `017_geolocation_settings.sql`) — a total no-op,
+> byte-identical redirect, when either is off/absent (proven by test). `logActivity()` INSERT
+> extended to 26 bound columns (countryCode/regionCode/cityName trailing #23→26). Country added
+> to the `g2ml_analyticsBreakdown()` dimension whitelist + a dashboard doughnut widget. CI fetch:
+> `scripts/fetch-geoip.sh` + `sftp-deploy.yml` (uses the `MAXMIND_LICENSE_KEY` org secret; `.mmdb`
+> is git-ignored, deployed via its own non-`--delete` mirror step so a failed fetch never wipes a
+> working production database). **`analytics.geolocation_enabled` must be turned on manually,
+> post-deploy, only after confirming the database landed.** 502 unit / 171 integration green.
 > See **[HANDOFF.md](../../HANDOFF.md)** for the live pick-up point. Do **NOT** merge stale local `main`
 > (would resurrect the legacy engine + #93 credential file).
 

@@ -177,6 +177,7 @@ require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'api_auth.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'api_ratelimit.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'dnt.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'adult_content.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'geolocation.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'activity_logger.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'analytics.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'i18n.php';

@@ -26,7 +26,9 @@
  *   3. Optionally validate destination URL accessibility
  *   4. Log the activity (respecting DNT and analytics setting), optionally
  *      capturing whitelisted tracking params from the request (#92, OFF by
- *      default — analytics.capture_tracking_params)
+ *      default — analytics.capture_tracking_params) and/or the client IP's
+ *      country/region/city (#43, OFF by default — analytics.geolocation_enabled,
+ *      and a total no-op unless a GeoIP database is also deployed)
  *   5. Optionally forward the link's own configured UTM params onto the
  *      destination (#92, OFF by default — redirect.forward_utm_params)
  *   6. Issue 302 redirect, OR — for an otherwise-404 'not_found' code on a
@@ -38,7 +40,8 @@
  * @author     MWBM Partners Ltd (MWservices)
  * @version    0.6.0
  * @since      Phase 2 (refactored Phase 3; UTM capture/forward added v1.1.0 /
- *             #92; custom-domain LinksPage fallback added v1.2.0 / #46)
+ *             #92; custom-domain LinksPage fallback added v1.2.0 / #46;
+ *             IP geolocation added v1.1.0 / #43)
  * ============================================================================
  */
 
@@ -326,6 +329,34 @@ if ($status === 'success' && $destination !== null && $destination !== '')
             }
         }
 
+        // ====================================================================
+        // 🌍 IP geolocation (#43) — OFF by default (analytics.geolocation_enabled)
+        // AND a total no-op unless the configured .mmdb database file is also
+        // present — g2ml_geolocationAvailable() (web/_functions/geolocation.php)
+        // is the ONLY check made here: one cached getSetting() boolean plus one
+        // is_file()/is_readable() call. Computed here, only inside the
+        // $shouldLog branch, exactly like scanSource/logData above — a request
+        // that is not going to be logged at all (DNT/GPC, or
+        // analytics.log_activity off) never triggers a geolocation lookup
+        // either, so this adds NO new tracking surface beyond what was already
+        // being logged. When the setting is off or the database is absent,
+        // these three values stay null and the INSERT below is byte-for-byte
+        // identical to before this feature existed.
+        //
+        // 📖 Reference: web/_functions/geolocation.php — g2ml_geolocateIP()
+        // ====================================================================
+        $geoCountryCode = null;
+        $geoRegionCode  = null;
+        $geoCityName    = null;
+
+        if (function_exists('g2ml_geolocationAvailable') && g2ml_geolocationAvailable())
+        {
+            $geoResult      = g2ml_geolocateIP(g2ml_getClientIP());
+            $geoCountryCode = $geoResult['countryCode'];
+            $geoRegionCode  = $geoResult['regionCode'];
+            $geoCityName    = $geoResult['cityName'];
+        }
+
         logActivity('redirect', 'success', $redirectCode, [
             'orgHandle'        => $orgHandle,
             'shortCode'        => $shortCode,
@@ -333,6 +364,9 @@ if ($status === 'success' && $destination !== null && $destination !== '')
             'scanSource'       => $scanSource,
             'qrCodeExternalID' => $qrCodeExternalIDForLog,
             'logData'          => $logDataForRedirect,
+            'countryCode'      => $geoCountryCode,
+            'regionCode'       => $geoRegionCode,
+            'cityName'         => $geoCityName,
         ]);
     }
 

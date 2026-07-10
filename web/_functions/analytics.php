@@ -37,12 +37,19 @@
  * click, and is excluded from every aggregate in this file.
  *
  * ----------------------------------------------------------------------------
- * Out of scope
+ * Geographic breakdown (#43)
  * ----------------------------------------------------------------------------
- * Geographic/country breakdowns are OUT OF SCOPE here. tblActivityLog does
- * carry countryCode/regionCode/cityName/latitude/longitude columns, but
- * nothing populates them yet (GeoIP integration is tracked separately as
- * #43) — do not add a "country" dimension to this file until that lands.
+ * countryCode is a whitelisted breakdown dimension (see
+ * g2ml_analyticsValidDimensions() below), populated by the redirect hot path
+ * ONLY when analytics.geolocation_enabled is on AND a GeoIP database is
+ * deployed (web/_functions/geolocation.php). When geolocation has never run
+ * (the common case until an operator opts in), every row's countryCode is
+ * NULL and this dimension simply returns an empty breakdown — the same
+ * "IS NOT NULL" exclusion every other dimension already applies. There is
+ * still no regionCode/cityName/latitude/longitude breakdown here — the
+ * GeoLite2-Country database this project provisions by default never
+ * populates those finer-grained columns; add a dimension for them only if a
+ * City-tier database is later adopted.
  *
  * ----------------------------------------------------------------------------
  * Performance (#125 — tblActivityLog has 429K+ rows in production)
@@ -120,6 +127,7 @@ function g2ml_analyticsValidDimensions(): array
         'deviceType',
         'requestReferer',
         'scanSource',
+        'countryCode',
     ];
 }
 
@@ -398,11 +406,11 @@ function g2ml_analyticsTopLinks(string $orgHandle, string $from, string $to, int
 
 /**
  * Break clicks down by a single whitelisted dimension (browser, OS, device
- * type, referrer, or scan source).
+ * type, referrer, scan source, or country).
  *
  * The dimension name is resolved through _g2ml_analyticsDimensionColumn()
  * FIRST; an unrecognised dimension returns an empty array rather than ever
- * reaching SQL text. Once resolved, the column name is one of exactly five
+ * reaching SQL text. Once resolved, the column name is one of exactly six
  * fixed literal strings — it is never derived from arbitrary client input.
  *
  * @param  string      $orgHandle  The organisation to scope to.

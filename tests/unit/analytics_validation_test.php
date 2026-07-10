@@ -50,17 +50,17 @@ require_once dirname(__DIR__, 2) . '/web/Go2My.Link/public_html/api/v1/handlers/
 // 🔒 g2ml_analyticsValidDimensions() — the fixed whitelist
 // ============================================================================
 
-test('analyticsValidDimensions: returns exactly the five documented dimensions, no more, no less', function (): void
+test('analyticsValidDimensions: returns exactly the six documented dimensions, no more, no less', function (): void
 {
     $dimensions = g2ml_analyticsValidDimensions();
 
-    assert_same(5, count($dimensions), 'Exactly five dimensions are whitelisted');
+    assert_same(6, count($dimensions), 'Exactly six dimensions are whitelisted');
     assert_true(in_array('browserName', $dimensions, true), 'browserName must be whitelisted');
     assert_true(in_array('osName', $dimensions, true), 'osName must be whitelisted');
     assert_true(in_array('deviceType', $dimensions, true), 'deviceType must be whitelisted');
     assert_true(in_array('requestReferer', $dimensions, true), 'requestReferer must be whitelisted');
     assert_true(in_array('scanSource', $dimensions, true), 'scanSource must be whitelisted');
-    assert_false(in_array('countryCode', $dimensions, true), 'countryCode must NOT be whitelisted — geo is out of scope (#43)');
+    assert_true(in_array('countryCode', $dimensions, true), 'countryCode must be whitelisted — IP geolocation (#43) is now in scope');
 });
 
 // ============================================================================
@@ -210,7 +210,7 @@ test('validateDimension: an unrecognised or SQL-injection-shaped dimension throw
 {
     try
     {
-        _g2ml_apiAnalyticsValidateDimension('countryCode');
+        _g2ml_apiAnalyticsValidateDimension('ipAddress');
         assert_true(false, 'Expected an exception for a non-whitelisted (but real-looking) column name');
     }
     catch (G2mlApiHandlerException $caught)

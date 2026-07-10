@@ -422,6 +422,13 @@
 
                 renderDoughnutChart('g2ml-chart-device', deviceSeries.labels, deviceSeries.values);
             }
+
+            if (analyticsData.breakdown.countryCode)
+            {
+                var countrySeries = toSeries(analyticsData.breakdown.countryCode, 'value', 'clicks');
+
+                renderDoughnutChart('g2ml-chart-country', countrySeries.labels, countrySeries.values);
+            }
         }
 
         if (analyticsData.scanSources)
