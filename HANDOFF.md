@@ -3,7 +3,7 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `c52429e` (+ this handoff commit).
+> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `eee8272` (+ this handoff commit).
 
 ---
 
@@ -107,9 +107,9 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
   ✅ **key mgmt UI #40** (`8bc8dff`, create/list/revoke, one-time secret, CSRF, `canManageOrg` authz —
   ⚠️ ordinary members can't mint keys yet) → ✅ **custom domains #91** (`c52429e`, verify + verified-only
   routing + grandfather migration + `docs/CUSTOM_DOMAINS.md`; caught a fresh-install g2my.link 404 bug) →
-  **⏭️ NEXT: analytics #41 (data fns + `/api/v1/analytics` endpoint + `(shortCode,createdAt)` index #125)
-  then #42 dashboard** → geo/UA **#43** → UTM **#92** → API security cycle. Then P2 (entitlements → SIGNula
-  OIDC → billing) → P3 Component C.
+  ✅ **analytics data #41** (`eee8272`, 6 org-scoped aggregate fns + `/api/v1/analytics` + indexes; closed
+  #125) → **⏭️ NEXT: #42 analytics dashboard UI** (Chart.js, vendored in `web/_libraries/chartjs`) → geo/UA
+  **#43** → UTM **#92** → API security cycle. Then P2 (entitlements → SIGNula OIDC → billing) → P3 Component C.
   - 🎉 **Milestone: public API + CueRCode integration READY.** CueRCode integrates via `/api/v1` with a
     `qr:link`-scoped key. `createShortURL()` accepts `createdVia`/`createdViaAPIKeyUID`/QR columns;
     `logActivity()` carries `scanSource`/`qrCodeExternalID` (bind-string re-verified 23=23=23).
