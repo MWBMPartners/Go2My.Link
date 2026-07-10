@@ -24,8 +24,9 @@ Branch: **`launch-prep/2026-07-09`** — all committed, **NOT pushed**. Sequenti
 - **#92** UTM capture + forwarding on redirect (settings-gated, off by default, byte-identical-when-off).
 - **#147** CSRF token-overwrite bug (per-row same-named forms) — fixed across all 4 affected pages.
 
-### Component C (LinksPage) — 4/6 built
-- **#45** renderer (system templates + escaped 7 placeholders; `customHTML`/`customCSS` deferred to C.6), **#48** management UI (ownership-enforced CRUD, `maxLinksPages`-gated), **#47** template picker + owner-only IDOR-safe preview, **#46** custom-domain LinksPage fallback. Remaining: **#50 age-gate**, then **#49 WYSIWYG/HTML-upload** (Opus + dedicated security cycle — highest XSS surface).
+### Component C (LinksPage) — 6/6 COMPLETE
+- **#45** renderer (system templates + escaped 7 placeholders), **#48** management UI (ownership-enforced CRUD, `maxLinksPages`-gated), **#47** template picker + owner-only IDOR-safe preview, **#46** custom-domain LinksPage fallback, **#50** age-gate (good-faith signed-cookie + adult-domain auto-flag, no DOB), **#49** custom-HTML/WYSIWYG (Opus — DOM allowlist sanitiser + `script-src 'none'` CSP + premium-gated + kill-switch off by default; adversarial XSS battery passed).
+- ⚠️ **#49 deploy notes:** run **migration 016** before deploying to an existing DB (else `getOrgTier` fails-open → all gating disabled, since it now selects `hasCustomHTML`); keep custom-HTML OFF (default) until a human/security sign-off (highest XSS surface).
 
 ### Housekeeping
 - Closed **22** verified-fixed issues; filed enhancement issues **#139–144** + tracking issues **#145–147, #146** (entitlements). Test coverage grew **189/21 → 422 unit / 147 integration** (all green). Strategic plan `docs/LAUNCH_PLAN_2026-07-09.md`; `HANDOFF.md` kept current.

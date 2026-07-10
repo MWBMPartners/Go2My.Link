@@ -26,12 +26,15 @@
 > Redoc at `/api/docs`. All security-reviewed; 244 unit / 74 integration green. **CueRCode integrates
 > via `/api/v1` with a `qr:link`-scoped key.**
 > **Since shipped (2026-07-10):** #40 key UI, #91 custom domains, #41/#42 analytics, #146 premium-tier
-> entitlement gating, #92 UTM, #147 CSRF fix, and **Component C (LinksPage) 4/6** (#45 renderer, #48 mgmt
-> UI, #47 template picker+preview, #46 custom-domain fallback). **Remaining dev:** Component C.5 age-gate
-> (#50) → C.6 WYSIWYG/HTML-upload (#49, Opus+security); then **P2 needs owner input** — SIGNula OIDC
-> endpoints/creds, multi-provider billing (Stripe/PayPal/SIGNula keys), final tier naming/currency; geo #43
-> unblocked (MaxMind org secret). **Owner ops/legal deferred:** #93 cred rotation, 480-URL migration (+
-> assign tiers — Free tier now enforced), legal sign-off, push/review the branch.
+> entitlement gating, #92 UTM, #147 CSRF fix, and **Component C (LinksPage) 6/6 COMPLETE** (#45 renderer,
+> #48 mgmt UI, #47 picker+preview, #46 custom-domain fallback, #50 age-gate, #49 custom-HTML/WYSIWYG on
+> Opus — DOM sanitiser + `script-src 'none'` CSP + premium-gated + kill-switch off). **⚠️ #49 deploy notes:**
+> run **migration 016** before deploying to an existing DB (else `getOrgTier` fails-open, all gating off);
+> keep custom-HTML OFF (default) until a security sign-off (highest XSS surface). **Remaining dev needs owner
+> input:** SIGNula OIDC endpoints/creds, multi-provider billing (Stripe/PayPal/SIGNula keys), final tier
+> naming/currency; geo #43 unblocked (MaxMind org secret); an API adversarial security cycle is still
+> pending. **Owner ops/legal deferred:** #93 cred rotation, 480-URL migration (+ assign tiers — Free tier
+> now enforced), legal sign-off, push/review the branch.
 > See **[HANDOFF.md](../../HANDOFF.md)** for the live pick-up point. Do **NOT** merge stale local `main`
 > (would resurrect the legacy engine + #93 credential file).
 

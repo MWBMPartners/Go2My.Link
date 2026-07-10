@@ -3,7 +3,7 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `99a10c4` (+ this handoff commit).
+> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `16984aa` (+ this handoff commit).
 
 ---
 
@@ -121,12 +121,15 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
 - **P1 follow-ups:** ✅ **UTM #92** (`ea857f1`, capture+forward, off by default, byte-identical-when-off);
   API adversarial security cycle (buildable, pending); geo #43 **now UNBLOCKED** — `MAXMIND_LICENSE_KEY`
   is a GitHub **org secret**, so CI can fetch GeoLite2 + deploy the `.mmdb` (build after Component C).
-- **⏭️ Component C (LinksPage) — 4/6 done:** ✅ C.1 renderer #45 (`e37134f`) → ✅ C.2 mgmt UI #48 (`40181cc`)
-  → ✅ C.3 template picker + owner preview #47 (`1dd6634`) → ✅ C.4 custom-domain LinksPage fallback #46
-  (`99a10c4`) → **⏭️ C.5 age-gate #50** → **C.6 WYSIWYG/HTML-upload #49 (Opus + security cycle — highest
-  XSS risk; `customHTML`/`customCSS` are UNRENDERED until this piece adds sanitisation).**
-  Files: `web/Lnks.page/_functions/linkspage_{resolver,renderer}.php`, `web/_functions/linkspage_manage.php`,
-  `web/G2My.Link/_functions/linkspage_fallback.php`, `_admin/.../pages/linkspage/`.
+- **✅ Component C (LinksPage) — 6/6 COMPLETE:** C.1 renderer #45 (`e37134f`) · C.2 mgmt UI #48 (`40181cc`)
+  · C.3 template picker + preview #47 (`1dd6634`) · C.4 custom-domain fallback #46 (`99a10c4`) · C.5 age-gate
+  #50 (`d68dfc0`) · **C.6 custom-HTML/WYSIWYG #49 (`16984aa`, Opus)** — DOM allowlist sanitiser +
+  `script-src 'none'` CSP + premium-gated + kill-switch OFF by default. 480u/161i green.
+  Files: `web/Lnks.page/_functions/linkspage_{resolver,renderer}.php`, `web/_functions/{linkspage_manage,html_sanitiser,adult_content}.php`,
+  `web/G2My.Link/_functions/linkspage_fallback.php`, `web/Lnks.page/public_html/index.php`, `_admin/.../pages/linkspage/`.
+  - 🔴 **C.6 owner actions:** (1) **run migration 016 BEFORE deploying to an existing DB** — else `getOrgTier`
+    fails-open (all gating disabled) because it now selects `hasCustomHTML`; (2) **keep custom-HTML OFF
+    (default) until a security sign-off** — it's the product's highest XSS surface (raw user HTML).
 - **✅ #147 CSRF token-overwrite FIXED** across all 4 affected pages (`83655b1` api-keys/links/org-domains,
   `bd601cd` org/short-domains) — per-row form names namespaced; `security.php` unchanged (single-use intended).
 - **P3:** Component C (LinksPage) — large greenfield (renderer/UI/templates/custom-domain fallback/
