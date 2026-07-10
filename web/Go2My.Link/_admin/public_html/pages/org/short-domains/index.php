@@ -61,10 +61,35 @@ $newDomainName  = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
-    $csrfToken  = $_POST['_csrf_token'] ?? '';
-    $actionType = $_POST['action_type'] ?? '';
+    $csrfToken     = $_POST['_csrf_token'] ?? '';
+    $actionType    = $_POST['action_type'] ?? '';
+    $postDomainUID = (int) ($_POST['domain_uid'] ?? 0);
 
-    if (!g2ml_validateCSRFToken($csrfToken, 'org_short_domains_form'))
+    // Per-row actions use a CSRF form name namespaced by the domain UID so that
+    // a page rendering many rows does not overwrite a single shared token slot
+    // (see #147). The add form keeps its own stable name.
+    if ($actionType === 'add_short_domain')
+    {
+        $csrfFormName = 'org_short_domains_add';
+    }
+    elseif ($actionType === 'verify_short_domain')
+    {
+        $csrfFormName = 'verify_short_domain_' . $postDomainUID;
+    }
+    elseif ($actionType === 'set_default')
+    {
+        $csrfFormName = 'set_default_short_domain_' . $postDomainUID;
+    }
+    elseif ($actionType === 'remove_short_domain')
+    {
+        $csrfFormName = 'remove_short_domain_' . $postDomainUID;
+    }
+    else
+    {
+        $csrfFormName = 'org_short_domains_form';
+    }
+
+    if (!g2ml_validateCSRFToken($csrfToken, $csrfFormName))
     {
         $actionError = 'Session expired. Please try again.';
     }
@@ -259,7 +284,7 @@ $dnsPrefix    = getSetting('org.dns_verify_prefix', '_g2ml-verify');
                                 <div class="d-flex flex-wrap gap-1">
                                     <?php if ($sd['verificationStatus'] !== 'verified') { ?>
                                     <form action="/org/short-domains" method="POST" class="d-inline">
-                                        <?php echo g2ml_csrfField('org_short_domains_form'); ?>
+                                        <?php echo g2ml_csrfField('verify_short_domain_' . (int) $sd['shortDomainUID']); ?>
                                         <input type="hidden" name="action_type" value="verify_short_domain">
                                         <input type="hidden" name="domain_uid" value="<?php echo (int) $sd['shortDomainUID']; ?>">
                                         <button type="submit" class="btn btn-outline-success btn-sm" title="Check DNS and verify ownership">
@@ -270,7 +295,7 @@ $dnsPrefix    = getSetting('org.dns_verify_prefix', '_g2ml-verify');
 
                                     <?php if (!(int) $sd['isDefault'] && $sd['verificationStatus'] === 'verified') { ?>
                                     <form action="/org/short-domains" method="POST" class="d-inline">
-                                        <?php echo g2ml_csrfField('org_short_domains_form'); ?>
+                                        <?php echo g2ml_csrfField('set_default_short_domain_' . (int) $sd['shortDomainUID']); ?>
                                         <input type="hidden" name="action_type" value="set_default">
                                         <input type="hidden" name="domain_uid" value="<?php echo (int) $sd['shortDomainUID']; ?>">
                                         <button type="submit" class="btn btn-outline-primary btn-sm" title="Set as default">
@@ -282,7 +307,7 @@ $dnsPrefix    = getSetting('org.dns_verify_prefix', '_g2ml-verify');
                                     <?php if (!(int) $sd['isDefault']) { ?>
                                     <form action="/org/short-domains" method="POST" class="d-inline"
                                           onsubmit="return confirm('Remove this short domain?');">
-                                        <?php echo g2ml_csrfField('org_short_domains_form'); ?>
+                                        <?php echo g2ml_csrfField('remove_short_domain_' . (int) $sd['shortDomainUID']); ?>
                                         <input type="hidden" name="action_type" value="remove_short_domain">
                                         <input type="hidden" name="domain_uid" value="<?php echo (int) $sd['shortDomainUID']; ?>">
                                         <button type="submit" class="btn btn-outline-danger btn-sm"
@@ -336,7 +361,7 @@ $dnsPrefix    = getSetting('org.dns_verify_prefix', '_g2ml-verify');
             </div>
             <div class="card-body">
                 <form action="/org/short-domains" method="POST" novalidate>
-                    <?php echo g2ml_csrfField('org_short_domains_form'); ?>
+                    <?php echo g2ml_csrfField('org_short_domains_add'); ?>
                     <input type="hidden" name="action_type" value="add_short_domain">
 
                     <div class="row g-3">
