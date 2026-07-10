@@ -403,19 +403,42 @@ class G2mlApiHandlerException extends RuntimeException
 }
 
 // ============================================================================
-// 🗺️ /api/v1 parameterised route matching — "METHOD urls/{code}" (#39)
+// 🗺️ /api/v1 parameterised route matching — "METHOD <prefix>/{code}" (#39, extended #41)
 // ============================================================================
 
 /**
- * Attempt to match a parameterised "METHOD urls/{code}" route.
+ * The whitelist of first-path-segment prefixes this matcher will even
+ * consider for a two-segment "<prefix>/<code>" shape. This is NOT the thing
+ * that decides whether a route actually exists — $paramRouteTable membership
+ * still governs that — it only bounds which prefixes are worth building a
+ * paramRouteKey for at all, so an arbitrary "foo/bar"-shaped path can never
+ * accidentally probe an unrelated table entry.
+ *
+ * @return array<int, string>
+ */
+function g2ml_apiParamRoutePrefixes(): array
+{
+    return [
+        'urls',
+        'analytics',
+    ];
+}
+
+/**
+ * Attempt to match a parameterised "METHOD <prefix>/{code}" route, where
+ * <prefix> is one of g2ml_apiParamRoutePrefixes() (currently 'urls' and
+ * 'analytics').
  *
  * Pure and DB-free (no superglobals, no side effects) so it is directly
  * unit-testable. The front controller's route table stays a tiny, explicit
  * map of EXACT "METHOD path" strings (see web/Go2My.Link/public_html/api/v1/index.php)
- * for every literal route (ping, account, org, urls, urls/bulk); this
- * function is the single, narrow extension that additionally recognises a
- * two-segment "urls/<code>" path whose second segment looks like a short
- * code, WITHOUT turning the dispatcher into a general-purpose router.
+ * for every literal route (ping, account, org, urls, urls/bulk, analytics);
+ * this function is the single, narrow extension that additionally recognises
+ * a two-segment "<prefix>/<code>" path whose second segment looks like a
+ * short code, WITHOUT turning the dispatcher into a general-purpose router —
+ * only prefixes on the fixed whitelist above are ever considered, and even
+ * then only when the resulting "METHOD <prefix>/{code}" key actually exists
+ * in the caller-supplied $paramRouteTable.
  *
  * A candidate code is re-validated here against the same charset used for
  * both generated (sp_generateShortCode — alphanumeric) and custom
@@ -428,7 +451,7 @@ class G2mlApiHandlerException extends RuntimeException
  * @param  string $sanitisedRoute   The route AFTER g2ml_apiSanitiseRoute() has
  *                                   already accepted it (never null here — a
  *                                   null/rejected route never reaches this call).
- * @param  array  $paramRouteTable  Table keyed 'METHOD urls/{code}' => ['scope'=>..., 'handler'=>...].
+ * @param  array  $paramRouteTable  Table keyed 'METHOD <prefix>/{code}' => ['scope'=>..., 'handler'=>...].
  * @return array{route: array, code: string}|null  The matched route + extracted
  *                                                   code, or null when this is
  *                                                   not a recognised parameterised route.
@@ -436,6 +459,7 @@ class G2mlApiHandlerException extends RuntimeException
  * Usage example:
  *   $match = g2ml_apiMatchParamRoute('GET', 'urls/abc123', $paramRouteTable);
  *   if ($match !== null) { $code = $match['code']; $route = $match['route']; }
+ *   $match = g2ml_apiMatchParamRoute('GET', 'analytics/abc123', $paramRouteTable);
  */
 function g2ml_apiMatchParamRoute(string $httpMethod, string $sanitisedRoute, array $paramRouteTable): ?array
 {
@@ -446,7 +470,9 @@ function g2ml_apiMatchParamRoute(string $httpMethod, string $sanitisedRoute, arr
         return null;
     }
 
-    if ($segments[0] !== 'urls')
+    $routePrefix = $segments[0];
+
+    if (!in_array($routePrefix, g2ml_apiParamRoutePrefixes(), true))
     {
         return null;
     }
@@ -458,7 +484,7 @@ function g2ml_apiMatchParamRoute(string $httpMethod, string $sanitisedRoute, arr
         return null;
     }
 
-    $paramRouteKey = $httpMethod . ' urls/{code}';
+    $paramRouteKey = $httpMethod . ' ' . $routePrefix . '/{code}';
 
     if (!isset($paramRouteTable[$paramRouteKey]))
     {

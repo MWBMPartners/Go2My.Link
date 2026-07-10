@@ -193,6 +193,12 @@ tags:
     description: The authenticated key's own organisation summary.
   - name: URLs
     description: Short-URL create, read, update, soft-delete, list, and bulk create.
+  - name: Analytics
+    description: |
+      Click/redirect aggregates over `tblActivityLog`: totals, a time
+      series, a top-links ranking, a single whitelisted-dimension
+      breakdown, and CueRCode dynamic-QR scan attribution. Geographic
+      breakdowns are out of scope (no GeoIP data is populated yet).
 paths:
   /ping:
     get:
@@ -669,6 +675,113 @@ paths:
           $ref: "#/components/responses/ServiceUnavailable"
         "500":
           $ref: "#/components/responses/InternalError"
+  /analytics:
+    get:
+      tags:
+        - Analytics
+      operationId: getAnalyticsSummary
+      summary: Organisation analytics summary
+      description: |
+        Requires the `analytics:read` scope. Self-scoped: every value is
+        derived from the authenticated key's own organisation — there is
+        no client-suppliable identifier on this endpoint. Returns the
+        organisation's totals and a top-links ranking over the requested
+        date range.
+
+        A "click" is a `tblActivityLog` row with `logAction=redirect` AND
+        `logStatus=success` — every other status (`not_found`, `expired`,
+        `inactive`, an error, etc.) is a failed resolution attempt and is
+        excluded.
+      x-required-scope: analytics:read
+      parameters:
+        - $ref: "#/components/parameters/AnalyticsFromParam"
+        - $ref: "#/components/parameters/AnalyticsToParam"
+        - $ref: "#/components/parameters/AnalyticsLimitParam"
+        - $ref: "#/components/parameters/FormatParam"
+      responses:
+        "200":
+          description: The organisation's analytics summary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsSummarySuccessEnvelope"
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/AnalyticsSummarySuccessEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+        "500":
+          $ref: "#/components/responses/InternalError"
+  /analytics/{code}:
+    parameters:
+      - name: code
+        in: path
+        required: true
+        description: |
+          The short code, e.g. the `abc123` in `https://g2my.link/abc123`.
+          Must match `^[A-Za-z0-9_-]{1,50}$`.
+        schema:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{1,50}$"
+          maxLength: 50
+        example: launch-2026
+      - $ref: "#/components/parameters/AnalyticsFromParam"
+      - $ref: "#/components/parameters/AnalyticsToParam"
+      - $ref: "#/components/parameters/AnalyticsBucketParam"
+      - $ref: "#/components/parameters/AnalyticsDimensionParam"
+      - $ref: "#/components/parameters/AnalyticsLimitParam"
+      - $ref: "#/components/parameters/FormatParam"
+    get:
+      tags:
+        - Analytics
+      operationId: getAnalytics
+      summary: Analytics for a single short URL
+      description: |
+        Requires the `analytics:read` scope. A code that exists but
+        belongs to a different organisation is indistinguishable from one
+        that does not exist at all — both return the same generic `404`,
+        exactly like `GET /urls/{code}`.
+
+        Returns totals and a `clicks_over_time` series (bucketed by
+        `bucket`) for the requested date range, plus `scan_sources`
+        (CueRCode dynamic-QR scan attribution — see the
+        `qr_external_id`/`qr_external_uuid` fields on `POST /urls`). When
+        `dimension` is supplied, a `breakdown` block grouping clicks by
+        that single whitelisted dimension is also included; it is omitted
+        entirely otherwise.
+      x-required-scope: analytics:read
+      responses:
+        "200":
+          description: Analytics for the requested short URL.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsDetailSuccessEnvelope"
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/AnalyticsDetailSuccessEnvelope"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+        "500":
+          $ref: "#/components/responses/InternalError"
 components:
   securitySchemes:
     bearerAuth:
@@ -701,6 +814,62 @@ components:
         type: string
         enum: [xml]
       example: xml
+    AnalyticsFromParam:
+      name: from
+      in: query
+      required: false
+      description: |
+        Inclusive range start. `YYYY-MM-DD` (expanded to `00:00:00` that
+        day) or `YYYY-MM-DD HH:MM:SS` (a `T` separator is also accepted).
+        Defaults to `to` minus 30 days.
+      schema:
+        type: string
+      example: "2026-06-01"
+    AnalyticsToParam:
+      name: to
+      in: query
+      required: false
+      description: |
+        Inclusive range end. `YYYY-MM-DD` (expanded to `23:59:59` that
+        day) or `YYYY-MM-DD HH:MM:SS`. Defaults to now (UTC).
+      schema:
+        type: string
+      example: "2026-06-30"
+    AnalyticsBucketParam:
+      name: bucket
+      in: query
+      required: false
+      description: Time-series bucket size for `clicks_over_time`. Defaults to `day`.
+      schema:
+        type: string
+        enum: [day, week, month]
+        default: day
+      example: day
+    AnalyticsDimensionParam:
+      name: dimension
+      in: query
+      required: false
+      description: |
+        When supplied, adds a `breakdown` block grouping clicks by this
+        single whitelisted dimension. Omitted entirely when this
+        parameter is absent.
+      schema:
+        type: string
+        enum: [browserName, osName, deviceType, requestReferer, scanSource]
+      example: browserName
+    AnalyticsLimitParam:
+      name: limit
+      in: query
+      required: false
+      description: |
+        Maximum rows in `top_links` (`/analytics`) or `breakdown.items`
+        (`/analytics/{code}`). Default 10, clamped 1-100.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+      example: 10
   responses:
     Unauthorized:
       description: |
@@ -1402,5 +1571,196 @@ components:
           const: success
         data:
           $ref: "#/components/schemas/ShortUrlBulkResult"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    AnalyticsTotals:
+      type: object
+      description: |
+        Aggregated over the requested date range and (for
+        `/analytics/{code}`) a single short code. `unique_ips` is a
+        distinct-IP approximation, not a deduplicated-visitor count — no
+        visitor/device fingerprinting exists in this schema.
+      required:
+        - total_clicks
+        - unique_ips
+        - bot_clicks
+        - human_clicks
+        - unknown_clicks
+      properties:
+        total_clicks:
+          type: integer
+          example: 128
+        unique_ips:
+          type: integer
+          description: COUNT(DISTINCT ipAddress) over the same rows — an approximation of unique visitors.
+          example: 94
+        bot_clicks:
+          type: integer
+          description: Clicks from a recognised bot user agent.
+          example: 6
+        human_clicks:
+          type: integer
+          example: 118
+        unknown_clicks:
+          type: integer
+          description: Clicks whose user agent could not be classified as bot or human.
+          example: 4
+    AnalyticsPeriod:
+      type: object
+      description: |
+        The resolved (and, for a date-only request parameter, expanded)
+        date range the response was computed over. `from`/`to` are UTC,
+        formatted `YYYY-MM-DD HH:MM:SS` — NOT RFC 3339 `date-time`
+        (no `T` separator, no `Z`/offset suffix), matching exactly what
+        the underlying PHP layer stores and compares against `createdAt`.
+      required:
+        - from
+        - to
+      properties:
+        from:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$"
+          example: "2026-06-01 00:00:00"
+        to:
+          type: string
+          pattern: "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$"
+          example: "2026-06-30 23:59:59"
+        bucket:
+          type: string
+          enum: [day, week, month]
+          description: Present only on `/analytics/{code}` (the summary endpoint has no time series).
+          example: day
+    AnalyticsClicksOverTimePoint:
+      type: object
+      required:
+        - bucket
+        - clicks
+      properties:
+        bucket:
+          type: string
+          description: The bucket label, formatted per the request's `bucket` parameter (`YYYY-MM-DD`, ISO year-week, or `YYYY-MM`).
+          example: "2026-06-01"
+        clicks:
+          type: integer
+          example: 12
+    AnalyticsScanSource:
+      type: object
+      description: CueRCode dynamic-QR scan attribution (#145). A click with no scan-source tag is never included here.
+      required:
+        - scan_source
+        - scans
+      properties:
+        scan_source:
+          type: string
+          example: qr
+        scans:
+          type: integer
+          example: 37
+    AnalyticsTopLink:
+      type: object
+      required:
+        - short_code
+        - clicks
+      properties:
+        short_code:
+          type: string
+          example: launch-2026
+        clicks:
+          type: integer
+          example: 512
+    AnalyticsBreakdownItem:
+      type: object
+      required:
+        - value
+        - clicks
+      properties:
+        value:
+          type: string
+          description: The dimension's distinct value (e.g. a browser name, OS name, device type, referrer, or scan source). NULL values for that column are excluded.
+          example: Chrome
+        clicks:
+          type: integer
+          example: 64
+    AnalyticsBreakdown:
+      type: object
+      description: Present only when the request supplied `?dimension=`; omitted entirely otherwise.
+      required:
+        - dimension
+        - items
+      properties:
+        dimension:
+          type: string
+          enum: [browserName, osName, deviceType, requestReferer, scanSource]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalyticsBreakdownItem"
+    AnalyticsSummary:
+      type: object
+      required:
+        - period
+        - totals
+        - top_links
+      properties:
+        period:
+          $ref: "#/components/schemas/AnalyticsPeriod"
+        totals:
+          $ref: "#/components/schemas/AnalyticsTotals"
+        top_links:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalyticsTopLink"
+    AnalyticsSummarySuccessEnvelope:
+      type: object
+      required:
+        - status
+        - data
+        - meta
+      properties:
+        status:
+          type: string
+          const: success
+        data:
+          $ref: "#/components/schemas/AnalyticsSummary"
+        meta:
+          $ref: "#/components/schemas/ResponseMeta"
+    AnalyticsDetail:
+      type: object
+      required:
+        - short_code
+        - period
+        - totals
+        - clicks_over_time
+        - scan_sources
+      properties:
+        short_code:
+          type: string
+          example: launch-2026
+        period:
+          $ref: "#/components/schemas/AnalyticsPeriod"
+        totals:
+          $ref: "#/components/schemas/AnalyticsTotals"
+        clicks_over_time:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalyticsClicksOverTimePoint"
+        scan_sources:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalyticsScanSource"
+        breakdown:
+          $ref: "#/components/schemas/AnalyticsBreakdown"
+    AnalyticsDetailSuccessEnvelope:
+      type: object
+      required:
+        - status
+        - data
+        - meta
+      properties:
+        status:
+          type: string
+          const: success
+        data:
+          $ref: "#/components/schemas/AnalyticsDetail"
         meta:
           $ref: "#/components/schemas/ResponseMeta"

@@ -34,7 +34,11 @@
  * #38 shipped ONLY the framework and two exerciser endpoints (ping, account).
  * #39 adds the full urls CRUD/bulk surface, org read, the {code} route
  * parameter, and the pre-auth backoff — extending this same pipeline rather
- * than replacing it (analytics/domains remain for a later issue).
+ * than replacing it. #41 adds the analytics surface (org summary + per-code
+ * detail), reusing the SAME {code}-shaped parameterised route matcher
+ * generalised to a prefix whitelist (see g2ml_apiMatchParamRoute() in
+ * api_response.php) rather than a second bespoke matcher (domains remains
+ * for a later issue).
  *
  * @package    Go2My.Link
  * @subpackage API
@@ -82,6 +86,7 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'handlers' . DIRECTORY_SEPARATOR . 
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'handlers' . DIRECTORY_SEPARATOR . 'org.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'handlers' . DIRECTORY_SEPARATOR . 'urls.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'handlers' . DIRECTORY_SEPARATOR . 'urls_bulk.php';
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'handlers' . DIRECTORY_SEPARATOR . 'analytics.php';
 
 // ============================================================================
 // ⏱️ Step 2: Start the response-time clock
@@ -357,6 +362,10 @@ $g2mlApiRouteTable = [
         'handler'        => 'g2ml_apiHandleUrlsBulkCreate',
         'successStatus'  => 201,
     ],
+    'GET analytics' => [
+        'scope'   => 'analytics:read',
+        'handler' => 'g2ml_apiHandleAnalyticsSummary',
+    ],
 ];
 
 $g2mlApiParamRouteTable = [
@@ -371,6 +380,10 @@ $g2mlApiParamRouteTable = [
     'DELETE urls/{code}' => [
         'scope'   => 'urls:delete',
         'handler' => 'g2ml_apiHandleUrlsDelete',
+    ],
+    'GET analytics/{code}' => [
+        'scope'   => 'analytics:read',
+        'handler' => 'g2ml_apiHandleAnalyticsGet',
     ],
 ];
 

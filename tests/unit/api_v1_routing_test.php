@@ -138,6 +138,59 @@ test('matchParamRoute: an empty paramRouteTable never matches anything', functio
 });
 
 // ============================================================================
+// 🗺️ g2ml_apiMatchParamRoute — "analytics/{code}" (#41)
+// ============================================================================
+// The matcher was generalised from a hardcoded 'urls' prefix to a whitelist
+// (g2ml_apiParamRoutePrefixes()) so it could ALSO recognise
+// "analytics/{code}" without a second bespoke matcher function. These tests
+// cover that generalisation stays additive: every urls/{code} behaviour
+// above is unaffected, and analytics/{code} now resolves the SAME way.
+// ============================================================================
+
+$g2mlTestAnalyticsParamRouteTable = [
+    'GET analytics/{code}' => [
+        'scope'   => 'analytics:read',
+        'handler' => 'g2ml_apiHandleAnalyticsGet',
+    ],
+];
+
+test('matchParamRoute: GET analytics/<code> matches and extracts the code', function () use ($g2mlTestAnalyticsParamRouteTable): void
+{
+    $match = g2ml_apiMatchParamRoute('GET', 'analytics/abc123', $g2mlTestAnalyticsParamRouteTable);
+
+    assert_true(is_array($match), 'A well-formed two-segment analytics/<code> path must match');
+    assert_same('abc123', $match['code'], 'The extracted code must be the second segment verbatim');
+    assert_same('g2ml_apiHandleAnalyticsGet', $match['route']['handler'], 'The matched route must be the GET analytics/{code} definition');
+});
+
+test('matchParamRoute: a method with no analytics/{code} entry does not match', function () use ($g2mlTestAnalyticsParamRouteTable): void
+{
+    assert_same(null, g2ml_apiMatchParamRoute('PUT', 'analytics/abc123', $g2mlTestAnalyticsParamRouteTable), 'PUT has no analytics/{code} entry — there is no write path for analytics');
+});
+
+test('matchParamRoute: "analytics" is only recognised against a table that actually defines it — the urls-only table must not cross-match', function () use ($g2mlTestParamRouteTable): void
+{
+    assert_same(null, g2ml_apiMatchParamRoute('GET', 'analytics/abc123', $g2mlTestParamRouteTable), 'The prefix whitelist only bounds candidacy — actual matching still requires the "GET analytics/{code}" key to exist in the supplied table, which the urls-only table never defines');
+});
+
+test('matchParamRoute: "urls" is still recognised against a table that only defines analytics/{code} — same reasoning in reverse', function () use ($g2mlTestAnalyticsParamRouteTable): void
+{
+    assert_same(null, g2ml_apiMatchParamRoute('GET', 'urls/abc123', $g2mlTestAnalyticsParamRouteTable), 'The analytics-only table never defines "GET urls/{code}"');
+});
+
+test('matchParamRoute: an unwhitelisted prefix (e.g. "domains") never matches, even with a permissive table', function (): void
+{
+    $permissiveTable = [
+        'GET domains/{code}' => [
+            'scope'   => 'domains:read',
+            'handler' => 'some_future_handler',
+        ],
+    ];
+
+    assert_same(null, g2ml_apiMatchParamRoute('GET', 'domains/abc123', $permissiveTable), '"domains" is not on g2ml_apiParamRoutePrefixes() — the prefix whitelist rejects it before the table is even consulted');
+});
+
+// ============================================================================
 // 🏷️ g2ml_apiKeyHasScope — the NEW #39 scopes
 // ============================================================================
 
@@ -166,6 +219,15 @@ test('hasScope: org:read is independent of the urls:* and account:read scopes', 
 
     $orgScopedKeyRow = ['permissions' => ['org:read']];
     assert_true(g2ml_apiKeyHasScope($orgScopedKeyRow, 'org:read'), 'org:read must be present when explicitly granted');
+});
+
+test('hasScope: analytics:read (#41) is independent of every other scope — the front controller\'s missing-scope 403 guard for /api/v1/analytics relies on exactly this check', function (): void
+{
+    $analyticsScopedKeyRow = ['permissions' => ['analytics:read']];
+    assert_true(g2ml_apiKeyHasScope($analyticsScopedKeyRow, 'analytics:read'), 'analytics:read must be present when explicitly granted');
+
+    $everythingButAnalyticsKeyRow = ['permissions' => ['urls:read', 'urls:write', 'urls:delete', 'org:read', 'account:read']];
+    assert_false(g2ml_apiKeyHasScope($everythingButAnalyticsKeyRow, 'analytics:read'), 'analytics:read must NEVER be implied by any other scope, however broad the key otherwise is — this is the exact check that maps to a 403 for GET /api/v1/analytics and /api/v1/analytics/{code} when absent');
 });
 
 // ============================================================================
