@@ -39,11 +39,12 @@ Organisations can use custom short domains (e.g., `camsda.link`, `tyney.link`). 
 3. ⚙️ Domain added in the Dreamhost panel as a hosted domain (manual step
    today — see `docs/CUSTOM_DOMAINS.md` for the full walkthrough and the
    planned Cloudflare-for-SaaS automated path)
-4. 🗄️ Domain registered in `tblOrgShortDomains` (short-URL routing domains)
-   or `tblOrgDomains` (brand/primary/redirect/linkspage domains) with its own
-   verification status — **only a `verified` + active short domain is
-   routable** (#91); an unverified or unknown Host never falls back to the
-   `[default]` org's namespace
+4. 🗄️ Domain registered in `tblOrgShortDomains` (short-URL routing domains) —
+   **only a `verified` + active short domain is routable** (#91); an
+   unverified or unknown Host never falls back to the `[default]` org's
+   namespace. (`tblOrgDomains` is a separate, ⚠️ **DEPRECATED (GT-6)** table
+   — see `docs/DATABASE.md` — nothing routes off it; do not register a
+   domain there expecting it to become routable.)
 
 📖 **Full partner-facing guide:** [`docs/CUSTOM_DOMAINS.md`](CUSTOM_DOMAINS.md).
 

@@ -205,9 +205,14 @@ today:
 - **Background re-verification** — a periodic job that re-checks DNS for
   already-verified domains and flags a domain if its TXT/routing record is
   later removed, rather than only checking on demand.
-- **`tblOrgDomains` (brand/primary/redirect/linkspage domains) unification**
-  with the short-domain routing table — today these are two separate
-  tables with two separate verification flows; unifying them is tracked as
-  a follow-up rather than part of this change.
+- ~~`tblOrgDomains` (brand/primary/redirect/linkspage domains) unification~~
+  — **resolved 2026-07-10 (GT-6):** the two tables were assessed rather than
+  merged. `tblOrgDomains` was confirmed genuinely unused for routing (no FK,
+  no seed, no migration, no test exercises it) and is now formally
+  **DEPRECATED** — its admin page (`org/domains/index.php`) no longer
+  accepts new rows. `tblOrgShortDomains` remains the single table that
+  drives routing and the LinksPage fallback designation (#46). See
+  `web/_sql/migrations/018_deprecate_org_domains.sql` for the full write-up
+  and the owner-reviewed reconciliation path for any pre-existing rows.
 - Punycode/IDN domain support, a reserved-domain list, and a pre-flight
   conflict check before adding a domain.

@@ -9,15 +9,26 @@
 
 /**
  * ============================================================================
- * 🌐 Go2My.Link — Custom Domain Management (Admin Dashboard)
+ * 🌐 Go2My.Link — Custom Domain Management (Admin Dashboard) — DEPRECATED
  * ============================================================================
  *
- * Add, verify (via DNS TXT), and remove custom domains for an organisation.
+ * ⚠️  DEPRECATED (GT-6, docs/LAUNCH_PLAN_2026-07-09.md §5 / issue #91) —
+ * VIEW / VERIFY / REMOVE only for any row an org already has. Verification
+ * here (verifyDomain(), tblOrgDomains) has NEVER had any routing effect —
+ * nothing in the redirect hot path or the Component C.4 (#46) custom-domain
+ * LinksPage fallback reads this table. Live domain routing AND the
+ * LinksPage fallback designation both live entirely on the Short Domains
+ * page (org/short-domains/index.php, tblOrgShortDomains) — see that page's
+ * own docblock. The "Add Domain" form below has been removed and the
+ * add_domain action is rejected server-side so this table cannot grow any
+ * further; see web/_sql/migrations/018_deprecate_org_domains.sql for the
+ * full write-up and the owner-reviewed reconciliation path for any rows
+ * already here.
  *
  * @package    Go2My.Link
  * @subpackage ComponentA_Admin
- * @version    0.6.0
- * @since      Phase 5
+ * @version    0.7.0
+ * @since      Phase 5; deprecated GT-6 (v1.1.0 — Phase 7)
  * ============================================================================
  */
 
@@ -47,10 +58,16 @@ if ($orgHandle === '[default]' || !canManageOrg($orgHandle))
 $actionSuccess   = '';
 $actionError     = '';
 $verifyResult    = null;
-$newVerifyToken  = null;
 
 // ============================================================================
 // Handle POST actions
+// ============================================================================
+// 🔒 GT-6 — this page is DEPRECATED (see docblock above): only 'verify_domain'
+// and 'remove_domain' remain reachable, so an org can still see, harmlessly
+// re-check, or clean up any row it already has. 'add_domain' is explicitly
+// rejected server-side below — the page no longer renders that form at all
+// (so no valid CSRF token for it is ever issued in the first place), but the
+// rejection is kept explicit rather than relying on that alone.
 // ============================================================================
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST')
@@ -67,8 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     // domainUID. Otherwise g2ml_generateCSRFToken() (single-slot-per-form-name,
     // see security.php) overwrites the previous row's token every time the
     // loop renders the next row's form, and only the LAST-rendered row's
-    // action would still validate. The "add" action has exactly one form on
-    // the page, so it keeps its own distinct, stable form name.
+    // action would still validate.
     // ========================================================================
 
     if ($actionType === 'verify_domain')
@@ -81,10 +97,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     }
     else
     {
-        $csrfFormName = 'org_domains_add';
+        $csrfFormName = '';
     }
 
-    if (!g2ml_validateCSRFToken($csrfToken, $csrfFormName))
+    if ($actionType === 'add_domain')
+    {
+        // GT-6: adding new rows to this deprecated table is no longer
+        // permitted — direct the org to the page that actually does
+        // something (Short Domains) instead of silently accepting the row.
+        $actionError = 'Adding new custom domains here has moved. Please use Organisation → Short Domains instead — that is where domain routing and verification actually happen.';
+    }
+    elseif (!g2ml_validateCSRFToken($csrfToken, $csrfFormName))
     {
         $actionError = 'Session expired. Please try again.';
     }
@@ -92,28 +115,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     {
         switch ($actionType)
         {
-            case 'add_domain':
-                $domainName = strtolower(trim(g2ml_sanitiseInput($_POST['domain_name'] ?? '')));
-                $domainType = $_POST['domain_type'] ?? 'primary';
-                $result     = addOrgDomain($orgHandle, $domainName, $domainType);
-                if ($result['success'])
-                {
-                    $actionSuccess  = "Domain added. Please add the DNS TXT record to verify ownership.";
-                    $newVerifyToken = $result['verificationToken'];
-                }
-                else
-                {
-                    $actionError = $result['error'];
-                }
-                break;
-
             case 'verify_domain':
                 // $domainUID was already parsed above to build the namespaced
                 // CSRF form name for this row; reused here unchanged.
                 $result = verifyDomain($domainUID, $orgHandle);
                 if ($result['verified'])
                 {
-                    $actionSuccess = 'Domain verified successfully!';
+                    $actionSuccess = 'Domain verified successfully! (Note: this table no longer drives any routing — see the notice above.)';
                 }
                 else
                 {
@@ -155,8 +163,22 @@ $dnsPrefix  = getSetting('org.dns_verify_prefix', '_g2ml-verify');
         </nav>
 
         <h1 id="domains-heading" class="h2 mb-4">
-            <i class="fas fa-globe" aria-hidden="true"></i> Custom Domains
+            <i class="fas fa-globe" aria-hidden="true"></i> Custom Domains <span class="badge bg-secondary align-middle">Legacy</span>
         </h1>
+
+        <!-- ================================================================ -->
+        <!-- GT-6 deprecation notice                                           -->
+        <!-- ================================================================ -->
+        <div class="alert alert-warning" role="status">
+            <i class="fas fa-info-circle" aria-hidden="true"></i>
+            This page is <strong>deprecated</strong> and does not drive any live
+            routing — verifying a domain here has no effect on where traffic
+            goes. Domain routing, ownership verification, and the LinksPage
+            fallback designation are all managed from
+            <a href="/org/short-domains">Organisation &rarr; Short Domains</a>.
+            You can still view, re-check, or remove any domain already listed
+            below, but new domains can no longer be added here.
+        </div>
 
         <?php if ($actionSuccess !== '') { ?>
         <div class="alert alert-success" role="status">
@@ -172,8 +194,9 @@ $dnsPrefix  = getSetting('org.dns_verify_prefix', '_g2ml-verify');
         </div>
         <?php } ?>
 
+        <?php if (!empty($domains)) { ?>
         <!-- ================================================================ -->
-        <!-- DNS Instructions                                                  -->
+        <!-- DNS Instructions (only shown while legacy rows still exist)       -->
         <!-- ================================================================ -->
         <div class="card shadow-sm mb-4">
             <div class="card-header">
@@ -189,8 +212,14 @@ $dnsPrefix  = getSetting('org.dns_verify_prefix', '_g2ml-verify');
                     <li>Set the value to the <strong>verification token</strong> shown below</li>
                     <li>Wait for DNS propagation (may take up to 48 hours) and click <strong>Verify</strong></li>
                 </ol>
+                <p class="mb-0 mt-2 text-body-secondary small">
+                    <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+                    Reminder: verifying here is cosmetic only — it does not make
+                    anything routable. See the notice above.
+                </p>
             </div>
         </div>
+        <?php } ?>
 
         <!-- ================================================================ -->
         <!-- Domains Table                                                     -->
@@ -203,7 +232,7 @@ $dnsPrefix  = getSetting('org.dns_verify_prefix', '_g2ml-verify');
             <?php if (empty($domains)) { ?>
             <div class="card-body text-center text-body-secondary py-4">
                 <i class="fas fa-globe fa-2x mb-2" aria-hidden="true"></i>
-                <p class="mb-0">No custom domains added yet.</p>
+                <p class="mb-0">Nothing here. Manage domains from Short Domains instead.</p>
             </div>
             <?php } else { ?>
             <div class="table-responsive">
@@ -272,50 +301,25 @@ $dnsPrefix  = getSetting('org.dns_verify_prefix', '_g2ml-verify');
         </div>
 
         <!-- ================================================================ -->
-        <!-- Add Domain Form                                                   -->
+        <!-- GT-6 — "Add Domain" form removed; this card replaces it           -->
         <!-- ================================================================ -->
-        <div class="card shadow-sm">
+        <div class="card shadow-sm border-secondary-subtle">
             <div class="card-header">
                 <h2 class="h5 mb-0">
-                    <i class="fas fa-plus-circle" aria-hidden="true"></i> Add Domain
+                    <i class="fas fa-arrow-right-to-bracket" aria-hidden="true"></i> This feature has moved
                 </h2>
             </div>
             <div class="card-body">
-                <form action="/org/domains" method="POST" novalidate>
-                    <?php echo g2ml_csrfField('org_domains_add'); ?>
-                    <input type="hidden" name="action_type" value="add_domain">
-
-                    <div class="row g-3">
-                        <div class="col-md-5">
-                            <?php
-                            echo formField([
-                                'id'       => 'domain-name',
-                                'name'     => 'domain_name',
-                                'label'    => 'Domain Name',
-                                'type'     => 'text',
-                                'required' => true,
-                                'value'    => '',
-                                'helpText' => 'e.g., example.com',
-                            ]);
-                            ?>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="mb-3">
-                                <label for="domain-type" class="form-label">Type</label>
-                                <select class="form-select" id="domain-type" name="domain_type">
-                                    <option value="primary">Primary</option>
-                                    <option value="redirect">Redirect</option>
-                                    <option value="linkspage">LinksPage</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-3 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary mb-3 w-100">
-                                <i class="fas fa-plus" aria-hidden="true"></i> Add
-                            </button>
-                        </div>
-                    </div>
-                </form>
+                <p class="mb-2">
+                    Adding a new custom domain is now done entirely from
+                    <a href="/org/short-domains">Organisation &rarr; Short Domains</a>,
+                    which is also where domain ownership verification actually
+                    gates live routing (#91) and where a verified domain can be
+                    assigned to publish one of your LinksPages at its root (#46).
+                </p>
+                <a href="/org/short-domains" class="btn btn-primary">
+                    <i class="fas fa-bolt" aria-hidden="true"></i> Go to Short Domains
+                </a>
             </div>
         </div>
 

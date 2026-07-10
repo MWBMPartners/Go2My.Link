@@ -44,8 +44,10 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
   PHP references). **CueRCode is blocked until #38/#39 ship.**
 - **Premium tiers:** full data model (`tblSubscriptionTiers`, 4 GBP tiers) but **almost
   no enforcement** (no `canUseFeature()`), and the pricing page is mismatched (USD/3-tier).
-- **SIGNula / advanced auth:** zero code. Custom domains: ~70% (routing works;
-  verification + partner docs missing; two domain tables disconnected — plan §5/GT-6).
+- **SIGNula / advanced auth:** zero code. Custom domains: **done** (routing +
+  verification + partner docs shipped by #91; two-domain-table disconnect
+  resolved 2026-07-10 by deprecating `tblOrgDomains` rather than unifying —
+  GT-6, `web/_sql/migrations/018_deprecate_org_domains.sql`).
 
 ## 🔴 Genuinely outstanding before an A+B launch (small)
 
@@ -124,7 +126,12 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
   injection); Low residuals tracked in **#149**, test-flake in **#148**); ✅ **geo #43** (`89fb2e1`, vendored
   pure-PHP MaxMind reader, gated OFF + graceful-no-op, CI-fetched `.mmdb`, country analytics widget).
 - **Small tracked cleanups (buildable, low priority):** #148 test-flake; #149 API Low residuals; dormant
-  `analytics.geoip_enabled` scaffolding setting (remove); GT-6 two-domain-table unification.
+  `analytics.geoip_enabled` scaffolding setting (remove). ✅ **GT-6 two-domain-table
+  assessment DONE** (2026-07-10) — `tblOrgDomains` deprecated (not unified): confirmed
+  zero FKs/seeds/migrations/tests touch it; `org/domains/index.php` no longer accepts
+  new rows; `web/_sql/migrations/018_deprecate_org_domains.sql` documents the
+  owner-reviewed reconciliation path for any pre-existing rows (none expected —
+  no seed/migration ever populated it). unit 502/0, integ 175/0 unchanged.
 - **✅ Component C (LinksPage) — 6/6 COMPLETE:** C.1 renderer #45 (`e37134f`) · C.2 mgmt UI #48 (`40181cc`)
   · C.3 template picker + preview #47 (`1dd6634`) · C.4 custom-domain fallback #46 (`99a10c4`) · C.5 age-gate
   #50 (`d68dfc0`) · **C.6 custom-HTML/WYSIWYG #49 (`16984aa`, Opus)** — DOM allowlist sanitiser +

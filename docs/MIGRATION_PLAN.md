@@ -177,9 +177,11 @@ Test a random sample of migrated short URLs:
 
 For each migrated organisation with custom domains:
 
-1. Verify `tblOrgDomains` entries exist
-2. Verify `tblOrgShortDomains` entries exist with correct default flags
-3. Test custom domain resolution if DNS is already configured
+1. Verify `tblOrgShortDomains` entries exist with correct default flags
+   (migration `001_migrate_organisations.sql` populates this table only —
+   `tblOrgDomains` is a separate, ⚠️ **DEPRECATED (GT-6)** table that the
+   legacy-data migration never touches; see `docs/DATABASE.md`)
+2. Test custom domain resolution if DNS is already configured
 
 ---
 

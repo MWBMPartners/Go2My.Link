@@ -114,7 +114,7 @@ $isAdmin     = canManageOrg($orgHandle);
                     <div class="card-body">
                         <i class="fas fa-globe fa-2x text-info mb-2" aria-hidden="true"></i>
                         <h2 class="h4 mb-0"><?php echo number_format(count($domains)); ?></h2>
-                        <p class="text-body-secondary small mb-0">Custom Domains</p>
+                        <p class="text-body-secondary small mb-0">Custom Domains (Legacy)</p>
                     </div>
                 </div>
             </div>
@@ -192,13 +192,13 @@ $isAdmin     = canManageOrg($orgHandle);
                             <span><i class="fas fa-users fa-fw" aria-hidden="true"></i> Members</span>
                             <span class="badge bg-primary rounded-pill"><?php echo number_format($memberCount); ?></span>
                         </a>
-                        <a href="/org/domains" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                            <span><i class="fas fa-globe fa-fw" aria-hidden="true"></i> Custom Domains</span>
-                            <span class="badge bg-primary rounded-pill"><?php echo number_format(count($domains)); ?></span>
-                        </a>
                         <a href="/org/short-domains" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                             <span><i class="fas fa-bolt fa-fw" aria-hidden="true"></i> Short Domains</span>
                             <span class="badge bg-primary rounded-pill"><?php echo number_format(count($shortDomains)); ?></span>
+                        </a>
+                        <a href="/org/domains" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-globe fa-fw" aria-hidden="true"></i> Custom Domains <span class="badge bg-secondary ms-1">Legacy</span></span>
+                            <span class="badge bg-primary rounded-pill"><?php echo number_format(count($domains)); ?></span>
                         </a>
                         <a href="/api-keys" class="list-group-item list-group-item-action">
                             <i class="fas fa-key fa-fw" aria-hidden="true"></i> API Keys

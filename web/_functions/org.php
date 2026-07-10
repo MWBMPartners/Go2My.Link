@@ -774,11 +774,36 @@ function getPendingInvitations(string $orgHandle): array
 }
 
 // ============================================================================
-// 🌐 Custom Domain Management
+// 🌐 Custom Domain Management (DEPRECATED — GT-6)
+// ============================================================================
+// ⚠️  This whole section (tblOrgDomains) is DEPRECATED as of the 2026-07-10
+// GT-6 assessment (docs/LAUNCH_PLAN_2026-07-09.md §5, GitHub issue #91). It
+// is Phase 5 (#32) legacy: an org registers a hostname here and proves
+// ownership via THIS section's own DNS-TXT flow, tagged with a `domainType`
+// including 'linkspage' — but NOTHING has ever routed off it. The redirect
+// hot path, getOrgByDomain()/domain_resolver.php, and the Component C.4
+// (#46) custom-domain LinksPage fallback all resolve exclusively via
+// tblOrgShortDomains and its OWN, separate verification flow
+// (verifyOrgShortDomain(), below, added by #91) plus
+// tblOrgShortDomains.linksPageUID (added by migration 015, for #46).
+//
+// DO NOT call these functions for any new feature. They remain fully
+// functional (unchanged) so the one remaining caller — the deprecated
+// org/domains/index.php admin page — can still let an org VIEW, VERIFY
+// (harmlessly), and REMOVE any row it already has; that page no longer
+// calls addOrgDomain() (its Add Domain form was removed and the
+// add_domain POST action is rejected before reaching this function). See
+// web/_sql/migrations/018_deprecate_org_domains.sql for the full write-up
+// and the owner-reviewed reconciliation path for any existing rows.
 // ============================================================================
 
 /**
  * Add a custom domain to an organisation with a DNS verification token.
+ *
+ * ⚠️  DEPRECATED (GT-6) — see the section banner above. Kept only because
+ * the deprecated org/domains/ admin page historically called it; that page
+ * no longer does (its Add Domain form and add_domain POST case were both
+ * removed). Do not call this for new work — use addOrgShortDomain() instead.
  *
  * @param  string $orgHandle
  * @param  string $domain     Domain name (e.g., "example.com")
@@ -865,8 +890,10 @@ function addOrgDomain(string $orgHandle, string $domain, string $type = 'primary
  * Look up TXT records for a DNS host.
  *
  * Thin wrapper around dns_get_record(..., DNS_TXT) used by BOTH verifyDomain()
- * (tblOrgDomains) and verifyOrgShortDomain() (tblOrgShortDomains) so the two
- * ownership-verification flows share one tested code path.
+ * (tblOrgDomains — ⚠️ DEPRECATED, GT-6, gates no routing) and
+ * verifyOrgShortDomain() (tblOrgShortDomains — the real, routing-gating
+ * flow, #91) so the two share one tested DNS-lookup code path. This helper
+ * itself is NOT deprecated — only its verifyDomain() caller is.
  *
  * Testability seam: integration tests cannot rely on real DNS propagation, so
  * a test may inject a fake resolver by setting
@@ -895,6 +922,10 @@ function g2ml_lookupDnsTxtRecords(string $host): array|false
  * Verify a custom domain via DNS TXT record lookup.
  *
  * Checks for a TXT record at _g2ml-verify.{domain} matching the stored token.
+ *
+ * ⚠️  DEPRECATED (GT-6) — see the section banner above. This flips
+ * tblOrgDomains.verificationStatus only; it gates nothing routable. Use
+ * verifyOrgShortDomain() for the real, routing-gating verification flow.
  *
  * @param  int    $domainUID
  * @param  string $orgHandle
@@ -980,6 +1011,10 @@ function verifyDomain(int $domainUID, string $orgHandle): array
 /**
  * Remove a custom domain from an organisation.
  *
+ * ⚠️  DEPRECATED (GT-6) — see the section banner above. Still used by the
+ * deprecated org/domains/ admin page so an org can clean up any row it
+ * already has; not for new work.
+ *
  * @param  int    $domainUID
  * @param  string $orgHandle
  * @return array  ['success' => bool, 'error' => string|null]
@@ -1013,6 +1048,11 @@ function removeOrgDomain(int $domainUID, string $orgHandle): array
 
 /**
  * Get all custom domains for an organisation.
+ *
+ * ⚠️  DEPRECATED (GT-6) — see the section banner above. Still used by the
+ * deprecated org/domains/ admin page and by the org overview dashboard's
+ * "Custom Domains (Legacy)" count; not for new work — use
+ * getOrgShortDomains() for anything routing-related.
  *
  * @param  string $orgHandle
  * @return array
