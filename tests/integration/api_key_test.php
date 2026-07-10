@@ -51,6 +51,19 @@ if (!isset($db) || !($db instanceof mysqli))
 }
 
 // ----------------------------------------------------------------------------
+// Align this raw connection's session time zone with the app layer's own
+// convention (web/_functions/db_connect.php runs "SET time_zone = '+00:00'"
+// on every getDB() connection). g2ml_apikey_test_seed_log_row() below uses
+// DATE_SUB(NOW(), INTERVAL ...) on THIS connection; without this alignment,
+// on a host whose SYSTEM time zone is not UTC, its "now" can differ from
+// getDB()'s UTC "now" (used by g2ml_apiCheckRateLimit()) by a full time-zone
+// offset (discovered via #39's pre-auth-backoff tests, which are sensitive to
+// this at their tested window boundaries; the daily/burst windows tested here
+// happen to be wide enough not to expose it, but the same latent risk exists).
+// ----------------------------------------------------------------------------
+mysqli_query($db, "SET time_zone = '+00:00'");
+
+// ----------------------------------------------------------------------------
 // Point the application DB layer (getDB) at the same throwaway server. Each
 // constant is guarded individually so this file composes with any sibling
 // integration file that already defined them.
@@ -322,6 +335,53 @@ test('API key: malformed input (missing prefix delimiter, wrong wrapper) is reje
     assert_same(null, g2ml_apiVerifyKey(''), 'An empty string must be rejected');
 });
 
+// ============================================================================
+// 🐛 Regression — prefix containing '_' must still verify (#39 discovery)
+// ============================================================================
+// g2ml_apiVerifyKey() used to locate the prefix/secret delimiter by searching
+// for the FIRST '_' after "g2ml_". The prefix's own base64url alphabet
+// includes '_' (from the '/' -> '_' substitution in
+// _g2ml_apiBase64UrlToken()), so roughly 1 in 9 freshly generated keys carry
+// an underscore SOMEWHERE WITHIN their own 8-character prefix — that search
+// found the WRONG (internal) underscore, truncated the extracted prefix, and
+// caused a perfectly valid, non-expired, non-revoked key to fail
+// verification. The fix extracts a FIXED-LENGTH prefix (G2ML_API_KEY_PREFIX_LENGTH
+// characters) instead of searching for a delimiter. This test forces exactly
+// that scenario by hand-crafting a stored key whose prefix contains '_'.
+// ============================================================================
+
+test('API key: a prefix that itself contains an underscore still verifies correctly (regression)', function () use ($db): void
+{
+    $marker  = 'apikey_' . substr(hash('sha256', (string) microtime(true) . 'underscoreprefix'), 0, 12);
+    $userUID = g2ml_apikey_test_insert_user($db, '[default]', $marker);
+
+    // A hand-crafted prefix with '_' at an internal position — exactly the
+    // shape a real _g2ml_apiBase64UrlToken(6) draw can produce.
+    $forcedPrefix = 'ab_cdefg';
+    assert_same(8, strlen($forcedPrefix), 'The forced prefix must be exactly 8 characters, matching G2ML_API_KEY_PREFIX_LENGTH');
+
+    $secret       = str_repeat('S', 43);
+    $plaintextKey = 'g2ml_' . $forcedPrefix . '_' . $secret;
+    $hashedKey    = hash('sha256', $plaintextKey);
+
+    $inserted = dbInsert(
+        'INSERT INTO tblAPIKeys (userUID, orgHandle, apiKey, apiKeyPrefix, keyName, permissions, expiresAt) '
+        . 'VALUES (?, ?, ?, ?, ?, ?, ?)',
+        'issssss',
+        [$userUID, '[default]', $hashedKey, $forcedPrefix, 'Underscore-prefix regression key', '["account:read"]', null]
+    );
+
+    assert_true(is_int($inserted) && $inserted > 0, 'Setup: the hand-crafted key row must insert successfully');
+
+    $verified = g2ml_apiVerifyKey($plaintextKey);
+
+    assert_true(is_array($verified), 'A key whose prefix contains an underscore must still verify — the delimiter must be found by FIXED LENGTH, not by searching for the first underscore');
+    assert_same($forcedPrefix, $verified['apiKeyPrefix'], 'The full, untruncated prefix must be the one recorded on the verified row');
+
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblAPIKeys` WHERE `apiKeyUID` = ' . (int) $inserted);
+    g2ml_apikey_test_exec($db, 'DELETE FROM `tblUsers` WHERE `userUID` = ' . $userUID);
+});
+
 test('API key: an expired key is rejected', function () use ($db): void
 {
     $marker  = 'apikey_' . substr(hash('sha256', (string) microtime(true) . 'expiry'), 0, 12);
@@ -464,13 +524,16 @@ test('rateLimit: the per-minute burst limit trips independently of the daily lim
     $created = g2ml_apiGenerateKey($userUID, '[default]', 'Rate-limit burst test key', ['account:read'], null);
 
     // Force a tiny global per-minute setting for a deterministic burst test,
-    // loaded into the getSetting() cache via loadSettingsCache().
-    g2ml_apikey_test_exec(
-        $db,
-        "INSERT INTO `tblSettings` (`settingID`, `settingScope`, `settingScopeRef`, `settingValue`, `settingDefault`, `settingDataType`, `isEditable`) "
-        . "VALUES ('api.default_per_minute', 'System', NULL, '2', '60', 'integer', 1) "
-        . "ON DUPLICATE KEY UPDATE `settingValue` = '2'"
-    );
+    // loaded into the getSetting() cache via loadSettingsCache(). A plain
+    // UPDATE, not INSERT ... ON DUPLICATE KEY UPDATE: the row is already
+    // seeded by web/_sql/seeds/015_api_settings.sql, and
+    // tblSettings.UQ_setting_scope (settingID, settingScope, settingScopeRef)
+    // cannot de-duplicate here — settingScopeRef is NULL for every
+    // System-scope setting, and MySQL never treats two NULLs as equal for
+    // unique-key purposes, so INSERT ... ON DUPLICATE KEY UPDATE would
+    // silently insert a SECOND row instead of updating the existing one,
+    // leaving getSetting()'s outcome dependent on undefined row-scan order.
+    g2ml_apikey_test_exec($db, "UPDATE `tblSettings` SET `settingValue` = '2' WHERE `settingID` = 'api.default_per_minute'");
     loadSettingsCache();
 
     $verified = g2ml_apiVerifyKey($created['plaintextKey']);

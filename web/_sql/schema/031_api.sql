@@ -114,6 +114,8 @@ CREATE TABLE IF NOT EXISTS `tblAPIRequestLog` (
     INDEX `IDX_apireq_created` (`createdAt`),
     INDEX `IDX_apireq_key_created` (`apiKeyUID`, `createdAt`)
         COMMENT 'Composite index for the DB-backed rate limiter (#38) — one range scan per apiKeyUID+window instead of a full-table filter',
+    INDEX `IDX_apireq_ip_created` (`ipAddress`, `createdAt`)
+        COMMENT 'Composite index for the pre-auth IP failed-auth backoff (#39) — one range scan per ipAddress+window instead of a full-table filter',
 
     CONSTRAINT `FK_apireq_key`
         FOREIGN KEY (`apiKeyUID`)

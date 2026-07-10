@@ -74,6 +74,13 @@ if (!defined('G2ML_CUSTOM_CODE_PATTERN'))
 // 📖 Reference: web/G2My.Link/public_html/robots.php, favicon.php, 404.php,
 //               expired.php, validating.php (handler routes)
 //
+// 'bulk' is reserved as of #39: the public API's parameterised route matcher
+// (g2ml_apiMatchParamRoute() in api_response.php) treats any two-segment
+// "urls/<code>" path as a short-code lookup for GET/PUT/DELETE, while
+// "POST urls/bulk" is a literal, separate endpoint (bulk create). Reserving
+// the word prevents a code named "bulk" from ever existing, so there is no
+// ambiguity about what a client requesting /api/v1/urls/bulk means.
+//
 // @param  string $code  The candidate custom short code.
 // @return bool           True when the code is reserved (must be rejected).
 // ============================================================================
@@ -95,6 +102,7 @@ function g2ml_isReservedShortCode(string $code): bool
         'admin',
         'install',
         'www',
+        'bulk',
     ];
 
     $normalised = strtolower(trim($code));
@@ -394,6 +402,17 @@ function g2ml_attachTagsToShortURL(int $urlUID, string $orgHandle, string|array 
 //                  short URL AFTER it is committed. Tag handling is additive and
 //                  fully defensive: a tag failure never rolls back or breaks the
 //                  created short URL. Empty/absent = no tags (public path default).
+//   - createdVia:  (string|null) Provenance of the create (#39 — public API).
+//                  Must be one of the tblShortURLs.createdVia ENUM values
+//                  ('web', 'api', 'import', 'admin', 'cuercode'); any other
+//                  value (including absent/null) falls back to 'web', which is
+//                  the column's own DEFAULT and preserves behaviour for every
+//                  caller that predates this option (public create, dashboard
+//                  create, existing tests).
+//   - createdViaAPIKeyUID: (int|null) FK to tblAPIKeys.apiKeyUID — which API
+//                  key minted this code (#39). Only meaningful alongside
+//                  createdVia='api'/'cuercode'; null (the column's default)
+//                  when absent, exactly like every pre-#39 caller.
 // @return array  ['success' => bool, 'shortCode' => ?string,
 //                 'shortURL' => ?string, 'error' => ?string]
 // ============================================================================
@@ -522,6 +541,32 @@ function createShortURL(string $longURL, array $options = []): array
         $isActiveValue = 0;
     }
 
+    // ========================================================================
+    // 🔗 Step 3a: createdVia / createdViaAPIKeyUID (#39 — public API provenance)
+    // ========================================================================
+    // Validated against the tblShortURLs.createdVia ENUM here in PHP (rather
+    // than letting an unrecognised value reach the INSERT) so a caller typo
+    // never trips a MySQL data-truncation warning/error — it silently falls
+    // back to 'web', the column's own default, which is exactly what every
+    // caller before #39 got implicitly.
+    //
+    // 📖 Reference: web/_sql/schema/020_shorturls_categories_tags.sql (createdVia ENUM)
+    // ========================================================================
+    $createdViaAllowed = ['web', 'api', 'import', 'admin', 'cuercode'];
+    $createdViaOption  = $options['createdVia'] ?? 'web';
+
+    if (!is_string($createdViaOption) || !in_array($createdViaOption, $createdViaAllowed, true))
+    {
+        $createdViaOption = 'web';
+    }
+
+    $createdViaAPIKeyUIDOption = $options['createdViaAPIKeyUID'] ?? null;
+
+    if ($createdViaAPIKeyUIDOption !== null)
+    {
+        $createdViaAPIKeyUIDOption = (int) $createdViaAPIKeyUIDOption;
+    }
+
     // Custom alias (FG-001): empty/absent means "generate a random code".
     $customCode = trim((string) ($options['customCode'] ?? ''));
 
@@ -618,11 +663,11 @@ function createShortURL(string $longURL, array $options = []): array
     $insertSQL = "INSERT INTO tblShortURLs
         (orgHandle, shortCode, destinationURL, destinationType,
          createdByUserUID, title, categoryID, urlNotes,
-         startDate, endDate, isActive, createdAt, updatedAt)
+         startDate, endDate, isActive, createdVia, createdViaAPIKeyUID, createdAt, updatedAt)
         VALUES
         (?, ?, ?, 'url',
          ?, ?, ?, ?,
-         ?, ?, ?, NOW(), NOW())";
+         ?, ?, ?, ?, ?, NOW(), NOW())";
 
     for ($attempt = 1; $attempt <= $maxAttempts; $attempt++)
     {
@@ -691,6 +736,22 @@ function createShortURL(string $longURL, array $options = []): array
         // isActive (bound integer, never interpolated — SEC-RECHECK-01)
         $types   .= 'i';
         $params[] = $isActiveValue;
+
+        // createdVia (bound string; always one of the ENUM values, defaults 'web')
+        $types   .= 's';
+        $params[] = $createdViaOption;
+
+        // createdViaAPIKeyUID (nullable integer)
+        if ($createdViaAPIKeyUIDOption !== null)
+        {
+            $types   .= 'i';
+            $params[] = $createdViaAPIKeyUIDOption;
+        }
+        else
+        {
+            $types   .= 's';
+            $params[] = null;
+        }
 
         $insertResult = dbInsert($insertSQL, $types, $params);
 

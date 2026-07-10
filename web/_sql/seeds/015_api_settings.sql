@@ -5,11 +5,12 @@
 -- Unauthorised copying, modification, or distribution is strictly prohibited.
 
 -- ============================================================================
--- 🔑 Go2My.Link — Public API Framework Settings (#38)
+-- 🔑 Go2My.Link — Public API Framework Settings (#38 / #39)
 -- ============================================================================
 -- Controls the versioned public API (/api/v1/*): the master kill switch, the
 -- default per-key rate limits (overridable per key via
--- tblAPIKeys.rateLimitOverride), and the audit-log retention window. See
+-- tblAPIKeys.rateLimitOverride), the audit-log retention window, and (#39)
+-- the pre-authentication IP failed-auth backoff. See
 -- web/_functions/api_auth.php, web/_functions/api_ratelimit.php, and
 -- web/Go2My.Link/public_html/api/v1/index.php.
 --
@@ -17,8 +18,8 @@
 --
 -- @package    Go2My.Link
 -- @subpackage Seeds
--- @version    1.0.0
--- @since      v1.1.0 — Phase 7 (#38)
+-- @version    1.1.0
+-- @since      v1.1.0 — Phase 7 (#38, extended #39)
 -- ============================================================================
 
 USE `mwtools_Go2MyLink`;
@@ -39,6 +40,9 @@ INSERT INTO `tblSettings` (
  'integer', 0, 1),
 ('api.request_log_retention_days', 'System', NULL,
  '30', '30', 'How many days of tblAPIRequestLog rows to retain. Older rows are swept by a probabilistic (1-in-100 request) prune rather than a scheduled job.',
+ 'integer', 0, 1),
+('api.preauth_fail_per_minute', 'System', NULL,
+ '20', '20', 'Maximum 401 (failed-authentication) responses tolerated from a single IP address within a rolling 60-second window before the pre-auth backoff short-circuits further requests with 429 — BEFORE g2ml_apiVerifyKey() is ever called. Set to 0 to disable the guard.',
  'integer', 0, 1)
 ON DUPLICATE KEY UPDATE
     `settingDescription` = VALUES(`settingDescription`);

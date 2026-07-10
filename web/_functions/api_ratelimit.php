@@ -160,6 +160,83 @@ function g2ml_apiCheckRateLimit(array $keyRow): array
 }
 
 // ============================================================================
+// 🧯 Pre-authentication IP failed-auth backoff (#39 — residual #1 from #38 review)
+// ============================================================================
+
+/**
+ * Check a client IP against the failed-authentication backoff BEFORE the
+ * front controller ever calls g2ml_apiVerifyKey().
+ *
+ * Counts tblAPIRequestLog rows for the given IP with responseCode = 401 in
+ * the last 60 seconds (via IDX_apireq_ip_created — see
+ * web/_sql/migrations/012_api_request_log_ip_index.sql / the folded-in index
+ * in 031_api.sql). If at or above api.preauth_fail_per_minute, the caller
+ * must short-circuit with 429 (+ Retry-After) BEFORE attempting verification,
+ * so a flood of missing/invalid keys cannot cheaply grow the audit log or
+ * repeatedly pay the cost of the prefix lookup + hash compare + owner/org
+ * lookups inside g2ml_apiVerifyKey(). This check itself is a single indexed
+ * COUNT(*) — far cheaper than the verification path it is gating.
+ *
+ * Self-limiting by construction: once the backoff trips, subsequent requests
+ * from that IP receive 429 (responseCode 429, not 401), so they stop adding
+ * to the very count that trips the gate — the window simply has to elapse.
+ *
+ * A non-positive `api.preauth_fail_per_minute` setting disables the guard
+ * entirely (an operator who sets it to 0 wants it OFF, not "block everything").
+ *
+ * @param  string $ipAddress  The client IP (g2ml_getClientIP()).
+ * @return array               ['allowed'=>bool, 'retryAfter'=>int (seconds, 0 when allowed)]
+ *
+ * Usage example:
+ *   $backoff = g2ml_apiCheckPreAuthBackoff(g2ml_getClientIP());
+ *   if (!$backoff['allowed']) {
+ *       header('Retry-After: ' . $backoff['retryAfter']);
+ *       // ... 429, WITHOUT ever calling g2ml_apiVerifyKey() ...
+ *   }
+ */
+function g2ml_apiCheckPreAuthBackoff(string $ipAddress): array
+{
+    $failLimit = (int) getSetting('api.preauth_fail_per_minute', 20);
+
+    if ($failLimit <= 0)
+    {
+        return [
+            'allowed'    => true,
+            'retryAfter' => 0,
+        ];
+    }
+
+    $failRow = dbSelectOne(
+        'SELECT COUNT(*) AS cnt FROM tblAPIRequestLog '
+        . 'WHERE ipAddress = ? AND responseCode = 401 AND createdAt >= DATE_SUB(NOW(), INTERVAL 60 SECOND)',
+        's',
+        [$ipAddress]
+    );
+
+    if ($failRow !== null && $failRow !== false)
+    {
+        $failCount = (int) $failRow['cnt'];
+    }
+    else
+    {
+        $failCount = 0;
+    }
+
+    if ($failCount >= $failLimit)
+    {
+        return [
+            'allowed'    => false,
+            'retryAfter' => 60,
+        ];
+    }
+
+    return [
+        'allowed'    => true,
+        'retryAfter' => 0,
+    ];
+}
+
+// ============================================================================
 // 🙈 Request body redaction
 // ============================================================================
 

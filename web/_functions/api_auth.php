@@ -60,6 +60,26 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 }
 
 // ============================================================================
+// 🔢 Key-format invariants — shared between generation and verification
+// ============================================================================
+// The prefix is drawn from exactly G2ML_API_KEY_PREFIX_BYTES random bytes,
+// which base64url-encodes to EXACTLY G2ML_API_KEY_PREFIX_LENGTH characters
+// with no padding (6 bytes -> 48 bits -> 48/6 = 8 base64 characters exactly).
+// g2ml_apiVerifyKey() relies on this fixed length to extract the prefix — see
+// the bug-fix note there for why a variable-length/delimiter-search approach
+// is unsafe for this alphabet.
+// ============================================================================
+if (!defined('G2ML_API_KEY_PREFIX_BYTES'))
+{
+    define('G2ML_API_KEY_PREFIX_BYTES', 6);
+}
+
+if (!defined('G2ML_API_KEY_PREFIX_LENGTH'))
+{
+    define('G2ML_API_KEY_PREFIX_LENGTH', 8);
+}
+
+// ============================================================================
 // 🎲 Internal — base64url random token generator
 // ============================================================================
 
@@ -110,7 +130,7 @@ function _g2ml_apiBase64UrlToken(int $bytes): string
  */
 function g2ml_apiGenerateKey(int $userUID, string $orgHandle, string $keyName, array $scopes, ?string $expiresAt = null): array
 {
-    $prefix       = _g2ml_apiBase64UrlToken(6);  // 6 bytes -> 8 base64url chars
+    $prefix       = _g2ml_apiBase64UrlToken(G2ML_API_KEY_PREFIX_BYTES); // -> G2ML_API_KEY_PREFIX_LENGTH base64url chars
     $secret       = _g2ml_apiBase64UrlToken(32); // 32 bytes -> 43 base64url chars
     $plaintextKey = 'g2ml_' . $prefix . '_' . $secret;
     $hashedKey    = hash('sha256', $plaintextKey);
@@ -222,17 +242,36 @@ function g2ml_apiVerifyKey(string $presented): ?array
         return null;
     }
 
-    $afterPrefix        = substr($presented, 5);
-    $underscorePosition = strpos($afterPrefix, '_');
+    // ------------------------------------------------------------------------
+    // 🐛 Fixed-length prefix extraction (bug fix, was delimiter-search)
+    // ------------------------------------------------------------------------
+    // The prefix must be extracted as EXACTLY the next G2ML_API_KEY_PREFIX_LENGTH
+    // characters after "g2ml_" — NOT by searching for the first '_' as a
+    // prefix/secret delimiter. The base64url alphabet used for the prefix
+    // itself includes '_' (from the '/' -> '_' substitution in
+    // _g2ml_apiBase64UrlToken()), so roughly 1 in 9 freshly generated keys
+    // have an underscore SOMEWHERE WITHIN their own prefix. A delimiter search
+    // would find that internal underscore first, truncate the extracted
+    // prefix, miss the tblAPIKeys row on lookup, and reject an entirely
+    // valid, non-expired, non-revoked key — a real, previously-undetected
+    // defect (see tests/unit/api_auth_test.php for the regression case).
+    // ------------------------------------------------------------------------
+    $afterPrefix = substr($presented, 5);
 
-    if ($underscorePosition === false || $underscorePosition === 0)
+    if (strlen($afterPrefix) <= G2ML_API_KEY_PREFIX_LENGTH)
     {
         return null;
     }
 
-    $prefix = substr($afterPrefix, 0, $underscorePosition);
+    $prefix    = substr($afterPrefix, 0, G2ML_API_KEY_PREFIX_LENGTH);
+    $delimiter = substr($afterPrefix, G2ML_API_KEY_PREFIX_LENGTH, 1);
 
-    if (preg_match('/^[A-Za-z0-9_-]{4,16}$/', $prefix) !== 1)
+    if ($delimiter !== '_')
+    {
+        return null;
+    }
+
+    if (preg_match('/^[A-Za-z0-9_-]{' . G2ML_API_KEY_PREFIX_LENGTH . '}$/', $prefix) !== 1)
     {
         return null;
     }

@@ -340,6 +340,137 @@ function g2ml_apiErrorBody(int $httpCode, string $message, ?string $field = null
     ];
 }
 
+// ============================================================================
+// 🚦 /api/v1 handler-thrown client errors (#39)
+// ============================================================================
+//
+// #38 shipped two scope-free/always-succeed exerciser endpoints, so the front
+// controller's try/catch only ever needed one outcome: success, or an
+// unexpected Throwable mapped generically to 500 (never leaking the cause).
+// #39 adds real CRUD endpoints whose handlers legitimately need to signal an
+// EXPECTED client-facing outcome — 404 not found, 409 alias-taken, 422
+// validation — with a specific message and optional field name, while still
+// leaving every UNEXPECTED failure (a DB error, a null-pointer bug, etc.) to
+// fall through to the existing generic 500 path untouched. This exception
+// type is the single, minimal seam that makes that possible without handlers
+// ever calling g2ml_apiRespond()/http_response_code() themselves.
+// ============================================================================
+
+/**
+ * Thrown by an /api/v1 handler to signal a specific, expected client-facing
+ * error (400/404/409/422/etc.) — never for an unexpected failure, which
+ * handlers should simply let escape as a generic Throwable (or explicitly
+ * throw RuntimeException for) so the front controller's existing 500 path
+ * keeps hiding the underlying cause.
+ *
+ * Usage example:
+ *   throw new G2mlApiHandlerException(404, 'No such short URL in this account.');
+ *   throw new G2mlApiHandlerException(422, 'destination_url is required.', 'destination_url');
+ */
+class G2mlApiHandlerException extends RuntimeException
+{
+    private int $httpStatusCode;
+    private ?string $field;
+
+    /**
+     * @param int         $httpStatusCode  The HTTP status code to send (e.g. 404, 409, 422).
+     * @param string      $message         A generic, non-leaking human-readable message.
+     * @param string|null $field           Optional offending field name, for validation errors.
+     */
+    public function __construct(int $httpStatusCode, string $message, ?string $field = null)
+    {
+        parent::__construct($message);
+
+        $this->httpStatusCode = $httpStatusCode;
+        $this->field           = $field;
+    }
+
+    /**
+     * @return int  The HTTP status code this error should be sent with.
+     */
+    public function getHttpStatusCode(): int
+    {
+        return $this->httpStatusCode;
+    }
+
+    /**
+     * @return string|null  The offending field name, or null when not field-specific.
+     */
+    public function getField(): ?string
+    {
+        return $this->field;
+    }
+}
+
+// ============================================================================
+// 🗺️ /api/v1 parameterised route matching — "METHOD urls/{code}" (#39)
+// ============================================================================
+
+/**
+ * Attempt to match a parameterised "METHOD urls/{code}" route.
+ *
+ * Pure and DB-free (no superglobals, no side effects) so it is directly
+ * unit-testable. The front controller's route table stays a tiny, explicit
+ * map of EXACT "METHOD path" strings (see web/Go2My.Link/public_html/api/v1/index.php)
+ * for every literal route (ping, account, org, urls, urls/bulk); this
+ * function is the single, narrow extension that additionally recognises a
+ * two-segment "urls/<code>" path whose second segment looks like a short
+ * code, WITHOUT turning the dispatcher into a general-purpose router.
+ *
+ * A candidate code is re-validated here against the same charset used for
+ * both generated (sp_generateShortCode — alphanumeric) and custom
+ * (G2ML_CUSTOM_CODE_PATTERN — alphanumeric + hyphen/underscore) short codes,
+ * bounded to the tblShortURLs.shortCode VARCHAR(50) column width, even though
+ * g2ml_apiSanitiseRoute() already constrained the wider route string — this
+ * function must never trust an unvalidated segment even if reused elsewhere.
+ *
+ * @param  string $httpMethod       The HTTP method, e.g. 'GET', 'PUT', 'DELETE'.
+ * @param  string $sanitisedRoute   The route AFTER g2ml_apiSanitiseRoute() has
+ *                                   already accepted it (never null here — a
+ *                                   null/rejected route never reaches this call).
+ * @param  array  $paramRouteTable  Table keyed 'METHOD urls/{code}' => ['scope'=>..., 'handler'=>...].
+ * @return array{route: array, code: string}|null  The matched route + extracted
+ *                                                   code, or null when this is
+ *                                                   not a recognised parameterised route.
+ *
+ * Usage example:
+ *   $match = g2ml_apiMatchParamRoute('GET', 'urls/abc123', $paramRouteTable);
+ *   if ($match !== null) { $code = $match['code']; $route = $match['route']; }
+ */
+function g2ml_apiMatchParamRoute(string $httpMethod, string $sanitisedRoute, array $paramRouteTable): ?array
+{
+    $segments = explode('/', $sanitisedRoute);
+
+    if (count($segments) !== 2)
+    {
+        return null;
+    }
+
+    if ($segments[0] !== 'urls')
+    {
+        return null;
+    }
+
+    $candidateCode = $segments[1];
+
+    if (preg_match('/^[A-Za-z0-9_-]{1,50}$/', $candidateCode) !== 1)
+    {
+        return null;
+    }
+
+    $paramRouteKey = $httpMethod . ' urls/{code}';
+
+    if (!isset($paramRouteTable[$paramRouteKey]))
+    {
+        return null;
+    }
+
+    return [
+        'route' => $paramRouteTable[$paramRouteKey],
+        'code'  => $candidateCode,
+    ];
+}
+
 /**
  * Sanitise a raw "_apiroute" value to a safe, traversal-free route string.
  *
