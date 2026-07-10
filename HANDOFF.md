@@ -3,7 +3,7 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `eee8272` (+ this handoff commit).
+> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `b90b55f` (+ this handoff commit).
 
 ---
 
@@ -107,9 +107,16 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
   ✅ **key mgmt UI #40** (`8bc8dff`, create/list/revoke, one-time secret, CSRF, `canManageOrg` authz —
   ⚠️ ordinary members can't mint keys yet) → ✅ **custom domains #91** (`c52429e`, verify + verified-only
   routing + grandfather migration + `docs/CUSTOM_DOMAINS.md`; caught a fresh-install g2my.link 404 bug) →
-  ✅ **analytics data #41** (`eee8272`, 6 org-scoped aggregate fns + `/api/v1/analytics` + indexes; closed
-  #125) → **⏭️ NEXT: #42 analytics dashboard UI** (Chart.js, vendored in `web/_libraries/chartjs`) → geo/UA
-  **#43** → UTM **#92** → API security cycle. Then P2 (entitlements → SIGNula OIDC → billing) → P3 Component C.
+  ✅ **analytics data #41** (`eee8272`; closed #125) → ✅ **analytics dashboard #42** (`b90b55f`, Chart.js +
+  accessible tables, theme-aware). **P1 core is essentially COMPLETE** (API + CueRCode + docs + key UI +
+  custom domains + analytics).
+- **P1 follow-ups (smaller):** UTM #92 (hot-path capture/forward); geo #43 **needs owner decision** (MaxMind
+  GeoLite2 DB ~70MB + license — do NOT auto-build); an API adversarial security cycle over the full surface.
+- **P2 (⏭️ STARTING NOW): feature-entitlement / premium-tier gating layer** (`entitlements.php`:
+  `g2ml_getOrgTier`/`canUseFeature`/`checkLimit`; enforce `maxLinks`/API/domains/feature-flags server-side
+  from `tblSubscriptionTiers`) → pricing-page reconcile + usage meters → SIGNula OIDC (needs owner: SIGNula
+  endpoints/client creds) → multi-provider billing Stripe+PayPal+SIGNula (needs owner: provider keys).
+- **P3:** Component C (LinksPage) — large greenfield.
   - 🎉 **Milestone: public API + CueRCode integration READY.** CueRCode integrates via `/api/v1` with a
     `qr:link`-scoped key. `createShortURL()` accepts `createdVia`/`createdViaAPIKeyUID`/QR columns;
     `logActivity()` carries `scanSource`/`qrCodeExternalID` (bind-string re-verified 23=23=23).
