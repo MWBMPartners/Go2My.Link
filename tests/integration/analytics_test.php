@@ -374,6 +374,22 @@ function g2ml_analyticstest_clearActivity(string $shortCode): void
 }
 
 /**
+ * Delete every tblAPIRequestLog row for a given key (cleanup — repeatable
+ * suite; #148). g2ml_analyticsApiKeyUsage() aggregates by apiKeyUID across
+ * the WHOLE org/date-range with no other scoping, so any rows left behind by
+ * a prior run of THIS test would be double-counted on a re-run against the
+ * same persisted database. Called both defensively before seeding and as
+ * teardown after assertions.
+ *
+ * @param  int $apiKeyUID
+ * @return void
+ */
+function g2ml_analyticstest_clearApiRequests(int $apiKeyUID): void
+{
+    dbDelete('DELETE FROM tblAPIRequestLog WHERE apiKeyUID = ?', 'i', [$apiKeyUID]);
+}
+
+/**
  * Delete every tblShortURLs row for a short code across all orgs (cleanup).
  *
  * @param  mysqli $db
@@ -601,27 +617,43 @@ test('analyticsApiKeyUsage: counts requestCount/successCount/errorCount for the 
     $keyAUID = (int) $g2mlAnalyticsKeyA['apiKeyUID'];
     $keyBUID = (int) $g2mlAnalyticsKeyB['apiKeyUID'];
 
-    g2ml_analyticstest_seedApiRequest($keyAUID, 200, '2026-06-01 09:00:00');
-    g2ml_analyticstest_seedApiRequest($keyAUID, 200, '2026-06-01 09:05:00');
-    g2ml_analyticstest_seedApiRequest($keyAUID, 404, '2026-06-01 09:10:00');
-    g2ml_analyticstest_seedApiRequest($keyBUID, 200, '2026-06-01 09:00:00');
+    // Defensive: clear any rows a previous, pre-fix run of this same test may
+    // have left behind for these exact key UIDs (#148 — idempotent re-run).
+    g2ml_analyticstest_clearApiRequests($keyAUID);
+    g2ml_analyticstest_clearApiRequests($keyBUID);
 
-    $usageA = g2ml_analyticsApiKeyUsage('[default]', null, '2026-06-01 00:00:00', '2026-06-01 23:59:59');
+    try
+    {
+        g2ml_analyticstest_seedApiRequest($keyAUID, 200, '2026-06-01 09:00:00');
+        g2ml_analyticstest_seedApiRequest($keyAUID, 200, '2026-06-01 09:05:00');
+        g2ml_analyticstest_seedApiRequest($keyAUID, 404, '2026-06-01 09:10:00');
+        g2ml_analyticstest_seedApiRequest($keyBUID, 200, '2026-06-01 09:00:00');
 
-    assert_same(1, count($usageA), 'Only one key (A) has requests within org A');
-    assert_same($keyAUID, $usageA[0]['apiKeyUID']);
-    assert_same(3, $usageA[0]['requestCount'], 'Three requests were logged for key A');
-    assert_same(2, $usageA[0]['successCount'], 'Two of the three were 2xx');
-    assert_same(1, $usageA[0]['errorCount'], 'One of the three was 4xx');
+        $usageA = g2ml_analyticsApiKeyUsage('[default]', null, '2026-06-01 00:00:00', '2026-06-01 23:59:59');
 
-    // Org-scoping: asking org A about key B's own UID must return nothing —
-    // the INNER JOIN on tblAPIKeys.orgHandle excludes a foreign key entirely.
-    $crossOrgAttempt = g2ml_analyticsApiKeyUsage('[default]', $keyBUID, '2026-06-01 00:00:00', '2026-06-01 23:59:59');
-    assert_same(0, count($crossOrgAttempt), 'A key belonging to a DIFFERENT org must yield zero rows, never leak org B\'s usage');
+        assert_same(1, count($usageA), 'Only one key (A) has requests within org A');
+        assert_same($keyAUID, $usageA[0]['apiKeyUID']);
+        assert_same(3, $usageA[0]['requestCount'], 'Three requests were logged for key A');
+        assert_same(2, $usageA[0]['successCount'], 'Two of the three were 2xx');
+        assert_same(1, $usageA[0]['errorCount'], 'One of the three was 4xx');
 
-    $usageB = g2ml_analyticsApiKeyUsage('orgbanalytics', null, '2026-06-01 00:00:00', '2026-06-01 23:59:59');
-    assert_same(1, count($usageB), 'Org B sees only its own key\'s usage');
-    assert_same(1, $usageB[0]['requestCount']);
+        // Org-scoping: asking org A about key B's own UID must return nothing —
+        // the INNER JOIN on tblAPIKeys.orgHandle excludes a foreign key entirely.
+        $crossOrgAttempt = g2ml_analyticsApiKeyUsage('[default]', $keyBUID, '2026-06-01 00:00:00', '2026-06-01 23:59:59');
+        assert_same(0, count($crossOrgAttempt), 'A key belonging to a DIFFERENT org must yield zero rows, never leak org B\'s usage');
+
+        $usageB = g2ml_analyticsApiKeyUsage('orgbanalytics', null, '2026-06-01 00:00:00', '2026-06-01 23:59:59');
+        assert_same(1, count($usageB), 'Org B sees only its own key\'s usage');
+        assert_same(1, $usageB[0]['requestCount']);
+    }
+    finally
+    {
+        // Teardown (#148): always remove THIS test's seeded rows, even on
+        // assertion failure, so a second run against the same persisted DB
+        // never sees them and double-counts.
+        g2ml_analyticstest_clearApiRequests($keyAUID);
+        g2ml_analyticstest_clearApiRequests($keyBUID);
+    }
 });
 
 // ============================================================================
