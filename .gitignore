@@ -112,6 +112,13 @@ core
 # 📖 https://code.visualstudio.com/docs/remote/ssh
 .vscode-server/
 .vscode-oss/
+
+# ============================================================================
+# 🤖 Claude Code (portable context is committed; machine-local settings are not)
+# ============================================================================
+# `.claude/settings.local.json` holds per-machine/per-user Claude Code settings
+# (permissions, local overrides). The shared `.claude/settings.json` IS tracked.
+.claude/settings.local.json
 *.vsix
 
 # Visual Studio
