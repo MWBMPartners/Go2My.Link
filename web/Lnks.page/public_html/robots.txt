@@ -1,0 +1,5 @@
+# Lnks.page (Go2My.Link LinksPage)
+User-agent: *
+Allow: /
+
+Sitemap: https://lnks.page/sitemap.xml
