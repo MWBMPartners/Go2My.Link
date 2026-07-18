@@ -101,7 +101,14 @@ function getUserAccountTypes(int $userUID, ?string $orgHandle = null): array
         );
     }
 
-    return $rows ?: [];
+    if ($rows)
+    {
+        return $rows;
+    }
+    else
+    {
+        return [];
+    }
 }
 
 /**
@@ -599,7 +606,14 @@ function getAllAccountTypes(bool $activeOnly = true): array
         );
     }
 
-    return $rows ?: [];
+    if ($rows)
+    {
+        return $rows;
+    }
+    else
+    {
+        return [];
+    }
 }
 
 /**

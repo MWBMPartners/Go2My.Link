@@ -25,10 +25,20 @@
     'use strict';
 
     var banner = document.getElementById('g2ml-cookie-banner');
-    if (!banner) return;
 
-    var csrfInput     = document.getElementById('g2ml-consent-csrf');
-    var csrfToken     = csrfInput ? csrfInput.value : '';
+    if (!banner) {
+        return;
+    }
+
+    var csrfInput = document.getElementById('g2ml-consent-csrf');
+    var csrfToken;
+
+    if (csrfInput) {
+        csrfToken = csrfInput.value;
+    } else {
+        csrfToken = '';
+    }
+
     var acceptAllBtn  = document.getElementById('g2ml-cookie-accept-all');
     var rejectBtn     = document.getElementById('g2ml-cookie-reject');
     var savePrefsBtn  = document.getElementById('g2ml-cookie-save-preferences');
@@ -89,7 +99,11 @@
                 var input = document.createElement('input');
                 input.type = 'hidden';
                 input.name = key;
-                input.value = data[key] ? '1' : '0';
+                if (data[key]) {
+                    input.value = '1';
+                } else {
+                    input.value = '0';
+                }
                 form.appendChild(input);
             }
         }
@@ -138,17 +152,41 @@
             var functional = document.getElementById('g2ml-consent-functional');
             var marketing  = document.getElementById('g2ml-consent-marketing');
 
+            var analyticsChecked;
+            if (analytics) {
+                analyticsChecked = analytics.checked;
+            } else {
+                analyticsChecked = false;
+            }
+
+            var functionalChecked;
+            if (functional) {
+                functionalChecked = functional.checked;
+            } else {
+                functionalChecked = false;
+            }
+
+            var marketingChecked;
+            if (marketing) {
+                marketingChecked = marketing.checked;
+            } else {
+                marketingChecked = false;
+            }
+
             submitConsent({
-                analytics:  analytics  ? analytics.checked  : false,
-                functional: functional ? functional.checked : false,
-                marketing:  marketing  ? marketing.checked  : false
+                analytics:  analyticsChecked,
+                functional: functionalChecked,
+                marketing:  marketingChecked
             });
 
             // Close the modal
             var modalEl = document.getElementById('g2ml-cookie-modal');
             if (modalEl && typeof bootstrap !== 'undefined') {
                 var modal = bootstrap.Modal.getInstance(modalEl);
-                if (modal) modal.hide();
+
+                if (modal) {
+                    modal.hide();
+                }
             }
         });
     }

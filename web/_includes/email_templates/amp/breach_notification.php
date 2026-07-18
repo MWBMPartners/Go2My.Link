@@ -35,10 +35,16 @@
 $firstName   = $firstName ?? 'User';
 $reason      = $reason ?? 'a security precaution';
 $resetURL    = $resetURL ?? '#';
-$breachAt    = $breachAt ?? date('j M Y, H:i T');
+if (!isset($breachAt))
+{
+    $breachAt = date('j M Y, H:i T');
+}
 $siteName    = $siteName ?? 'Go2My.Link';
 $siteURL     = $siteURL ?? 'https://go2my.link';
-$currentYear = $currentYear ?? date('Y');
+if (!isset($currentYear))
+{
+    $currentYear = date('Y');
+}
 $preheader   = $preheader ?? '';
 ?>
 <!doctype html>

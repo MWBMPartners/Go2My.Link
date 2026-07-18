@@ -148,7 +148,12 @@ self.addEventListener('fetch', function(event)
                 // Offline — try the cache, then fall back to the homepage
                 return caches.match(request).then(function(cachedResponse)
                 {
-                    return cachedResponse || caches.match('/');
+                    if (cachedResponse)
+                    {
+                        return cachedResponse;
+                    }
+
+                    return caches.match('/');
                 });
             })
         );

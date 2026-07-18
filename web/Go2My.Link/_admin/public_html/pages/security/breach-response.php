@@ -107,10 +107,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
                     $adminUID    = $currentUser['userUID'];
 
                     // Execute the breach response
+                    if ($rotateSalt)
+                    {
+                        $saltForBreachResponse = $newSalt;
+                    }
+                    else
+                    {
+                        $saltForBreachResponse = null;
+                    }
+
                     $result = g2ml_breachResponse(
                         $adminUID,
                         $reason,
-                        $rotateSalt ? $newSalt : null
+                        $saltForBreachResponse
                     );
 
                     if ($result['success'])
@@ -145,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
             <?php echo g2ml_sanitiseOutput($pageDescription); ?>
         </p>
 
-        <?php if ($formSuccess && $formStats !== null): ?>
+        <?php if ($formSuccess && $formStats !== null) { ?>
         <!-- ============================================================ -->
         <!-- ✅ Success Result -->
         <!-- ============================================================ -->
@@ -163,13 +172,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
                     <p class="mb-1"><strong>Emails failed:</strong> <?php echo (int) $formStats['emails_failed']; ?></p>
                 </div>
                 <div class="col-md-6">
-                    <p class="mb-1"><strong>SALT rotated:</strong> <?php echo $formStats['salt_rotated'] ? 'Yes' : 'No'; ?></p>
+                    <p class="mb-1"><strong>SALT rotated:</strong> <?php
+                    if ($formStats['salt_rotated'])
+                    {
+                        echo 'Yes';
+                    }
+                    else
+                    {
+                        echo 'No';
+                    }
+                    ?></p>
                     <p class="mb-1"><strong>Started:</strong> <?php echo g2ml_sanitiseOutput($formStats['started_at']); ?></p>
                     <p class="mb-1"><strong>Completed:</strong> <?php echo g2ml_sanitiseOutput($formStats['completed_at']); ?></p>
                 </div>
             </div>
 
-            <?php if (!empty($formStats['new_salt'])): ?>
+            <?php if (!empty($formStats['new_salt'])) { ?>
             <hr>
             <div class="alert alert-warning mb-0">
                 <h6 class="alert-heading">
@@ -187,7 +205,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
                     <code class="user-select-all"><?php echo g2ml_sanitiseOutput($formStats['new_salt']); ?></code>
                 </p>
             </div>
-            <?php endif; ?>
+            <?php } ?>
         </div>
 
         <div class="alert alert-info">
@@ -196,17 +214,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
             again with a new password. A reset email has been sent to your email address.
         </div>
 
-        <?php else: ?>
+        <?php } else { ?>
         <!-- ============================================================ -->
         <!-- 📋 Breach Response Form -->
         <!-- ============================================================ -->
 
-        <?php if ($formError !== ''): ?>
+        <?php if ($formError !== '') { ?>
         <div class="alert alert-danger" role="alert">
             <i class="fas fa-exclamation-circle me-2" aria-hidden="true"></i>
             <?php echo g2ml_sanitiseOutput($formError); ?>
         </div>
-        <?php endif; ?>
+        <?php } ?>
 
         <div class="alert alert-danger border-danger">
             <h5 class="alert-heading">
@@ -310,13 +328,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
         <script>
         // Toggle SALT input visibility
         document.getElementById('rotate_salt').addEventListener('change', function() {
-            document.getElementById('new-salt-group').style.display = this.checked ? 'block' : 'none';
+            if (this.checked)
+            {
+                document.getElementById('new-salt-group').style.display = 'block';
+            }
+            else
+            {
+                document.getElementById('new-salt-group').style.display = 'none';
+            }
         });
         // Enable submit only when confirmation is checked
         document.getElementById('confirm_breach').addEventListener('change', function() {
             document.getElementById('submit-btn').disabled = !this.checked;
         });
         </script>
-        <?php endif; ?>
+        <?php } ?>
     </div>
 </section>

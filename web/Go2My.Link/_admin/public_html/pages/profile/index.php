@@ -368,9 +368,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
                         <p class="text-body-secondary small mb-0">
                             <strong>Account Types:</strong>
                             <?php
-                            $profileTypes = function_exists('getUserAccountTypes')
-                                ? getUserAccountTypes($currentUser['userUID'], $currentUser['orgHandle'])
-                                : [];
+                            if (function_exists('getUserAccountTypes'))
+                            {
+                                $profileTypes = getUserAccountTypes($currentUser['userUID'], $currentUser['orgHandle']);
+                            }
+                            else
+                            {
+                                $profileTypes = [];
+                            }
 
                             if (!empty($profileTypes))
                             {

@@ -328,9 +328,14 @@ $invitations = getPendingInvitations($orgHandle);
                             <td><?php echo g2ml_sanitiseOutput($member['email']); ?></td>
                             <td>
                                 <?php
-                                $memberTypes = function_exists('getUserAccountTypes')
-                                    ? getUserAccountTypes((int) $member['userUID'], $orgHandle)
-                                    : [];
+                                if (function_exists('getUserAccountTypes'))
+                                {
+                                    $memberTypes = getUserAccountTypes((int) $member['userUID'], $orgHandle);
+                                }
+                                else
+                                {
+                                    $memberTypes = [];
+                                }
 
                                 if (!empty($memberTypes))
                                 {

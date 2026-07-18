@@ -35,11 +35,17 @@
 
 // 🛡️ Ensure variables exist
 $firstName   = $firstName ?? 'there';
-$changedAt   = $changedAt ?? date('j M Y, H:i T');
+if (!isset($changedAt))
+{
+    $changedAt = date('j M Y, H:i T');
+}
 $ipAddress   = $ipAddress ?? 'Unknown';
 $siteName    = $siteName ?? 'Go2My.Link';
 $siteURL     = $siteURL ?? 'https://go2my.link';
-$currentYear = $currentYear ?? date('Y');
+if (!isset($currentYear))
+{
+    $currentYear = date('Y');
+}
 $preheader   = $preheader ?? '';
 ?>
 <!doctype html>

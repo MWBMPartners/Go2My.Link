@@ -36,7 +36,10 @@ $graceDays   = $graceDays ?? 30;
 $cancelURL   = $cancelURL ?? '#';
 $siteName    = $siteName ?? 'Go2My.Link';
 $siteURL     = $siteURL ?? 'https://go2my.link';
-$currentYear = $currentYear ?? date('Y');
+if (!isset($currentYear))
+{
+    $currentYear = date('Y');
+}
 $preheader   = $preheader ?? '';
 ?>
 <!DOCTYPE html>
@@ -68,12 +71,12 @@ $preheader   = $preheader ?? '';
     <!--<![endif]-->
 </head>
 <body style="margin:0; padding:0; background-color:#f8f9fa; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-    <?php if (!empty($preheader)): ?>
+    <?php if (!empty($preheader)) { ?>
     <div style="display:none;font-size:1px;color:#f8f9fa;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
         <?php echo htmlspecialchars($preheader, ENT_QUOTES, 'UTF-8'); ?>
         &zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;
     </div>
-    <?php endif; ?>
+    <?php } ?>
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="g2ml-body" style="background-color:#f8f9fa; padding:40px 20px;">
         <tr>
             <td align="center">

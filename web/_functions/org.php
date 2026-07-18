@@ -146,11 +146,20 @@ function createOrganisation(string $name, string $handle, array $options = []): 
     }
     $orgDesc    = $options['orgDescription'] ?? null;
 
+    if ($orgURL)
+    {
+        $orgURLForInsert = $orgURL;
+    }
+    else
+    {
+        $orgURLForInsert = null;
+    }
+
     $insertResult = dbInsert(
         "INSERT INTO tblOrganisations (orgHandle, orgName, orgURL, orgDescription, tierID, isVerified, isActive)
          VALUES (?, ?, ?, ?, 'free', 0, 1)",
         'ssss',
-        [$handle, $name, $orgURL ?: null, $orgDesc]
+        [$handle, $name, $orgURLForInsert, $orgDesc]
     );
 
     if ($insertResult === false)
@@ -323,7 +332,14 @@ function getOrgMembers(string $orgHandle): array
         [$orgHandle]
     );
 
-    return $rows ?: [];
+    if ($rows)
+    {
+        return $rows;
+    }
+    else
+    {
+        return [];
+    }
 }
 
 /**
@@ -467,8 +483,24 @@ function changeMemberRole(string $orgHandle, int $userUID, string $newRole): arr
     // Update account types in junction table
     if (function_exists('revokeAccountType') && function_exists('assignAccountType'))
     {
-        $oldTypeID = ($member['role'] === 'Admin') ? 'admin' : 'user';
-        $newTypeID = ($newRole === 'Admin') ? 'admin' : 'user';
+        if ($member['role'] === 'Admin')
+        {
+            $oldTypeID = 'admin';
+        }
+        else
+        {
+            $oldTypeID = 'user';
+        }
+
+        if ($newRole === 'Admin')
+        {
+            $newTypeID = 'admin';
+        }
+        else
+        {
+            $newTypeID = 'user';
+        }
+
         revokeAccountType($userUID, $oldTypeID, $orgHandle);
         assignAccountType($userUID, $newTypeID, $orgHandle, $currentUser['userUID']);
     }
@@ -674,7 +706,16 @@ function acceptInvitation(string $token): array
     if (function_exists('revokeAccountType') && function_exists('assignAccountType'))
     {
         revokeAccountType($currentUser['userUID'], 'user', '[default]');
-        $typeID = ($invitation['role'] === 'Admin') ? 'admin' : 'user';
+
+        if ($invitation['role'] === 'Admin')
+        {
+            $typeID = 'admin';
+        }
+        else
+        {
+            $typeID = 'user';
+        }
+
         assignAccountType(
             $currentUser['userUID'],
             $typeID,
@@ -770,7 +811,14 @@ function getPendingInvitations(string $orgHandle): array
         [$orgHandle]
     );
 
-    return $rows ?: [];
+    if ($rows)
+    {
+        return $rows;
+    }
+    else
+    {
+        return [];
+    }
 }
 
 // ============================================================================
@@ -1065,7 +1113,14 @@ function getOrgDomains(string $orgHandle): array
         [$orgHandle]
     );
 
-    return $rows ?: [];
+    if ($rows)
+    {
+        return $rows;
+    }
+    else
+    {
+        return [];
+    }
 }
 
 // ============================================================================
@@ -1459,7 +1514,14 @@ function getOrgShortDomains(string $orgHandle): array
         [$orgHandle]
     );
 
-    return $rows ?: [];
+    if ($rows)
+    {
+        return $rows;
+    }
+    else
+    {
+        return [];
+    }
 }
 
 // ============================================================================
