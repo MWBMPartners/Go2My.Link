@@ -317,13 +317,18 @@ VALUES
 ('en-GB', 'error.403_message', 'You don''t have permission to access this page. If you believe this is an error, please contact support.', 'Error page — 403', 1),
 ('en-GB', 'error.403_title', '403 — Forbidden', 'Error page — 403', 1),
 ('en-GB', 'error.404.message', 'The page you are looking for could not be found.', 'Error page — 404', 1),
+('en-GB', 'error.404_description', 'The page you are looking for could not be found.', 'Error page — 404', 1),
+('en-GB', 'error.404_heading', 'Page Not Found', 'Error page — 404', 1),
+('en-GB', 'error.404_message', 'The page you are looking for could not be found. It may have been moved or deleted.', 'Error page — 404', 1),
+('en-GB', 'error.404_title', '404 — Page Not Found', 'Error page — 404', 1),
 ('en-GB', 'error.500_description', 'Something went wrong on our end.', 'Error page — 500', 1),
 ('en-GB', 'error.500_heading', 'Something Went Wrong', 'Error page — 500', 1),
 ('en-GB', 'error.500_message', 'We encountered an unexpected error. Our team has been notified. Please try again later.', 'Error page — 500', 1),
 ('en-GB', 'error.500_title', '500 — Server Error', 'Error page — 500', 1),
 ('en-GB', 'error.back_home', 'Back to Home', 'Error pages', 1),
 ('en-GB', 'error.contact_us', 'Contact Us', 'Error pages', 1),
-('en-GB', 'error.go_home', 'Go Home', 'Error pages', 1);
+('en-GB', 'error.go_home', 'Go Home', 'Error pages', 1),
+('en-GB', 'error.powered_by', 'Powered by', 'Error pages (Components B/C standalone branded pages)', 1);
 
 -- ============================================================================
 -- 📦 Data Export (export.*)

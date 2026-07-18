@@ -129,13 +129,22 @@ else
         'logData' => ['route' => $route],
     ]);
 
-    $pageTitle = '404 — Page Not Found';
+    if (function_exists('__'))
+    {
+        $pageTitle = __('error.404_title');
+    }
+    else
+    {
+        $pageTitle = '404 — Page Not Found';
+    }
 
     require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'header.php';
     require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'nav.php';
 
-    // Check for custom 404 page
-    $custom404 = $pagesDir . DIRECTORY_SEPARATOR . 'errors' . DIRECTORY_SEPARATOR . '404.php';
+    // Check for the branded 404 page (pages/errors/404/index.php — same
+    // directory + index.php convention as the 400/403/500 siblings, and the
+    // same file the ErrorDocument 404 directive resolves to via the router).
+    $custom404 = $pagesDir . DIRECTORY_SEPARATOR . 'errors' . DIRECTORY_SEPARATOR . '404' . DIRECTORY_SEPARATOR . 'index.php';
 
     if (file_exists($custom404))
     {
@@ -143,10 +152,10 @@ else
     }
     else
     {
-        // Minimal 404 fallback (replaced with branded page in Phase 4)
+        // Minimal 404 fallback (used only if the branded page is ever missing)
         echo '<div class="container py-5 text-center">';
         echo '<h1 class="display-4">404</h1>';
-        echo '<p class="lead">' . __('error.404.message') . '</p>';
+        echo '<p class="lead">' . __('error.404_message') . '</p>';
         echo '<a href="/" class="btn btn-primary">' . __('error.back_home') . '</a>';
         echo '</div>';
     }

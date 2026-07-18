@@ -133,6 +133,16 @@ RewriteRule ^(.+)$ index.php?slug=$1 [QSA,L]
 AddDefaultCharset UTF-8
 
 # =============================================================================
+# Error Documents
+# Custom branded error pages (routed through index.php so G2ML_COMPONENT and
+# page_init.php are defined before the pages' Direct Access Guard runs — see
+# index.php Step 3b). 404 reuses the existing 404.php.
+# =============================================================================
+ErrorDocument 403 /index.php?http_error=403
+ErrorDocument 404 /index.php?http_error=404
+ErrorDocument 500 /index.php?http_error=500
+
+# =============================================================================
 # PHP Configuration
 # =============================================================================
 <IfModule mod_php.c>
