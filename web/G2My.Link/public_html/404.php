@@ -52,7 +52,7 @@ if (function_exists('getSetting')) {
 $mainSiteURL  = 'https://go2my.link';
 ?>
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="light">
+<html lang="en-GB" dir="ltr" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
