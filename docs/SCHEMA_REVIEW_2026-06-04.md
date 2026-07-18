@@ -59,7 +59,7 @@ CueRCode mints a Go2My.Link short code in the background and encodes it in a QR 
 - FKs target the mutable business key `orgHandle` rather than surrogate `orgUID` — handle renames cascade widely. Decide pre-launch whether to document `orgHandle` as immutable or migrate to `orgUID`.
 - `tblActivityLog` lacks a composite `(shortCode, createdAt)` for the dominant analytics query, and is not partitioned (confirms earlier audit #12). Add the index before analytics ships (#41/#42).
 - `tblAPIKeys`: `apiKeyPrefix` width (`VARCHAR(10)`) disagrees with its "first 8 chars" comment; no hash scheme pinned for `apiKey`. Clarify before #38.
-- `sp_logActivity` omits the new columns and can fail `NOT NULL ipAddress` (errors swallowed). It is currently dead code (the app uses a direct INSERT) — sync or remove it.
+- `sp_logActivity` omits the new columns and can fail `NOT NULL ipAddress` (errors swallowed). It is currently dead code (the app uses a direct INSERT) — sync or remove it. **Resolved (#126): removed** — the procedure had zero callers, so it was deleted rather than synced.
 - `sp_lookupShortURL` does not return `urlUID`/`destinationType`/UTM, so the redirect engine can't attribute clicks to the resolved alias target or forward UTM (ties into #92).
 
 The full 50-finding set (incl. 19 low / 13 info) is available in the review run; the items above are the ones worth tracking before/just-after launch.
