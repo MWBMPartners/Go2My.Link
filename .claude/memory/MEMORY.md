@@ -132,8 +132,8 @@
 - **Settings seed:** `web/_sql/seeds/012_email_settings.sql`
 - **Auth changes:** `loginUser()` checks `forcePasswordReset`, stores token in `$_SESSION`
 - **Security audit:** issues #79–#90 created and closed (CRLF injection, path traversal, TOCTOU, transaction wrapping) — re-verified intact by the 2026-06-04 audit
-- **UTM tracking (#92):** ⚠️ **NOT IMPLEMENTED** (corrected 2026-06-04). `g2ml_extractTrackingParams()` / `g2ml_appendUtmToDestination()`, migration `009_add_utm…`, activity-log UTM capture, and the `redirect.forward_utm_params` / `analytics.capture_tracking_params` settings **do not exist**. (`tblShortURLs` does have stored `utm*` columns from schema 020, but redirect-time capture/forwarding is unbuilt.) #92 remains OPEN. See [[audit-2026-06-04]].
-- **API framework (#38/#39) still unbuilt:** `tblAPIKeys` is schema-only (no app code issues/verifies keys) — required before CueRCode or any external API goes live.
+- **UTM tracking (#92):** ✅ **SHIPPED** (`ea857f1`, 2026-07-10), settings-gated, OFF by default. Capture: `g2ml_extractTrackingParams()`; forward: `g2ml_appendUtmToDestination()` — both in `web/G2My.Link/_functions/redirect_resolver.php` + Component B `public_html/index.php`; settings seed `016_utm_tracking_settings.sql` (`redirect.forward_utm_params`, `analytics.capture_tracking_params`). #92 CLOSED. **Residual:** captured UTM lands in `tblActivityLog.logData` (JSON blob), not yet an indexed analytics dimension or dashboard breakdown — tracked in follow-up **#151**.
+- **API framework (#38/#39):** ✅ **SHIPPED** and CLOSED, along with key-management UI (#40), OpenAPI 3.1 + self-hosted Redoc docs (#75), and CueRCode wiring (#145). See the header block above and [HANDOFF.md](../../HANDOFF.md) for detail rather than duplicating here.
 
 ## 🔗 CueRCode Dynamic-QR Integration (2026-06, schema-ready)
 
