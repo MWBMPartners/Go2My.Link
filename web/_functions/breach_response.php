@@ -515,7 +515,7 @@ function g2ml_logBreachResponse(int $adminUID, string $action, array $details = 
         'timestamp' => gmdate('Y-m-d\TH:i:s\Z'),
         'adminUID'  => $adminUID,
         'action'    => $action,
-        'ip'        => function_exists('g2ml_getClientIP') ? g2ml_getClientIP() : ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'),
+        'ip'        => g2ml_clientIpOrDefault($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'),
         'details'   => $details,
     ];
 

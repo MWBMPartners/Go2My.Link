@@ -159,11 +159,7 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
     $requestMethod  = $_SERVER['REQUEST_METHOD'] ?? null;
     $requestReferer = $_SERVER['HTTP_REFERER'] ?? null;
     $requestUA      = $_SERVER['HTTP_USER_AGENT'] ?? null;
-    if (function_exists('g2ml_getClientIP')) {
-        $ipAddress = g2ml_getClientIP();
-    } else {
-        $ipAddress = ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
-    }
+    $ipAddress = g2ml_clientIpOrDefault($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
 
     // Parse User-Agent for structured fields
     $uaParsed = _g2ml_parseUserAgent($requestUA);

@@ -167,11 +167,7 @@ function g2ml_recordConsent(string $type, bool $given, string $method = 'banner'
     } else {
         $consentGiven = 0;
     }
-    if (function_exists('g2ml_getClientIP')) {
-        $ipAddress = g2ml_getClientIP();
-    } else {
-        $ipAddress = ($_SERVER['REMOTE_ADDR'] ?? null);
-    }
+    $ipAddress      = g2ml_clientIpOrDefault($_SERVER['REMOTE_ADDR'] ?? null);
     $userAgent      = $_SERVER['HTTP_USER_AGENT'] ?? null;
     if (function_exists('g2ml_detectJurisdiction')) {
         $jurisdiction = g2ml_detectJurisdiction();

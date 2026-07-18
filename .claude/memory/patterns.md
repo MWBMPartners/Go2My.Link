@@ -70,6 +70,13 @@
 - Debug mode via `?debug=true` URL parameter
 - Log all errors to tblErrorLog in database
 - Log general activity to tblActivityLog
+- Shared global functions use the `g2ml_` prefix (see `security.php` header). Client IP is
+  obtained via `g2ml_getClientIP()` (`web/_functions/security.php`) — it always returns a
+  non-empty, sane value (min. `'0.0.0.0'`), so callers should call it directly. Only when a
+  call site may run before `security.php` has loaded (e.g. an early error handler) should it
+  use `g2ml_clientIpOrDefault(?string $default)` instead of repeating its own
+  `function_exists('g2ml_getClientIP')` guard (#118). A broader pass standardising the
+  ~103 other global function names is tracked separately and intentionally out of scope here.
 
 ## 🗄️ Database Standards
 
