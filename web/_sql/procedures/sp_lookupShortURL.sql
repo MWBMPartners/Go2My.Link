@@ -50,6 +50,23 @@
 -- redirect.forward_utm_params setting — this procedure just returns what is
 -- stored, unconditionally.
 --
+-- 📝 #128 destinationType (documentation only, no logic here changed):
+-- tblShortURLs.destinationType ('url'/'alias') is NOT read anywhere in this
+-- procedure — Step 2's alias-follow below is gated purely on
+-- s.redirectAlias being non-NULL/non-empty. This was evaluated for #128 and
+-- deliberately left as-is: migration 004_migrate_shorturls.sql guarantees
+-- destinationType='alias' exactly when redirectAlias is meaningful for every
+-- row currently written by the application (see that migration's own
+-- alias-integrity verification section, and shorturl_create.php /
+-- urls.php's UPDATE handler, neither of which ever sets redirectAlias), so
+-- adding destinationType as a second gate here would buy no correctness
+-- today — only extra column reads and a wider WHERE/IF condition on the
+-- hot path for every redirect, for a case that cannot currently occur. If a
+-- future write path ever sets redirectAlias without also keeping
+-- destinationType in sync, the migration's verification queries are the
+-- place to catch that drift before it reaches production, not this
+-- procedure.
+--
 -- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)

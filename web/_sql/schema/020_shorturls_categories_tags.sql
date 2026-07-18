@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS `tblShortURLs` (
 
     `destinationType`       ENUM('url', 'alias')
                             NOT NULL DEFAULT 'url'
-        COMMENT 'Whether this resolves to a URL or an alias chain',
+        COMMENT 'Alias-chain discriminator (#128): informational only — sp_lookupShortURL follows redirectAlias directly and does not read this column. Migration 004_migrate_shorturls.sql guarantees this is alias exactly when redirectAlias is meaningful; see that migration''s alias-integrity verification section for the pre-cutover safety check that guards the invariant',
 
     `redirectAlias`         VARCHAR(50)         DEFAULT NULL
         COMMENT 'Another short code to chain to (migrated from urlRedirAlias)',
