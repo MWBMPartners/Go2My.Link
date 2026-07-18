@@ -9,19 +9,21 @@ The Go2My.Link API provides programmatic access to URL shortening, link manageme
 | Property | Value |
 | --- | --- |
 | **🌐 Base URL** | `https://go2my.link/api/v1/` |
-| **🔑 Authentication** | API key via `X-API-Key` header |
+| **🔑 Authentication** | API key via `Authorization: Bearer` header (canonical); `X-API-Key` accepted as an alias |
 | **📄 Response formats** | JSON (default), XML (with embedded XSLT) |
 | **⏱️ Rate limiting** | Per subscription tier |
 
-> 📝 **Note:** The API is implemented in Phase 6. This document serves as the design reference.
+> 📝 **Note:** This document is a reference overview. For the authoritative, current endpoint-by-endpoint reference (request/response schemas, all parameters), see the self-hosted OpenAPI 3.1 + Redoc docs at **[`/api/docs`](https://go2my.link/api/docs)**.
 
 ## 🔑 Authentication
 
-All API requests require an API key passed via the `X-API-Key` HTTP header:
+All API requests require an API key. The canonical header is `Authorization: Bearer <key>`:
 
 ```
-X-API-Key: your-api-key-here
+Authorization: Bearer your-api-key-here
 ```
+
+`X-API-Key: your-api-key-here` is also accepted, as a documented alias, when no `Authorization: Bearer` header is present.
 
 API keys are managed through the user dashboard under **⚙️ Settings > 🔑 API Keys**.
 
@@ -55,7 +57,7 @@ Request XML by setting `Accept: application/xml` header or appending `?format=xm
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<?xml-stylesheet type="text/xsl" href="/api/v1/transform.xslt"?>
+<?xml-stylesheet type="text/xsl" href="/api/create/response.xsl"?>
 <response>
     <status>success</status>
     <data>...</data>
@@ -76,6 +78,8 @@ Request XML by setting `Accept: application/xml` header or appending `?format=xm
 ```
 
 ## 📡 Endpoints
+
+> 📝 **Note:** The endpoint list below is a hand-maintained summary. For the canonical, always-current endpoint reference (full request/response schemas, every parameter, every status code), see the self-hosted OpenAPI 3.1 + Redoc docs at **[`/api/docs`](https://go2my.link/api/docs)**.
 
 ### 🔗 URLs
 
