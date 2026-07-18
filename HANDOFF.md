@@ -3,8 +3,51 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-18 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `cc3e2e7` (+ this handoff commit).
+> **Last updated:** 2026-07-18 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `e58efcf` (+ this handoff refresh).
 > **Status:** launch-prep close-out — ALL dev-buildable, owner-input-free work is DONE. Open issues **61 → 28**. Remaining work needs owner credentials/decisions (SIGNula, billing, tier naming, #93 cred rotation) or is owner ops/legal (below). **PHPStan is now an enforced CI gate** (see below).
+
+---
+
+## ▶️ START HERE — pick-up point (next session / owner)
+
+**State in one line:** every dev-buildable, owner-input-free launch-prep item is DONE.
+Branch `launch-prep/2026-07-09` holds **21 commits, local only — NOT pushed**. Unit suite
+**519/0**; PHPStan L5 clean and now an **enforced** CI gate. ⚠️ Do **NOT** merge the stale
+`main` (would resurrect the legacy engine + the #93 credential file). Launch is now gated on
+**owner actions + decisions**, not dev work.
+
+### 🧑‍✈️ Owner actions to unblock the A+B launch
+
+1. **Push / review** the `launch-prep/2026-07-09` branch (21 commits) — the owner pushes, by preference.
+2. **#93** — rotate the leaked legacy DB password on the host; archive `public_html_legacy/`.
+   The `dbConfig.php` file is already gone from disk, **but the password rotation is still owed** —
+   do not assume it was rotated.
+3. **DB migrations at cutover** (existing DB): run **`016`** (custom-HTML gating — else `getOrgTier`
+   fails-open and ALL tier gating silently disables) and **`019`** (System-scope settings dedupe)
+   **before** deploy; then the **`004`** 480-URL data migration + force-reset the 7 plaintext
+   passwords. Do a `dry_run.sql` pass first; pick the cutover window (the real launch event).
+4. **Assign paid tiers** to migrated orgs — the Free tier is ENFORCED (`maxLinks=50`,
+   `maxCustomDomains=0`), so default-`free` orgs are capped until assigned.
+5. **`.auth/` refactor (`98b7909`):** run the 4 `mv`s — 3 per-component `_auth_keys/` → `.auth/`
+   dir renames + `dbConfig.php` → `web/_auth_keys/`.
+6. **Legal sign-off** on the 5 `{{LEGAL_REVIEW_NEEDED}}` legal docs.
+7. **Keep OFF until sign-off:** custom-HTML/WYSIWYG (highest stored-XSS surface) and IP
+   geolocation (`analytics.geolocation_enabled` — only after confirming the CI-fetched `.mmdb` landed).
+
+### ❓ Owner decisions still blocking P2+ (see `docs/LAUNCH_PLAN_2026-07-09.md` §11)
+
+- Final **tier naming + currency (GBP)** → reconcile pricing page + DB seeds + gating.
+- **SIGNula:** OIDC endpoints/creds; does it broker the other IdPs (collapses #34–37 into one)?
+- **Billing** provider keys (Stripe / PayPal / SIGNula).
+- Ratify **#149** API Low residuals 2 & 3 (per-org-vs-per-key rate limit; `maxLinks` TOCTOU) → then it closes.
+
+### 🛠️ Dev-buildable next (no owner input — optional, if continuing to build)
+
+- **#153** phpcs conformance (9,694 errors / 1,307 warnings / 148 files; 9,354 phpcbf-auto-fixable) —
+  best as ONE dedicated, reviewed `phpcbf` reformat pass, then flip the PHPCS gate. (PHPStan gate already enforced.)
+- **#151** expose captured UTM as an analytics dimension · **#152** xlsx analytics export.
+- **#127** `orgHandle` immutability vs surrogate-FK migration — needs a design decision first.
+- Post-launch: **#51–56** advanced redirects (Phase 9). **#34–37 / #57–60** (SIGNula auth + billing) need owner creds.
 
 ---
 
@@ -172,6 +215,9 @@ launch-prep work is now complete.
   CSP untouched). **Milestone: public API + CueRCode integration + API docs all READY.**
 
 ## ⏭️ Immediate next steps (execution queue — see plan §10)
+
+> 📌 **Historical — superseded by "▶️ START HERE" at the top of this file for current next-actions.**
+> Kept below as the P0–P4 roadmap record; most P0/P1 items are ✅ done (2026-07-18 close-out).
 
 - **P0:** ✅ finish #135 (done); ✅ close ~22 issues (**done 2026-07-18**, see close-out block above,
   61→28 open); ✅ low a11y/hygiene #114–119 (**done 2026-07-18**); reconcile remaining doc drift +
