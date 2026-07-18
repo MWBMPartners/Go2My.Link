@@ -32,8 +32,8 @@ parameters:
     excludePaths:
         - web/_libraries
         - web/_auth_keys
-        - web/*/public_html_legacy
-        - web/*/public_html_redir
+        - web/*/public_html_legacy/*
+        - web/*/public_html_redir/*
 
     # Relaxations for shared-hosting PHP without strict typing.
     #
@@ -42,7 +42,6 @@ parameters:
     # `parameters` keys outright. Because the CI step is `continue-on-error: true`,
     # their presence silently killed every analysis run rather than failing the
     # build — see #159. Do not reintroduce them while the pin is 2.x.
-
     # Allow superglobals and dynamic variables common in legacy PHP
     checkDynamicProperties: false
 
