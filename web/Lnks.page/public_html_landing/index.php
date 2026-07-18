@@ -308,6 +308,14 @@
                 transition: none !important;
             }
         }
+
+        @media (forced-colors: active) {
+            h1 {
+                -webkit-text-fill-color: currentColor;
+                background: none;
+                color: CanvasText;
+            }
+        }
     </style>
 </head>
 <body>
