@@ -348,8 +348,12 @@ function g2ml_apiVerifyKey(string $presented): ?array
     {
         // No matching prefix. Still perform a dummy constant-time compare so
         // the CPU cost of "unknown prefix" and "known prefix, wrong secret"
-        // stays similar, denying an attacker an easy timing oracle.
-        hash_equals(hash('sha256', 'g2ml_no_such_prefix'), $presentedHash);
+        // stays similar, denying an attacker an easy timing oracle. The
+        // result is deliberately discarded — only the constant-time work
+        // itself matters here, never its outcome.
+        $g2mlDummyTimingCompare = hash_equals(hash('sha256', 'g2ml_no_such_prefix'), $presentedHash);
+
+        unset($g2mlDummyTimingCompare);
 
         return null;
     }

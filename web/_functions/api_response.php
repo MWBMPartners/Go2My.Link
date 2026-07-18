@@ -251,9 +251,9 @@ function g2ml_buildApiXmlDocument(array $data): string
  *
  * @param  array<int|string, mixed> $data        The response payload.
  * @param  int                      $statusCode  The HTTP status code to send.
- * @return void                                  This function never returns (it exits).
+ * @return never                                 This function never returns (it exits).
  */
-function g2ml_apiRespond(array $data, int $statusCode = 200): void
+function g2ml_apiRespond(array $data, int $statusCode = 200): never
 {
     $acceptHeader = '';
 

@@ -759,7 +759,10 @@ function g2ml_resolveAllowedDestinationIps(string $url): array|false
 
     $parts = parse_url($url);
 
-    if ($parts === false || !is_array($parts))
+    // parse_url() only ever returns array|false, so once false is
+    // eliminated the remaining value is guaranteed to be an array — no
+    // separate is_array() check is needed.
+    if ($parts === false)
     {
         return false;
     }

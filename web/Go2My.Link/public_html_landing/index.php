@@ -6,6 +6,13 @@
   Unauthorised copying, modification, or distribution is strictly prohibited.
 -->
 
+<?php
+// This static "coming soon" page has no app bootstrap (no page_init.php,
+// no i18n) — $siteName is the logo's accessible alt text, matching the
+// brand name used elsewhere on this page (<title>, og:title, tagline).
+$siteName = 'Go2My.link';
+?>
+
 <!DOCTYPE html>
 <html lang="en-GB" dir="ltr">
 <head>

@@ -107,7 +107,8 @@ function g2ml_apiCheckRateLimit(array $keyRow): array
 
     $dailyLimitIsPerKeyOverride = false;
 
-    if (isset($keyRow['rateLimitOverride']) && $keyRow['rateLimitOverride'] !== null)
+    // isset() already excludes null, so a separate !== null check is redundant.
+    if (isset($keyRow['rateLimitOverride']))
     {
         $dailyLimit                 = (int) $keyRow['rateLimitOverride'];
         $dailyLimitIsPerKeyOverride = true;

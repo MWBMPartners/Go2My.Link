@@ -563,12 +563,11 @@ function _g2ml_htmlSanitiserSanitiseAttributes(DOMElement $element): void
     // live NamedNodeMap we would otherwise be iterating.
     $attributeNames = [];
 
-    if ($element->attributes !== null)
+    // A DOMElement (unlike DOMNode generally) always has an attributes map —
+    // it is never null, even when the element has zero attributes.
+    foreach ($element->attributes as $attributeNode)
     {
-        foreach ($element->attributes as $attributeNode)
-        {
-            $attributeNames[] = $attributeNode->nodeName;
-        }
+        $attributeNames[] = $attributeNode->nodeName;
     }
 
     foreach ($attributeNames as $attributeName)

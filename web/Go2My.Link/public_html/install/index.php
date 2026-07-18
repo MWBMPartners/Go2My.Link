@@ -1385,7 +1385,12 @@ header('Content-Type: text/html; charset=UTF-8');
         // ====================================================================
         elseif ($step === 5)
         {
-            $componentResults = $_SESSION['g2ml_install_components'] ?? [];
+            // $step can only ever become 5 via the finalize block above
+            // (line ~1018), which always sets this exact session key
+            // immediately beforehand in the same request — the GET/
+            // $requestedStep path clamps $step to 0-4 (see ~line 1028), so
+            // there is no route to $step === 5 where this key is unset.
+            $componentResults = $_SESSION['g2ml_install_components'];
         ?>
         <h2>🎉 Installation complete</h2>
         <p>The database is set up, the GlobalAdmin account is created, and the shared credentials file has been written.</p>

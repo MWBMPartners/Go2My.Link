@@ -46,6 +46,32 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
     exit;
 }
 
+/**
+ * Return the current component's short code ('A'/'B'/'C'/'Admin').
+ *
+ * Thin typed wrapper around the G2ML_COMPONENT constant, which each
+ * component's own entry point (web/Go2My.Link/public_html/index.php,
+ * web/G2My.Link/public_html/index.php, web/Lnks.page/public_html/index.php,
+ * web/Go2My.Link/_admin/public_html/index.php) defines with a DIFFERENT
+ * literal value BEFORE this file is required. A shared include (like
+ * _includes/nav.php) that reads G2ML_COMPONENT directly instead gets
+ * PHPStan's cross-file constant-type inference, which only sees ONE
+ * entry point's literal rather than the real 'A'|'B'|'C'|'Admin' union —
+ * this function's declared `string` return type avoids that false
+ * narrowing without changing the runtime value at all.
+ *
+ * @return string
+ */
+function g2ml_getComponent(): string
+{
+    if (defined('G2ML_COMPONENT'))
+    {
+        return G2ML_COMPONENT;
+    }
+
+    return 'A';
+}
+
 // ============================================================================
 // ⏱️ Step 10 (early): Record start time and memory for debug panel
 // ============================================================================
@@ -106,6 +132,26 @@ elseif (in_array($hostname, ['localhost', '127.0.0.1', '::1'], true) || preg_mat
 else
 {
     define('G2ML_ENVIRONMENT', 'production');
+}
+
+/**
+ * Return the current runtime environment ('alpha'/'beta'/'local'/'production').
+ *
+ * Thin typed wrapper around the G2ML_ENVIRONMENT constant defined just
+ * above. Because that constant is set via a different define() call in
+ * each branch of the if/elseif/elseif/else chain above, a caller in
+ * ANOTHER file that reads G2ML_ENVIRONMENT directly gets PHPStan's
+ * cross-file constant-type inference, which only sees ONE of those
+ * branches' literal values rather than the real
+ * 'alpha'|'beta'|'local'|'production' union — this function's declared
+ * `string` return type avoids that false narrowing without changing the
+ * runtime value at all.
+ *
+ * @return string
+ */
+function g2ml_getEnvironment(): string
+{
+    return G2ML_ENVIRONMENT;
 }
 
 // ============================================================================

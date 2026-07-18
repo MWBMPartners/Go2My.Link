@@ -401,7 +401,8 @@ function _g2ml_linkspageBuildPublicModelFromRow(array $pageRow): ?array
 {
     $templateRow = null;
 
-    if (isset($pageRow['templateUID']) && $pageRow['templateUID'] !== null)
+    // isset() already excludes null, so a separate !== null check is redundant.
+    if (isset($pageRow['templateUID']))
     {
         $templateRow = g2ml_linkspageLoadSystemTemplate((int) $pageRow['templateUID']);
     }
@@ -603,7 +604,8 @@ function g2ml_linkspageBuildOwnerPreviewModel(array $pageRow, array $itemRows): 
 {
     $templateRow = null;
 
-    if (isset($pageRow['templateUID']) && $pageRow['templateUID'] !== null && $pageRow['templateUID'] !== '')
+    // isset() already excludes null, so a separate !== null check is redundant.
+    if (isset($pageRow['templateUID']) && $pageRow['templateUID'] !== '')
     {
         $templateRow = g2ml_linkspageLoadSystemTemplate((int) $pageRow['templateUID']);
     }

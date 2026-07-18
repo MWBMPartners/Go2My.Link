@@ -23,9 +23,10 @@
 # will soft-lock.
 #
 # Must-pass steps are syntax-level checks (JS parse, JSON validity, PHP lint)
-# that are known-green on the current tree. Style / static-analysis steps run
-# advisory (continue-on-error) so they surface issues without blocking the
-# gate; they can be promoted to hard failures once the tree is clean.
+# plus PHPStan (level 5), all known-green on the current tree (#76). Style /
+# code-sniffer steps still run advisory (continue-on-error) so they surface
+# issues without blocking the gate; PHP_CodeSniffer can be promoted to a hard
+# failure once the tree is clean (tracked as a #76 follow-up).
 #
 # @package    Go2My.Link
 # @author     MWBM Partners Ltd (MWservices)
@@ -107,7 +108,7 @@ jobs:
             --config '{"rules":{}}' || true
 
   # ===========================================================================
-  # Backend — PHP syntax lint (hard gate) + static analysis (advisory)
+  # Backend — PHP syntax lint + PHPStan (hard gates) + PHP_CodeSniffer (advisory)
   # Emits the required status check: "Backend (ubuntu-latest)"
   # ===========================================================================
   backend:
@@ -132,8 +133,8 @@ jobs:
         run: |
           parallel-lint --exclude vendor --exclude _libraries --exclude .git web/
 
-      - name: PHPStan (advisory)
-        continue-on-error: true
+      - name: PHPStan
+        continue-on-error: false
         env:
           PHPSTAN_VERSION: "2.2.4"
           PHPSTAN_SHA256: "f1e81a1418faab14a057188646cf1220f066276fc640ce9ef1c9a4af3f0ed46b"

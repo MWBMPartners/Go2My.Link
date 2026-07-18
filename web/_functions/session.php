@@ -241,6 +241,8 @@ function destroyUserSession(): void
     {
         $params = session_get_cookie_params();
 
+        // session_get_cookie_params()'s return shape always includes
+        // 'samesite' (never absent/null), so no fallback is needed.
         setcookie(
             session_name(),
             '',
@@ -250,7 +252,7 @@ function destroyUserSession(): void
                 'domain'   => $params['domain'],
                 'secure'   => $params['secure'],
                 'httponly'  => $params['httponly'],
-                'samesite' => $params['samesite'] ?? 'Lax',
+                'samesite' => $params['samesite'],
             ]
         );
     }

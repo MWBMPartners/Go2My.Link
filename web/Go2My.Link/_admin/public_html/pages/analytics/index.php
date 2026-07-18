@@ -479,7 +479,17 @@ if ($chartPayloadJSON === false)
 
                     foreach ($presetLabels as $presetValue => $presetKey)
                     {
-                        $isActivePreset = ($range['rangeLabel'] === $presetValue);
+                        // PHP casts decimal-integer string array keys ('7',
+                        // '30', '90') to int automatically, so $presetValue
+                        // arrives here as int even though $presetLabels was
+                        // written with string keys. g2ml_analyticsDashboardResolveRange()
+                        // always returns a STRING 'rangeLabel' ('7'/'30'/'90'/'custom'),
+                        // and _analyticsPageURL() expects string query args —
+                        // cast back to string so the active-preset comparison
+                        // and the generated link both match the real types.
+                        $presetValueString = (string) $presetValue;
+
+                        $isActivePreset = ($range['rangeLabel'] === $presetValueString);
 
                         $presetClass = 'btn btn-outline-primary';
 
@@ -488,7 +498,7 @@ if ($chartPayloadJSON === false)
                             $presetClass = 'btn btn-primary';
                         }
 
-                        echo '<a href="' . g2ml_sanitiseOutput(_analyticsPageURL($shortCode, ['range' => $presetValue])) . '"';
+                        echo '<a href="' . g2ml_sanitiseOutput(_analyticsPageURL($shortCode, ['range' => $presetValueString])) . '"';
                         echo ' class="' . $presetClass . '"';
 
                         if ($isActivePreset)

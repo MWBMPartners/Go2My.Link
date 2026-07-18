@@ -122,9 +122,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     // keeps its own distinct, stable form name.
     // ========================================================================
 
+    // Computed unconditionally (rather than only inside the "revoke_key"
+    // branch below) so it is always a defined int by the time the switch
+    // below reaches its own "revoke_key" case — that case only runs when
+    // $actionType === 'revoke_key', i.e. exactly the same condition used
+    // here, but phpstan cannot correlate the two separate control-flow
+    // constructs. The cast itself has no side effects, so computing it
+    // unconditionally does not change behaviour for the "create_key" path.
+    $apiKeyUID = (int) ($_POST['api_key_uid'] ?? 0);
+
     if ($actionType === 'revoke_key')
     {
-        $apiKeyUID    = (int) ($_POST['api_key_uid'] ?? 0);
         $csrfFormName = 'revoke_key_' . $apiKeyUID;
     }
     else

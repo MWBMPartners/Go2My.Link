@@ -238,7 +238,10 @@ function g2ml_appendUtmToDestination(string $destinationURL, array $linkUtm): st
     // completely untouched rather than risk emitting a corrupted redirect
     // target — this mirrors the defensive posture already used by
     // g2ml_buildPinnedDestinationUrl() below.
-    if ($urlParts === false || !is_array($urlParts))
+    // (parse_url() only ever returns array|false, so once false is
+    // eliminated the remaining value is guaranteed to be an array —
+    // no separate is_array() check is needed.)
+    if ($urlParts === false)
     {
         return $destinationURL;
     }
@@ -579,7 +582,10 @@ function validateDestination(string $url, int $timeout = 5): array
     // ------------------------------------------------------------------------
     $urlParts = parse_url($url);
 
-    if ($urlParts === false || !is_array($urlParts) || !isset($urlParts['host']) || $urlParts['host'] === '')
+    // (parse_url() only ever returns array|false, so once false is
+    // eliminated the remaining value is guaranteed to be an array —
+    // no separate is_array() check is needed.)
+    if ($urlParts === false || !isset($urlParts['host']) || $urlParts['host'] === '')
     {
         $result['error'] = 'Destination host is not permitted';
 
@@ -669,11 +675,10 @@ function validateDestination(string $url, int $timeout = 5): array
             // Extract status code from the first header line
             // Format: "HTTP/1.1 200 OK" or "HTTP/2 200"
             // 📖 Reference: https://www.php.net/manual/en/function.preg-match.php
-            if (is_array($headers)) {
-                $statusLine = ($headers[0] ?? '');
-            } else {
-                $statusLine = '';
-            }
+            // ($headers is guaranteed to be an array here — get_headers()
+            // only ever returns array|false, and the false case was already
+            // handled above.)
+            $statusLine = $headers[0] ?? '';
 
             if (preg_match('/HTTP\/[\d.]+\s+(\d{3})/', $statusLine, $matches))
             {

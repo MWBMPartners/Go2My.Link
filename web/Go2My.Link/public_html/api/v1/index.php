@@ -196,7 +196,13 @@ if (isset($_SERVER['HTTPS']) && is_string($_SERVER['HTTPS']))
 
 $g2mlApiIsSecure = ($g2mlApiHttpsValue !== '' && $g2mlApiHttpsValue !== 'off');
 
-if (!$g2mlApiIsSecure && G2ML_ENVIRONMENT !== 'local')
+// g2ml_getEnvironment() (page_init.php) is a typed wrapper around
+// G2ML_ENVIRONMENT — see its docblock for why this file reads the
+// constant through that function rather than directly: it is defined
+// conditionally (per-hostname) in page_init.php's if/elseif/elseif/else
+// chain, which would otherwise make PHPStan (incorrectly) treat this
+// necessary 'local' comparison as dead code.
+if (!$g2mlApiIsSecure && g2ml_getEnvironment() !== 'local')
 {
     g2mlApiV1FinishRequest(
         g2ml_apiErrorBody(403, 'HTTPS is required.'),

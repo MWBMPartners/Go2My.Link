@@ -52,7 +52,7 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 // Higher number = higher privilege.
 // ============================================================================
 
-/** @var array Role name → numeric level mapping */
+// Role name → numeric level mapping
 define('G2ML_ROLE_LEVELS', [
     'Anonymous'   => 0,
     'User'        => 1,

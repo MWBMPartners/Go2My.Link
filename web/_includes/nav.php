@@ -41,11 +41,13 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 // ============================================================================
 // 📋 Navigation Configuration
 // ============================================================================
-if (defined('G2ML_COMPONENT')) {
-    $component = G2ML_COMPONENT;
-} else {
-    $component = 'A';
-}
+// g2ml_getComponent() (page_init.php) is a typed wrapper around
+// G2ML_COMPONENT — see its docblock for why this include reads the
+// constant through that function rather than directly: each component's
+// entry point defines G2ML_COMPONENT with a DIFFERENT literal, which
+// would otherwise make PHPStan (incorrectly) treat the per-component
+// branching below as dead code.
+$component = g2ml_getComponent();
 if (function_exists('getSetting')) {
     $siteName = getSetting('site.name', 'Go2My.Link');
 } else {
