@@ -3,8 +3,8 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-10 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `66b58da` (+ this handoff commit).
-> **Status:** everything buildable WITHOUT owner input is DONE. Remaining work needs owner credentials/decisions (SIGNula, billing, tier naming) or is owner ops/legal (below).
+> **Last updated:** 2026-07-18 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `cc3e2e7` (+ this handoff commit).
+> **Status:** launch-prep close-out — ALL dev-buildable, owner-input-free work is DONE. Open issues **61 → 28**. Remaining work needs owner credentials/decisions (SIGNula, billing, tier naming, #93 cred rotation) or is owner ops/legal (below). **PHPStan is now an enforced CI gate** (see below).
 
 ---
 
@@ -32,15 +32,17 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
 
 ---
 
-## ✅ Where things actually stand (current — 2026-07-10; code wins over docs)
+## ✅ Where things actually stand (current — 2026-07-18; code wins over docs)
 
 - **A + B are code-ready for launch.** All 2026-07-09 launch-hardening fixes verified in-tree;
   3 fresh-install P0/P1 blockers found+fixed (#135/#136/#138) + a column-audit sweep (0 P0).
 - **Public API: BUILT + security-audited.** #38 framework + #39 endpoints + #40 key-mgmt UI +
   #75 OpenAPI/Redoc at `/api/docs`; a full adversarial audit (`bad789a`) passed (1 Medium fixed).
-  **CueRCode integrates now** (#145) via `/api/v1` with a `qr:link` key.
-- **Analytics: BUILT** (#41 data + `/api/v1/analytics` + #42 dashboard); **IP geolocation BUILT**
-  (#43, gated off, CI-fetched `.mmdb`); **UTM capture/forward BUILT** (#92, gated off).
+  **CueRCode integrates now** (#145) via `/api/v1` with a `qr:link` key. #149 Low residuals
+  documented, awaiting owner ratification (kept open on purpose).
+- **Analytics: BUILT** (#41 data + `/api/v1/analytics` + #42 dashboard, streaming CSV export #44);
+  **IP geolocation BUILT** (#43, gated off, CI-fetched `.mmdb`); **UTM capture/forward BUILT**
+  (#92, gated off; captured UTM not yet a dashboard dimension — follow-up **#151**).
 - **Premium tiers: entitlement gating ENFORCED** (`entitlements.php` #146 — `maxLinks`/API-daily
   (per-org)/domain-cap, fail-open). Pricing-page reconcile still pending (needs owner tier naming/currency).
 - **Component C (LinksPage): 6/6 BUILT** (#45/#48/#47/#46/#50/#49). `customHTML`/WYSIWYG is
@@ -50,6 +52,10 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
 - **SIGNula / billing: zero code — need owner** (SIGNula OIDC endpoints/creds; Stripe/PayPal/SIGNula keys).
 - **Auth-dir refactor:** per-component `_auth_keys/` → `.auth/` (`98b7909`); owner must run 4 `mv`s
   (3 dir renames + `dbConfig.php` → `web/_auth_keys/`). Shared `web/_auth_keys/` unchanged.
+- **✅ 2026-07-18 launch-prep close-out COMPLETE:** ~22 built-but-open issues closed with evidence;
+  a hygiene/a11y/db cluster fixed; **PHPStan is now an enforced CI gate** (0 shipping-code errors);
+  phpcs conformance deferred to **#153**. Open issues **61 → 28** — all remaining are owner-blocked,
+  post-launch-phase, or for-consideration/triage. See "Done this session (2026-07-18)" below.
 
 ## 🔴 Genuinely outstanding before an A+B launch (small)
 
@@ -57,14 +63,76 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
 |---|---|---|
 | **#135** login blocker (`avatarURL`→`avatarPath`) + login integration test | dev | ✅ **DONE** `13f21c4` (unit 189/0, integ 22/0) |
 | **#136** registration blocker (missing `NOT NULL` `username`) + register test | dev | ✅ **DONE** `f7b9e07` (unit 189/0, integ 23/0) |
-| **#138** GDPR data-export broken (non-existent columns) | dev | ✅ **DONE** `602573e` (php -l clean, unit 189/0) — integration test still TODO |
+| **#138** GDPR data-export broken (non-existent columns) | dev | ✅ **DONE** `602573e` fix + `cd2a337` regression test — **CLOSED** |
 | Column-audit sweep (find sibling schema/code mismatches) | dev | ✅ **DONE** — 0 P0, 1 P1 (#138). Core flows all verified column-correct. |
-| **#93** rotate leaked legacy DB password on host + remove `public_html_legacy/` | **owner (ops)** | pending — instruct-don't-execute |
+| **#93** rotate leaked legacy DB password on host + remove `public_html_legacy/` | **owner (ops)** | pending — the leaked file itself is already gone from disk (deleted outside this repo's work, ~2026-07-10); rotation + dir archival are still owed. **Do not infer the password was rotated.** |
 | Migration dry-run + full 480-URL migration; force-reset 7 plaintext passwords | dev + owner | pending |
+| **Run migration `019_settings_scope_dedupe.sql`** on any existing DB before deploying (#150) | **owner (ops)** | pending — collapses duplicate System-scope settings rows via a COALESCE generated-column unique key |
 | Legal sign-off on 5 `{{LEGAL_REVIEW_NEEDED}}` docs | **owner/legal** | pending |
-| Close ~21 fixed-but-open issues with commit refs (#94–#124 cluster + #113) | dev | ⏸ **awaiting owner go-ahead** (guardrail blocked mass close) |
+| ~~Close ~21 fixed-but-open issues with commit refs~~ | dev | ✅ **DONE this session** — ~22 closed with evidence; open issues 61→28 |
 | Doc drift: pricing USD→GBP/tier names, API envelope, DNS TXT prefix, MEMORY UTM | dev | queued |
-| Data-export integration test (`#138` follow-up) | dev | queued |
+| **#76** phpcs conformance (9,694 errors / 1,307 warnings / 148 files, 9,354 phpcbf-auto-fixable) + flip PHPCS CI gate | dev | tracked in **#153**; #76 stays open for this half (PHPStan half is done + enforced) |
+| **#127** `orgHandle` tech-debt decision | dev/owner | queued (triage) |
+
+---
+
+## 🔄 Done this session (2026-07-18) — launch-prep close-out
+
+Branch: **`launch-prep/2026-07-09`**, all committed, **NOT pushed**. **20 commits** landed
+(`feab6b1` → `cc3e2e7`). **Open issues 61 → 28.** All dev-buildable, owner-input-free
+launch-prep work is now complete.
+
+- **Closed ~22 built-but-open issues with evidence** (code already shipped, GitHub hadn't
+  caught up):
+  - Phase-7/8 features: #38, #39, #40, #41, #42, #43, #45, #46, #47, #48, #49, #50, #75, #91,
+    #92, #135, #136, #137, #145, #146, #147.
+  - #120 (doc drift, `fd17a42`); #138 (GDPR export) closed via fix `602573e` + new regression
+    test `cd2a337`.
+- **Hygiene / a11y / db cleanups — built + closed:**
+  - #116 favicon (`1cb9790`), #119 lang/dir (`fc3fac0`), #109 picture fallback (`832dab7`),
+    #110 forced-colors (`3ff0fb0`), #112 lint excludes (`241731d`), #115 robots/sitemap
+    (`4f4ae38`), #126 remove dead `sp_logActivity` (`3f43c53` + dry_run count fix `2002a66`),
+    #118 client-IP helper dedupe (`1b50eef`), #114 branded error pages A/B/C (`4cb068d`),
+    #150 System-scope settings dedupe via generated column + migration `019` (`6de4e0e`),
+    #128 alias-chain integrity migration checks (`ce7b756`), #44 streaming CSV analytics
+    export (`55bd5af`), #117 No-Shorthand house-rule sweep (`3fe0334`).
+- **#76 (PHPStan) — HALF done + ENFORCED:** `phpstan.neon` repaired for phpstan 2.x + legacy
+  dirs actually excluded (`42bebb1`); the resulting 45 shipping-code level-5 errors resolved
+  to 0, root-cause (no `@phpstan-ignore`/baseline/widening) (`cc3e2e7`). **The CI PHPStan step
+  is now a hard gate** (`continue-on-error: false`). The phpcs half (9,694 errors / 1,307
+  warnings / 148 files, 9,354 auto-fixable via phpcbf) is deferred to new issue **#153**;
+  #76 stays open for that half only.
+  - **Two real bugs found+fixed while resolving phpstan:** (1) `public_html_landing/index.php`
+    — the coming-soon page's logo `alt` text rendered blank because `$siteName` was never
+    defined; fixed by defining it (`'Go2My.link'`). (2) `analytics/index.php` — the date-range
+    preset ("7/30/90 days") "active" highlighting was silently dead because PHP auto-casts
+    the decimal-string preset-label array keys to int, so a string-vs-int compare could never
+    match; fixed with an explicit cast.
+  - Introduced typed accessors `g2ml_getEnvironment()` / `g2ml_getComponent()` in
+    `web/_includes/page_init.php` (root-caused a set of cross-file constant-narrowing false
+    positives instead of suppressing them).
+- **Left OPEN deliberately:**
+  - **#149** — API Low residuals: all fixed or accept-documented; commented, awaiting owner
+    ratification of residuals 2 & 3 (per-org vs per-key rate limiting; `maxLinks` TOCTOU).
+  - **#76** — stays open for the phpcs half (see above).
+- **New follow-up issues filed:** **#151** (expose captured UTM as an analytics dimension,
+  from #92), **#152** (xlsx export via PhpSpreadsheet vs native, from #44), **#153** (phpcs
+  conformance + flip the PHPCS CI gate, from #76).
+- **Correction to the record (discrepancy found during reconciliation):** the leaked legacy
+  `web/G2My.Link/public_html_legacy/dbConfig.php` is already **gone from disk** — deleted
+  outside this repo's tracked work, roughly 2026-07-10; the rest of the legacy dir remains.
+  **#93 stays open** for the actual credential **rotation** + dir archival (owner ops) — do
+  **not** infer the password itself was rotated just because the file is gone.
+- **New owner deploy note:** run migration **`019_settings_scope_dedupe.sql`** on any existing
+  DB before deploying (collapses duplicate System-scope settings rows, adds the COALESCE
+  generated-column unique key) — alongside the existing migration-016/geolocation/customHTML/
+  tier-assignment notes below. Also: the `sp_logActivity` stored procedure was removed, so a
+  correctly-provisioned DB now has **2** stored procedures, not 3 (`dry_run.sql` updated to
+  match).
+- **Remaining 28 open issues** = owner-blocked (#93 cred rotation, #71 translations, #57–60
+  Phase-11 SIGNula billing, #34–37 Phase-10 SIGNula auth), post-launch phases (#51–56 Phase-9
+  advanced redirects), for-consideration/owner-triage (#139–144, #149), and dev follow-ups
+  (#151, #152, #153, #76 phpcs half, #127 `orgHandle` tech-debt decision).
 
 ---
 
@@ -105,8 +173,9 @@ artifacts (`PROJECT.md`, `FEATURES.md`, `SECURITY.md`, `.dev-team/autopilot.json
 
 ## ⏭️ Immediate next steps (execution queue — see plan §10)
 
-- **P0:** finish #135; close ~24 issues; reconcile doc drift + stale `main`; low a11y/hygiene
-  (#114–119); (owner) #93 rotation, migration, legal.
+- **P0:** ✅ finish #135 (done); ✅ close ~22 issues (**done 2026-07-18**, see close-out block above,
+  61→28 open); ✅ low a11y/hygiene #114–119 (**done 2026-07-18**); reconcile remaining doc drift +
+  stale `main`; (owner) #93 rotation, migration, legal — still pending.
 - **P1:** ✅ API framework **#38** (`34453d8`) → ✅ endpoints **#39** (`0d495c1`) → ✅ **CueRCode wiring #145**
   (`50f2427`) → ✅ **OpenAPI/Swagger #75** (`5d229d7`, spec + self-hosted Redoc at `/api/docs`) →
   ✅ **key mgmt UI #40** (`8bc8dff`, create/list/revoke, one-time secret, CSRF, `canManageOrg` authz —

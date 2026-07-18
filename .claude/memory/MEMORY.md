@@ -3,7 +3,24 @@
 > 📦 **Portable copy** — this directory is the repo-tracked mirror of the Claude
 > project memory so it travels to every machine/platform via git. See
 > [README.md](../README.md) for how it maps to the device-local auto-memory.
-> Last synced: **2026-07-09**.
+> Last synced: **2026-07-18**.
+
+> 🏁 **2026-07-18 launch-prep close-out (supersedes the 2026-07-09/10 notes just below):**
+> 20 commits (`feab6b1`→`cc3e2e7`); **open issues 61 → 28**. ~22 built-but-open issues closed
+> with evidence (#38–#50 cluster, #75, #91, #92, #120, #135–#138, #145–#147) + a hygiene/a11y/db
+> cluster fixed and closed (#109/#110/#112/#114–#119/#126/#128/#150 + #44 CSV export + #117
+> No-Shorthand sweep). **PHPStan is now an enforced CI gate** (`phpstan.neon` fixed for 2.x;
+> 45 shipping-code L5 errors → 0, root-caused, no baseline/ignore) — the phpcs half (~9,700
+> findings) is deferred to follow-up **#153**, so #76 stays open for that half only. Two real
+> bugs found+fixed along the way: `public_html_landing/index.php` blank logo `alt`
+> (`$siteName` undefined) and a dead date-range-preset "active" highlight in the analytics
+> dashboard (string-vs-int compare). New follow-ups filed: **#151** (UTM as an analytics
+> dimension), **#152** (xlsx export), **#153** (phpcs). **Run migration
+> `019_settings_scope_dedupe.sql`** on any existing DB before deploying (also: `sp_logActivity`
+> removed, a DB now has 2 stored procedures, not 3). **Correction:** the leaked legacy
+> `public_html_legacy/dbConfig.php` is already gone from disk (deleted ~2026-07-10, outside
+> tracked work) — **#93 stays open**, the credential still needs actual rotation; do not infer
+> it was rotated. See [HANDOFF.md](../../HANDOFF.md) for the full close-out detail.
 
 > 🚀 **[Launch Plan 2026-07-09](../../docs/LAUNCH_PLAN_2026-07-09.md)** — Fable-5 strategic launch & roadmap plan (11 sections: verdict, API arch, CueRCode contract, SIGNula OIDC, custom-domain DNS, tier ladder, Component C, exec backlog P0–P4). **Read this for current direction.**
 > 🤝 **[HANDOFF.md](../../HANDOFF.md)** — session pick-up point: what's done, in-flight, decisions pending, next steps.

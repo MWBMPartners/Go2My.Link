@@ -2,7 +2,76 @@
 
 > Chronological log of significant Claude-assisted work, newest first. Portable
 > (repo-tracked) so the project's working history is available on every machine.
-> Companion to [.claude/memory/MEMORY.md](memory/MEMORY.md). Last updated **2026-07-09**.
+> Companion to [.claude/memory/MEMORY.md](memory/MEMORY.md). Last updated **2026-07-18**.
+
+---
+
+## 2026-07-18 — Launch-prep close-out: ~22 issues closed, hygiene/db cluster fixed, PHPStan gate enforced
+
+Branch: **`launch-prep/2026-07-09`** — **20 commits** (`feab6b1` → `cc3e2e7`), all committed,
+**NOT pushed**. Open issues **61 → 28**. All dev-buildable, owner-input-free launch-prep work
+is now complete.
+
+### Closed ~22 built-but-open issues with evidence
+- Phase-7/8 features that were built in the 2026-07-10 session but left open on GitHub:
+  **#38, #39, #40, #41, #42, #43, #45, #46, #47, #48, #49, #50, #75, #91, #92, #135, #136,
+  #137, #145, #146, #147**.
+- **#120** (doc drift) closed via `fd17a42`. **#138** (GDPR export) closed via the existing fix
+  `602573e` plus a new regression test `cd2a337`.
+
+### Hygiene / accessibility / db cluster — built and closed
+- #116 favicon (`1cb9790`), #119 lang/dir attributes (`fc3fac0`), #109 `<picture>` PNG fallback
+  (`832dab7`), #110 forced-colors gradient fallback (`3ff0fb0`), #112 phpcs/phpstan legacy-dir
+  excludes (`241731d`), #115 robots.txt/sitemap.xml (`4f4ae38`), #126 removed dead
+  `sp_logActivity` stored procedure (`3f43c53`) + dry-run proc-count fix (`2002a66`), #118
+  client-IP fallback helper dedupe (`1b50eef`), #114 branded error pages across A/B/C
+  (`4cb068d`), #150 System-scope settings dedupe via a COALESCE generated-column unique key +
+  migration `019` (`6de4e0e`), #128 alias-chain integrity migration checks (`ce7b756`), #44
+  streaming CSV analytics export (`55bd5af`), #117 No-Shorthand house-rule sweep (`3fe0334`).
+
+### #76 PHPStan — repaired, resolved, and promoted to a hard CI gate
+- `42bebb1`: `phpstan.neon` repaired for phpstan 2.x (two removed-in-2.0 config keys were
+  aborting the run entirely) + the legacy-dir exclude glob fixed so it actually matched files,
+  not just the directory — net effect: phpstan L5 now runs cleanly and reports 45 real errors
+  in shipping code (down from an unanalysed ~140).
+- `cc3e2e7`: all 45 resolved root-cause (no `@phpstan-ignore`, no baseline, no widening) and
+  the CI PHPStan step flipped from advisory (`continue-on-error: true`) to a hard gate. Two
+  real bugs surfaced along the way: (1) `public_html_landing/index.php` — the coming-soon
+  page's logo `alt` text was blank because `$siteName` was never defined; (2)
+  `analytics/index.php` — the date-range preset "active" highlighting was silently dead, a
+  string-vs-int compare caused by PHP auto-casting decimal-string array keys. Also introduced
+  typed accessors `g2ml_getEnvironment()`/`g2ml_getComponent()` in `page_init.php`, root-causing
+  a set of cross-file constant-narrowing false positives instead of suppressing them.
+- The phpcs half (9,694 errors / 1,307 warnings / 148 files, 9,354 phpcbf-auto-fixable) is
+  deferred to new follow-up **#153**; **#76 stays open** for that half only — the PHPStan half
+  is done and enforced.
+
+### Left open deliberately
+- **#149** API Low-severity residuals — all fixed or accept-documented; awaiting owner
+  ratification of the remaining two (per-org vs per-key rate limiting; `maxLinks` TOCTOU).
+
+### New follow-up issues filed
+- **#151** expose captured UTM as an analytics dimension (from #92); **#152** xlsx export via
+  PhpSpreadsheet vs native (from #44); **#153** phpcs conformance + flip the PHPCS CI gate
+  (from #76).
+
+### Correction to the record
+- Reconciliation found the leaked legacy `web/G2My.Link/public_html_legacy/dbConfig.php` is
+  already **gone from disk** — deleted outside this repo's tracked work, roughly 2026-07-10;
+  the rest of the legacy dir remains. **#93 stays open** for the actual credential rotation +
+  dir archival (owner ops) — the file's absence is not evidence the password was rotated.
+
+### New owner deploy note
+- Run migration **`019_settings_scope_dedupe.sql`** on any existing DB before deploying
+  (collapses duplicate System-scope settings rows via a COALESCE generated-column unique key).
+  Also: `sp_logActivity` was removed, so a correctly-provisioned DB now has **2** stored
+  procedures, not 3 (`dry_run.sql` updated to match).
+
+### Remaining 28 open issues
+- Owner-blocked: #93 (cred rotation), #71 (translations), #57–60 (Phase-11 SIGNula billing),
+  #34–37 (Phase-10 SIGNula auth). Post-launch phase: #51–56 (Phase-9 advanced redirects).
+  For-consideration/owner-triage: #139–144, #149. Dev follow-ups: #151, #152, #153, #76
+  (phpcs half), #127 (`orgHandle` tech-debt decision).
 
 ---
 
