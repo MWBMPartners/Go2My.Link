@@ -190,6 +190,61 @@ function _analyticsPageURL(?string $shortCode, array $extraArgs): string
     return '/analytics?' . http_build_query($args);
 }
 
+/**
+ * Build a URL to the standalone CSV export endpoint
+ * (analytics-export.php, #44) for a given export ?type=, preserving the
+ * CURRENTLY ACTIVE date-range (and, where relevant, the ?code= drill-down) —
+ * mirrors _analyticsPageURL()'s own query-arg construction so a download
+ * always reflects exactly what the visitor is looking at. That endpoint
+ * re-resolves the org from the session itself (never from a URL parameter),
+ * so nothing here needs to (or should) pass orgHandle explicitly.
+ *
+ * @param  string|null           $shortCode
+ * @param  array                 $range      The resolved range from g2ml_analyticsDashboardResolveRange().
+ * @param  string                $type       One of the endpoint's ?type= selectors.
+ * @param  array<string, string> $extraArgs  Additional args (e.g. ['dimension' => 'browserName']).
+ * @return string
+ */
+function _analyticsExportURL(?string $shortCode, array $range, string $type, array $extraArgs = []): string
+{
+    $args = array_merge(['type' => $type], _analyticsCurrentRangeQueryArgs($range), $extraArgs);
+
+    if ($shortCode !== null)
+    {
+        $args['code'] = $shortCode;
+    }
+
+    return '/analytics-export.php?' . http_build_query($args);
+}
+
+/**
+ * Render an accessible "Download CSV" link for a given export ?type=
+ * (see _analyticsExportURL()). A plain, real <a href> — natively
+ * keyboard-focusable and operable with no extra ARIA required — styled with
+ * the same theme-aware Bootstrap button classes used throughout this page.
+ *
+ * @param  string|null           $shortCode
+ * @param  array                 $range
+ * @param  string                $type
+ * @param  array<string, string> $extraArgs
+ * @return void
+ */
+function _analyticsRenderCsvLink(?string $shortCode, array $range, string $type, array $extraArgs = []): void
+{
+    $exportURL = _analyticsExportURL($shortCode, $range, $type, $extraArgs);
+
+    if (function_exists('__')) {
+        $csvLinkLabel = __('analytics.export_csv');
+    } else {
+        $csvLinkLabel = 'Download CSV';
+    }
+
+    echo '<a href="' . g2ml_sanitiseOutput($exportURL) . '" class="btn btn-sm btn-outline-secondary g2ml-csv-export-link">';
+    echo '<i class="fas fa-file-csv" aria-hidden="true"></i> ';
+    echo g2ml_sanitiseOutput($csvLinkLabel);
+    echo '</a>';
+}
+
 // ============================================================================
 // 🚫 Block the shared "[default]" bucket org — see docblock above
 // ============================================================================
@@ -587,6 +642,9 @@ if ($chartPayloadJSON === false)
                         </table>
                     </div>
                 </details>
+                <p class="mt-2 mb-0">
+                    <?php _analyticsRenderCsvLink($shortCode, $range, 'clicks-over-time'); ?>
+                </p>
                 <?php } ?>
             </div>
         </div>
@@ -648,6 +706,9 @@ if ($chartPayloadJSON === false)
                         </table>
                     </div>
                 </details>
+                <p class="mt-2 mb-0">
+                    <?php _analyticsRenderCsvLink($shortCode, $range, 'top-links'); ?>
+                </p>
                 <?php } ?>
             </div>
         </div>
@@ -661,6 +722,7 @@ if ($chartPayloadJSON === false)
             $breakdownWidgets = [
                 [
                     'canvasID'    => 'g2ml-chart-browser',
+                    'dimension'   => 'browserName',
                     'items'       => $browserBreakdown,
                     'headingKey'  => 'analytics.chart_browser',
                     'headingText' => 'Browser Breakdown',
@@ -669,6 +731,7 @@ if ($chartPayloadJSON === false)
                 ],
                 [
                     'canvasID'    => 'g2ml-chart-os',
+                    'dimension'   => 'osName',
                     'items'       => $osBreakdown,
                     'headingKey'  => 'analytics.chart_os',
                     'headingText' => 'Operating System Breakdown',
@@ -677,6 +740,7 @@ if ($chartPayloadJSON === false)
                 ],
                 [
                     'canvasID'    => 'g2ml-chart-device',
+                    'dimension'   => 'deviceType',
                     'items'       => $deviceBreakdown,
                     'headingKey'  => 'analytics.chart_device',
                     'headingText' => 'Device Type Breakdown',
@@ -685,6 +749,7 @@ if ($chartPayloadJSON === false)
                 ],
                 [
                     'canvasID'    => 'g2ml-chart-country',
+                    'dimension'   => 'countryCode',
                     'items'       => $countryBreakdown,
                     'headingKey'  => 'analytics.chart_country',
                     'headingText' => 'Country Breakdown',
@@ -751,6 +816,9 @@ if ($chartPayloadJSON === false)
                                     </table>
                                 </div>
                             </details>
+                            <p class="mt-2 mb-0">
+                                <?php _analyticsRenderCsvLink($shortCode, $range, 'breakdown', ['dimension' => $widget['dimension']]); ?>
+                            </p>
                             <?php } ?>
                         </div>
                     </div>
@@ -792,6 +860,9 @@ if ($chartPayloadJSON === false)
                         </tbody>
                     </table>
                 </div>
+                <p class="mt-2 mb-0">
+                    <?php _analyticsRenderCsvLink($shortCode, $range, 'breakdown', ['dimension' => 'requestReferer']); ?>
+                </p>
                 <?php } ?>
             </div>
         </div>
@@ -846,6 +917,9 @@ if ($chartPayloadJSON === false)
                         </table>
                     </div>
                 </details>
+                <p class="mt-2 mb-0">
+                    <?php _analyticsRenderCsvLink($shortCode, $range, 'scan-sources'); ?>
+                </p>
                 <?php } ?>
             </div>
         </div>
