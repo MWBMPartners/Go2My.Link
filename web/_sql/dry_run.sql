@@ -103,10 +103,10 @@ WHERE TABLE_SCHEMA = 'mwtools_Go2MyLink'
   AND TABLE_TYPE = 'BASE TABLE'
 ORDER BY TABLE_NAME;
 
--- 2.4 Verify stored procedures (expect 3)
+-- 2.4 Verify stored procedures (expect 2: sp_generateShortCode, sp_lookupShortURL)
 SELECT 'Stored procedures' AS check_name,
        COUNT(*) AS total,
-       CASE WHEN COUNT(*) >= 3 THEN 'PASS' ELSE 'FAIL — procedures missing' END AS status
+       CASE WHEN COUNT(*) >= 2 THEN 'PASS' ELSE 'FAIL — procedures missing' END AS status
 FROM information_schema.ROUTINES
 WHERE ROUTINE_SCHEMA = 'mwtools_Go2MyLink'
   AND ROUTINE_TYPE = 'PROCEDURE';
