@@ -32,6 +32,8 @@ parameters:
     excludePaths:
         - web/_libraries
         - web/_auth_keys
+        - web/*/public_html_legacy
+        - web/*/public_html_redir
 
     # Relaxations for shared-hosting PHP without strict typing.
     #
