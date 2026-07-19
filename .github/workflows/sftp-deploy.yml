@@ -8,82 +8,327 @@
 # Go2My.Link — SFTP Deploy Workflow
 # =============================================================================
 #
-# Deploys files to Dreamhost via SFTP. Manual trigger only.
-# Currently DISABLED — will be enabled when deployment targets are configured.
+# Deploys web/ to Dreamhost via SFTP (lftp mirror) after the code checks pass,
+# on every push to main / alpha / beta. Modelled on the iHymns deploy pipeline.
 #
-# Required secrets:
-#   SFTP_HOST     — Dreamhost server hostname
-#   SFTP_USERNAME — SFTP username
-#   SFTP_PASSWORD — SFTP password (or use SSH key)
-#   SFTP_SSH_KEY  — SSH private key (alternative to password)
+# ---------------------------------------------------------------------------
+# WHAT GETS UPLOADED (single remote root: secrets.SFTP_BASE_PATH)
+# ---------------------------------------------------------------------------
+# Everything under web/ is mirrored to SFTP_BASE_PATH preserving its tree,
+# EXCEPT the three component public_html/ directories, which are remapped per
+# branch (the "channel"):
+#
+#   main   →  web/<Comp>/public_html/  ⇒  SFTP_BASE_PATH/<Comp>/public_html/
+#   alpha  →  web/<Comp>/public_html/  ⇒  SFTP_BASE_PATH/<Comp>/public_html_dev_alpha/
+#   beta   →  web/<Comp>/public_html/  ⇒  SFTP_BASE_PATH/<Comp>/public_html_dev_beta/
+#
+#   <Comp> ∈ { Go2My.Link, G2My.Link, Lnks.page }
+#
+# Nothing outside web/ is ever uploaded.
+#
+# ---------------------------------------------------------------------------
+# ⚠️  SHARED-BACKEND NOTE (deliberate design decision — "literal spec")
+# ---------------------------------------------------------------------------
+# The shared backend (web/_functions, web/_includes, web/_libraries,
+# web/_schemas, web/_sql, web/assets) and each component's non-public_html
+# directories (e.g. _admin/public_html) are NOT channel-split — they deploy to
+# SFTP_BASE_PATH on EVERY branch. This means an alpha or beta push OVERWRITES
+# the live production shared backend + admin dashboard. This is intentional
+# per the deployment spec: the dev channels differ only in their front-end
+# public_html/ web root and share one production backend. If you later want
+# fully isolated preview channels, gate the Phase-2 mirror to `main` only.
+#
+# ---------------------------------------------------------------------------
+# LIVE-STATE PROTECTION (never touched by --delete)
+# ---------------------------------------------------------------------------
+# The mirror uses --delete so files removed from the repo are pruned remotely,
+# but the following server-owned paths are hard-excluded so a deploy can never
+# delete live credentials or user data:
+#   _auth_keys/auth_creds.php   (installer-written DB creds — gitignored)
+#   _auth_keys/.install_token, _auth_keys/.installed   (installer runtime)
+#   _uploads/     (user uploads)      _backups/   (server backups)
+#
+# ---------------------------------------------------------------------------
+# SECRETS (repo → Settings → Secrets and variables → Actions → Secrets)
+#   SFTP_HOST         Dreamhost SFTP hostname
+#   SFTP_USER         SFTP username
+#   SFTP_PORT         SFTP port (optional; defaults to 22 if unset/blank)
+#   SFTP_BASE_PATH    Remote root that web/ maps onto (single path for all channels)
+#   SFTP_KEY          SSH private key (PREFERRED). If set & non-empty → key auth.
+#   SFTP_PASSWORD     SFTP password (FALLBACK, used only when SFTP_KEY is empty/unset)
+#
+# VARIABLES (… → Variables)
+#   SFTP_ENABLED      Set to 'true' to arm deployment (kill switch; off by default)
 #
 # @package    Go2My.Link
 # @author     MWBM Partners Ltd (MWservices)
-# @since      Phase 0
+# @since      v1.0.0 — Launch Hardening
 # =============================================================================
 
 name: SFTP Deploy
 
 on:
+  push:
+    branches:
+      - main
+      - alpha
+      - beta
+    paths:
+      - 'web/**'
+      - '.github/workflows/sftp-deploy.yml'
   workflow_dispatch:
     inputs:
-      component:
-        description: 'Component to deploy'
-        required: true
-        type: choice
-        options:
-          - Go2My.Link
-          - G2My.Link
-          - Lnks.page
-          - all
-      environment:
-        description: 'Target environment'
-        required: true
-        type: choice
-        options:
-          - alpha
-          - beta
-          - production
       dry_run:
-        description: 'Dry run (preview only, no upload)'
+        description: 'Dry run (preview lftp actions, upload nothing)'
         required: false
         type: boolean
         default: true
 
+permissions:
+  contents: read
+
+# One deploy per branch at a time; never cancel an in-flight mirror (a
+# half-cancelled mirror could leave the remote in a partial state).
+concurrency:
+  group: sftp-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
+  # ===========================================================================
+  # Gate — the same must-pass code checks that gate main, re-run here so NO
+  # deploy (on any branch) proceeds unless PHP/JS/JSON are syntactically valid.
+  # ===========================================================================
+  checks:
+    name: Pre-deploy checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2.37.2
+        with:
+          php-version: '8.4'
+          tools: parallel-lint
+
+      - name: PHP syntax lint
+        run: |
+          parallel-lint --exclude vendor --exclude _libraries --exclude .git web/
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        with:
+          node-version: '20'
+
+      - name: JavaScript syntax + JSON validity
+        run: |
+          set -euo pipefail
+          while IFS= read -r file
+          do
+            node --check "$file"
+          done < <(git ls-files 'web/**/*.js' | grep -vE '_libraries/|/vendor/|\.min\.js$' || true)
+          while IFS= read -r file
+          do
+            node -e "JSON.parse(require('fs').readFileSync(process.argv[1], 'utf8'))" "$file"
+          done < <(git ls-files 'web/**/*.json' | grep -vE '_libraries/|/vendor/|package-lock' || true)
+
+  # ===========================================================================
+  # Deploy — armed only when the SFTP_ENABLED variable is 'true'.
+  # ===========================================================================
   deploy:
     name: Deploy via SFTP
     runs-on: ubuntu-latest
-    # Disabled by default. To enable, set the repo variable
-    # SFTP_DEPLOY_ENABLED to 'true' (Settings → Secrets and variables →
-    # Actions → Variables). Using a variable gate instead of `if: false`
-    # keeps the workflow lint-clean while staying off until you opt in.
-    if: ${{ vars.SFTP_DEPLOY_ENABLED == 'true' }}
+    needs: checks
+    if: vars.SFTP_ENABLED == 'true'
+    # Hard cap so a stalled SFTP mirror can't hang near the 6h Actions ceiling.
+    timeout-minutes: 30
+
+    # Shared lftp mirror flags. Anchored regex excludes; single-quoted so YAML
+    # passes them literally and they are referenced inside double quotes where
+    # the shell will not glob-expand them.
+    #
+    #   COMMON_EXCLUDES  — applied to every mirror (repo cruft + live-state
+    #                      protection: credentials, installer runtime, uploads,
+    #                      backups).
+    #   PHASE2_EXCLUDES  — extra excludes for the "everything else" mirror so it
+    #                      never uploads OR --deletes the channel web roots
+    #                      (those are owned by the per-component Phase-1 mirrors).
+    env:
+      COMMON_EXCLUDES: >-
+        --exclude \.DS_Store$
+        --exclude Thumbs\.db$
+        --exclude (^|/)\.git/
+        --exclude (^|/)\.github/
+        --exclude \.gitignore$
+        --exclude \.gitkeep$
+        --exclude \.gitattributes$
+        --exclude (^|/)README\.md$
+        --exclude (^|/)DEV_NOTES\.md$
+        --exclude (^|/)CLAUDE\.md$
+        --exclude (^|/)\.vscode/
+        --exclude (^|/)\.idea/
+        --exclude auth_creds\.php$
+        --exclude \.install_token$
+        --exclude \.installed$
+        --exclude (^|/)_uploads/
+        --exclude (^|/)_backups/
+      # Anchored to the component roots so ONLY the three top-level
+      # public_html/ web roots are held back (they are owned by Phase 1);
+      # <Comp>/_admin/public_html/, public_html_landing/, public_html_redir/
+      # are NOT matched and so still deploy to SFTP_BASE_PATH.
+      PHASE2_EXCLUDES: >-
+        --exclude ^Go2My\.Link/public_html/
+        --exclude ^G2My\.Link/public_html/
+        --exclude ^Lnks\.page/public_html/
+        --exclude (^|/)public_html_dev_alpha/
+        --exclude (^|/)public_html_dev_beta/
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
 
-      - name: Determine paths
-        id: paths
+      - name: Configure lftp timeouts
         run: |
-          COMPONENT="${{ github.event.inputs.component }}"
-          ENV="${{ github.event.inputs.environment }}"
+          {
+            echo "set net:timeout 20"
+            echo "set net:max-retries 3"
+            echo "set net:reconnect-interval-base 5"
+            echo "set net:reconnect-interval-multiplier 1"
+            echo "set mirror:no-empty-dirs yes"
+            echo "set sftp:auto-confirm yes"
+          } >> "$HOME/.lftprc"
 
-          case "$ENV" in
-            alpha) WEB_ROOT="public_html_dev_alpha" ;;
-            beta) WEB_ROOT="public_html_dev_beta" ;;
-            production) WEB_ROOT="public_html" ;;
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
+      # Determine the channel web-root directory from the branch (push) or
+      # default to production for a manual dispatch on a non-channel ref.
+      - name: Determine channel
+        id: channel
+        run: |
+          case "${{ github.ref_name }}" in
+            main)  TARGET="public_html" ;;
+            alpha) TARGET="public_html_dev_alpha" ;;
+            beta)  TARGET="public_html_dev_beta" ;;
+            *)     TARGET="public_html" ;;
           esac
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+          echo "Channel web root: $TARGET"
 
-          echo "web_root=$WEB_ROOT" >> "$GITHUB_OUTPUT"
-          echo "component=$COMPONENT" >> "$GITHUB_OUTPUT"
-
-      - name: Deploy ${{ steps.paths.outputs.component }}
+      # Default port 22 when SFTP_PORT is unset, blank, or non-numeric.
+      - name: Resolve SFTP port
+        id: port
+        env:
+          RAW_PORT: ${{ secrets.SFTP_PORT }}
         run: |
-          echo "🚀 Deploying ${{ steps.paths.outputs.component }} to ${{ github.event.inputs.environment }}"
-          echo "📂 Target web root: ${{ steps.paths.outputs.web_root }}"
-          echo "🔍 Dry run: ${{ github.event.inputs.dry_run }}"
-          echo ""
-          echo "⚠️  SFTP deployment not yet configured."
-          echo "    Configure SFTP secrets and remove the 'if: false' guard to enable."
+          TRIMMED_PORT=$(echo "$RAW_PORT" | tr -d '[:space:]')
+          if [[ "$TRIMMED_PORT" =~ ^[0-9]+$ ]] && [[ "$TRIMMED_PORT" -ge 1 ]] && [[ "$TRIMMED_PORT" -le 65535 ]]
+          then
+            echo "port=$TRIMMED_PORT" >> "$GITHUB_OUTPUT"
+          else
+            echo "port=22" >> "$GITHUB_OUTPUT"
+            echo "SFTP_PORT unset/blank/invalid — defaulting to 22"
+          fi
+
+      # SSH key preferred; password fallback only when SFTP_KEY is empty/unset.
+      - name: Select auth method
+        id: auth
+        env:
+          SFTP_KEY: ${{ secrets.SFTP_KEY }}
+        run: |
+          if [[ -n "${SFTP_KEY//[[:space:]]/}" ]]
+          then
+            echo "method=key" >> "$GITHUB_OUTPUT"
+            echo "Auth: SSH key"
+          else
+            echo "method=password" >> "$GITHUB_OUTPUT"
+            echo "Auth: password (SFTP_KEY not set)"
+          fi
+
+      # Resolve dry-run flag (manual dispatch can preview; pushes deploy for real).
+      - name: Resolve dry-run flag
+        id: dry
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.dry_run }}" == "true" ]]
+          then
+            echo "flag=--dry-run" >> "$GITHUB_OUTPUT"
+            echo "DRY RUN — no files will be uploaded"
+          else
+            echo "flag=" >> "$GITHUB_OUTPUT"
+          fi
+
+      # -------------------------------------------------------------------
+      # Deploy via SSH key
+      # Phase 1: each component public_html → its channel web root (--delete).
+      # Phase 2: everything else under web/ → SFTP_BASE_PATH (--delete, with the
+      #          channel roots + live-state paths excluded).
+      # -------------------------------------------------------------------
+      - name: Deploy (SSH key)
+        if: steps.auth.outputs.method == 'key'
+        env:
+          SFTP_USER: ${{ secrets.SFTP_USER }}
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_PORT: ${{ steps.port.outputs.port }}
+          SFTP_KEY: ${{ secrets.SFTP_KEY }}
+          BASE: ${{ secrets.SFTP_BASE_PATH }}
+          TARGET: ${{ steps.channel.outputs.target }}
+          DRY: ${{ steps.dry.outputs.flag }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SFTP_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          cat > /tmp/lftp_deploy.txt <<LFTP_EOF
+          set sftp:connect-program "ssh -a -x -o StrictHostKeyChecking=no -i $HOME/.ssh/deploy_key -p ${SFTP_PORT}"
+          open sftp://${SFTP_USER}@${SFTP_HOST}:${SFTP_PORT}
+          mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/Go2My.Link/public_html/ ${BASE}/Go2My.Link/${TARGET}/
+          mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/G2My.Link/public_html/ ${BASE}/G2My.Link/${TARGET}/
+          mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/Lnks.page/public_html/ ${BASE}/Lnks.page/${TARGET}/
+          mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES $PHASE2_EXCLUDES web/ ${BASE}/
+          bye
+          LFTP_EOF
+          lftp -f /tmp/lftp_deploy.txt
+          rm -f ~/.ssh/deploy_key
+
+      # -------------------------------------------------------------------
+      # Deploy via password (fallback)
+      # -------------------------------------------------------------------
+      - name: Deploy (password)
+        if: steps.auth.outputs.method == 'password'
+        env:
+          SFTP_USER: ${{ secrets.SFTP_USER }}
+          SFTP_PASS: ${{ secrets.SFTP_PASSWORD }}
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_PORT: ${{ steps.port.outputs.port }}
+          BASE: ${{ secrets.SFTP_BASE_PATH }}
+          TARGET: ${{ steps.channel.outputs.target }}
+          DRY: ${{ steps.dry.outputs.flag }}
+        run: |
+          cat > /tmp/lftp_deploy.txt <<LFTP_EOF
+          set sftp:auto-confirm yes
+          set ssl:verify-certificate no
+          open -u "${SFTP_USER},${SFTP_PASS}" sftp://${SFTP_HOST}:${SFTP_PORT}
+          mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/Go2My.Link/public_html/ ${BASE}/Go2My.Link/${TARGET}/
+          mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/G2My.Link/public_html/ ${BASE}/G2My.Link/${TARGET}/
+          mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/Lnks.page/public_html/ ${BASE}/Lnks.page/${TARGET}/
+          mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES $PHASE2_EXCLUDES web/ ${BASE}/
+          bye
+          LFTP_EOF
+          lftp -f /tmp/lftp_deploy.txt
+
+      - name: Deploy summary
+        if: always()
+        env:
+          TARGET: ${{ steps.channel.outputs.target }}
+          METHOD: ${{ steps.auth.outputs.method }}
+          DRY: ${{ steps.dry.outputs.flag }}
+        run: |
+          {
+            echo "## 🚀 SFTP Deploy"
+            echo ""
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| Branch | ${{ github.ref_name }} |"
+            echo "| Channel web root | $TARGET |"
+            echo "| Auth method | $METHOD |"
+            echo "| Dry run | ${DRY:-no} |"
+          } >> "$GITHUB_STEP_SUMMARY"

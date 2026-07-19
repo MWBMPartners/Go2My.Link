@@ -175,6 +175,37 @@ function g2ml_decrypt(string $encrypted, ?string $key = null): string|false
     if ($plaintext === false)
     {
         error_log('[Go2My.Link] ERROR: openssl_decrypt failed (wrong key or tampered data): ' . openssl_error_string());
+
+        // FALLBACK (key-rotation support): when the caller used the default
+        // primary key (ENCRYPTION_SALT, i.e. $key was not explicitly
+        // supplied) and a secondary key is configured, retry decryption with
+        // it before giving up. This lets values encrypted before an
+        // ENCRYPTION_SALT rotation keep decrypting, as long as the retired
+        // key is kept around as ENCRYPTION_KEY_SECONDARY.
+        if ($key === null && defined('ENCRYPTION_KEY_SECONDARY'))
+        {
+            $secondaryKey = ENCRYPTION_KEY_SECONDARY;
+
+            if (is_string($secondaryKey) && $secondaryKey !== '' && $secondaryKey !== 'CHANGE_ME_TO_ANOTHER_64_CHAR_HEX_STRING')
+            {
+                $derivedSecondaryKey = hex2bin(substr(hash('sha256', $secondaryKey), 0, 64));
+
+                $secondaryPlaintext = openssl_decrypt(
+                    $ciphertext,
+                    'aes-256-gcm',
+                    $derivedSecondaryKey,
+                    OPENSSL_RAW_DATA,
+                    $iv,
+                    $tag
+                );
+
+                if ($secondaryPlaintext !== false)
+                {
+                    return $secondaryPlaintext;
+                }
+            }
+        }
+
         return false;
     }
 
@@ -454,6 +485,49 @@ function g2ml_sanitiseURL(?string $url): string|false
 // ============================================================================
 
 /**
+ * Determine whether a string is a STRICT canonical IPv4 dotted-quad literal:
+ * exactly 4 dot-separated decimal octets, each 0-255, with no leading zeros
+ * (other than a bare "0").
+ *
+ * inet_pton() itself is lenient about non-canonical forms — for example it
+ * will happily parse "0177.0.0.1" — but curl and the WHATWG URL parser used
+ * by browsers treat a leading-zero octet as OCTAL, so "0177" becomes decimal
+ * 127 there, not 177. If this code trusted inet_pton's parse of such a
+ * non-canonical literal, a destination host string could be classified here
+ * as one (public) address while the browser/curl actually connects to a
+ * completely different one (e.g. loopback) — an SSRF allowlist bypass.
+ *
+ * @param  string $host  The candidate host/IP string to test.
+ * @return bool          True only when $host is a canonical IPv4 dotted-quad.
+ *
+ * 📖 Reference: https://url.spec.whatwg.org/#concept-ipv4-parser
+ */
+function g2ml_isCanonicalIPv4Literal(string $host): bool
+{
+    $octets = explode('.', $host);
+
+    if (count($octets) !== 4)
+    {
+        return false;
+    }
+
+    foreach ($octets as $octet)
+    {
+        if (preg_match('/^(0|[1-9][0-9]{0,2})$/', $octet) !== 1)
+        {
+            return false;
+        }
+
+        if ((int) $octet > 255)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
  * Determine whether an IP address is private, reserved, loopback, link-local,
  * or otherwise unsafe as an outbound destination.
  *
@@ -493,6 +567,17 @@ function g2ml_isPrivateOrReservedIp(string $ip): bool
     // ------------------------------------------------------------------------
     if (strlen($packed) === 4)
     {
+        // SECURITY: inet_pton silently reparses a non-canonical dotted-quad
+        // (e.g. a leading-zero octet) rather than rejecting it, but curl and
+        // browsers (WHATWG URL parser) read a leading-zero octet as OCTAL.
+        // We cannot trust the classification below unless $ip is the exact
+        // canonical decimal form inet_pton just produced — reject anything
+        // else outright (fail closed).
+        if (g2ml_isCanonicalIPv4Literal($ip) === false)
+        {
+            return true;
+        }
+
         $alwaysBlockedV4 = [
             '0.0.0.0/8',        // "this" network / unspecified
             '127.0.0.0/8',      // loopback
@@ -624,6 +709,13 @@ function g2ml_privateDestinationsAllowed(): bool
  *   - Returns true only when the host resolves to at least one address and
  *     EVERY resolved address is allowed.
  *
+ * This is a thin boolean wrapper around g2ml_resolveAllowedDestinationIps() —
+ * see that function for the full resolution logic. A caller that also needs
+ * to know WHICH IP(s) were validated (for example to pin an outbound request
+ * to the exact address that was checked, avoiding a DNS-rebinding TOCTOU
+ * between the check and the fetch) should call that function directly instead
+ * of re-resolving the host itself.
+ *
  * @param  string $url  The destination URL to vet.
  * @return bool         True when the destination host is allowed.
  *
@@ -631,6 +723,32 @@ function g2ml_privateDestinationsAllowed(): bool
  * 📖 Reference: https://www.php.net/manual/en/function.dns-get-record.php
  */
 function g2ml_destinationHostIsAllowed(string $url): bool
+{
+    return g2ml_resolveAllowedDestinationIps($url) !== false;
+}
+
+/**
+ * Resolve a destination URL's host and return every candidate IP address,
+ * having already confirmed EVERY one of them is allowed under the active
+ * SSRF policy — or return false when the URL/host is invalid, unresolvable,
+ * or any resolved address is disallowed.
+ *
+ * This holds the full resolution + vetting logic that g2ml_destinationHostIsAllowed()
+ * wraps (see that function's doc block for the policy). It is exposed
+ * separately so a caller that is about to make the actual outbound request
+ * can reuse the SAME resolved IP(s) for the fetch, instead of independently
+ * re-resolving the hostname — re-resolving opens a DNS-rebinding TOCTOU
+ * window (attacker DNS answers "public" for the check, then "internal" for
+ * the fetch, e.g. via a TTL=0 record).
+ *
+ * @param  string $url  The destination URL to vet and resolve.
+ * @return array|false  The list of validated candidate IPs (in resolution
+ *                       order), or false when the destination is not allowed.
+ *
+ * 📖 Reference: https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
+ * 📖 Reference: https://www.php.net/manual/en/function.dns-get-record.php
+ */
+function g2ml_resolveAllowedDestinationIps(string $url): array|false
 {
     $url = trim($url);
 
@@ -686,9 +804,24 @@ function g2ml_destinationHostIsAllowed(string $url): bool
     // ------------------------------------------------------------------------
     $candidateIPs = [];
 
+    $packedHost = @inet_pton($host);
+
     // If the host is itself an IP literal, check it directly (no DNS).
-    if (@inet_pton($host) !== false)
+    if ($packedHost !== false)
     {
+        // SECURITY: a 4-byte packed result means inet_pton parsed $host as
+        // IPv4. inet_pton silently reparses a non-canonical dotted-quad (e.g.
+        // a leading-zero octet) rather than rejecting it, but curl and
+        // browsers (WHATWG URL parser) read a leading-zero octet as OCTAL —
+        // so "0177.0.0.1" would be classified here as 177.0.0.1 (public)
+        // while actually connecting to 127.0.0.1 (loopback). Reject any
+        // non-canonical dotted-quad outright (fail closed) instead of trusting
+        // inet_pton's reinterpretation.
+        if (strlen($packedHost) === 4 && g2ml_isCanonicalIPv4Literal($host) === false)
+        {
+            return false;
+        }
+
         $candidateIPs[] = $host;
     }
     else
@@ -747,7 +880,7 @@ function g2ml_destinationHostIsAllowed(string $url): bool
         }
     }
 
-    return true;
+    return $candidateIPs;
 }
 
 /**
