@@ -44,8 +44,15 @@ declare(strict_types=1);
  * only if it is already defined (function_exists guard), so the helpers are
  * safe to unit-test without a database connection.
  *
- * Dependencies (all optional / soft): security.php (g2ml_sanitiseOutput()),
- *               settings.php (getSetting()).
+ * 🔒 Tier 1 (local stored avatar) URLs are user-settable data, so they are run
+ *    through g2ml_sanitiseURL() (http/https scheme allowlist) before being
+ *    trusted as an image source. A URL that fails sanitisation is treated as
+ *    absent and the cascade falls through to the next tier — this mirrors
+ *    the same allowlist already used for redirect destinations in
+ *    expired.php / validating.php.
+ *
+ * Dependencies (all optional / soft): security.php (g2ml_sanitiseOutput(),
+ *               g2ml_sanitiseURL()), settings.php (getSetting()).
  *
  * @package    Go2My.Link
  * @subpackage Functions
@@ -384,11 +391,25 @@ function g2ml_resolveAvatar(array $user, int $size = 48): array
 
     if ($storedAvatar !== '')
     {
-        return [
-            'type'   => 'image',
-            'url'    => $storedAvatar,
-            'source' => 'local',
-        ];
+        // 🔒 Never trust a stored avatar URL as-is: it is user-settable data
+        // (no writer exists yet, but a profile-photo/SSO tier will populate
+        // it), so allowlist it to http/https via g2ml_sanitiseURL() before
+        // treating it as a safe <img src>. A rejected URL is NOT emitted —
+        // the cascade falls through to the next tier instead.
+        $sanitisedAvatar = false;
+        if (function_exists('g2ml_sanitiseURL'))
+        {
+            $sanitisedAvatar = g2ml_sanitiseURL($storedAvatar);
+        }
+
+        if ($sanitisedAvatar !== false && $sanitisedAvatar !== '')
+        {
+            return [
+                'type'   => 'image',
+                'url'    => $sanitisedAvatar,
+                'source' => 'local',
+            ];
+        }
     }
 
     // --- Tier 2: Microsoft 365 (SSO) ---------------------------------------
