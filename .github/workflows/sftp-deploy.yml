@@ -39,14 +39,37 @@
 # fully isolated preview channels, gate the Phase-2 mirror to `main` only.
 #
 # ---------------------------------------------------------------------------
-# LIVE-STATE PROTECTION (never touched by --delete)
+# LIVE-STATE PROTECTION  (see #158 — read this before touching --delete)
 # ---------------------------------------------------------------------------
-# The mirror uses --delete so files removed from the repo are pruned remotely,
-# but the following server-owned paths are hard-excluded so a deploy can never
-# delete live credentials or user data:
-#   _auth_keys/auth_creds.php   (installer-written DB creds — gitignored)
-#   _auth_keys/.install_token, _auth_keys/.installed   (installer runtime)
-#   _uploads/     (user uploads)      _backups/   (server backups)
+# Phase 1 (the three component web roots) uses --delete: those roots are wholly
+# repo-owned, so pruning what the repo no longer ships is correct.
+#
+# Phase 2 (everything else → SFTP_BASE_PATH) does NOT use --delete. It is
+# additive only. A 2026-07-19 dry run proved --delete there would issue 47
+# removals against live server content, via two distinct mechanisms:
+#
+#   (A) A repo directory holding ONLY .gitkeep looks EMPTY at the source,
+#       because COMMON_EXCLUDES excludes .gitkeep and ~/.lftprc sets
+#       mirror:no-empty-dirs. --delete then removed the live remote
+#       counterpart: private_html/, public_html_redir/, per-component
+#       _includes/ + _libraries/, Lnks.page/_functions/.
+#
+#   (B) Paths that exist only on the server, never in the repo:
+#       <Comp>/_auth_keys/  (installer-written thin includes of the shared
+#       auth_creds.php — deleting these is an instant total outage),
+#       _admin/public_html/pages/errors/, public_html_landing/img/, and an
+#       entire live brand-assets site at SFTP_BASE_PATH itself (/index.php,
+#       /BrandKit, /logos, /docs, /pwa, /press-kit, …).
+#
+# Server-owned paths are ALSO hard-excluded, as defence in depth, so that
+# re-introducing --delete cannot silently destroy them:
+#   _auth_keys/     (installer-written DB creds + runtime — gitignored)
+#   private_html/   (Dreamhost private area)
+#   _uploads/       (user uploads)        _backups/  (server backups)
+#   .dh-diag        (Dreamhost-generated diagnostics)
+#
+# ⚠️  Before ARMING (vars.SFTP_ENABLED=true), always run a workflow_dispatch
+#     with dry_run=true and read the removal list. See docs/DEPLOYMENT.md.
 #
 # ---------------------------------------------------------------------------
 # SECRETS (repo → Settings → Secrets and variables → Actions → Secrets)
@@ -182,6 +205,9 @@ jobs:
         --exclude '\.installed$'
         --exclude '(^|/)_uploads/'
         --exclude '(^|/)_backups/'
+        --exclude '(^|/)_auth_keys/'
+        --exclude '(^|/)private_html/'
+        --exclude '\.dh-diag$'
       # Anchored to the component roots so ONLY the three top-level
       # public_html/ web roots are held back (they are owned by Phase 1);
       # <Comp>/_admin/public_html/, public_html_landing/, public_html_redir/
@@ -269,9 +295,13 @@ jobs:
 
       # -------------------------------------------------------------------
       # Deploy via SSH key
-      # Phase 1: each component public_html → its channel web root (--delete).
-      # Phase 2: everything else under web/ → SFTP_BASE_PATH (--delete, with the
-      #          channel roots + live-state paths excluded).
+      # Phase 1: each component public_html → its channel web root (--delete;
+      #          these roots are wholly repo-owned, so pruning is correct).
+      # Phase 2: everything else under web/ → SFTP_BASE_PATH. ADDITIVE — no
+      #          --delete. See the LIVE-STATE PROTECTION note above and #158:
+      #          SFTP_BASE_PATH also hosts unrelated live content, and
+      #          .gitkeep-only repo dirs read as empty, so --delete here
+      #          destroys server state. Do not re-add it.
       # -------------------------------------------------------------------
       - name: Deploy (SSH key)
         if: steps.auth.outputs.method == 'key'
@@ -293,7 +323,7 @@ jobs:
           mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/Go2My.Link/public_html/ ${BASE}/Go2My.Link/${TARGET}/
           mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/G2My.Link/public_html/ ${BASE}/G2My.Link/${TARGET}/
           mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/Lnks.page/public_html/ ${BASE}/Lnks.page/${TARGET}/
-          mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES $PHASE2_EXCLUDES web/ ${BASE}/
+          mirror --reverse ${DRY} --no-empty-dirs $COMMON_EXCLUDES $PHASE2_EXCLUDES web/ ${BASE}/
           bye
           LFTP_EOF
           lftp -f /tmp/lftp_deploy.txt
@@ -320,7 +350,7 @@ jobs:
           mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/Go2My.Link/public_html/ ${BASE}/Go2My.Link/${TARGET}/
           mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/G2My.Link/public_html/ ${BASE}/G2My.Link/${TARGET}/
           mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/Lnks.page/public_html/ ${BASE}/Lnks.page/${TARGET}/
-          mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES $PHASE2_EXCLUDES web/ ${BASE}/
+          mirror --reverse ${DRY} --no-empty-dirs $COMMON_EXCLUDES $PHASE2_EXCLUDES web/ ${BASE}/
           bye
           LFTP_EOF
           lftp -f /tmp/lftp_deploy.txt

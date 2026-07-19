@@ -66,28 +66,100 @@ Each domain maps to a specific `public_html` directory:
 
 ## 🚀 Deployment Process
 
+Deployment is automated by **`.github/workflows/sftp-deploy.yml`** (lftp mirror over
+SFTP to Dreamhost). Manual VS Code FTP-Sync is no longer the deployment path.
+
 ### 🛠️ Development Workflow
 
-1. ✏️ **Edit locally** in VS Code
-2. 📤 **Sync via FTP** using the FTP Sync extension (`ftp-sync.json` config, excluded from git)
-3. 🧪 **Test on staging** (`alpha.go2my.link` or `beta.go2my.link`)
-4. 🟢 **Promote to production** by syncing to `public_html/`
+1. ✏️ **Edit locally** and commit to a feature branch
+2. 🔀 **Merge to `alpha`** → deploys to the `public_html_dev_alpha` channel web roots
+3. 🧪 **Test on staging** (`alpha.go2my.link` / `beta.go2my.link`)
+4. 🟢 **Promote to `main`** → deploys to the production `public_html` web roots
 
-### 📋 Manual Deployment Steps
-
-1. 📤 Upload changed files via SFTP to the appropriate `public_html/` directory
-2. 🔒 Verify file permissions (644 for files, 755 for directories)
-3. ✅ Test the deployed changes on the live site
-4. 🗑️ Clear any server-side caches if applicable
-
-### 🤖 GitHub Actions (Future)
-
-Two GitHub Actions workflows are planned:
+### 🤖 CI/CD workflows
 
 | Workflow | Trigger | Purpose |
 | --- | --- | --- |
-| 🔍 `php-lint.yml` | Push to any branch | PHP syntax validation |
-| 🚢 `sftp-deploy.yml` | Manual trigger | SFTP deployment (disabled initially) |
+| 🔍 `ci.yml` | Push to `main`/`alpha`/`beta`, all PRs | Frontend + Backend gates (PHPStan, PHPCS) |
+| 🔍 `php-lint.yml` | Push / PR | PHP syntax validation |
+| 🧹 `lint.yml` | Changes under `.github/workflows/**` | `actionlint` workflow linting |
+| 🚢 `sftp-deploy.yml` | Push to `main`/`alpha`/`beta` touching `web/**`; manual dispatch | SFTP deployment (**gated by `vars.SFTP_ENABLED`**) |
+| 🏷️ `release.yml` | Tag push | Per-component releases |
+
+### 🔀 How the mirror maps repo → server
+
+Two phases run against a single remote root (`secrets.SFTP_BASE_PATH`):
+
+| Phase | Source | Destination | `--delete`? |
+| --- | --- | --- | --- |
+| **1** | `web/<Comp>/public_html/` | `<Comp>/public_html[_dev_alpha\|_dev_beta]/` per branch | ✅ **Yes** — these roots are wholly repo-owned |
+| **2** | everything else under `web/` | `SFTP_BASE_PATH/` | ❌ **No** — additive only |
+
+> ⚠️ Phase 2 is **deliberately additive**. See [#158](https://github.com/MWBMPartners/Go2My.Link/issues/158):
+> `SFTP_BASE_PATH` also hosts unrelated live content, and repo directories that
+> contain only `.gitkeep` read as *empty* to lftp (because `.gitkeep` is excluded
+> and `mirror:no-empty-dirs` is set), so `--delete` there prunes live server
+> state — including the per-component `_auth_keys/` directories, which would
+> cause an immediate total outage. **Do not re-add `--delete` to Phase 2.**
+
+### 🔐 Arming and running a deploy
+
+The pipeline ships **disarmed**. `vars.SFTP_ENABLED` must be `'true'` for the
+deploy job to run at all (the pre-deploy PHP/JS/JSON checks always run).
+
+**Mandatory procedure — never skip the dry run:**
+
+**1. 🔎 Dry run first.** Actions → *SFTP Deploy* → *Run workflow* → pick the
+branch → leave `dry_run` = **true** (the default). Or:
+
+```bash
+gh workflow run sftp-deploy.yml --ref alpha -f dry_run=true
+```
+
+The job is skipped unless `SFTP_ENABLED` is `'true'`, so arm it first if needed:
+
+```bash
+gh api -X PATCH repos/MWBMPartners/Go2My.Link/actions/variables/SFTP_ENABLED \
+  -f name=SFTP_ENABLED -f value=true
+```
+
+**2. 📋 Read the removal list.** Pull the log and inspect every deletion:
+
+```bash
+gh run view <run-id> --log | grep -oE '(rm -r|rm) "[^"]+"'
+```
+
+✋ **Every removal must be understood and intended.** If anything on that list
+is server-owned or unfamiliar, **stop** and fix the excludes before arming.
+
+**3. 🚀 Deploy for real** — re-run the dispatch with `dry_run` = `false`, or push
+to `main`/`alpha`/`beta`.
+
+**4. 🔒 Disarm again** if you do not want subsequent pushes auto-deploying:
+
+```bash
+gh api -X PATCH repos/MWBMPartners/Go2My.Link/actions/variables/SFTP_ENABLED \
+  -f name=SFTP_ENABLED -f value=false
+```
+
+### 🛡️ Paths the mirror never touches
+
+Excluded from **every** phase, so a deploy can never destroy live state:
+
+| Path | Why |
+| --- | --- |
+| `_auth_keys/` | Installer-written DB credentials + the per-component thin includes |
+| `private_html/` | Dreamhost private area |
+| `_uploads/` | User uploads |
+| `_backups/` | Server backups |
+| `.dh-diag` | Dreamhost-generated diagnostics |
+| `.git/`, `.github/`, `.vscode/`, `.idea/` | VCS / tooling metadata |
+| `README.md`, `DEV_NOTES.md`, `CLAUDE.md`, `.gitignore`, `.gitkeep`, `.gitattributes` | Repo docs and markers |
+
+> 🧪 The exclude patterns are **single-quoted** in the workflow env blocks. This is
+> load-bearing: lftp tokenises the generated command script with its own lexer and
+> treats an unquoted `|` as a pipe operator, which silently corrupts any
+> `(^|/)…` regex. See [#156](https://github.com/MWBMPartners/Go2My.Link/issues/156).
 
 ## 🔍 Environment Detection
 
