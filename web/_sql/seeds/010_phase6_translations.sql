@@ -349,6 +349,7 @@ VALUES
 ('en-GB', 'export.download_button', 'Download Export', 'Data export page', 1),
 ('en-GB', 'export.download_ready', 'Your data export is ready for download.', 'Data export page', 1),
 ('en-GB', 'export.error_csrf', 'Session expired. Please try again.', 'Data export page', 1),
+('en-GB', 'export.error_download_unavailable', 'That download link is unavailable. It may be invalid or expired — you can request a new export below.', 'Data export page', 1),
 ('en-GB', 'export.error_generic', 'Failed to generate export. Please try again later.', 'Data export page', 1),
 ('en-GB', 'export.expired', 'Expired', 'Data export page', 1),
 ('en-GB', 'export.expires', 'Expires', 'Data export page', 1),

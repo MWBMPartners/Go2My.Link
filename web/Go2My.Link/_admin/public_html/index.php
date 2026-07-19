@@ -88,6 +88,28 @@ $pagesDir = __DIR__ . DIRECTORY_SEPARATOR . 'pages';
 $resolved = resolveRoute($route, $pagesDir);
 
 // ============================================================================
+// 📥 Step 5b: GDPR Data Export Download (#162)
+// ============================================================================
+// A GET ?download=<requestUID> request against /privacy/export must send its
+// own Content-Type/Content-Disposition headers and exit — but Step 6 below
+// ALWAYS requires header.php + nav.php (which echo real HTML; there is no
+// output buffering anywhere in this app) before the resolved page file ever
+// runs. By that point a header() call would silently fail ("headers already
+// sent"), exactly as documented in pages/analytics/index.php's own docblock
+// and the reason analytics-export.php (#44) is a standalone entry point
+// rather than a pages/ file. Intercepting here — BEFORE Step 6 — is the
+// equivalent fix for this route, without needing a second entry point or a
+// different URL: see web/_functions/data_rights.php's own section docblock
+// for the full rationale.
+// ============================================================================
+
+if ($resolved['segments'] === ['privacy', 'export'] && isset($_GET['download']))
+{
+    g2ml_handleDataExportDownloadRequest();
+    exit;
+}
+
+// ============================================================================
 // 📄 Step 6: Render the Page
 // ============================================================================
 
