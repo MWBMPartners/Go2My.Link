@@ -17,9 +17,10 @@
  * and redirect response building.
  *
  * Functions:
- *   - resolveShortCode()        — Resolve a short code to its destination
- *   - validateDestination()     — HTTP HEAD check for destination URL
- *   - buildRedirectResponse()   — Issue the HTTP redirect and exit
+ *   - resolveShortCode()             — Resolve a short code to its destination
+ *   - g2ml_buildPinnedDestinationUrl() — Rebuild a URL against a resolved IP
+ *   - validateDestination()          — HTTP HEAD check for destination URL
+ *   - buildRedirectResponse()        — Issue the HTTP redirect and exit
  *
  * Dependencies: db_query.php, settings.php (loaded via page_init.php)
  *
@@ -95,6 +96,53 @@ function resolveShortCode(string $domain, string $code): array
 }
 
 // ============================================================================
+// 🧷 g2ml_buildPinnedDestinationUrl — Rebuild a URL against a resolved IP
+// ============================================================================
+// Reconstructs a request URL with the host component replaced by an already
+// resolved-and-validated IP address, keeping the original scheme, port,
+// path, and query string. Used by validateDestination() to pin the outbound
+// HEAD request to the exact address that was vetted, closing the
+// DNS-rebinding TOCTOU window between the SSRF check and the fetch.
+//
+// @param  array  $urlParts  parse_url() output for the original destination URL
+// @param  string $pinnedIp  The validated IP address to connect to
+// @return string            The rebuilt URL, with $pinnedIp as its host
+// ============================================================================
+function g2ml_buildPinnedDestinationUrl(array $urlParts, string $pinnedIp): string
+{
+    $scheme = 'http';
+
+    if (isset($urlParts['scheme']))
+    {
+        $scheme = strtolower($urlParts['scheme']);
+    }
+
+    // Bracket an IPv6 literal so it is a valid URL host component.
+    $hostComponent = $pinnedIp;
+
+    if (strpos($pinnedIp, ':') !== false)
+    {
+        $hostComponent = '[' . $pinnedIp . ']';
+    }
+
+    $pinnedUrl = $scheme . '://' . $hostComponent;
+
+    if (isset($urlParts['port']))
+    {
+        $pinnedUrl .= ':' . $urlParts['port'];
+    }
+
+    $pinnedUrl .= $urlParts['path'] ?? '/';
+
+    if (isset($urlParts['query']) && $urlParts['query'] !== '')
+    {
+        $pinnedUrl .= '?' . $urlParts['query'];
+    }
+
+    return $pinnedUrl;
+}
+
+// ============================================================================
 // ✅ validateDestination — Check if a destination URL is accessible
 // ============================================================================
 // Performs an HTTP HEAD request to verify the destination URL returns a
@@ -151,9 +199,11 @@ function validateDestination(string $url, int $timeout = 5): array
     // to an internal address. On rejection we return the existing
     // validation-failed shape without touching the network.
     //
-    // 📖 Reference: web/_functions/security.php — g2ml_destinationHostIsAllowed()
+    // 📖 Reference: web/_functions/security.php — g2ml_resolveAllowedDestinationIps()
     // ------------------------------------------------------------------------
-    if (g2ml_destinationHostIsAllowed($url) === false)
+    $validatedDestinationIPs = g2ml_resolveAllowedDestinationIps($url);
+
+    if ($validatedDestinationIPs === false)
     {
         $result['error'] = 'Destination host is not permitted';
 
@@ -168,6 +218,57 @@ function validateDestination(string $url, int $timeout = 5): array
         return $result;
     }
 
+    // ------------------------------------------------------------------------
+    // 🛡️ DNS-rebinding guard: pin the outbound HEAD request to the EXACT IP
+    // just validated above, rather than letting get_headers() perform its own
+    // independent DNS resolution. Without this, an attacker controlling DNS
+    // for the destination host (e.g. a TTL=0 record) could answer with a
+    // public address for the check above and a private/internal one moments
+    // later for the actual fetch (TOCTOU). We resolve once, validate once,
+    // and connect to that exact address — sending the original Host header
+    // and TLS SNI/peer name so virtual-hosted destinations still resolve and
+    // verify correctly.
+    //
+    // 📖 Reference: web/G2My.Link/_functions/redirect_resolver.php — g2ml_buildPinnedDestinationUrl()
+    // ------------------------------------------------------------------------
+    $urlParts = parse_url($url);
+
+    if ($urlParts === false || !is_array($urlParts) || !isset($urlParts['host']) || $urlParts['host'] === '')
+    {
+        $result['error'] = 'Destination host is not permitted';
+
+        if (isset($_SESSION))
+        {
+            $_SESSION[$cacheKey] = [
+                'result'    => $result,
+                'timestamp' => time(),
+            ];
+        }
+
+        return $result;
+    }
+
+    $originalHost = $urlParts['host'];
+
+    // A bracketed IPv6 literal arrives as "[::1]"; strip the brackets for use
+    // as the Host header value and TLS peer name.
+    if (strlen($originalHost) >= 2 && $originalHost[0] === '[' && $originalHost[strlen($originalHost) - 1] === ']')
+    {
+        $originalHost = substr($originalHost, 1, -1);
+    }
+
+    $hostHeaderValue = $originalHost;
+
+    if (isset($urlParts['port']))
+    {
+        $hostHeaderValue .= ':' . $urlParts['port'];
+    }
+
+    // Any one of the returned addresses was already required to be allowed —
+    // pin to the first.
+    $pinnedIp  = $validatedDestinationIPs[0];
+    $pinnedUrl = g2ml_buildPinnedDestinationUrl($urlParts, $pinnedIp);
+
     // Build the stream context for the HEAD request
     // 📖 Reference: https://www.php.net/manual/en/context.http.php
     $contextOptions = [
@@ -178,11 +279,18 @@ function validateDestination(string $url, int $timeout = 5): array
             'max_redirects'    => 0,
             'ignore_errors'    => true,     // Return headers even for error status codes
             'user_agent'       => 'Go2My.Link URL Validator/1.0',
-            'header'           => "Accept: */*\r\n",
+            // A custom Host header here overrides the one the stream wrapper
+            // would otherwise derive from the (now IP-literal) request URL.
+            'header'           => "Accept: */*\r\nHost: " . $hostHeaderValue . "\r\n",
         ],
         'ssl' => [
             'verify_peer'      => true,
             'verify_peer_name' => true,
+            // Verify the certificate against — and send SNI for — the
+            // ORIGINAL hostname, even though the connection target below is
+            // the pinned IP address.
+            'peer_name'        => $originalHost,
+            'SNI_enabled'      => true,
         ],
     ];
 
@@ -194,7 +302,7 @@ function validateDestination(string $url, int $timeout = 5): array
         // 📖 Reference: https://www.php.net/manual/en/function.get-headers.php
         if (version_compare(PHP_VERSION, '8.4.0', '>='))
         {
-            $headers = @get_headers($url, true, $context);
+            $headers = @get_headers($pinnedUrl, true, $context);
         }
         else
         {
@@ -202,7 +310,7 @@ function validateDestination(string $url, int $timeout = 5): array
             // 📖 Reference: https://www.php.net/manual/en/function.stream-context-set-default.php
             $previousContext = stream_context_get_default();
             stream_context_set_default($contextOptions);
-            $headers = @get_headers($url, true);
+            $headers = @get_headers($pinnedUrl, true);
             stream_context_set_default(stream_context_get_options($previousContext));
         }
 

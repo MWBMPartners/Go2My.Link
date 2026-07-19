@@ -72,6 +72,8 @@ RewriteRule ^_functions(/|$) - [F,L]
 RewriteRule ^_libraries(/|$) - [F,L]
 RewriteRule ^_uploads(/|$) - [F,L]
 RewriteRule ^_backups(/|$) - [F,L]
+RewriteRule ^_sql(/|$) - [F,L]
+RewriteRule ^_schemas(/|$) - [F,L]
 
 # =============================================================================
 # Block Access to Sensitive Files
