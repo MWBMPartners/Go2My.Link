@@ -54,7 +54,11 @@ jobs:
   deploy:
     name: Deploy via SFTP
     runs-on: ubuntu-latest
-    if: false  # ⚠️ DISABLED — remove this line when ready to enable
+    # Disabled by default. To enable, set the repo variable
+    # SFTP_DEPLOY_ENABLED to 'true' (Settings → Secrets and variables →
+    # Actions → Variables). Using a variable gate instead of `if: false`
+    # keeps the workflow lint-clean while staying off until you opt in.
+    if: ${{ vars.SFTP_DEPLOY_ENABLED == 'true' }}
 
     steps:
       - name: Checkout code
