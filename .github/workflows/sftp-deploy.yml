@@ -116,7 +116,7 @@ jobs:
           parallel-lint --exclude vendor --exclude _libraries --exclude .git web/
 
       - name: Setup Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4.4.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           node-version: '20'
 
@@ -143,9 +143,19 @@ jobs:
     # Hard cap so a stalled SFTP mirror can't hang near the 6h Actions ceiling.
     timeout-minutes: 30
 
-    # Shared lftp mirror flags. Anchored regex excludes; single-quoted so YAML
-    # passes them literally and they are referenced inside double quotes where
-    # the shell will not glob-expand them.
+    # Shared lftp mirror flags — anchored regex excludes.
+    #
+    # ⚠️  EACH PATTERN MUST BE SINGLE-QUOTED. These strings are interpolated
+    # into the generated lftp command script, and lftp's own lexer — not the
+    # shell — tokenises that script. lftp treats an unquoted `|` as its pipe
+    # operator, so a bare `(^|/)\.git/` is split into `(^` + a pipe, and the
+    # mirror dies with:
+    #
+    #     mirror: regular expression `(^': Unmatched ( or \(
+    #
+    # That aborts the deploy (it fails closed — nothing is transferred or
+    # deleted). Single quotes make lftp pass each pattern through verbatim.
+    # Verified against lftp 4.9.2, the version the runner installs.
     #
     #   COMMON_EXCLUDES  — applied to every mirror (repo cruft + live-state
     #                      protection: credentials, installer runtime, uploads,
@@ -155,33 +165,33 @@ jobs:
     #                      (those are owned by the per-component Phase-1 mirrors).
     env:
       COMMON_EXCLUDES: >-
-        --exclude \.DS_Store$
-        --exclude Thumbs\.db$
-        --exclude (^|/)\.git/
-        --exclude (^|/)\.github/
-        --exclude \.gitignore$
-        --exclude \.gitkeep$
-        --exclude \.gitattributes$
-        --exclude (^|/)README\.md$
-        --exclude (^|/)DEV_NOTES\.md$
-        --exclude (^|/)CLAUDE\.md$
-        --exclude (^|/)\.vscode/
-        --exclude (^|/)\.idea/
-        --exclude auth_creds\.php$
-        --exclude \.install_token$
-        --exclude \.installed$
-        --exclude (^|/)_uploads/
-        --exclude (^|/)_backups/
+        --exclude '\.DS_Store$'
+        --exclude 'Thumbs\.db$'
+        --exclude '(^|/)\.git/'
+        --exclude '(^|/)\.github/'
+        --exclude '\.gitignore$'
+        --exclude '\.gitkeep$'
+        --exclude '\.gitattributes$'
+        --exclude '(^|/)README\.md$'
+        --exclude '(^|/)DEV_NOTES\.md$'
+        --exclude '(^|/)CLAUDE\.md$'
+        --exclude '(^|/)\.vscode/'
+        --exclude '(^|/)\.idea/'
+        --exclude 'auth_creds\.php$'
+        --exclude '\.install_token$'
+        --exclude '\.installed$'
+        --exclude '(^|/)_uploads/'
+        --exclude '(^|/)_backups/'
       # Anchored to the component roots so ONLY the three top-level
       # public_html/ web roots are held back (they are owned by Phase 1);
       # <Comp>/_admin/public_html/, public_html_landing/, public_html_redir/
       # are NOT matched and so still deploy to SFTP_BASE_PATH.
       PHASE2_EXCLUDES: >-
-        --exclude ^Go2My\.Link/public_html/
-        --exclude ^G2My\.Link/public_html/
-        --exclude ^Lnks\.page/public_html/
-        --exclude (^|/)public_html_dev_alpha/
-        --exclude (^|/)public_html_dev_beta/
+        --exclude '^Go2My\.Link/public_html/'
+        --exclude '^G2My\.Link/public_html/'
+        --exclude '^Lnks\.page/public_html/'
+        --exclude '(^|/)public_html_dev_alpha/'
+        --exclude '(^|/)public_html_dev_beta/'
 
     steps:
       - name: Checkout code
