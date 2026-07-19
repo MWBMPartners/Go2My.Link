@@ -2,7 +2,108 @@
 
 > Chronological log of significant Claude-assisted work, newest first. Portable
 > (repo-tracked) so the project's working history is available on every machine.
-> Companion to [.claude/memory/MEMORY.md](memory/MEMORY.md). Last updated **2026-07-18**.
+> Companion to [.claude/memory/MEMORY.md](memory/MEMORY.md). Last updated **2026-07-19**.
+
+---
+
+## 2026-07-19 — Lost-work recovery, branch re-alignment, and a CI/deploy hardening saga
+
+Branch: **`launch-prep/2026-07-09`**, rebased onto remote tip `52d1b89`. Today closed out
+the launch-prep cycle's remaining infrastructure risk: a cross-device recovery, a broken
+deploy pipeline found and fixed, a near-miss that would have wiped live server content, a
+CI gate that had silently been a no-op, and a cutover-day data bug.
+
+### ♻️ The lost-work event and recovery
+
+Work done 2026-07-09→18 lived on an unpushed branch on another device. Before that branch's
+history was known to be at risk, roughly **59 issues had already been closed citing commit
+SHAs** from that local work — SHAs that, once the branch was recovered and **rebased** onto
+the 9 commits the remote `launch-prep/2026-07-09` had gained independently in the meantime,
+**no longer existed**. The original recovered tip (`737c010`) was preserved in a verified git
+bundle before any rewriting. All 72 recovered commits were replayed on top of the remote
+tip; because the remote tip is an ancestor of the resulting branch, no force-push was
+required. **42 issues** were given a "commit references remapped" comment listing their
+correct, live SHAs. The deployment-workflow and PHPStan conflicts arising from the merge
+were resolved by keeping the safety-relevant work from **both** sides (see below).
+
+### 🚨 #156 — SFTP deploy broken on every run (100% failure)
+
+Production deploys had been failing since the Cycle-2 SFTP pipeline shipped: lftp parses its
+own mirror script with its own lexer, not the shell, so the unquoted `|` inside
+`--exclude '(^|/)\.git/'`-style regexes was read as lftp's **pipe operator**, splitting the
+pattern into garbage and aborting the regex compile. All four mirror phases died before
+connecting. **It failed closed** — verified with the exact runner lftp version (4.9.2) that
+the broken deploy never uploaded or deleted anything remotely. Fix: single-quote every
+pattern in `COMMON_EXCLUDES` / `PHASE2_EXCLUDES`.
+
+### 🚨 #158 — with deploy working, a dry run would have wiped live content
+
+Fixing #156 let the deploy run for the first time. A `workflow_dispatch` dry run against
+`alpha` surfaced **47 removal operations** it would issue against the live Dreamhost server:
+the three components' credential directories (`_auth_keys/`, via `rm -r` — a file-level
+exclude never protects a whole-directory removal), `private_html/` and `public_html_redir/`
+on each component, and — most surprising — an entire unrelated **brand-assets site living at
+the SFTP root** (`index.php`, `BrandKit/`, `logos/`, `press-kit/`, etc.), because the Phase-2
+"everything else" mirror mapped `web/` onto that same root and treated anything not in the
+repo as garbage to prune. Root causes: `.gitkeep`-only repository directories mirror as
+*empty* to lftp (so their live-server contents look deletable), and paths that exist only on
+the server were never accounted for. Fix: dropped `--delete` from the Phase-2 mirror (made it
+additive) and added directory-level excludes. **`vars.SFTP_ENABLED` was set back to `false`
+— deploy is disarmed** and must stay that way until the structural issue (a shared backend
+deploy path that also happens to serve an unrelated site) is properly resolved.
+
+### 🔍 #159 — PHPStan had been silently dead
+
+`phpstan.neon` used two configuration keys (`checkMissingIterableValueType`,
+`checkGenericClassInNonGenericObjectType`) that were valid in PHPStan 1.x but **removed** in
+2.x, which rejects unknown `parameters` keys outright. Because the CI step was
+`continue-on-error: true`, the aborted run never failed the build — it silently reported
+nothing, meaning **CI had been running zero static analysis** despite #76's close-out on
+2026-07-18 believing PHPStan was clean. Repaired the config for 2.x and added
+`dynamicConstantNames` for the per-entry-point `G2ML_*` constants (each component's
+`index.php` defines its own value, which previously caused PHPStan to treat shared code
+paths as unreachable).
+
+### 🚨 #160 — cutover-day defects found while reconciling the recovered branch
+
+Two silent cutover bugs, found empirically (MariaDB 11.8.6), both fixed:
+
+- **(a)** `migrations/001_migrate_organisations.sql` inserted migrated short domains
+  without `verificationStatus`, so they defaulted to `pending`. The router
+  (`domain_resolver.php`) only admits `verified` domains — every migrated partner short
+  domain would have **404'd** at cutover. Fixed by grandfathering these domains in as
+  `verified` (they were already live on the legacy platform) with an `ON DUPLICATE KEY
+  UPDATE` repair path for any row a prior run left `pending`.
+- **(b)** The `_auth_keys/` → `.auth/` per-component rename (landed earlier as part of the
+  recovered work) had **no live-server migration step**: the installer never created
+  `.auth/` on a fresh install, and the live server still has the old directory names, so
+  the first armed deploy would have taken all three sites down. Fixed: installer now
+  `mkdir`s `.auth/` (0700) when absent; added a defence-in-depth `.auth/` exclude to the
+  mirror; documented the one-off `mv` migration as a blocking pre-deploy step.
+
+### 🔀 PR #157 — re-aligned `main` and `alpha`
+
+`main` and `alpha` had diverged with **neither a superset** of the other: `main` had the
+Cycle-2 hardening (#133, real SFTP pipeline) but not #155's actionlint workflow; `alpha` had
+the actionlint workflow but not Cycle-2. Resolved the one conflict (`sftp-deploy.yml`) in
+favour of `main`'s real pipeline (`alpha`'s version was a 89-line stub that deployed
+nothing) and landed the #156 fix + the `actions/setup-node` v7 bump on `alpha` too. Net
+diff versus `main`: one added file (`lint.yml`).
+
+### ✅ Gates after this session
+
+`actionlint` clean · PHPStan level 5 **0 errors**, now an **enforced** hard CI gate ·
+`php -l` clean on 143 files · **519 unit tests passed / 0 failed** · PHPCS remains advisory
+(~9,694 errors, ~96% auto-fixable, tracked in #153 — deferred to post-launch).
+
+### Still outstanding
+
+Owner-blocked: **#93** (rotate the leaked legacy DB credential — still owed, do not infer it
+was rotated), the live-server `.auth/` rename, DB cutover including mandatory migrations
+**016** and **019**, legal sign-off on 5 `{{LEGAL_REVIEW_NEEDED}}` documents, SIGNula/billing
+owner credentials. Dev follow-ups: **#158** (re-arm deploy once the shared-backend-vs-brand-
+site structural issue is resolved), **#127** (`orgHandle` tech-debt decision), **#153**
+(phpcs conformance).
 
 ---
 
