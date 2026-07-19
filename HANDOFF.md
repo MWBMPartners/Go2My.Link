@@ -3,19 +3,58 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-19 · **Branch:** `launch-prep/2026-07-09` · **Rebased onto remote tip:** `52d1b89`.
-> **Status:** recovery and cross-device reconciliation complete — all **72** recovered commits were replayed on top of the **9** remote-only commits. ALL dev-buildable, owner-input-free work is DONE. Open issues **61 → 28**. Remaining work needs owner credentials/decisions (SIGNula, billing, tier naming, #93 cred rotation) or is owner ops/legal (below). **PHPStan is now an enforced CI gate** (see below).
+> **Last updated:** 2026-07-19 (post-recovery conformance audit) · **Branch:** `launch-prep/2026-07-09`.
+> **Status:** recovery + cross-device reconciliation complete and **independently verified**. A
+> full conformance audit of **all 156 issues + the project brief against the actual code** then
+> ran. It found **no closed issue whose code is missing** — the recovery is sound — but it did
+> surface **two GDPR launch blockers** and several product/compliance gaps that were previously
+> untracked. Open issues **38**. **PHPStan is an enforced CI gate.**
 
 ---
 
 ## ▶️ START HERE — pick-up point (next session / owner)
 
-**State in one line:** every dev-buildable, owner-input-free launch-prep item is DONE.
-Branch `launch-prep/2026-07-09` now combines the other device's **9 remote-only commits**
-(through `52d1b89`) with all **72 recovered commits**. Unit suite **519/0**; PHPStan L5
-clean and now an **enforced** CI gate. ⚠️ Do **NOT** merge the stale
-`main` (would resurrect the legacy engine + the #93 credential file). Launch is now gated on
-**owner actions + decisions**, not dev work.
+**State in one line:** the codebase is in good shape and the recovery is verified, but launch is
+**no longer** gated only on owner actions — the conformance audit found real code gaps, two of
+them GDPR blockers (#162, #163).
+
+⚠️ Do **NOT** merge the stale `main` (it would resurrect the legacy engine + the #93 credential
+file).
+
+### ✅ Verified independently this session (not taken on trust)
+
+| Check | Result |
+|---|---|
+| Conflict markers / rebase artifacts | none |
+| `php -l` across 143 files | **0 errors** |
+| Unit suite | **519 passed / 0 failed** |
+| PHPStan level 5 | **0 errors**, gate enforced (`continue-on-error: false`) |
+| `actionlint` | clean |
+| Deploy simulation (real lftp 4.9.2, seeded "server") | all live-only files survive; no secret leakage |
+| All 156 issues vs actual code | 93 implemented · 34 partial · 22 not implemented · **0 needing reopen** |
+
+### 🔴 NEW launch blockers found by the audit (were untracked)
+
+| # | Blocker |
+|---|---|
+| **#162** | **GDPR data export cannot be downloaded** — the UI emits `/privacy/export?download=<uid>` but **no code anywhere reads that parameter**. The privacy policy promises this. |
+| **#163** | **Account-deletion requests are never executed** — `g2ml_processDataDeletion()` and `g2ml_anonymiseUserData()` have **zero callers**. The policy commits to erasure within 30 days. |
+| #167 | Privacy policy publishes retention periods (90-day log purge, etc.) that **nothing enforces** — only the API request log has any retention code. |
+| #165 | **Individual (non-org) users get no analytics at all** — the dashboard hard-blocks the `[default]` org, i.e. every individually-registered user. |
+| #166 | Short URLs can be minted on an **unverified** custom domain that the resolver then refuses → dead links. (Creation-path mirror of #160.) |
+| #164 | Analytics dashboard renders **raw translation keys** on its four KPI tiles + CSV button (keys used but never seeded). |
+
+Issues #162, #163 and #167 share one unanswered question: **how does periodic work run on
+Dreamhost shared hosting?** (no assumable cron). Decide that once and all three become tractable.
+
+### ✅ Fixed this session
+
+- **#156** SFTP deploy was broken 100% — lftp parsed the `|` in `--exclude '(^|/)…'` as a pipe operator, aborting all four mirror phases. Failed closed, so nothing was ever uploaded or deleted.
+- **#158** (code half) — a dry run showed **47 removals** against live Dreamhost. `--delete` dropped from the Phase-2 mirror; `_auth_keys/`, `.auth/`, `private_html/`, `.dh-diag` excluded.
+- **#159** `phpstan.neon` used PHPStan 1.x-only keys, so the pinned 2.2.4 aborted on config while `continue-on-error: true` hid it — **CI had been running zero static analysis**.
+- **#160** migrated partner domains landed `pending` and were unroutable (fixed + verified on MariaDB); `.auth/` rename given its installer + deploy + documented server step.
+- **#161** `setSetting()` silently downgraded `isSensitive` and stored secrets in **plaintext**.
+- 42 issues had every cited commit SHA remapped to live ones (the rebase invalidated them all).
 
 ### ♻️ Recovery + other-device reconciliation (2026-07-19)
 
