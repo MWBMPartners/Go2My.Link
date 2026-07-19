@@ -71,11 +71,28 @@ ON DUPLICATE KEY UPDATE
 -- =========================================================================
 -- Step 2: Migrate custom short URL domains to tblOrgShortDomains
 -- =========================================================================
+-- ⚠️  GRANDFATHERING (#91): these domains are ALREADY live and serving traffic on
+--     the legacy platform, so they are trusted by virtue of having been in
+--     production — they must NOT be made to re-prove ownership at cutover.
+--
+--     `verificationStatus` defaults to 'pending' (schema/012_core_organisations.sql),
+--     but the redirect router admits a domain ONLY when it is BOTH 'verified' and
+--     active — see domain_resolver.php (`$row['verificationStatus'] === 'verified'`)
+--     and sp_lookupShortURL. Inserting without an explicit status would therefore
+--     leave every migrated partner short domain unroutable: each one would fall
+--     through to '[default]' and 404 the moment the new platform went live.
+--
+--     migrations/013 carries the same backfill, but its header states that fresh
+--     installs do not need it — and the documented cutover path is a FRESH schema
+--     import plus the data migrations, so 013 is skipped and cannot be relied on.
+--     Setting the status here makes this migration correct standalone.
 INSERT INTO `tblOrgShortDomains` (
     `orgHandle`,
     `shortDomain`,
     `isDefault`,
     `isActive`,
+    `verificationStatus`,
+    `verifiedAt`,
     `createdAt`
 )
 SELECT
@@ -83,6 +100,9 @@ SELECT
     old.`custOrgShortURLDomain`     AS `shortDomain`,
     1                               AS `isDefault`,
     1                               AS `isActive`,
+    -- Grandfathered: already live on the legacy platform (see note above).
+    'verified'                      AS `verificationStatus`,
+    NOW()                           AS `verifiedAt`,
     -- Zero-date/NULL guard: NOT NULL target → fall back to NOW() (#123)
     IFNULL(NULLIF(NULLIF(CAST(old.`custOrgDateCreated` AS CHAR), '0000-00-00 00:00:00'), '0000-00-00'), NOW())
                                     AS `createdAt`
@@ -90,7 +110,11 @@ FROM `mwtools_mwlink`.`tblCustomerOrg` old
 WHERE old.`custOrgShortURLDomain` IS NOT NULL
   AND old.`custOrgShortURLDomain` != ''
 ON DUPLICATE KEY UPDATE
-    `shortDomain` = VALUES(`shortDomain`);
+    `shortDomain`         = VALUES(`shortDomain`),
+    -- Re-running must not demote an already-verified domain, and must repair a
+    -- row left 'pending' by an earlier run of this migration.
+    `verificationStatus`  = 'verified',
+    `verifiedAt`          = COALESCE(`verifiedAt`, NOW());
 
 COMMIT;
 

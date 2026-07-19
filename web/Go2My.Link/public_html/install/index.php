@@ -983,6 +983,16 @@ if (!$alreadyInstalled)
                             $includeDir  = $componentDir . DIRECTORY_SEPARATOR . '.auth';
                             $includeFile = $includeDir . DIRECTORY_SEPARATOR . 'auth_creds.php';
 
+                            // The .auth/ directory is deliberately NOT tracked in git
+                            // (it holds credentials), and the SFTP mirror excludes it,
+                            // so on a fresh deploy it will not exist yet. Create it
+                            // rather than reporting 'missing-dir' — otherwise the
+                            // component has no thin include and the site cannot boot.
+                            if (!file_exists($includeFile) && !is_dir($includeDir))
+                            {
+                                @mkdir($includeDir, 0700, true);
+                            }
+
                             if (file_exists($includeFile))
                             {
                                 $componentResults[$componentName] = 'present';

@@ -64,9 +64,24 @@
 # Server-owned paths are ALSO hard-excluded, as defence in depth, so that
 # re-introducing --delete cannot silently destroy them:
 #   _auth_keys/     (installer-written DB creds + runtime — gitignored)
+#   .auth/          (per-component thin credential includes — see below)
 #   private_html/   (Dreamhost private area)
 #   _uploads/       (user uploads)        _backups/  (server backups)
 #   .dh-diag        (Dreamhost-generated diagnostics)
+#
+# 🚨 ONE-OFF PRE-DEPLOY MIGRATION — the per-component credential directory was
+#    renamed `_auth_keys/` → `.auth/`. The application now requires
+#    <Comp>/.auth/auth_creds.php at boot; the live server still has the OLD
+#    <Comp>/_auth_keys/. Because .auth/ is untracked AND excluded here, this
+#    mirror CANNOT create it. Run this on the server BEFORE the first armed
+#    deploy or all three sites go down:
+#
+#      mv Go2My.Link/_auth_keys Go2My.Link/.auth
+#      mv G2My.Link/_auth_keys  G2My.Link/.auth
+#      mv Lnks.page/_auth_keys  Lnks.page/.auth
+#
+#    (The shared web/_auth_keys/auth_creds.php is UNCHANGED — do not move it.)
+#    See docs/DEPLOYMENT.md.
 #
 # ⚠️  Before ARMING (vars.SFTP_ENABLED=true), always run a workflow_dispatch
 #     with dry_run=true and read the removal list. See docs/DEPLOYMENT.md.
@@ -233,6 +248,7 @@ jobs:
         --exclude '(^|/)_uploads/'
         --exclude '(^|/)_backups/'
         --exclude '(^|/)_auth_keys/'
+        --exclude '(^|/)\.auth/'
         --exclude '(^|/)private_html/'
         --exclude '\.dh-diag$'
         --exclude '\.mmdb$'
