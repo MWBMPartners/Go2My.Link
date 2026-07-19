@@ -3,22 +3,34 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-18 · **Branch:** `launch-prep/2026-07-09` (off `hardening/cycle-2-2026-07-04` @ `46fe7a5`) · **HEAD** `e58efcf` (+ this handoff refresh).
-> **Status:** launch-prep close-out — ALL dev-buildable, owner-input-free work is DONE. Open issues **61 → 28**. Remaining work needs owner credentials/decisions (SIGNula, billing, tier naming, #93 cred rotation) or is owner ops/legal (below). **PHPStan is now an enforced CI gate** (see below).
+> **Last updated:** 2026-07-19 · **Branch:** `launch-prep/2026-07-09` · **Rebased onto remote tip:** `52d1b89`.
+> **Status:** recovery and cross-device reconciliation complete — all **72** recovered commits were replayed on top of the **9** remote-only commits. ALL dev-buildable, owner-input-free work is DONE. Open issues **61 → 28**. Remaining work needs owner credentials/decisions (SIGNula, billing, tier naming, #93 cred rotation) or is owner ops/legal (below). **PHPStan is now an enforced CI gate** (see below).
 
 ---
 
 ## ▶️ START HERE — pick-up point (next session / owner)
 
 **State in one line:** every dev-buildable, owner-input-free launch-prep item is DONE.
-Branch `launch-prep/2026-07-09` holds **21 commits, local only — NOT pushed**. Unit suite
-**519/0**; PHPStan L5 clean and now an **enforced** CI gate. ⚠️ Do **NOT** merge the stale
+Branch `launch-prep/2026-07-09` now combines the other device's **9 remote-only commits**
+(through `52d1b89`) with all **72 recovered commits**. Unit suite **519/0**; PHPStan L5
+clean and now an **enforced** CI gate. ⚠️ Do **NOT** merge the stale
 `main` (would resurrect the legacy engine + the #93 credential file). Launch is now gated on
 **owner actions + decisions**, not dev work.
 
+### ♻️ Recovery + other-device reconciliation (2026-07-19)
+
+- Original recovered tip `737c010` was preserved in a verified Git bundle before rewriting.
+- All 72 recovered commits were rebased onto remote `launch-prep/2026-07-09` at `52d1b89`;
+  the remote tip is an ancestor of the combined branch, so no force-push is required.
+- The deployment-workflow resolution keeps both sets of safety work: the other device's
+  quoted lftp excludes and additive Phase-2 mirror (#156/#158), plus the recovered,
+  fetch-gated, non-deleting GeoIP database deployment (#43).
+- The PHPStan resolution keeps the other device's PHPStan 2.x/dynamic-constant repair
+  (#159) plus the recovered legacy-tree exclusions and enforced clean Level-5 gate (#76).
+
 ### 🧑‍✈️ Owner actions to unblock the A+B launch
 
-1. **Push / review** the `launch-prep/2026-07-09` branch (21 commits) — the owner pushes, by preference.
+1. **Review** the combined `launch-prep/2026-07-09` branch on GitHub (72 recovered commits on top of the latest remote work).
 2. **#93** — rotate the leaked legacy DB password on the host; archive `public_html_legacy/`.
    The `dbConfig.php` file is already gone from disk, **but the password rotation is still owed** —
    do not assume it was rotated.
