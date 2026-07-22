@@ -326,16 +326,39 @@ function g2ml_apiHandleAnalyticsGet(array $keyRow, array $context): array
     $code      = _g2ml_apiAnalyticsRequireRouteCode($context);
     $orgHandle = (string) $keyRow['orgHandle'];
 
+    // #165: a key in the shared "[default]" bucket org must be scoped to its
+    // OWN user's links (every unassigned user shares '[default]'); a real-org
+    // key keeps org-wide access ($apiUserScope stays null).
+    $apiUserScope = null;
+
+    if ($orgHandle === '[default]')
+    {
+        $apiUserScope = (int) ($keyRow['userUID'] ?? 0);
+    }
+
     // ------------------------------------------------------------------------
     // Existence + org-scoping check BEFORE running any aggregate — a code
     // belonging to a different org must 404 identically to one that does not
-    // exist, exactly like g2ml_apiHandleUrlsGet() (urls.php).
+    // exist, exactly like g2ml_apiHandleUrlsGet() (urls.php). For a '[default]'
+    // key we ALSO require the code to be owned by the key's user, so one
+    // '[default]' user cannot read another's analytics.
     // ------------------------------------------------------------------------
-    $existing = dbSelectOne(
-        'SELECT urlUID FROM tblShortURLs WHERE shortCode = ? AND orgHandle = ? LIMIT 1',
-        'ss',
-        [$code, $orgHandle]
-    );
+    if ($apiUserScope !== null)
+    {
+        $existing = dbSelectOne(
+            'SELECT urlUID FROM tblShortURLs WHERE shortCode = ? AND orgHandle = ? AND createdByUserUID = ? LIMIT 1',
+            'ssi',
+            [$code, $orgHandle, $apiUserScope]
+        );
+    }
+    else
+    {
+        $existing = dbSelectOne(
+            'SELECT urlUID FROM tblShortURLs WHERE shortCode = ? AND orgHandle = ? LIMIT 1',
+            'ss',
+            [$code, $orgHandle]
+        );
+    }
 
     if ($existing === null || $existing === false)
     {
@@ -362,9 +385,9 @@ function g2ml_apiHandleAnalyticsGet(array $keyRow, array $context): array
 
     $dimension = _g2ml_apiAnalyticsValidateDimension($rawDimension);
 
-    $totals         = g2ml_analyticsTotals($orgHandle, $code, $range['from'], $range['to']);
-    $clicksOverTime = g2ml_analyticsClicksOverTime($orgHandle, $code, $range['from'], $range['to'], $bucket);
-    $scanSources    = g2ml_analyticsScanSources($orgHandle, $code, $range['from'], $range['to']);
+    $totals         = g2ml_analyticsTotals($orgHandle, $code, $range['from'], $range['to'], $apiUserScope);
+    $clicksOverTime = g2ml_analyticsClicksOverTime($orgHandle, $code, $range['from'], $range['to'], $bucket, $apiUserScope);
+    $scanSources    = g2ml_analyticsScanSources($orgHandle, $code, $range['from'], $range['to'], $apiUserScope);
 
     $formattedClicksOverTime = [];
 
@@ -408,7 +431,7 @@ function g2ml_apiHandleAnalyticsGet(array $keyRow, array $context): array
         }
 
         $limit     = _g2ml_apiAnalyticsValidateLimit($rawLimit, 10, 100);
-        $breakdown = g2ml_analyticsBreakdown($orgHandle, $code, $dimension, $range['from'], $range['to'], $limit);
+        $breakdown = g2ml_analyticsBreakdown($orgHandle, $code, $dimension, $range['from'], $range['to'], $limit, $apiUserScope);
 
         $formattedBreakdownItems = [];
 
@@ -451,6 +474,15 @@ function g2ml_apiHandleAnalyticsSummary(array $keyRow, array $context): array
 {
     $orgHandle = (string) $keyRow['orgHandle'];
 
+    // #165: a "[default]"-bucket key sees only its own user's links (see
+    // g2ml_apiHandleAnalyticsGet()); a real-org key stays org-wide.
+    $apiUserScope = null;
+
+    if ($orgHandle === '[default]')
+    {
+        $apiUserScope = (int) ($keyRow['userUID'] ?? 0);
+    }
+
     $range = _g2ml_apiAnalyticsResolveRange();
 
     $rawLimit = null;
@@ -462,8 +494,8 @@ function g2ml_apiHandleAnalyticsSummary(array $keyRow, array $context): array
 
     $limit = _g2ml_apiAnalyticsValidateLimit($rawLimit, 10, 100);
 
-    $totals   = g2ml_analyticsTotals($orgHandle, null, $range['from'], $range['to']);
-    $topLinks = g2ml_analyticsTopLinks($orgHandle, $range['from'], $range['to'], $limit);
+    $totals   = g2ml_analyticsTotals($orgHandle, null, $range['from'], $range['to'], $apiUserScope);
+    $topLinks = g2ml_analyticsTopLinks($orgHandle, $range['from'], $range['to'], $limit, $apiUserScope);
 
     $formattedTopLinks = [];
 

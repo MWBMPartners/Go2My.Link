@@ -246,20 +246,20 @@ function _analyticsRenderCsvLink(?string $shortCode, array $range, string $type,
 }
 
 // ============================================================================
-// 🚫 Block the shared "[default]" bucket org — see docblock above
+// 🔐 Per-user scope for the shared "[default]" bucket org (#165)
 // ============================================================================
+// Every user not yet in a real organisation shares orgHandle '[default]', so an
+// org-wide aggregate would show OTHER users' clicks. Rather than BLOCK the
+// dashboard (the old behaviour — every individually-registered user saw
+// nothing), scope every query below to the caller's own createdByUserUID,
+// exactly as links/index.php does. A real-org user keeps org-wide analytics
+// ($analyticsUserScope stays null). See web/_functions/analytics.php (#165).
+
+$analyticsUserScope = null;
 
 if ($orgHandle === '[default]')
 {
-    echo '<div class="container py-5"><div class="alert alert-warning">';
-    echo '<i class="fas fa-triangle-exclamation" aria-hidden="true"></i> ';
-    if (function_exists('__')) {
-        echo g2ml_sanitiseOutput(__('analytics.error_unavailable'));
-    } else {
-        echo 'Analytics is not available for accounts that are not yet part of an organisation.';
-    }
-    echo '</div></div>';
-    return;
+    $analyticsUserScope = (int) ($currentUser['userUID'] ?? 0);
 }
 
 // ============================================================================
@@ -280,11 +280,25 @@ if ($rawCode !== '')
 {
     if (preg_match('/^[A-Za-z0-9_-]{1,50}$/', $rawCode) === 1)
     {
-        $codeRow = dbSelectOne(
-            'SELECT shortCode, title FROM tblShortURLs WHERE shortCode = ? AND orgHandle = ? LIMIT 1',
-            'ss',
-            [$rawCode, $orgHandle]
-        );
+        if ($analyticsUserScope !== null)
+        {
+            // #165: a '[default]' user may only drill into a code they OWN —
+            // the orgHandle check alone would let one '[default]' user view
+            // another '[default]' user's code by guessing it.
+            $codeRow = dbSelectOne(
+                'SELECT shortCode, title FROM tblShortURLs WHERE shortCode = ? AND orgHandle = ? AND createdByUserUID = ? LIMIT 1',
+                'ssi',
+                [$rawCode, $orgHandle, $analyticsUserScope]
+            );
+        }
+        else
+        {
+            $codeRow = dbSelectOne(
+                'SELECT shortCode, title FROM tblShortURLs WHERE shortCode = ? AND orgHandle = ? LIMIT 1',
+                'ss',
+                [$rawCode, $orgHandle]
+            );
+        }
 
         if ($codeRow !== null && $codeRow !== false)
         {
@@ -332,9 +346,9 @@ $bucket = g2ml_analyticsDashboardBucketForRangeDays($range['rangeDays']);
 // 📊 Fetch every aggregate from the #41 data layer — org-scoped throughout
 // ============================================================================
 
-$totals         = g2ml_analyticsTotals($orgHandle, $shortCode, $range['from'], $range['to']);
-$clicksOverTime = g2ml_analyticsClicksOverTime($orgHandle, $shortCode, $range['from'], $range['to'], $bucket);
-$scanSources    = g2ml_analyticsScanSources($orgHandle, $shortCode, $range['from'], $range['to']);
+$totals         = g2ml_analyticsTotals($orgHandle, $shortCode, $range['from'], $range['to'], $analyticsUserScope);
+$clicksOverTime = g2ml_analyticsClicksOverTime($orgHandle, $shortCode, $range['from'], $range['to'], $bucket, $analyticsUserScope);
+$scanSources    = g2ml_analyticsScanSources($orgHandle, $shortCode, $range['from'], $range['to'], $analyticsUserScope);
 
 $topLinks = [];
 
@@ -342,19 +356,19 @@ if ($shortCode === null)
 {
     // Ranking a single code against itself is meaningless — org-wide only,
     // exactly like g2ml_analyticsTopLinks()'s own contract.
-    $topLinks = g2ml_analyticsTopLinks($orgHandle, $range['from'], $range['to'], 8);
+    $topLinks = g2ml_analyticsTopLinks($orgHandle, $range['from'], $range['to'], 8, $analyticsUserScope);
 }
 
-$browserBreakdown  = g2ml_analyticsBreakdown($orgHandle, $shortCode, 'browserName', $range['from'], $range['to'], 6);
-$osBreakdown       = g2ml_analyticsBreakdown($orgHandle, $shortCode, 'osName', $range['from'], $range['to'], 6);
-$deviceBreakdown   = g2ml_analyticsBreakdown($orgHandle, $shortCode, 'deviceType', $range['from'], $range['to'], 6);
-$refererBreakdown  = g2ml_analyticsBreakdown($orgHandle, $shortCode, 'requestReferer', $range['from'], $range['to'], 10);
+$browserBreakdown  = g2ml_analyticsBreakdown($orgHandle, $shortCode, 'browserName', $range['from'], $range['to'], 6, $analyticsUserScope);
+$osBreakdown       = g2ml_analyticsBreakdown($orgHandle, $shortCode, 'osName', $range['from'], $range['to'], 6, $analyticsUserScope);
+$deviceBreakdown   = g2ml_analyticsBreakdown($orgHandle, $shortCode, 'deviceType', $range['from'], $range['to'], 6, $analyticsUserScope);
+$refererBreakdown  = g2ml_analyticsBreakdown($orgHandle, $shortCode, 'requestReferer', $range['from'], $range['to'], 10, $analyticsUserScope);
 
 // countryCode (#43) — empty whenever geolocation has never run (the default,
 // until an operator turns analytics.geolocation_enabled on AND deploys a
 // GeoIP database); the widget below renders the same "no data" state as any
 // other breakdown with zero rows, so no extra handling is needed here.
-$countryBreakdown  = g2ml_analyticsBreakdown($orgHandle, $shortCode, 'countryCode', $range['from'], $range['to'], 8);
+$countryBreakdown  = g2ml_analyticsBreakdown($orgHandle, $shortCode, 'countryCode', $range['from'], $range['to'], 8, $analyticsUserScope);
 
 // ============================================================================
 // 🧮 Human/bot percentages for the totals cards (guard divide-by-zero)
