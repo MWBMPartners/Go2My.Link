@@ -119,6 +119,9 @@ core
 # `.claude/settings.local.json` holds per-machine/per-user Claude Code settings
 # (permissions, local overrides). The shared `.claude/settings.json` IS tracked.
 .claude/settings.local.json
+# `.claude/worktrees/` holds transient, isolated git worktrees created for
+# parallel agent tasks; git auto-removes them, they must never be committed.
+.claude/worktrees/
 *.vsix
 
 # Visual Studio
