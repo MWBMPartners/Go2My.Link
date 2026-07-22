@@ -484,8 +484,13 @@ CREATE TABLE IF NOT EXISTS `tblTierFeatures` (
     -- so without this two undated rows for the same (tier, feature) pair would
     -- both insert. '1000-01-01' is a legal DATETIME under the project's
     -- NO_ZERO_DATE sql_mode (000_create_database.sql) — NOT a zero-date.
+    -- #183: the sentinel is wrapped in an explicit CAST(... AS DATETIME) so the
+    -- STORED expression is deterministic on MariaDB too. MariaDB rejects the
+    -- implicit string->DATETIME coercion inside a PERSISTENT/STORED generated
+    -- column that MySQL 8 silently accepts (Dreamhost runs MariaDB); the CAST
+    -- imports cleanly on both. CI now exercises the schema on both engines.
     `effectiveFromKey`      DATETIME
-                            GENERATED ALWAYS AS (COALESCE(`effectiveFrom`, '1000-01-01 00:00:00')) STORED
+                            GENERATED ALWAYS AS (COALESCE(`effectiveFrom`, CAST('1000-01-01 00:00:00' AS DATETIME))) STORED
         COMMENT 'NULL-collapsed mirror of effectiveFrom so undated rows dedupe in UQ_tierfeature (settings #150 idiom)',
 
     `createdAt`             DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP,

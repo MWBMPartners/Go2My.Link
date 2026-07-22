@@ -246,8 +246,10 @@ CREATE TABLE IF NOT EXISTS `tblTierFeatures` (
         COMMENT 'When this entitlement value starts applying (NULL = since forever)',
     `effectiveUntil`        DATETIME            DEFAULT NULL
         COMMENT 'When this entitlement value stops applying (NULL = open-ended)',
+    -- #183: explicit CAST(... AS DATETIME) for MariaDB compatibility (see the
+    -- matching note in web/_sql/schema/036_pricing_engine.sql).
     `effectiveFromKey`      DATETIME
-                            GENERATED ALWAYS AS (COALESCE(`effectiveFrom`, '1000-01-01 00:00:00')) STORED
+                            GENERATED ALWAYS AS (COALESCE(`effectiveFrom`, CAST('1000-01-01 00:00:00' AS DATETIME))) STORED
         COMMENT 'NULL-collapsed mirror of effectiveFrom so undated rows dedupe in UQ_tierfeature (settings #150 idiom)',
     `createdAt`             DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updatedAt`             DATETIME            DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
