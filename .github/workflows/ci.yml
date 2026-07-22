@@ -192,17 +192,24 @@ jobs:
   # PR. Promote to a required check once it has run green a few times.
   # ===========================================================================
   tests-integration:
-    name: Tests (Integration)
+    name: "Tests (Integration) — ${{ matrix.db-image }}"
     continue-on-error: true
     strategy:
       fail-fast: false
+      # #183: import + test on BOTH engines. MySQL 8 is the CI baseline;
+      # MariaDB is what Dreamhost (production) runs, so schema-portability
+      # regressions surface here instead of at install time. Each engine gets
+      # its OWN health command via `include`: MariaDB 11 dropped the
+      # `mysqladmin` symlink, so it uses `mariadb-admin`. Both use `ping`,
+      # which reports server liveness without needing valid credentials.
       matrix:
-        os: [ubuntu-latest]
-        # #183: import + test on BOTH engines. MySQL 8 is the CI baseline;
-        # MariaDB is what Dreamhost (production) runs, so schema-portability
-        # regressions surface here instead of at install time. The MariaDB
-        # image accepts the MYSQL_* env vars + the mysqladmin/mysql clients.
-        db-image: ["mysql:8", "mariadb:11"]
+        include:
+          - os: ubuntu-latest
+            db-image: "mysql:8"
+            db-health-cmd: "mysqladmin ping --silent"
+          - os: ubuntu-latest
+            db-image: "mariadb:11"
+            db-health-cmd: "mariadb-admin ping --silent"
     runs-on: ${{ matrix.os }}
 
     services:
@@ -214,7 +221,7 @@ jobs:
         ports:
           - "3306:3306"
         options: >-
-          --health-cmd="mysqladmin ping --silent"
+          --health-cmd="${{ matrix.db-health-cmd }}"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
