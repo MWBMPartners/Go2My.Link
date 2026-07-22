@@ -144,6 +144,11 @@ jobs:
           chmod +x phpstan.phar
           php phpstan.phar analyse --configuration=phpstan.neon --no-progress
 
+      - name: PHP unit tests
+        continue-on-error: false
+        run: |
+          php tests/run.php
+
       - name: PHP_CodeSniffer (advisory)
         continue-on-error: true
         env:
@@ -154,3 +159,99 @@ jobs:
           echo "${PHPCS_SHA256}  phpcs.phar" | sha256sum --check --strict
           chmod +x phpcs.phar
           php phpcs.phar --standard=phpcs.xml --report=summary
+
+  # ===========================================================================
+  # Tests (Integration) — mysql:8 service container. ADVISORY, not a required
+  # status check (whole job is continue-on-error: true).
+  #
+  # tests/integration/*.php need a database seeded exactly the way a FRESH
+  # install is documented to be seeded (docs/INSTALL.md's "Manual / fallback
+  # setup" section, empirically re-verified in docs/SCHEMA_REVIEW_2026-06-04.md
+  # on a throwaway MySQL 9.6 instance): import web/_sql/schema/*.sql, then
+  # web/_sql/procedures/*.sql, then web/_sql/seeds/*.sql, in that order.
+  #
+  # web/_sql/migrations/*.sql is DELIBERATELY NOT imported here: migrations
+  # 001-004/006-009 replay one-off legacy data out of the old mwtools_mwlink
+  # database, which does not exist in this throwaway container, and would
+  # error out; the remaining migrations (010-019) are idempotent fixups for
+  # an ALREADY-DEPLOYED schema that a same-day fresh import does not need
+  # (e.g. migration 014's own docblock: "FRESH INSTALLS DO NOT NEED THIS FILE
+  # — already part of the base schema").
+  #
+  # tests/run_integration.php itself never hard-fails merely because no test
+  # DB is reachable (it prints "SKIPPED (no test DB)" and exits 0), so this
+  # job would already be safe even without the import below — but a
+  # REACHABLE database whose tests genuinely fail DOES exit non-zero, and
+  # this exact schema+procedures+seeds import sequence has not yet been
+  # proven green against THIS mysql:8 service container/runner combination by
+  # this change (it mirrors a previously-verified MySQL 9.6 import, not an
+  # identical one). Per the house rule "when unsure, make integration
+  # advisory", the whole job is continue-on-error: true so any drift (a new
+  # schema file, a stored-procedure DELIMITER quirk specific to mysql:8)
+  # surfaces as a visible-but-non-blocking failure rather than blocking every
+  # PR. Promote to a required check once it has run green a few times.
+  # ===========================================================================
+  tests-integration:
+    name: Tests (Integration)
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+
+    services:
+      mysql:
+        image: "mysql:8"
+        env:
+          MYSQL_ROOT_PASSWORD: "g2ml_ci_root_password"
+          MYSQL_DATABASE: "mwtools_Go2MyLink"
+        ports:
+          - "3306:3306"
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2.37.2
+        with:
+          php-version: "8.4"
+          extensions: "mysqli"
+
+      - name: Import schema + procedures + seeds (fresh-install order, see docs/INSTALL.md)
+        env:
+          MYSQL_PWD: "g2ml_ci_root_password"
+        run: |
+          set -euo pipefail
+          for sqlFile in $(find "web/_sql/schema" -maxdepth 1 -name "*.sql" | sort)
+          do
+            echo "Importing ${sqlFile}"
+            mysql --host="127.0.0.1" --port="3306" --user="root" < "${sqlFile}"
+          done
+          for sqlFile in $(find "web/_sql/procedures" -maxdepth 1 -name "*.sql" | sort)
+          do
+            echo "Importing ${sqlFile}"
+            mysql --host="127.0.0.1" --port="3306" --user="root" < "${sqlFile}"
+          done
+          for sqlFile in $(find "web/_sql/seeds" -maxdepth 1 -name "*.sql" | sort)
+          do
+            echo "Importing ${sqlFile}"
+            mysql --host="127.0.0.1" --port="3306" --user="root" < "${sqlFile}"
+          done
+
+      - name: PHP integration tests (advisory)
+        continue-on-error: true
+        env:
+          G2ML_TEST_DB_HOST: "127.0.0.1"
+          G2ML_TEST_DB_PORT: "3306"
+          G2ML_TEST_DB_NAME: "mwtools_Go2MyLink"
+          G2ML_TEST_DB_USER: "root"
+          G2ML_TEST_DB_PASS: "g2ml_ci_root_password"
+        run: |
+          php tests/run_integration.php
