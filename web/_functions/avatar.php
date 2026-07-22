@@ -17,7 +17,7 @@ declare(strict_types=1);
  * Resolves the best available avatar for a user through a deterministic
  * priority cascade and renders it as safe HTML. The cascade is, in order:
  *
- *   1. Local stored avatar  — a URL the user uploaded / set (avatarURL/avatar).
+ *   1. Local stored avatar  — a URL the user uploaded / set (avatarPath/avatar).
  *   2. Microsoft 365 (SSO)  — placeholder; wired in Phase 10 (no network here).
  *   3. Google (SSO)         — placeholder; wired in Phase 10 (no network here).
  *   4. Gravatar             — GATED behind the 'avatar.gravatar_enabled' setting,
@@ -380,9 +380,9 @@ function g2ml_resolveAvatar(array $user, int $size = 48): array
 {
     // --- Tier 1: local stored avatar ---------------------------------------
     $storedAvatar = '';
-    if (isset($user['avatarURL']) && is_string($user['avatarURL']) && trim($user['avatarURL']) !== '')
+    if (isset($user['avatarPath']) && is_string($user['avatarPath']) && trim($user['avatarPath']) !== '')
     {
-        $storedAvatar = trim($user['avatarURL']);
+        $storedAvatar = trim($user['avatarPath']);
     }
     elseif (isset($user['avatar']) && is_string($user['avatar']) && trim($user['avatar']) !== '')
     {

@@ -212,12 +212,21 @@ $sessions = listUserSessions($userUID);
                                         {
                                             $deviceIcon = 'fa-tablet-alt';
                                         }
+
+                                        if ($deviceInfo)
+                                        {
+                                            $deviceInfoDisplay = $deviceInfo;
+                                        }
+                                        else
+                                        {
+                                            $deviceInfoDisplay = 'Unknown device';
+                                        }
                                         ?>
                                         <i class="fas <?php echo $deviceIcon; ?>" aria-hidden="true"></i>
                                     </div>
                                     <div>
                                         <h2 class="h6 mb-1">
-                                            <?php echo g2ml_sanitiseOutput($deviceInfo ?: 'Unknown device'); ?>
+                                            <?php echo g2ml_sanitiseOutput($deviceInfoDisplay); ?>
                                             <?php if ($session['isCurrent']) { ?>
                                             <span class="badge bg-primary ms-1">This device</span>
                                             <?php } ?>

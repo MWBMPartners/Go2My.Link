@@ -38,6 +38,8 @@
     <!-- Exclude paths -->
     <exclude-pattern>web/_libraries/*</exclude-pattern>
     <exclude-pattern>web/_auth_keys/*</exclude-pattern>
+    <exclude-pattern>web/*/public_html_legacy/*</exclude-pattern>
+    <exclude-pattern>web/*/public_html_redir/*</exclude-pattern>
 
     <!-- Project uses Allman (BSD) brace style, not K&R -->
     <rule ref="PSR12.Classes.OpeningBraceSpace">

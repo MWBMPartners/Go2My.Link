@@ -1,0 +1,60 @@
+# Copyright (c) 2024–2026 MWBM Partners Ltd (MWservices).
+# All rights reserved.
+#
+# This source code is proprietary and confidential.
+# Unauthorised copying, modification, or distribution is strictly prohibited.
+
+# =============================================================================
+# Go2My.Link — .htaccess for public_html/api/docs (scoped CSP, #75)
+# =============================================================================
+#
+# The site-wide Content-Security-Policy (public_html/.htaccess) is correct
+# for every other page on this component, but the self-hosted Redoc
+# standalone bundle powering THIS directory's docs UI needs two allowances
+# the site-wide policy does not grant:
+#
+#   1. worker-src 'self' blob:  — Redoc builds its client-side search index
+#      inside a Web Worker constructed from a blob: URL
+#      (URL.createObjectURL(new Blob([...]))); without "blob:" in
+#      worker-src (and child-src, for older Safari, which still falls back
+#      to child-src rather than worker-src) the browser refuses to start
+#      the worker.
+#   2. style-src 'unsafe-inline' — Redoc's UI is themed via CSS-in-JS
+#      (styled-components), which injects <style> elements at runtime
+#      rather than using a static stylesheet.
+#
+# Every asset this page loads is still same-origin only ('self') — the
+# Redoc bundle is vendored locally at vendor/redoc.standalone.js, and
+# openapi.yaml is fetched from this same component via a relative path. NO
+# external CDN is whitelisted here or anywhere else; this directory's
+# Header directives are scoped to /api/docs/* ONLY and do not affect any
+# other path on the site (Apache applies the more specific, deeper
+# directory's "Header set" for a given header name last, so this block
+# overrides — for requests under this directory only — the site-wide CSP
+# set in the parent public_html/.htaccess).
+#
+# @package    Go2My.Link
+# @subpackage Configuration
+# @author     MWBM Partners Ltd (MWservices)
+# @version    1.0.0
+# @since      v1.1.0 — Phase 7 (#75)
+#
+# 📖 References:
+#     - https://github.com/Redocly/redoc/issues/764 (worker-src blob: requirement)
+#     - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/worker-src
+# =============================================================================
+<IfModule mod_headers.c>
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
+</IfModule>
+
+# =============================================================================
+# This page is unauthenticated and static — cache it briefly at the edge/
+# browser rather than re-fetching on every visit, mirroring the pattern used
+# for other static assets in the parent .htaccess.
+# =============================================================================
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/html "access plus 5 minutes"
+    ExpiresByType application/javascript "access plus 1 week"
+    ExpiresByType text/javascript "access plus 1 week"
+</IfModule>

@@ -74,6 +74,13 @@ if (!defined('G2ML_CUSTOM_CODE_PATTERN'))
 // 📖 Reference: web/G2My.Link/public_html/robots.php, favicon.php, 404.php,
 //               expired.php, validating.php (handler routes)
 //
+// 'bulk' is reserved as of #39: the public API's parameterised route matcher
+// (g2ml_apiMatchParamRoute() in api_response.php) treats any two-segment
+// "urls/<code>" path as a short-code lookup for GET/PUT/DELETE, while
+// "POST urls/bulk" is a literal, separate endpoint (bulk create). Reserving
+// the word prevents a code named "bulk" from ever existing, so there is no
+// ambiguity about what a client requesting /api/v1/urls/bulk means.
+//
 // @param  string $code  The candidate custom short code.
 // @return bool           True when the code is reserved (must be rejected).
 // ============================================================================
@@ -95,6 +102,7 @@ function g2ml_isReservedShortCode(string $code): bool
         'admin',
         'install',
         'www',
+        'bulk',
     ];
 
     $normalised = strtolower(trim($code));
@@ -394,8 +402,39 @@ function g2ml_attachTagsToShortURL(int $urlUID, string $orgHandle, string|array 
 //                  short URL AFTER it is committed. Tag handling is additive and
 //                  fully defensive: a tag failure never rolls back or breaks the
 //                  created short URL. Empty/absent = no tags (public path default).
+//   - createdVia:  (string|null) Provenance of the create (#39 — public API).
+//                  Must be one of the tblShortURLs.createdVia ENUM values
+//                  ('web', 'api', 'import', 'admin', 'cuercode'); any other
+//                  value (including absent/null) falls back to 'web', which is
+//                  the column's own DEFAULT and preserves behaviour for every
+//                  caller that predates this option (public create, dashboard
+//                  create, existing tests).
+//   - createdViaAPIKeyUID: (int|null) FK to tblAPIKeys.apiKeyUID — which API
+//                  key minted this code (#39). Only meaningful alongside
+//                  createdVia='api'/'cuercode'; null (the column's default)
+//                  when absent, exactly like every pre-#39 caller.
+//   - qrCodeExternalID:   (int|null) CueRCode's own numeric QR id (#145).
+//                  Bound into the existing tblShortURLs.qrCodeExternalID
+//                  column; null (the column's default) when absent, which is
+//                  every caller before #145.
+//   - qrCodeExternalUUID: (string|null) CueRCode's QR UUID (#145). Bound into
+//                  the existing tblShortURLs.qrCodeExternalUUID column, which
+//                  carries a UNIQUE constraint (UQ_url_qr_uuid). A duplicate
+//                  value does NOT fall into the shortCode collision retry —
+//                  see Steps 4/5 below — it fails the create outright with
+//                  $result['qrUuidTaken'] === true so the API layer can map it
+//                  to a distinct HTTP 409. An empty string is treated the same
+//                  as absent (null). FORMAT validation (36-char UUID shape) is
+//                  the API handler's job — that is the boundary that sees
+//                  untrusted client input.
+//   - qrCodeLinkedAt:     (string|null) DATETIME string for the existing
+//                  tblShortURLs.qrCodeLinkedAt column (#145); null (the
+//                  column's default) when absent.
 // @return array  ['success' => bool, 'shortCode' => ?string,
-//                 'shortURL' => ?string, 'error' => ?string]
+//                 'shortURL' => ?string, 'error' => ?string,
+//                 'qrUuidTaken' => ?bool] — qrUuidTaken is only present and
+//                 true when the failure was a qrCodeExternalUUID collision
+//                 (#145); absent for every other outcome.
 // ============================================================================
 function createShortURL(string $longURL, array $options = []): array
 {
@@ -455,7 +494,10 @@ function createShortURL(string $longURL, array $options = []): array
         []
     );
 
-    if ($customDomains !== false && is_array($customDomains))
+    // dbSelect() only ever returns array|false, so once false is
+    // eliminated the remaining value is guaranteed to be an array — no
+    // separate is_array() check is needed.
+    if ($customDomains !== false)
     {
         foreach ($customDomains as $row)
         {
@@ -522,6 +564,66 @@ function createShortURL(string $longURL, array $options = []): array
         $isActiveValue = 0;
     }
 
+    // ========================================================================
+    // 🔗 Step 3a: createdVia / createdViaAPIKeyUID (#39 — public API provenance)
+    // ========================================================================
+    // Validated against the tblShortURLs.createdVia ENUM here in PHP (rather
+    // than letting an unrecognised value reach the INSERT) so a caller typo
+    // never trips a MySQL data-truncation warning/error — it silently falls
+    // back to 'web', the column's own default, which is exactly what every
+    // caller before #39 got implicitly.
+    //
+    // 📖 Reference: web/_sql/schema/020_shorturls_categories_tags.sql (createdVia ENUM)
+    // ========================================================================
+    $createdViaAllowed = ['web', 'api', 'import', 'admin', 'cuercode'];
+    $createdViaOption  = $options['createdVia'] ?? 'web';
+
+    if (!is_string($createdViaOption) || !in_array($createdViaOption, $createdViaAllowed, true))
+    {
+        $createdViaOption = 'web';
+    }
+
+    $createdViaAPIKeyUIDOption = $options['createdViaAPIKeyUID'] ?? null;
+
+    if ($createdViaAPIKeyUIDOption !== null)
+    {
+        $createdViaAPIKeyUIDOption = (int) $createdViaAPIKeyUIDOption;
+    }
+
+    // ========================================================================
+    // 🔗 Step 3a-2: qrCodeExternalID / qrCodeExternalUUID / qrCodeLinkedAt
+    //               (#145 — CueRCode dynamic-QR wiring)
+    // ========================================================================
+    // These three existing tblShortURLs columns are bound whenever the caller
+    // supplies them (the API layer only does so for a verified qr:link-scoped
+    // create); every other caller gets NULL, exactly the column defaults.
+    // ========================================================================
+    $qrCodeExternalIDOption = $options['qrCodeExternalID'] ?? null;
+
+    if ($qrCodeExternalIDOption !== null)
+    {
+        $qrCodeExternalIDOption = (int) $qrCodeExternalIDOption;
+    }
+
+    $qrCodeExternalUUIDOption = $options['qrCodeExternalUUID'] ?? null;
+
+    if ($qrCodeExternalUUIDOption !== null)
+    {
+        $qrCodeExternalUUIDOption = trim((string) $qrCodeExternalUUIDOption);
+
+        if ($qrCodeExternalUUIDOption === '')
+        {
+            $qrCodeExternalUUIDOption = null;
+        }
+    }
+
+    $qrCodeLinkedAtOption = $options['qrCodeLinkedAt'] ?? null;
+
+    if ($qrCodeLinkedAtOption !== null)
+    {
+        $qrCodeLinkedAtOption = (string) $qrCodeLinkedAtOption;
+    }
+
     // Custom alias (FG-001): empty/absent means "generate a random code".
     $customCode = trim((string) ($options['customCode'] ?? ''));
 
@@ -575,6 +677,94 @@ function createShortURL(string $longURL, array $options = []): array
     }
 
     // ========================================================================
+    // 💎 Step 3c: Enforce the org's maxLinks entitlement (#146)
+    // ========================================================================
+    // Counts the org's current ACTIVE short URLs (an indexed, org-scoped
+    // query against IDX_url_org) and checks it against the org's tier via
+    // g2ml_checkLimit(). GlobalAdmin / '[default]' / an unlimited tier always
+    // resolve to a NULL limit (allowed) inside g2ml_getOrgTier() — see
+    // web/_functions/entitlements.php. This NEVER retroactively touches an
+    // existing link; it only blocks a NEW create once the org is already at
+    // (or over) its plan's link count.
+    //
+    // Fail OPEN: if the COUNT query itself fails, $currentActiveLinkCount
+    // stays 0 (dbSelect() already error_log()s the underlying failure), which
+    // can only ever make the check MORE permissive, never block a legitimate
+    // create because of a system fault.
+    //
+    // ⚠️  ACCEPTED RESIDUAL — maxLinks TOCTOU (#149.2, evaluated & documented,
+    //     NOT hardened): this count -> check -> insert is NOT atomic. Two
+    //     genuinely concurrent createShortURL() calls for the SAME org can
+    //     both COUNT before either INSERT commits, so both pass the check —
+    //     the org can overshoot maxLinks by a small margin (bounded by how
+    //     many creates for that org are truly in-flight at once, realistically
+    //     a handful, never unbounded). This was evaluated for a safe fix and
+    //     deliberately left as-is:
+    //       - A `SELECT ... FOR UPDATE` (or equivalent locking read) on the
+    //         count, or an atomic `INSERT ... SELECT ... WHERE (COUNT...) < ?`,
+    //         would close the window, but an aggregate COUNT(*) with no
+    //         exact-match index takes InnoDB next-key locks across the WHOLE
+    //         matching range under REPEATABLE READ — serializing EVERY
+    //         concurrent create for that org for the duration of the lock,
+    //         including across this function's own shortCode collision retry
+    //         loop below (multiple generate+insert attempts inside one
+    //         transaction). That harms the busiest orgs the MOST — precisely
+    //         the population most likely to hit this race — trading a soft,
+    //         cosmetic over-provisioning edge case for a real throughput
+    //         regression and added deadlock surface on the hottest path in
+    //         the codebase.
+    //       - A post-insert re-check-and-rollback (detect the overshoot AFTER
+    //         committing, then deactivate the "losing" row) avoids the lock
+    //         contention, but trades it for a confusing UX regression: a
+    //         caller can receive success=true and then have their link
+    //         silently deactivated moments later by an unrelated concurrent
+    //         request, with no deterministic rule for which of several
+    //         simultaneous creators "wins" — worse than the residual itself.
+    //     maxLinks is a soft, plan-communication limit — never a security or
+    //     tenant-isolation boundary (no cross-org data exposure, no privilege
+    //     escalation; it only ever affects the requesting org's own count) —
+    //     so a small, bounded overshoot under genuine concurrency is an
+    //     acceptable trade against those regressions. If a HARD real-time cap
+    //     is ever required, prefer an out-of-band reconciliation (e.g. a
+    //     periodic job that deactivates the newest links over the cap) over
+    //     locking this hot path.
+    //
+    // 📖 Reference: web/_functions/entitlements.php — g2ml_checkLimit()
+    // 📖 Reference: web/_sql/schema/020_shorturls_categories_tags.sql (IDX_url_org)
+    // ========================================================================
+    if (function_exists('g2ml_checkLimit'))
+    {
+        $activeLinkCountRow = dbSelectOne(
+            "SELECT COUNT(*) AS cnt FROM tblShortURLs WHERE orgHandle = ? AND isActive = 1",
+            's',
+            [$orgHandle]
+        );
+
+        if ($activeLinkCountRow !== null && $activeLinkCountRow !== false)
+        {
+            $currentActiveLinkCount = (int) $activeLinkCountRow['cnt'];
+        }
+        else
+        {
+            error_log('[Go2My.Link] WARNING: entitlements — could not count active links for org: ' . $orgHandle . ' — treating as 0 (fail OPEN).');
+            $currentActiveLinkCount = 0;
+        }
+
+        $linkLimitCheck = g2ml_checkLimit($orgHandle, 'maxLinks', $currentActiveLinkCount);
+
+        if ($linkLimitCheck['allowed'] === false)
+        {
+            return [
+                'success'      => false,
+                'shortCode'    => null,
+                'shortURL'     => null,
+                'error'        => 'You have reached your plan\'s link limit. Please upgrade to create more short links.',
+                'limitReached' => true,
+            ];
+        }
+    }
+
+    // ========================================================================
     // 🎲 + 💾 Steps 4 & 5: Obtain a short code and insert
     // ========================================================================
     // Two paths share one INSERT:
@@ -601,6 +791,7 @@ function createShortURL(string $longURL, array $options = []): array
     $insertResult         = false;
     $generationFailed     = false;
     $customCodeTaken      = false;
+    $qrUuidTaken          = false;
 
     // A custom alias gets exactly one attempt (no regeneration); the random path
     // keeps its bounded retry budget.
@@ -618,10 +809,12 @@ function createShortURL(string $longURL, array $options = []): array
     $insertSQL = "INSERT INTO tblShortURLs
         (orgHandle, shortCode, destinationURL, destinationType,
          createdByUserUID, title, categoryID, urlNotes,
-         startDate, endDate, isActive, createdAt, updatedAt)
+         startDate, endDate, isActive, createdVia, createdViaAPIKeyUID,
+         qrCodeExternalID, qrCodeExternalUUID, qrCodeLinkedAt, createdAt, updatedAt)
         VALUES
         (?, ?, ?, 'url',
          ?, ?, ?, ?,
+         ?, ?, ?, ?, ?,
          ?, ?, ?, NOW(), NOW())";
 
     for ($attempt = 1; $attempt <= $maxAttempts; $attempt++)
@@ -692,6 +885,42 @@ function createShortURL(string $longURL, array $options = []): array
         $types   .= 'i';
         $params[] = $isActiveValue;
 
+        // createdVia (bound string; always one of the ENUM values, defaults 'web')
+        $types   .= 's';
+        $params[] = $createdViaOption;
+
+        // createdViaAPIKeyUID (nullable integer)
+        if ($createdViaAPIKeyUIDOption !== null)
+        {
+            $types   .= 'i';
+            $params[] = $createdViaAPIKeyUIDOption;
+        }
+        else
+        {
+            $types   .= 's';
+            $params[] = null;
+        }
+
+        // qrCodeExternalID (nullable integer — #145)
+        if ($qrCodeExternalIDOption !== null)
+        {
+            $types   .= 'i';
+            $params[] = $qrCodeExternalIDOption;
+        }
+        else
+        {
+            $types   .= 's';
+            $params[] = null;
+        }
+
+        // qrCodeExternalUUID (nullable string; UNIQUE UQ_url_qr_uuid — #145)
+        $types   .= 's';
+        $params[] = $qrCodeExternalUUIDOption;
+
+        // qrCodeLinkedAt (nullable DATETIME string — #145)
+        $types   .= 's';
+        $params[] = $qrCodeLinkedAtOption;
+
         $insertResult = dbInsert($insertSQL, $types, $params);
 
         if ($insertResult !== false)
@@ -700,12 +929,44 @@ function createShortURL(string $longURL, array $options = []): array
             break;
         }
 
-        // The insert failed. A duplicate-key collision on the short code is
-        // handled differently for the two paths: a random code is regenerated
-        // and retried; a user-chosen alias must NOT be changed, so we record
-        // that it is taken and stop without any fallback.
+        // The insert failed on a duplicate key (1062). Two DIFFERENT unique
+        // constraints can produce this SAME errno — UQ_shortcode_org (the
+        // short code) and, when qrCodeExternalUUID was supplied, the QR-UUID
+        // uniqueness guard (UQ_url_qr_uuid, #145) — and they must be handled
+        // completely differently: a QR-UUID collision means CueRCode's QR is
+        // ALREADY linked to a (different) short URL, which regenerating a new
+        // random short code would never fix, so it must fail outright rather
+        // than fall into the shortCode retry/alias-taken paths below.
+        //
+        // Disambiguate with a direct, targeted lookup on the QR-UUID itself
+        // (never by parsing the driver's error text, which is not a stable
+        // contract) — only meaningful when qrCodeExternalUUID was actually
+        // supplied, since MySQL never treats two NULLs as equal for a unique
+        // key, so a NULL qrCodeExternalUUID can never be the cause of a 1062.
+        //
+        // 📖 Reference: web/_sql/migrations/009_cuercode_qr_integration.sql (UQ_url_qr_uuid)
         if (dbLastErrno() === $duplicateKeyErrno)
         {
+            if ($qrCodeExternalUUIDOption !== null)
+            {
+                $qrUuidCollisionRow = dbSelectOne(
+                    "SELECT urlUID FROM tblShortURLs WHERE qrCodeExternalUUID = ? LIMIT 1",
+                    's',
+                    [$qrCodeExternalUUIDOption]
+                );
+
+                if ($qrUuidCollisionRow !== null && $qrUuidCollisionRow !== false)
+                {
+                    error_log('[Go2My.Link] INFO: CueRCode qrCodeExternalUUID already linked (1062) — uuid: ' . $qrCodeExternalUUIDOption . ', org: ' . $orgHandle);
+                    $qrUuidTaken = true;
+                    break;
+                }
+            }
+
+            // A duplicate-key collision on the short code is handled
+            // differently for the two paths: a random code is regenerated
+            // and retried; a user-chosen alias must NOT be changed, so we
+            // record that it is taken and stop without any fallback.
             if ($useCustomCode === true)
             {
                 error_log('[Go2My.Link] INFO: custom alias already taken (1062) — code: ' . $shortCode . ', org: ' . $orgHandle);
@@ -720,6 +981,22 @@ function createShortURL(string $longURL, array $options = []): array
 
         error_log('[Go2My.Link] ERROR: Failed to insert short URL (non-duplicate) — code: ' . $shortCode . ', org: ' . $orgHandle);
         break;
+    }
+
+    // A QR UUID that is already linked to another short URL gets its own
+    // distinguishable error and NEVER falls back to a random-code retry
+    // (#145) — checked first since the qrUuidTaken path always takes
+    // precedence over a same-attempt customCodeTaken flag (see the collision
+    // handling above: only one of the two flags can ever be set per create).
+    if ($qrUuidTaken === true)
+    {
+        return [
+            'success'     => false,
+            'shortCode'   => null,
+            'shortURL'    => null,
+            'error'       => 'That QR code is already linked to a short URL.',
+            'qrUuidTaken' => true,
+        ];
     }
 
     // A taken custom alias gets its own clear error and never falls back to a

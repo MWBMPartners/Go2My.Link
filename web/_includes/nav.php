@@ -41,11 +41,13 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 // ============================================================================
 // 📋 Navigation Configuration
 // ============================================================================
-if (defined('G2ML_COMPONENT')) {
-    $component = G2ML_COMPONENT;
-} else {
-    $component = 'A';
-}
+// g2ml_getComponent() (page_init.php) is a typed wrapper around
+// G2ML_COMPONENT — see its docblock for why this include reads the
+// constant through that function rather than directly: each component's
+// entry point defines G2ML_COMPONENT with a DIFFERENT literal, which
+// would otherwise make PHPStan (incorrectly) treat the per-component
+// branching below as dead code.
+$component = g2ml_getComponent();
 if (function_exists('getSetting')) {
     $siteName = getSetting('site.name', 'Go2My.Link');
 } else {
@@ -184,7 +186,7 @@ if (function_exists('getCurrentRoute')) {
                 // Assemble a user array for the cascade from whatever the
                 // session carries (any missing key degrades gracefully).
                 $avatarUser = [
-                    'avatarURL'   => $userAvatar,
+                    'avatarPath'  => $userAvatar,
                     'displayName' => $userDisplayName,
                     'email'       => $userEmail,
                     'firstName'   => $_SESSION['user_first_name'] ?? '',
@@ -229,10 +231,28 @@ if (function_exists('getCurrentRoute')) {
                             <?php if (function_exists('__')) { echo __('nav.my_links'); } else { echo 'My Links'; } ?>
                         </a></li>
 
+                        <!-- LinksPage (Component C.2, #48) -->
+                        <li><a class="dropdown-item" href="https://admin.go2my.link/linkspage">
+                            <i class="fas fa-address-card fa-fw" aria-hidden="true"></i>
+                            <?php if (function_exists('__')) { echo __('nav.linkspage'); } else { echo 'LinksPage'; } ?>
+                        </a></li>
+
+                        <!-- Analytics (#42) -->
+                        <li><a class="dropdown-item" href="https://admin.go2my.link/analytics">
+                            <i class="fas fa-chart-line fa-fw" aria-hidden="true"></i>
+                            <?php if (function_exists('__')) { echo __('nav.analytics'); } else { echo 'Analytics'; } ?>
+                        </a></li>
+
                         <!-- Organisation -->
                         <li><a class="dropdown-item" href="https://admin.go2my.link/org">
                             <i class="fas fa-building fa-fw" aria-hidden="true"></i>
                             <?php if (function_exists('__')) { echo __('nav.organisation'); } else { echo 'Organisation'; } ?>
+                        </a></li>
+
+                        <!-- API Keys -->
+                        <li><a class="dropdown-item" href="https://admin.go2my.link/api-keys">
+                            <i class="fas fa-key fa-fw" aria-hidden="true"></i>
+                            <?php if (function_exists('__')) { echo __('nav.api_keys'); } else { echo 'API Keys'; } ?>
                         </a></li>
 
                         <!-- Privacy & Data -->

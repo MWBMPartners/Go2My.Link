@@ -27,7 +27,17 @@
  *   3. asserts the stored column values match the context that was logged
  *      (proving the bind order, not merely that a row exists);
  *   4. logs the same 'create_link' action N times and asserts the COUNT(*)
- *      the rate-limiter uses now equals N (the abuse-prevention gap is closed).
+ *      the rate-limiter uses now equals N (the abuse-prevention gap is closed);
+ *   5. (#145) asserts the extended 23-column INSERT (scanSource,
+ *      qrCodeExternalID added as two new trailing columns) still round-trips
+ *      correctly: NULL when the caller omits them (every pre-#145 call, and
+ *      the two cases above), and the supplied value when a caller — the
+ *      Component B redirect hot path — passes them.
+ *   6. (#43) asserts the further-extended 26-column INSERT (countryCode,
+ *      regionCode, cityName added as three new trailing columns) still
+ *      round-trips correctly: NULL when the caller omits them (every pre-#43
+ *      call), and the supplied value when a caller — the Component B
+ *      redirect hot path, gated on g2ml_geolocationAvailable() — passes them.
  *
  * Registration model: like session_rebind_test.php (and unlike
  * shorturl_lookup_test.php, which owns the g2ml_register_integration_tests()
@@ -94,7 +104,9 @@ function g2ml_activitylog_test_fetch(mysqli $db, string $shortCode): array
     $statement = mysqli_prepare(
         $db,
         'SELECT `logAction`, `logStatus`, `statusCode`, `orgHandle`, `shortCode`, '
-        . '`destinationURL`, `requestDomain`, `requestMethod`, `ipAddress`, `logData` '
+        . '`destinationURL`, `requestDomain`, `requestMethod`, `ipAddress`, `logData`, '
+        . '`scanSource`, `qrCodeExternalID`, '
+        . '`countryCode`, `regionCode`, `cityName` '
         . 'FROM `tblActivityLog` WHERE `shortCode` = ? ORDER BY `logUID` DESC LIMIT 1'
     );
 
@@ -225,6 +237,11 @@ test('logActivity: a create_link event writes exactly one row with matching colu
     assert_same('POST', $row['requestMethod'], 'requestMethod captured from REQUEST_METHOD');
     assert_same('198.51.100.77', $row['ipAddress'], 'ipAddress captured');
     assert_same('{"source": "integration_test"}', $row['logData'], 'logData JSON stored verbatim');
+    assert_same(null, $row['scanSource'], '(#145) scanSource must be NULL when the caller never supplies it');
+    assert_same(null, $row['qrCodeExternalID'], '(#145) qrCodeExternalID must be NULL when the caller never supplies it');
+    assert_same(null, $row['countryCode'], '(#43) countryCode must be NULL when the caller never supplies it');
+    assert_same(null, $row['regionCode'], '(#43) regionCode must be NULL when the caller never supplies it');
+    assert_same(null, $row['cityName'], '(#43) cityName must be NULL when the caller never supplies it');
 
     // Cleanup so the suite is repeatable.
     $cleanup = mysqli_prepare($db, 'DELETE FROM `tblActivityLog` WHERE `shortCode` = ?');
@@ -261,6 +278,161 @@ test('logActivity: N create_link events produce N rows the rate-limiter can coun
 
     $counted = g2ml_activitylog_test_count($db, $marker);
     assert_same($eventCount, $counted, 'The rate-limiter COUNT(*) sees one row per event — no undercount');
+
+    // Cleanup.
+    $cleanup = mysqli_prepare($db, 'DELETE FROM `tblActivityLog` WHERE `shortCode` = ?');
+    mysqli_stmt_bind_param($cleanup, 's', $marker);
+    mysqli_stmt_execute($cleanup);
+    mysqli_stmt_close($cleanup);
+});
+
+// ----------------------------------------------------------------------------
+// (c) #145 — scanSource/qrCodeExternalID (the two new trailing columns) round
+//     -trip correctly when a caller (the Component B redirect hot path)
+//     supplies them, proving the extended 23-variable bind order/types.
+// ----------------------------------------------------------------------------
+test('logActivity: (#145) scanSource and qrCodeExternalID persist when supplied', function () use ($db): void
+{
+    unset($_SERVER['HTTP_DNT']);
+    unset($_SERVER['HTTP_SEC_GPC']);
+    $_SERVER['REMOTE_ADDR']     = '198.51.100.79';
+    $_SERVER['HTTP_HOST']       = 'g2my.link';
+    $_SERVER['REQUEST_URI']     = '/qrscan?src=qr';
+    $_SERVER['REQUEST_METHOD']  = 'GET';
+    $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0';
+
+    $marker = 'itqr_' . substr(hash('sha256', (string) microtime(true)), 0, 12);
+
+    $written = logActivity('redirect', 'success', 302, array(
+        'orgHandle'        => '[default]',
+        'shortCode'        => $marker,
+        'destinationURL'   => 'https://example.com/' . $marker,
+        'scanSource'       => 'qr',
+        'qrCodeExternalID' => 4242,
+    ));
+
+    assert_same(true, $written, 'logActivity returns true for the extended 23-column INSERT');
+
+    $row = g2ml_activitylog_test_fetch($db, $marker);
+
+    assert_same('qr', $row['scanSource'], 'scanSource must persist verbatim as the 22nd bound column');
+    assert_same(4242, (int) $row['qrCodeExternalID'], 'qrCodeExternalID must persist verbatim as the 23rd bound column');
+
+    // Cleanup.
+    $cleanup = mysqli_prepare($db, 'DELETE FROM `tblActivityLog` WHERE `shortCode` = ?');
+    mysqli_stmt_bind_param($cleanup, 's', $marker);
+    mysqli_stmt_execute($cleanup);
+    mysqli_stmt_close($cleanup);
+});
+
+// ----------------------------------------------------------------------------
+// (d) #145 — a normal redirect (no scanSource/qrCodeExternalID in context)
+//     logs neither, i.e. both remain NULL exactly as before this change.
+// ----------------------------------------------------------------------------
+test('logActivity: (#145) a normal redirect (no scan context) logs scanSource/qrCodeExternalID as NULL', function () use ($db): void
+{
+    unset($_SERVER['HTTP_DNT']);
+    unset($_SERVER['HTTP_SEC_GPC']);
+    $_SERVER['REMOTE_ADDR']     = '198.51.100.80';
+    $_SERVER['HTTP_HOST']       = 'g2my.link';
+    $_SERVER['REQUEST_URI']     = '/normal';
+    $_SERVER['REQUEST_METHOD']  = 'GET';
+    $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0';
+
+    $marker = 'itnoqr_' . substr(hash('sha256', (string) microtime(true)), 0, 12);
+
+    $written = logActivity('redirect', 'success', 302, array(
+        'orgHandle'      => '[default]',
+        'shortCode'      => $marker,
+        'destinationURL' => 'https://example.com/' . $marker,
+    ));
+
+    assert_same(true, $written, 'logActivity returns true for an ordinary (non-QR) redirect');
+
+    $row = g2ml_activitylog_test_fetch($db, $marker);
+
+    assert_same(null, $row['scanSource'], 'A normal redirect must log scanSource as NULL — unchanged behaviour');
+    assert_same(null, $row['qrCodeExternalID'], 'A normal redirect must log qrCodeExternalID as NULL — unchanged behaviour');
+
+    // Cleanup.
+    $cleanup = mysqli_prepare($db, 'DELETE FROM `tblActivityLog` WHERE `shortCode` = ?');
+    mysqli_stmt_bind_param($cleanup, 's', $marker);
+    mysqli_stmt_execute($cleanup);
+    mysqli_stmt_close($cleanup);
+});
+
+// ----------------------------------------------------------------------------
+// (e) #43 — countryCode/regionCode/cityName (the three newest trailing
+//     columns) round-trip correctly when a caller (the Component B redirect
+//     hot path, after g2ml_geolocationAvailable() + g2ml_geolocateIP()) supplies
+//     them, proving the extended 26-variable bind order/types.
+// ----------------------------------------------------------------------------
+test('logActivity: (#43) countryCode/regionCode/cityName persist when supplied', function () use ($db): void
+{
+    unset($_SERVER['HTTP_DNT']);
+    unset($_SERVER['HTTP_SEC_GPC']);
+    $_SERVER['REMOTE_ADDR']     = '198.51.100.81';
+    $_SERVER['HTTP_HOST']       = 'g2my.link';
+    $_SERVER['REQUEST_URI']     = '/geoscan';
+    $_SERVER['REQUEST_METHOD']  = 'GET';
+    $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0';
+
+    $marker = 'itgeo_' . substr(hash('sha256', (string) microtime(true)), 0, 12);
+
+    $written = logActivity('redirect', 'success', 302, array(
+        'orgHandle'      => '[default]',
+        'shortCode'      => $marker,
+        'destinationURL' => 'https://example.com/' . $marker,
+        'countryCode'    => 'US',
+        'regionCode'     => 'CA',
+        'cityName'       => 'Mountain View',
+    ));
+
+    assert_same(true, $written, 'logActivity returns true for the extended 26-column INSERT');
+
+    $row = g2ml_activitylog_test_fetch($db, $marker);
+
+    assert_same('US', $row['countryCode'], 'countryCode must persist verbatim as the 24th bound column');
+    assert_same('CA', $row['regionCode'], 'regionCode must persist verbatim as the 25th bound column');
+    assert_same('Mountain View', $row['cityName'], 'cityName must persist verbatim as the 26th bound column');
+
+    // Cleanup.
+    $cleanup = mysqli_prepare($db, 'DELETE FROM `tblActivityLog` WHERE `shortCode` = ?');
+    mysqli_stmt_bind_param($cleanup, 's', $marker);
+    mysqli_stmt_execute($cleanup);
+    mysqli_stmt_close($cleanup);
+});
+
+// ----------------------------------------------------------------------------
+// (f) #43 — a normal redirect (no countryCode/regionCode/cityName in context —
+//     i.e. geolocation disabled or unavailable) logs all three as NULL, i.e.
+//     byte-for-byte the same as before this feature existed.
+// ----------------------------------------------------------------------------
+test('logActivity: (#43) a normal redirect (no geo context) logs countryCode/regionCode/cityName as NULL', function () use ($db): void
+{
+    unset($_SERVER['HTTP_DNT']);
+    unset($_SERVER['HTTP_SEC_GPC']);
+    $_SERVER['REMOTE_ADDR']     = '198.51.100.82';
+    $_SERVER['HTTP_HOST']       = 'g2my.link';
+    $_SERVER['REQUEST_URI']     = '/nogeo';
+    $_SERVER['REQUEST_METHOD']  = 'GET';
+    $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0';
+
+    $marker = 'itnogeo_' . substr(hash('sha256', (string) microtime(true)), 0, 12);
+
+    $written = logActivity('redirect', 'success', 302, array(
+        'orgHandle'      => '[default]',
+        'shortCode'      => $marker,
+        'destinationURL' => 'https://example.com/' . $marker,
+    ));
+
+    assert_same(true, $written, 'logActivity returns true for an ordinary (geolocation-off) redirect');
+
+    $row = g2ml_activitylog_test_fetch($db, $marker);
+
+    assert_same(null, $row['countryCode'], 'A normal redirect must log countryCode as NULL — unchanged behaviour');
+    assert_same(null, $row['regionCode'], 'A normal redirect must log regionCode as NULL — unchanged behaviour');
+    assert_same(null, $row['cityName'], 'A normal redirect must log cityName as NULL — unchanged behaviour');
 
     // Cleanup.
     $cleanup = mysqli_prepare($db, 'DELETE FROM `tblActivityLog` WHERE `shortCode` = ?');

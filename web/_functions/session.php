@@ -73,11 +73,7 @@ function createUserSession(int $userUID): string|false
     $tokenHash = hash('sha256', $plainToken);
 
     // Gather request metadata
-    if (function_exists('g2ml_getClientIP')) {
-        $ipAddress = g2ml_getClientIP();
-    } else {
-        $ipAddress = ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
-    }
+    $ipAddress = g2ml_clientIpOrDefault($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
     $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
     $deviceInfo = parseDeviceInfo($userAgent);
 
@@ -245,6 +241,8 @@ function destroyUserSession(): void
     {
         $params = session_get_cookie_params();
 
+        // session_get_cookie_params()'s return shape always includes
+        // 'samesite' (never absent/null), so no fallback is needed.
         setcookie(
             session_name(),
             '',
@@ -254,7 +252,7 @@ function destroyUserSession(): void
                 'domain'   => $params['domain'],
                 'secure'   => $params['secure'],
                 'httponly'  => $params['httponly'],
-                'samesite' => $params['samesite'] ?? 'Lax',
+                'samesite' => $params['samesite'],
             ]
         );
     }

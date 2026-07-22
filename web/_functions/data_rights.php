@@ -97,7 +97,7 @@ function g2ml_requestDataExport(int $userUID): array
 
         // Gather short URLs
         $sql  = "SELECT shortCode, destinationURL, title, isActive, clickCount,
-                        createdAt, updatedAt, expiresAt
+                        createdAt, updatedAt, startDate, endDate
                  FROM tblShortURLs WHERE createdByUserUID = ?";
         $stmt = $db->prepare($sql);
         $stmt->bind_param('i', $userUID);
@@ -116,7 +116,7 @@ function g2ml_requestDataExport(int $userUID): array
         $stmt->close();
 
         // Gather sessions (exclude tokens for security)
-        $sql  = "SELECT sessionUID, deviceType, browserName, osName, ipAddress,
+        $sql  = "SELECT sessionUID, deviceInfo, ipAddress,
                         isActive, createdAt, lastActivityAt, expiresAt
                  FROM tblUserSessions WHERE userUID = ? ORDER BY createdAt DESC";
         $stmt = $db->prepare($sql);
@@ -147,11 +147,15 @@ function g2ml_requestDataExport(int $userUID): array
         file_put_contents($filepath, $jsonContent);
 
         // Calculate expiry
-        if (function_exists('getSetting')) {
-        $expiryHours = (int) getSetting('compliance.data_export_expiry_hours', 48);
-    } else {
-        $expiryHours = 48;
-    }
+        if (function_exists('getSetting'))
+        {
+            $expiryHours = (int) getSetting('compliance.data_export_expiry_hours', 48);
+        }
+        else
+        {
+            $expiryHours = 48;
+        }
+
         $expiresAt   = date('Y-m-d H:i:s', strtotime("+{$expiryHours} hours"));
 
         // Create request record
@@ -198,6 +202,282 @@ function g2ml_requestDataExport(int $userUID): array
         error_log('[Go2My.Link] ERROR: g2ml_requestDataExport failed: ' . $e->getMessage());
         return ['success' => false, 'error' => 'Export failed. Please try again later.'];
     }
+}
+
+// ============================================================================
+// 📥 Handle Data Export Download (#162)
+// ============================================================================
+//
+// The admin dashboard page pages/privacy/export/index.php links to (and
+// g2ml_requestDataExport()'s own email above sends) a download URL of the
+// form /privacy/export?download=<requestUID> — but the file-based router
+// (web/Go2My.Link/_admin/public_html/index.php) ALWAYS requires header.php +
+// nav.php (which echo real HTML — there is no output buffering anywhere in
+// this app) BEFORE it ever requires the resolved page file. By the time a
+// page file's own code runs, a header() call for Content-Type/
+// Content-Disposition/Location would silently fail ("headers already sent")
+// — the exact constraint pages/analytics/index.php's own docblock documents,
+// and the reason analytics-export.php (#44) exists as a second, standalone
+// entry point in public_html/ rather than a pages/ file.
+//
+// g2ml_handleDataExportDownloadRequest() below is the equivalent fix for this
+// route, but dispatched from the ROUTER itself — see index.php's Step 5 —
+// BEFORE header.php is required, rather than as a second public_html file.
+// This keeps the download reachable at the SAME URL the page links to and
+// the emailed downloadURL already promises, with no change to either.
+// ============================================================================
+
+/**
+ * Look up a data-export request row for download, scoped to the CURRENT user
+ * in the SAME prepared statement as the ownership check.
+ *
+ * ⚠️ IDOR guard (#162): requestUID is NEVER trusted alone — every caller must
+ * also supply the authenticated session's own userUID, and both are matched
+ * in one WHERE clause. A requestUID that exists but belongs to a DIFFERENT
+ * user therefore returns null here — indistinguishable from a requestUID
+ * that does not exist at all, which is exactly the non-disclosure behaviour
+ * g2ml_handleDataExportDownloadRequest() needs.
+ *
+ * @param  int $requestUID  The requestUID from ?download=.
+ * @param  int $userUID     The CURRENT authenticated user's userUID (never
+ *                          client-supplied).
+ * @return array|null|false The row (requestUID, status, exportFilePath,
+ *                          exportExpiresAt), null if no matching row exists
+ *                          for THIS user, or false on a DB error.
+ */
+function g2ml_findExportRequestForDownload(int $requestUID, int $userUID): array|null|false
+{
+    return dbSelectOne(
+        "SELECT requestUID, status, exportFilePath, exportExpiresAt
+         FROM tblDataDeletionRequests
+         WHERE requestUID = ? AND userUID = ? AND requestType = 'export'
+         LIMIT 1",
+        'ii',
+        [$requestUID, $userUID]
+    );
+}
+
+/**
+ * PURE — determine whether an export-request row (already ownership-scoped
+ * by g2ml_findExportRequestForDownload()) is in a downloadable state.
+ *
+ * A row is downloadable only when ALL of the following hold:
+ *   - it is not null/false (not found, wrong owner, or a DB error);
+ *   - status is exactly 'completed' (pending/processing/rejected are refused);
+ *   - exportFilePath is a non-empty string;
+ *   - exportExpiresAt is a non-empty, parseable timestamp still in the future
+ *     (an expired or missing expiry is refused).
+ *
+ * No I/O, no superglobals — safe to unit test without a database.
+ *
+ * @param  array|null|false $requestRow  A row from
+ *                                       g2ml_findExportRequestForDownload(),
+ *                                       or null/false as that function
+ *                                       returns for "not found"/"DB error".
+ * @return bool
+ *
+ * @phpstan-assert-if-true array $requestRow
+ */
+function g2ml_isExportRequestDownloadable(array|null|false $requestRow): bool
+{
+    if (!is_array($requestRow))
+    {
+        return false;
+    }
+
+    if (($requestRow['status'] ?? '') !== 'completed')
+    {
+        return false;
+    }
+
+    $exportFilePath = $requestRow['exportFilePath'] ?? null;
+
+    if (!is_string($exportFilePath) || $exportFilePath === '')
+    {
+        return false;
+    }
+
+    $exportExpiresAt = $requestRow['exportExpiresAt'] ?? null;
+
+    if (!is_string($exportExpiresAt) || $exportExpiresAt === '')
+    {
+        return false;
+    }
+
+    $expiryTimestamp = strtotime($exportExpiresAt);
+
+    if ($expiryTimestamp === false)
+    {
+        return false;
+    }
+
+    if ($expiryTimestamp <= time())
+    {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Redirect back to the privacy export page with a single, generic,
+ * non-disclosing error flag.
+ *
+ * Used for EVERY rejection reason (not found, wrong owner, wrong status,
+ * expired, or a corrupted/missing file all land here via the SAME code path)
+ * so the response can never be used as an oracle for whether a given
+ * requestUID exists or who owns it (#162 IDOR guard).
+ *
+ * Safe to call here specifically because g2ml_handleDataExportDownloadRequest()
+ * is only ever invoked from the router BEFORE header.php is required (see
+ * this file's own section docblock above) — a plain header('Location: ...')
+ * would fail everywhere else in this app.
+ *
+ * @return void  Always exits — never returns.
+ */
+function g2ml_redirectExportDownloadError(): void
+{
+    header('Location: /privacy/export?export_error=1');
+    exit;
+}
+
+/**
+ * Stream a validated, ownership-checked export file to the browser as a JSON
+ * download, log the download, then exit.
+ *
+ * NOT pure — sends headers, echoes output, calls exit(). Callers MUST have
+ * already confirmed g2ml_isExportRequestDownloadable($requestRow) === true
+ * and that $requestRow was resolved via g2ml_findExportRequestForDownload()
+ * scoped to the CURRENT userUID — never call this with an unverified row.
+ *
+ * The stored exportFilePath is never client-supplied (see
+ * g2ml_requestDataExport() above), but is still confined to the expected
+ * exports directory via realpath() before being opened, as defence in depth
+ * against a corrupted or tampered path ever escaping it.
+ *
+ * @param  array $requestRow  A downloadable row from
+ *                            g2ml_findExportRequestForDownload().
+ * @param  int   $userUID     The current, authenticated user (for the
+ *                            activity log).
+ * @return void               Always exits — never returns.
+ */
+function g2ml_streamExportDownload(array $requestRow, int $userUID): void
+{
+    $requestUID     = (int) $requestRow['requestUID'];
+    $exportFilePath = (string) $requestRow['exportFilePath'];
+
+    $exportsDirectory     = G2ML_UPLOADS . DIRECTORY_SEPARATOR . 'exports';
+    $realExportsDirectory = realpath($exportsDirectory);
+    $realFilePath         = realpath($exportFilePath);
+
+    if ($realExportsDirectory === false || $realFilePath === false)
+    {
+        error_log('[Go2My.Link] ERROR: g2ml_streamExportDownload — export file missing on disk for requestUID ' . $requestUID);
+        g2ml_redirectExportDownloadError();
+        return;
+    }
+
+    $confinedPrefix = $realExportsDirectory . DIRECTORY_SEPARATOR;
+
+    if (strncmp($realFilePath, $confinedPrefix, strlen($confinedPrefix)) !== 0)
+    {
+        error_log('[Go2My.Link] ERROR: g2ml_streamExportDownload — exportFilePath escapes the exports directory for requestUID ' . $requestUID);
+        g2ml_redirectExportDownloadError();
+        return;
+    }
+
+    $jsonContent = file_get_contents($realFilePath);
+
+    if ($jsonContent === false)
+    {
+        error_log('[Go2My.Link] ERROR: g2ml_streamExportDownload — could not read export file for requestUID ' . $requestUID);
+        g2ml_redirectExportDownloadError();
+        return;
+    }
+
+    if (function_exists('logActivity'))
+    {
+        logActivity('data_export_downloaded', 'success', null, [
+            'userUID' => $userUID,
+            'logData' => ['requestUID' => $requestUID],
+        ]);
+    }
+
+    $downloadFilename = 'go2mylink-data-export-' . $requestUID . '.json';
+
+    header('Content-Type: application/json; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $downloadFilename . '"');
+    header('Content-Length: ' . (string) strlen($jsonContent));
+    header('X-Content-Type-Options: nosniff');
+    header('Cache-Control: no-store');
+
+    echo $jsonContent;
+
+    exit;
+}
+
+/**
+ * Handle a GET ?download=<requestUID> request against the /privacy/export
+ * route (#162).
+ *
+ * MUST be called from the router BEFORE header.php is required (see
+ * web/Go2My.Link/_admin/public_html/index.php, Step 5) — see this file's own
+ * section docblock above for why.
+ *
+ * Reuses the page's own requireAuth() guard, then re-verifies ownership by
+ * matching BOTH requestUID and the session's userUID in the SAME prepared
+ * statement (g2ml_findExportRequestForDownload()) — requestUID is NEVER
+ * trusted alone. Only a 'completed', unexpired request is streamed; every
+ * other outcome (not found, wrong owner, wrong status, expired, unreadable
+ * file) redirects to a single generic error state so the response can never
+ * disclose whether a given requestUID exists or who owns it.
+ *
+ * @return void  Always exits — never returns.
+ */
+function g2ml_handleDataExportDownloadRequest(): void
+{
+    requireAuth();
+
+    $currentUser = getCurrentUser();
+
+    if ($currentUser === null)
+    {
+        g2ml_redirectExportDownloadError();
+        return;
+    }
+
+    $userUID = (int) $currentUser['userUID'];
+
+    $rawRequestUID = '';
+
+    if (isset($_GET['download']) && is_string($_GET['download']))
+    {
+        $rawRequestUID = $_GET['download'];
+    }
+
+    if ($rawRequestUID === '' || !ctype_digit($rawRequestUID))
+    {
+        g2ml_redirectExportDownloadError();
+        return;
+    }
+
+    $requestUID = (int) $rawRequestUID;
+
+    if ($requestUID <= 0)
+    {
+        g2ml_redirectExportDownloadError();
+        return;
+    }
+
+    $requestRow = g2ml_findExportRequestForDownload($requestUID, $userUID);
+
+    if (!g2ml_isExportRequestDownloadable($requestRow))
+    {
+        g2ml_redirectExportDownloadError();
+        return;
+    }
+
+    g2ml_streamExportDownload($requestRow, $userUID);
 }
 
 // ============================================================================
@@ -321,7 +601,7 @@ function g2ml_anonymiseUserData(int $userUID): bool
         // Anonymise user profile
         $sql = "UPDATE tblUsers SET
                     email = ?, firstName = ?, lastName = ?, displayName = ?,
-                    passwordHash = '', avatarURL = NULL, isActive = 0,
+                    passwordHash = '', avatarPath = NULL, isActive = 0,
                     emailVerified = 0, updatedAt = NOW()
                 WHERE userUID = ?";
         $stmt = $db->prepare($sql);

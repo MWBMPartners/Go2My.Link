@@ -38,10 +38,16 @@
 $firstName   = $firstName ?? 'there';
 $deviceInfo  = $deviceInfo ?? 'Unknown device';
 $ipAddress   = $ipAddress ?? 'Unknown';
-$loginAt     = $loginAt ?? date('j M Y, H:i T');
+if (!isset($loginAt))
+{
+    $loginAt = date('j M Y, H:i T');
+}
 $siteName    = $siteName ?? 'Go2My.Link';
 $siteURL     = $siteURL ?? 'https://go2my.link';
-$currentYear = $currentYear ?? date('Y');
+if (!isset($currentYear))
+{
+    $currentYear = date('Y');
+}
 $preheader   = $preheader ?? '';
 ?>
 <!doctype html>

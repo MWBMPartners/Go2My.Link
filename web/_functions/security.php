@@ -759,7 +759,10 @@ function g2ml_resolveAllowedDestinationIps(string $url): array|false
 
     $parts = parse_url($url);
 
-    if ($parts === false || !is_array($parts))
+    // parse_url() only ever returns array|false, so once false is
+    // eliminated the remaining value is guaranteed to be an array — no
+    // separate is_array() check is needed.
+    if ($parts === false)
     {
         return false;
     }
@@ -1217,6 +1220,33 @@ function g2ml_getClientIP(): string
 
     // No usable forwarded value: fall back to the trusted proxy's own address.
     return $remoteAddr;
+}
+
+/**
+ * Return the client IP via g2ml_getClientIP() when it is already defined,
+ * otherwise a caller-supplied default.
+ *
+ * A handful of call sites (e.g. the early error handler, which may run
+ * before security.php has finished loading) cannot assume
+ * g2ml_getClientIP() is defined yet, so they historically repeated their
+ * own `function_exists('g2ml_getClientIP') ? ... : ...` guard with their
+ * own default. This centralises that one guard so every caller only
+ * supplies the default value it needs (#118).
+ *
+ * @param  ?string $default  Value returned when g2ml_getClientIP() is not
+ *                            yet defined. Defaults to the same '0.0.0.0'
+ *                            sentinel g2ml_getClientIP() itself falls back
+ *                            to when REMOTE_ADDR is missing.
+ * @return ?string
+ */
+function g2ml_clientIpOrDefault(?string $default = '0.0.0.0'): ?string
+{
+    if (function_exists('g2ml_getClientIP'))
+    {
+        return g2ml_getClientIP();
+    }
+
+    return $default;
 }
 
 /**

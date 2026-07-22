@@ -86,6 +86,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 }
 
 // ============================================================================
+// Handle a failed download redirect (GET ?export_error=1) — #162
+// ============================================================================
+// The actual ?download=<requestUID> handler runs in the router, BEFORE this
+// page file (or header.php/nav.php) is ever required — see
+// web/Go2My.Link/_admin/public_html/index.php Step 5b and
+// g2ml_handleDataExportDownloadRequest() in web/_functions/data_rights.php.
+// Every rejection reason there (not found, wrong owner, wrong status,
+// expired, unreadable file) redirects back here with the SAME generic flag,
+// so this page never reveals which reason applied.
+// ============================================================================
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['export_error']))
+{
+    if (function_exists('__')) {
+        $actionError = __('export.error_download_unavailable');
+    } else {
+        $actionError = 'That download link is unavailable. It may be invalid or expired — you can request a new export below.';
+    }
+}
+
+// ============================================================================
 // Fetch existing data requests (filtered to export type)
 // ============================================================================
 

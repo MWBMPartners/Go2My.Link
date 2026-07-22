@@ -30,11 +30,24 @@
 **/public_html_legacy/
 
 # Installer runtime artefacts (server-local; never commit)
+# The shared server-wide credentials dir stays "_auth_keys/"; each
+# component's own credential-override dir was renamed from "_auth_keys/" to
+# ".auth/". Both patterns are kept so a lock/token file is ignored regardless
+# of which directory it ends up in.
 **/_auth_keys/.install_token
 **/_auth_keys/.installed
+**/.auth/.install_token
+**/.auth/.installed
 
 # dev-team autopilot loop lock (runtime only; state file autopilot.json IS tracked)
 .dev-team/loop.lock/
+
+# MaxMind GeoLite2 database (#43) — a large, licensed, frequently-updated
+# binary. NEVER committed; fetched at DEPLOY time by scripts/fetch-geoip.sh
+# (see .github/workflows/sftp-deploy.yml). The vendored PURE-PHP READER
+# library that reads this file (web/_libraries/maxminddb/*.php) IS tracked —
+# only the .mmdb data file itself is excluded here.
+*.mmdb
 
 *.env
 .env.*
@@ -99,6 +112,13 @@ core
 # 📖 https://code.visualstudio.com/docs/remote/ssh
 .vscode-server/
 .vscode-oss/
+
+# ============================================================================
+# 🤖 Claude Code (portable context is committed; machine-local settings are not)
+# ============================================================================
+# `.claude/settings.local.json` holds per-machine/per-user Claude Code settings
+# (permissions, local overrides). The shared `.claude/settings.json` IS tracked.
+.claude/settings.local.json
 *.vsix
 
 # Visual Studio

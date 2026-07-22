@@ -295,21 +295,35 @@ function getSetting(string $settingID, mixed $default = null, ?string $orgHandle
  * If a row already exists for this settingID + scope + scopeRef, it updates
  * the value. Otherwise, it inserts a new row.
  *
- * Sensitive settings are encrypted before storage.
+ * Sensitive settings are encrypted (AES-256-GCM) before storage.
+ *
+ * ⚠️  $isSensitive defaults to NULL, meaning "inherit from the existing row".
+ *     It is deliberately NOT a plain `bool $isSensitive = false`: with that
+ *     signature, any caller updating an existing sensitive row without passing
+ *     the flag silently rewrote isSensitive to 0 and stored the secret in
+ *     PLAINTEXT. Nothing surfaced the downgrade, because the read path falls
+ *     back to the raw stored string when decryption fails — so a plaintext
+ *     secret kept working exactly like an encrypted one.
+ *
+ *     A sensitive row can therefore never be implicitly downgraded; clearing
+ *     the flag now requires passing false explicitly.
  *
  * @param  string      $settingID     The setting key
  * @param  mixed       $value         The value to store
  * @param  string      $scope         Target scope: Default, System, Organisation, or User
  * @param  string|null $scopeRef      Scope reference: orgHandle or userUID
- * @param  bool        $isSensitive   Whether to encrypt the value
+ * @param  bool|null   $isSensitive   True = encrypt, false = store plainly,
+ *                                    null (default) = keep the existing row's
+ *                                    setting; false for a brand-new row
  * @return bool                       True on success, false on failure
  *
  * Usage example:
  *   setSetting('site.name', 'My Custom Name', 'System');
  *   setSetting('org.welcome_message', 'Hello!', 'Organisation', 'myorg');
  *   setSetting('user.theme', 'dark', 'User', '42');
+ *   setSetting('captcha.turnstile_secret_key', $secret, 'System', null, true);
  */
-function setSetting(string $settingID, mixed $value, string $scope = 'System', ?string $scopeRef = null, bool $isSensitive = false): bool
+function setSetting(string $settingID, mixed $value, string $scope = 'System', ?string $scopeRef = null, ?bool $isSensitive = null): bool
 {
     // Validate scope
     $validScopes = ['Default', 'System', 'Organisation', 'User'];
@@ -323,8 +337,44 @@ function setSetting(string $settingID, mixed $value, string $scope = 'System', ?
     // Convert value to string for storage
     $stringValue = _g2ml_settingToString($value);
 
+    // Look the row up BEFORE encrypting: the caller may have left $isSensitive
+    // as null, in which case the existing row decides whether this value must
+    // be encrypted. Encrypting first would mean deciding before we know.
+    $existing = dbSelectOne(
+        "SELECT settingUID, isSensitive FROM tblSettings
+         WHERE settingID = ? AND settingScope = ? AND (settingScopeRef = ? OR (settingScopeRef IS NULL AND ? IS NULL))",
+        'ssss',
+        [$settingID, $scope, $scopeRef, $scopeRef]
+    );
+
+    if ($existing === false)
+    {
+        return false; // Query error
+    }
+
+    // Resolve the effective sensitivity.
+    //
+    // null means "inherit": keep whatever the existing row already declares, so
+    // a caller that simply updates a secret's VALUE can never silently strip
+    // its encryption. A brand-new row defaults to not sensitive.
+    if ($isSensitive === null)
+    {
+        if ($existing !== null)
+        {
+            $effectiveIsSensitive = ((int) $existing['isSensitive'] === 1);
+        }
+        else
+        {
+            $effectiveIsSensitive = false;
+        }
+    }
+    else
+    {
+        $effectiveIsSensitive = $isSensitive;
+    }
+
     // Encrypt if sensitive
-    if ($isSensitive && $stringValue !== null && $stringValue !== '')
+    if ($effectiveIsSensitive && $stringValue !== null && $stringValue !== '')
     {
         $encrypted = g2ml_encrypt($stringValue);
 
@@ -337,22 +387,12 @@ function setSetting(string $settingID, mixed $value, string $scope = 'System', ?
         $stringValue = $encrypted;
     }
 
-    // Check if this setting already exists at this scope
-    $existing = dbSelectOne(
-        "SELECT settingUID FROM tblSettings
-         WHERE settingID = ? AND settingScope = ? AND (settingScopeRef = ? OR (settingScopeRef IS NULL AND ? IS NULL))",
-        'ssss',
-        [$settingID, $scope, $scopeRef, $scopeRef]
-    );
-
-    if ($existing === false)
+    if ($effectiveIsSensitive)
     {
-        return false; // Query error
-    }
-
-    if ($isSensitive) {
         $isSensitiveInt = 1;
-    } else {
+    }
+    else
+    {
         $isSensitiveInt = 0;
     }
 

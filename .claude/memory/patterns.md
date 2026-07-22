@@ -13,10 +13,22 @@
   - Single-line if without braces: `if (x) doSomething();` — always use braces and multi-line
   - Short open tags: `<?` — always use `<?php`
   - Short echo tags: `<?=` — always use `<?php echo`
-  - Always use `if () { }`, `foreach () { }`, etc. with curly braces on ALL control structures
+  - Always use `if () { }`, `foreach () { }`, etc. with curly braces on ALL control structures — braces are never optional, regardless of brace *placement* (see the note below)
   - In HTML-template contexts: `<?php if ($x) { ?>...<?php } ?>` or `<?php if ($x) { echo 'val'; } ?>`
   - For array values that would need a ternary: extract to a variable with if/else before the array
   - `??` (null coalescing) is acceptable when both sides are simple values; if one side has a function call, use if/else
+- **Brace *placement* (as opposed to whether braces exist at all) is not itself part of the
+  no-shorthand ban.** What is enforced everywhere, without exception, is the list above — no
+  alternative syntax, no ternary/Elvis, no braceless ifs. Where the opening brace goes is a
+  separate, lower-stakes style question:
+  - `web/_functions/` (business logic, no HTML mixed in) uses **Allman** (brace on its own
+    line) — keep writing new code there that way.
+  - Inline template blocks (`web/*/public_html/pages/**/*.php` and similar HTML-mixed files)
+    have long used **K&R** (opening brace on the statement line, e.g. `if ($x) {`) — this
+    predates the no-shorthand rule and is widespread (hundreds of instances). Match the
+    surrounding file's existing brace style when editing a template rather than reformatting
+    unrelated lines to Allman; this is a style nit, not a house-rule violation. Don't invent a
+    new brace-placement mandate for templates without a separate decision to do so.
 
 ### JavaScript
 
@@ -70,6 +82,13 @@
 - Debug mode via `?debug=true` URL parameter
 - Log all errors to tblErrorLog in database
 - Log general activity to tblActivityLog
+- Shared global functions use the `g2ml_` prefix (see `security.php` header). Client IP is
+  obtained via `g2ml_getClientIP()` (`web/_functions/security.php`) — it always returns a
+  non-empty, sane value (min. `'0.0.0.0'`), so callers should call it directly. Only when a
+  call site may run before `security.php` has loaded (e.g. an early error handler) should it
+  use `g2ml_clientIpOrDefault(?string $default)` instead of repeating its own
+  `function_exists('g2ml_getClientIP')` guard (#118). A broader pass standardising the
+  ~103 other global function names is tracked separately and intentionally out of scope here.
 
 ## 🗄️ Database Standards
 
@@ -145,6 +164,12 @@
 
 - Private dirs: underscore prefix (`_auth_keys`, `_includes`, `_functions`, `_libraries`)
 - Web roots: `public_html`, `public_html_dev_alpha`, `public_html_dev_beta`, `public_html_landing`, `public_html_redir`
+- ⚠️ **Deliberate exception:** each component's per-component credential directory is
+  `<Component>/.auth/` (dot-prefixed, not underscore) — renamed from `_auth_keys/` in 2026-07
+  (#160) specifically so it sorts/reads as a hidden dotfile-style directory distinct from the
+  shared, underscore-prefixed `web/_auth_keys/auth_creds.php` it includes. Do not "fix" it
+  back to an underscore prefix; the two are intentionally named differently because they are
+  different things (one shared file vs. three per-component thin includes).
 
 ## 📝 Documentation Emoji Vocabulary
 

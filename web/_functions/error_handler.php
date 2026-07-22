@@ -162,11 +162,7 @@ function g2ml_logError(
     } else {
         $requestHeaders = null;
     }
-    if (function_exists('g2ml_getClientIP')) {
-        $ipAddress = g2ml_getClientIP();
-    } else {
-        $ipAddress = ($_SERVER['REMOTE_ADDR'] ?? null);
-    }
+    $ipAddress      = g2ml_clientIpOrDefault($_SERVER['REMOTE_ADDR'] ?? null);
     $userUID        = $_SESSION['user_uid'] ?? null;
 
     // Attempt database insert

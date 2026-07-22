@@ -13,7 +13,8 @@
  * ============================================================================
  *
  * CRUD operations for organisations, member management, invitations,
- * custom domain verification, and short domain management.
+ * custom domain verification, short domain management, and (#46) designating
+ * a verified short domain's custom-domain LinksPage fallback.
  *
  * Dependencies: security.php (g2ml_generateToken, g2ml_sanitiseInput),
  *               db_query.php (dbSelect, dbSelectOne, dbInsert, dbUpdate, dbDelete),
@@ -25,12 +26,13 @@
  * @package    Go2My.Link
  * @subpackage Functions
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.6.0
- * @since      Phase 5
+ * @version    0.7.0
+ * @since      Phase 5 (custom-domain LinksPage designation added v1.2.0 / #46)
  *
  * 📖 References:
  *     - tblOrganisations schema: web/_sql/schema/012_core_organisations.sql
  *     - tblOrgInvitations schema: web/_sql/schema/014_org_invitations.sql
+ *     - tblOrgShortDomains.linksPageUID: web/_sql/migrations/015_org_short_domain_linkspage.sql
  *     - DNS TXT records: https://www.php.net/manual/en/function.dns-get-record.php
  * ============================================================================
  */
@@ -144,11 +146,20 @@ function createOrganisation(string $name, string $handle, array $options = []): 
     }
     $orgDesc    = $options['orgDescription'] ?? null;
 
+    if ($orgURL)
+    {
+        $orgURLForInsert = $orgURL;
+    }
+    else
+    {
+        $orgURLForInsert = null;
+    }
+
     $insertResult = dbInsert(
         "INSERT INTO tblOrganisations (orgHandle, orgName, orgURL, orgDescription, tierID, isVerified, isActive)
          VALUES (?, ?, ?, ?, 'free', 0, 1)",
         'ssss',
-        [$handle, $name, $orgURL ?: null, $orgDesc]
+        [$handle, $name, $orgURLForInsert, $orgDesc]
     );
 
     if ($insertResult === false)
@@ -288,6 +299,14 @@ function updateOrganisation(string $orgHandle, array $data): array
         'logData' => ['orgHandle' => $orgHandle, 'fields' => array_keys($data)],
     ]);
 
+    // A tierID change must never leave a stale entitlement decision cached for
+    // the REST of this request (e.g. a GlobalAdmin reassigning a tier and then
+    // immediately creating a link for that org) — see entitlements.php (#146).
+    if (array_key_exists('tierID', $data) && function_exists('g2ml_clearOrgTierCache'))
+    {
+        g2ml_clearOrgTierCache($orgHandle);
+    }
+
     return ['success' => true];
 }
 
@@ -313,7 +332,14 @@ function getOrgMembers(string $orgHandle): array
         [$orgHandle]
     );
 
-    return $rows ?: [];
+    if ($rows)
+    {
+        return $rows;
+    }
+    else
+    {
+        return [];
+    }
 }
 
 /**
@@ -457,8 +483,24 @@ function changeMemberRole(string $orgHandle, int $userUID, string $newRole): arr
     // Update account types in junction table
     if (function_exists('revokeAccountType') && function_exists('assignAccountType'))
     {
-        $oldTypeID = ($member['role'] === 'Admin') ? 'admin' : 'user';
-        $newTypeID = ($newRole === 'Admin') ? 'admin' : 'user';
+        if ($member['role'] === 'Admin')
+        {
+            $oldTypeID = 'admin';
+        }
+        else
+        {
+            $oldTypeID = 'user';
+        }
+
+        if ($newRole === 'Admin')
+        {
+            $newTypeID = 'admin';
+        }
+        else
+        {
+            $newTypeID = 'user';
+        }
+
         revokeAccountType($userUID, $oldTypeID, $orgHandle);
         assignAccountType($userUID, $newTypeID, $orgHandle, $currentUser['userUID']);
     }
@@ -664,7 +706,16 @@ function acceptInvitation(string $token): array
     if (function_exists('revokeAccountType') && function_exists('assignAccountType'))
     {
         revokeAccountType($currentUser['userUID'], 'user', '[default]');
-        $typeID = ($invitation['role'] === 'Admin') ? 'admin' : 'user';
+
+        if ($invitation['role'] === 'Admin')
+        {
+            $typeID = 'admin';
+        }
+        else
+        {
+            $typeID = 'user';
+        }
+
         assignAccountType(
             $currentUser['userUID'],
             $typeID,
@@ -760,15 +811,47 @@ function getPendingInvitations(string $orgHandle): array
         [$orgHandle]
     );
 
-    return $rows ?: [];
+    if ($rows)
+    {
+        return $rows;
+    }
+    else
+    {
+        return [];
+    }
 }
 
 // ============================================================================
-// 🌐 Custom Domain Management
+// 🌐 Custom Domain Management (DEPRECATED — GT-6)
+// ============================================================================
+// ⚠️  This whole section (tblOrgDomains) is DEPRECATED as of the 2026-07-10
+// GT-6 assessment (docs/LAUNCH_PLAN_2026-07-09.md §5, GitHub issue #91). It
+// is Phase 5 (#32) legacy: an org registers a hostname here and proves
+// ownership via THIS section's own DNS-TXT flow, tagged with a `domainType`
+// including 'linkspage' — but NOTHING has ever routed off it. The redirect
+// hot path, getOrgByDomain()/domain_resolver.php, and the Component C.4
+// (#46) custom-domain LinksPage fallback all resolve exclusively via
+// tblOrgShortDomains and its OWN, separate verification flow
+// (verifyOrgShortDomain(), below, added by #91) plus
+// tblOrgShortDomains.linksPageUID (added by migration 015, for #46).
+//
+// DO NOT call these functions for any new feature. They remain fully
+// functional (unchanged) so the one remaining caller — the deprecated
+// org/domains/index.php admin page — can still let an org VIEW, VERIFY
+// (harmlessly), and REMOVE any row it already has; that page no longer
+// calls addOrgDomain() (its Add Domain form was removed and the
+// add_domain POST action is rejected before reaching this function). See
+// web/_sql/migrations/018_deprecate_org_domains.sql for the full write-up
+// and the owner-reviewed reconciliation path for any existing rows.
 // ============================================================================
 
 /**
  * Add a custom domain to an organisation with a DNS verification token.
+ *
+ * ⚠️  DEPRECATED (GT-6) — see the section banner above. Kept only because
+ * the deprecated org/domains/ admin page historically called it; that page
+ * no longer does (its Add Domain form and add_domain POST case were both
+ * removed). Do not call this for new work — use addOrgShortDomain() instead.
  *
  * @param  string $orgHandle
  * @param  string $domain     Domain name (e.g., "example.com")
@@ -852,9 +935,45 @@ function addOrgDomain(string $orgHandle, string $domain, string $type = 'primary
 }
 
 /**
+ * Look up TXT records for a DNS host.
+ *
+ * Thin wrapper around dns_get_record(..., DNS_TXT) used by BOTH verifyDomain()
+ * (tblOrgDomains — ⚠️ DEPRECATED, GT-6, gates no routing) and
+ * verifyOrgShortDomain() (tblOrgShortDomains — the real, routing-gating
+ * flow, #91) so the two share one tested DNS-lookup code path. This helper
+ * itself is NOT deprecated — only its verifyDomain() caller is.
+ *
+ * Testability seam: integration tests cannot rely on real DNS propagation, so
+ * a test may inject a fake resolver by setting
+ * $GLOBALS['g2ml_dns_txt_lookup_override'] to a callable of shape
+ * `(string $host): array|false`. When unset (the normal runtime case), this
+ * always calls the real dns_get_record().
+ *
+ * @param  string $host  Fully-qualified host to query TXT records for
+ * @return array|false   dns_get_record()-shaped result rows, or false on failure
+ *
+ * 📖 Reference: https://www.php.net/manual/en/function.dns-get-record.php
+ */
+function g2ml_lookupDnsTxtRecords(string $host): array|false
+{
+    if (isset($GLOBALS['g2ml_dns_txt_lookup_override']) && is_callable($GLOBALS['g2ml_dns_txt_lookup_override']))
+    {
+        $override = $GLOBALS['g2ml_dns_txt_lookup_override'];
+
+        return $override($host);
+    }
+
+    return @dns_get_record($host, DNS_TXT);
+}
+
+/**
  * Verify a custom domain via DNS TXT record lookup.
  *
  * Checks for a TXT record at _g2ml-verify.{domain} matching the stored token.
+ *
+ * ⚠️  DEPRECATED (GT-6) — see the section banner above. This flips
+ * tblOrgDomains.verificationStatus only; it gates nothing routable. Use
+ * verifyOrgShortDomain() for the real, routing-gating verification flow.
  *
  * @param  int    $domainUID
  * @param  string $orgHandle
@@ -884,7 +1003,7 @@ function verifyDomain(int $domainUID, string $orgHandle): array
     $lookupHost = $prefix . '.' . $domain['domainName'];
 
     // Perform DNS TXT lookup
-    $records = @dns_get_record($lookupHost, DNS_TXT);
+    $records = g2ml_lookupDnsTxtRecords($lookupHost);
 
     if ($records === false || empty($records))
     {
@@ -940,6 +1059,10 @@ function verifyDomain(int $domainUID, string $orgHandle): array
 /**
  * Remove a custom domain from an organisation.
  *
+ * ⚠️  DEPRECATED (GT-6) — see the section banner above. Still used by the
+ * deprecated org/domains/ admin page so an org can clean up any row it
+ * already has; not for new work.
+ *
  * @param  int    $domainUID
  * @param  string $orgHandle
  * @return array  ['success' => bool, 'error' => string|null]
@@ -974,6 +1097,11 @@ function removeOrgDomain(int $domainUID, string $orgHandle): array
 /**
  * Get all custom domains for an organisation.
  *
+ * ⚠️  DEPRECATED (GT-6) — see the section banner above. Still used by the
+ * deprecated org/domains/ admin page and by the org overview dashboard's
+ * "Custom Domains (Legacy)" count; not for new work — use
+ * getOrgShortDomains() for anything routing-related.
+ *
  * @param  string $orgHandle
  * @return array
  */
@@ -985,7 +1113,14 @@ function getOrgDomains(string $orgHandle): array
         [$orgHandle]
     );
 
-    return $rows ?: [];
+    if ($rows)
+    {
+        return $rows;
+    }
+    else
+    {
+        return [];
+    }
 }
 
 // ============================================================================
@@ -995,9 +1130,17 @@ function getOrgDomains(string $orgHandle): array
 /**
  * Add a custom short domain to an organisation.
  *
+ * 🔒 #91 ownership-verification: the new row starts UNVERIFIED and NOT
+ * routable (verificationStatus='pending', isActive=0) — sp_lookupShortURL /
+ * getOrgByDomain both require verificationStatus='verified' AND isActive=1
+ * before a Host header maps to this org, so simply adding a domain here can
+ * never make it live; the org must prove DNS control via
+ * verifyOrgShortDomain() first.
+ *
  * @param  string $orgHandle
  * @param  string $domain     Short domain (e.g., "camsda.link")
- * @return array  ['success' => bool, 'error' => string|null]
+ * @return array  ['success' => bool, 'error' => string|null,
+ *                 'verificationToken' => string|null, 'dnsRecords' => array|null]
  */
 function addOrgShortDomain(string $orgHandle, string $domain): array
 {
@@ -1024,23 +1167,91 @@ function addOrgShortDomain(string $orgHandle, string $domain): array
         return ['success' => false, 'error' => 'This short domain is already registered.'];
     }
 
-    // Check if this is the first short domain (make it default)
+    // ------------------------------------------------------------------------
+    // Quota (wires the previously dead org.max_short_domains setting) AND the
+    // "is this the org's first ever short domain" check share the same COUNT.
+    // The count is over ALL of the org's rows (not just isActive=1) — a
+    // pending/unverified domain still occupies a quota slot, and it is still
+    // eligible to become "the" default once verified.
+    // ------------------------------------------------------------------------
     $currentCount = dbSelectOne(
-        "SELECT COUNT(*) AS cnt FROM tblOrgShortDomains WHERE orgHandle = ? AND isActive = 1",
+        "SELECT COUNT(*) AS cnt FROM tblOrgShortDomains WHERE orgHandle = ?",
         's',
         [$orgHandle]
     );
-    if (((int) ($currentCount['cnt'] ?? 0) === 0)) {
+    $existingDomainCount = (int) ($currentCount['cnt'] ?? 0);
+
+    // ------------------------------------------------------------------------
+    // Quota reconciliation (#146): the effective cap is the TIGHTER of the
+    // org's subscription tier (tblSubscriptionTiers.maxCustomDomains) and the
+    // operator-configured org.max_short_domains setting (#91) — whichever
+    // number is smaller wins. NULL (tier = unlimited) and 0 (setting = no
+    // cap, the setting's own pre-#146 convention) are both ignored when
+    // combining; if BOTH sources are uncapped, custom domains are unlimited.
+    // GlobalAdmin / '[default]' / an unlimited tier always resolve
+    // maxCustomDomains to NULL (see entitlements.php — g2ml_getOrgTier(),
+    // which already fails OPEN — i.e. NULL — on any lookup error), so for
+    // those the setting alone (if any) is the only possible cap.
+    // ------------------------------------------------------------------------
+    $tierMaxCustomDomains = null;
+
+    if (function_exists('g2ml_getOrgTier'))
+    {
+        $orgTier              = g2ml_getOrgTier($orgHandle);
+        $tierMaxCustomDomains = $orgTier['maxCustomDomains'] ?? null;
+    }
+
+    $maxShortDomains = (int) getSetting('org.max_short_domains', '0');
+
+    if ($maxShortDomains > 0)
+    {
+        $settingMaxCustomDomains = $maxShortDomains;
+    }
+    else
+    {
+        $settingMaxCustomDomains = null;
+    }
+
+    if ($tierMaxCustomDomains !== null && $settingMaxCustomDomains !== null)
+    {
+        $effectiveMaxCustomDomains = min($tierMaxCustomDomains, $settingMaxCustomDomains);
+    }
+    elseif ($tierMaxCustomDomains !== null)
+    {
+        $effectiveMaxCustomDomains = $tierMaxCustomDomains;
+    }
+    elseif ($settingMaxCustomDomains !== null)
+    {
+        $effectiveMaxCustomDomains = $settingMaxCustomDomains;
+    }
+    else
+    {
+        $effectiveMaxCustomDomains = null;
+    }
+
+    if ($effectiveMaxCustomDomains !== null && $existingDomainCount >= $effectiveMaxCustomDomains)
+    {
+        return ['success' => false, 'error' => "Your plan allows a maximum of {$effectiveMaxCustomDomains} short domains."];
+    }
+
+    if ($existingDomainCount === 0)
+    {
         $isDefault = 1;
-    } else {
+    }
+    else
+    {
         $isDefault = 0;
     }
 
+    // Per-domain, unguessable verification token (32 random bytes → 64 hex chars).
+    $verificationToken = g2ml_generateToken(32);
+
     $insertResult = dbInsert(
-        "INSERT INTO tblOrgShortDomains (orgHandle, shortDomain, isDefault, isActive)
-         VALUES (?, ?, ?, 1)",
-        'ssi',
-        [$orgHandle, $domain, $isDefault]
+        "INSERT INTO tblOrgShortDomains
+            (orgHandle, shortDomain, isDefault, isActive, verificationStatus, verificationToken)
+         VALUES (?, ?, ?, 0, 'pending', ?)",
+        'ssis',
+        [$orgHandle, $domain, $isDefault, $verificationToken]
     );
 
     if ($insertResult === false)
@@ -1054,7 +1265,136 @@ function addOrgShortDomain(string $orgHandle, string $domain): array
         'logData' => ['orgHandle' => $orgHandle, 'shortDomain' => $domain],
     ]);
 
-    return ['success' => true];
+    $dnsPrefix = getSetting('org.dns_verify_prefix', '_g2ml-verify');
+
+    return [
+        'success'           => true,
+        'verificationToken' => $verificationToken,
+        'dnsRecords'        => [
+            'txt' => [
+                'type'  => 'TXT',
+                'host'  => $dnsPrefix . '.' . $domain,
+                'value' => $verificationToken,
+            ],
+            'routing' => [
+                'type'  => 'CNAME (subdomain) or A/ALIAS (apex/root)',
+                'host'  => $domain,
+                'value' => 'g2my.link (CNAME) — or your Dreamhost server IP for an apex/root domain (A/ALIAS)',
+            ],
+        ],
+    ];
+}
+
+/**
+ * Verify a custom short domain's ownership via DNS TXT record lookup.
+ *
+ * Org-scoped: only ever verifies a domain that belongs to $orgHandle. On
+ * success this is the ONLY code path (besides migration 013's one-time
+ * grandfather backfill) that ever flips isActive back to 1 for a domain added
+ * through addOrgShortDomain() — it is the actual gate the redirect hot path
+ * (sp_lookupShortURL) and getOrgByDomain() rely on before routing a Host
+ * header into this org's namespace.
+ *
+ * @param  int    $shortDomainUID
+ * @param  string $orgHandle
+ * @return array  ['success' => bool, 'verified' => bool, 'error' => string|null]
+ *
+ * 📖 Reference: https://www.php.net/manual/en/function.dns-get-record.php
+ */
+function verifyOrgShortDomain(int $shortDomainUID, string $orgHandle): array
+{
+    if (!canManageOrg($orgHandle))
+    {
+        return ['success' => false, 'verified' => false, 'error' => 'You do not have permission to verify short domains.'];
+    }
+
+    $domain = dbSelectOne(
+        "SELECT * FROM tblOrgShortDomains WHERE shortDomainUID = ? AND orgHandle = ? LIMIT 1",
+        'is',
+        [$shortDomainUID, $orgHandle]
+    );
+
+    if ($domain === null || $domain === false)
+    {
+        return ['success' => false, 'verified' => false, 'error' => 'Short domain not found.'];
+    }
+
+    if ($domain['verificationToken'] === null || $domain['verificationToken'] === '')
+    {
+        return [
+            'success'  => false,
+            'verified' => false,
+            'error'    => 'This domain has no verification token on record. Remove and re-add it to generate one.',
+        ];
+    }
+
+    $prefix     = getSetting('org.dns_verify_prefix', '_g2ml-verify');
+    $lookupHost = $prefix . '.' . $domain['shortDomain'];
+
+    // Perform DNS TXT lookup (injectable seam — see g2ml_lookupDnsTxtRecords()).
+    $records = g2ml_lookupDnsTxtRecords($lookupHost);
+
+    if ($records === false || empty($records))
+    {
+        dbUpdate(
+            "UPDATE tblOrgShortDomains SET verificationStatus = 'pending' WHERE shortDomainUID = ?",
+            'i',
+            [$shortDomainUID]
+        );
+
+        return [
+            'success'  => true,
+            'verified' => false,
+            'error'    => 'No TXT record found. Please add the DNS record and try again.',
+        ];
+    }
+
+    // Check if any TXT record matches the verification token
+    $verified = false;
+    foreach ($records as $record)
+    {
+        if (isset($record['txt']) && $record['txt'] === $domain['verificationToken'])
+        {
+            $verified = true;
+            break;
+        }
+    }
+
+    if ($verified)
+    {
+        dbUpdate(
+            "UPDATE tblOrgShortDomains
+             SET verificationStatus = 'verified', isActive = 1, verifiedAt = NOW()
+             WHERE shortDomainUID = ?",
+            'i',
+            [$shortDomainUID]
+        );
+
+        $currentUser = getCurrentUser();
+        logActivity('verify_org_short_domain', 'success', 200, [
+            'userUID' => $currentUser['userUID'],
+            'logData' => ['orgHandle' => $orgHandle, 'shortDomain' => $domain['shortDomain']],
+        ]);
+
+        return ['success' => true, 'verified' => true, 'error' => null];
+    }
+
+    // Token mismatch — mark failed. Deliberately does NOT touch isActive: a
+    // domain that was previously verified and is merely failing a
+    // re-verification check stays exactly as routable as it was before this
+    // call; only a fresh, never-verified domain (isActive already 0) is
+    // affected by this branch in practice today.
+    dbUpdate(
+        "UPDATE tblOrgShortDomains SET verificationStatus = 'failed' WHERE shortDomainUID = ?",
+        'i',
+        [$shortDomainUID]
+    );
+
+    return [
+        'success'  => true,
+        'verified' => false,
+        'error'    => 'TXT record found but the value does not match. Please check the verification token.',
+    ];
 }
 
 /**
@@ -1158,7 +1498,10 @@ function setDefaultShortDomain(int $shortDomainUID, string $orgHandle): array
 }
 
 /**
- * Get all short domains for an organisation.
+ * Get all short domains for an organisation, regardless of verification
+ * status — deliberately NOT filtered to isActive=1 (#91), otherwise a newly
+ * added domain (isActive=0 until verified) would never appear in the admin
+ * list for the org to click "Verify" on.
  *
  * @param  string $orgHandle
  * @return array
@@ -1166,12 +1509,201 @@ function setDefaultShortDomain(int $shortDomainUID, string $orgHandle): array
 function getOrgShortDomains(string $orgHandle): array
 {
     $rows = dbSelect(
-        "SELECT * FROM tblOrgShortDomains WHERE orgHandle = ? AND isActive = 1 ORDER BY isDefault DESC, createdAt ASC",
+        "SELECT * FROM tblOrgShortDomains WHERE orgHandle = ? ORDER BY isDefault DESC, createdAt ASC",
         's',
         [$orgHandle]
     );
 
-    return $rows ?: [];
+    if ($rows)
+    {
+        return $rows;
+    }
+    else
+    {
+        return [];
+    }
+}
+
+// ============================================================================
+// 📄 Custom-Domain LinksPage Fallback Designation (Component C.4, #46)
+// ============================================================================
+
+/**
+ * List an organisation's own PUBLISHED, active LinksPages — populates the
+ * short-domain "point this domain at a LinksPage" designation picker (#46).
+ *
+ * Deliberately scoped to isPublished = 1 AND isActive = 1: an unpublished
+ * draft must never be offered here. This is purely a convenience listing for
+ * the picker — the actual security boundary is enforced independently by
+ * setShortDomainLinksPage() (below) at WRITE time, and again by
+ * g2ml_resolveLinksPageByUID() (web/Lnks.page/_functions/linkspage_resolver.php)
+ * at every READ, so even if this listing were ever stale it could not itself
+ * cause a draft/other-org page to be designated or rendered.
+ *
+ * @param  string $orgHandle
+ * @return array  Rows: pageUID, slug, pageTitle.
+ */
+function getOrgPublishedLinksPages(string $orgHandle): array
+{
+    $rows = dbSelect(
+        "SELECT pageUID, slug, pageTitle
+         FROM tblLinksPages
+         WHERE orgHandle = ? AND isPublished = 1 AND isActive = 1
+         ORDER BY pageTitle ASC",
+        's',
+        [$orgHandle]
+    );
+
+    if ($rows === false)
+    {
+        return [];
+    }
+
+    return $rows;
+}
+
+/**
+ * Point (or clear) a VERIFIED custom short domain's designated LinksPage
+ * (#46) — the page rendered at that domain's root, or when a requested path
+ * does not resolve to a short code, instead of a 404. See
+ * web/G2My.Link/_functions/linkspage_fallback.php for the redirect
+ * hot-path's consuming side.
+ *
+ * 🔒 SECURITY — IDOR:
+ *   - canManageOrg($orgHandle) is checked first, exactly like every other
+ *     short-domain mutation in this file.
+ *   - The domain row itself is looked up scoped to `orgHandle = ?` — a
+ *     shortDomainUID belonging to another org is rejected as "not found",
+ *     identically to one that does not exist.
+ *   - Only a VERIFIED domain may be given a designation — an
+ *     unverified/claimed domain never routes any traffic at all (#91), so
+ *     designating one would be meaningless and confusing in the UI.
+ *   - When $linksPageUID is non-null it is RE-VERIFIED here, scoped to
+ *     `orgHandle = ? AND isPublished = 1 AND isActive = 1` against
+ *     tblLinksPages — a pageUID belonging to ANOTHER organisation, or one
+ *     that is not published/active, is rejected outright with the SAME
+ *     generic "not found" message as a pageUID that does not exist at all.
+ *     The client-supplied pageUID is NEVER trusted beyond this check — this
+ *     is the actual IDOR defence, not merely the picker in
+ *     getOrgPublishedLinksPages() only listing an org's own pages.
+ *
+ * @param  int      $shortDomainUID
+ * @param  string   $orgHandle
+ * @param  int|null $linksPageUID    The page to designate, or null to clear
+ *                                    the domain's designation ("None" — the
+ *                                    existing 404 behaviour is then unchanged).
+ * @return array  ['success' => bool, 'error' => string|null]
+ */
+function setShortDomainLinksPage(int $shortDomainUID, string $orgHandle, ?int $linksPageUID): array
+{
+    if (!canManageOrg($orgHandle))
+    {
+        return ['success' => false, 'error' => 'You do not have permission to manage short domains.'];
+    }
+
+    $domain = dbSelectOne(
+        "SELECT * FROM tblOrgShortDomains WHERE shortDomainUID = ? AND orgHandle = ? LIMIT 1",
+        'is',
+        [$shortDomainUID, $orgHandle]
+    );
+
+    if ($domain === null || $domain === false)
+    {
+        return ['success' => false, 'error' => 'Short domain not found.'];
+    }
+
+    if ($domain['verificationStatus'] !== 'verified')
+    {
+        return ['success' => false, 'error' => 'Only a verified domain can be pointed at a LinksPage.'];
+    }
+
+    if ($linksPageUID !== null)
+    {
+        // 🔒 IDOR defence — re-verify server-side; NEVER trust the client's
+        // pageUID beyond this check. A page belonging to another org, or one
+        // that is not published/active, is treated exactly like a page that
+        // does not exist at all — the caller learns nothing about WHY it was
+        // rejected beyond a single generic message.
+        $ownedPage = dbSelectOne(
+            "SELECT pageUID FROM tblLinksPages
+             WHERE pageUID = ? AND orgHandle = ? AND isPublished = 1 AND isActive = 1
+             LIMIT 1",
+            'is',
+            [$linksPageUID, $orgHandle]
+        );
+
+        if ($ownedPage === null || $ownedPage === false)
+        {
+            return ['success' => false, 'error' => 'That LinksPage was not found, is not published, or does not belong to your organisation.'];
+        }
+    }
+
+    $updateResult = dbUpdate(
+        "UPDATE tblOrgShortDomains SET linksPageUID = ? WHERE shortDomainUID = ? AND orgHandle = ?",
+        'iis',
+        [$linksPageUID, $shortDomainUID, $orgHandle]
+    );
+
+    if ($updateResult === false)
+    {
+        return ['success' => false, 'error' => 'Failed to update the LinksPage designation.'];
+    }
+
+    $currentUser = getCurrentUser();
+    logActivity('set_short_domain_linkspage', 'success', 200, [
+        'userUID' => $currentUser['userUID'],
+        'logData' => [
+            'orgHandle'    => $orgHandle,
+            'shortDomain'  => $domain['shortDomain'],
+            'linksPageUID' => $linksPageUID,
+        ],
+    ]);
+
+    return ['success' => true, 'error' => null];
+}
+
+/**
+ * Render a static, provider-specific "how to add these DNS records" reference
+ * block for the short-domain admin UI (#91). Pure presentation — no user
+ * input, no database access — so every string here is a hardcoded literal and
+ * needs no output escaping.
+ *
+ * @return string  Self-contained Bootstrap HTML fragment
+ */
+function g2ml_dnsProviderHintsHTML(): string
+{
+    return '<div class="accordion mb-2" id="dnsProviderHintsAccordion">'
+        . '<div class="accordion-item">'
+        . '<h3 class="accordion-header" id="dnsHintCloudflareHeading">'
+        . '<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" '
+        . 'data-bs-target="#dnsHintCloudflare" aria-expanded="false" aria-controls="dnsHintCloudflare">'
+        . 'Cloudflare</button></h3>'
+        . '<div id="dnsHintCloudflare" class="accordion-collapse collapse" aria-labelledby="dnsHintCloudflareHeading">'
+        . '<div class="accordion-body small">DNS → Records → Add record. Set <strong>Type</strong> to TXT or '
+        . 'CNAME/A as shown above, <strong>Name</strong> to the Host value (Cloudflare appends your zone '
+        . 'automatically — enter just the prefix, e.g. <code>_g2ml-verify</code>, not the full domain), and '
+        . '<strong>Content</strong> to the Value. For the routing CNAME, set <strong>Proxy status</strong> to '
+        . '"DNS only" (grey cloud) unless you are deliberately using Cloudflare-for-SaaS.</div></div></div>'
+        . '<div class="accordion-item">'
+        . '<h3 class="accordion-header" id="dnsHintGoDaddyHeading">'
+        . '<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" '
+        . 'data-bs-target="#dnsHintGoDaddy" aria-expanded="false" aria-controls="dnsHintGoDaddy">'
+        . 'GoDaddy</button></h3>'
+        . '<div id="dnsHintGoDaddy" class="accordion-collapse collapse" aria-labelledby="dnsHintGoDaddyHeading">'
+        . '<div class="accordion-body small">My Products → DNS → Add New Record. GoDaddy also wants just the '
+        . 'Host prefix (not the full domain) in the <strong>Name</strong> field. Leave TTL at its default (1 '
+        . 'hour) unless you need faster propagation while testing.</div></div></div>'
+        . '<div class="accordion-item">'
+        . '<h3 class="accordion-header" id="dnsHintNamecheapHeading">'
+        . '<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" '
+        . 'data-bs-target="#dnsHintNamecheap" aria-expanded="false" aria-controls="dnsHintNamecheap">'
+        . 'Namecheap</button></h3>'
+        . '<div id="dnsHintNamecheap" class="accordion-collapse collapse" aria-labelledby="dnsHintNamecheapHeading">'
+        . '<div class="accordion-body small">Domain List → Manage → Advanced DNS → Add New Record. For an apex '
+        . '(root) domain, Namecheap does not support CNAME — use their "ALIAS" or "URL Redirect" record type '
+        . 'pointed at the routing value instead, or use a subdomain (e.g. <code>links.yourdomain.com</code>) '
+        . 'which supports a plain CNAME.</div></div></div>'
+        . '</div>';
 }
 
 // ============================================================================

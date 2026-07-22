@@ -308,6 +308,14 @@
                 transition: none !important;
             }
         }
+
+        @media (forced-colors: active) {
+            h1 {
+                -webkit-text-fill-color: currentColor;
+                background: none;
+                color: CanvasText;
+            }
+        }
     </style>
 </head>
 <body>
@@ -318,7 +326,7 @@
         <div class="logo" aria-label="Lnks.page logo">
             <picture>
                 <source srcset="https://lnks.page/img/logo.svg" type="image/svg+xml">
-                <img src="https://lnks.page/img/logo.svg"
+                <img src="https://lnks.page/img/logo.png"
                      alt="Lnks.page"
                      width="300"
                      height="auto"

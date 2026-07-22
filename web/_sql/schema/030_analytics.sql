@@ -25,6 +25,16 @@ USE `mwtools_Go2MyLink`;
 -- Note: For very large datasets, consider partitioning by month:
 --   PARTITION BY RANGE (YEAR(createdAt) * 100 + MONTH(createdAt))
 -- This is optional and can be added later without schema changes.
+--
+-- 🔍 Analytics indexing decision (#41 / #125, 2026-07): at the current
+-- production volume (429K+ rows), the composite indexes
+-- IDX_log_shortcode_created and IDX_log_org_created below are sufficient to
+-- keep every analytics query (web/_functions/analytics.php) an index range
+-- scan. Monthly partitioning remains NOT enabled — revisit if/when this
+-- table reaches the multi-million-row range or a retention/pruning policy
+-- is introduced. See web/_sql/migrations/014_activitylog_analytics_indexes.sql
+-- for the full decision record (including why the pre-existing single-column
+-- IDX_log_shortcode/IDX_log_org are kept rather than dropped).
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS `tblActivityLog` (
     `logUID`                BIGINT UNSIGNED     NOT NULL AUTO_INCREMENT,
@@ -130,7 +140,11 @@ CREATE TABLE IF NOT EXISTS `tblActivityLog` (
     INDEX `IDX_log_domain` (`requestDomain`),
     INDEX `IDX_log_status` (`logStatus`),
     INDEX `IDX_log_scan_source` (`scanSource`),
-    INDEX `IDX_log_qr_extid` (`qrCodeExternalID`)
+    INDEX `IDX_log_qr_extid` (`qrCodeExternalID`),
+    INDEX `IDX_log_shortcode_created` (`shortCode`, `createdAt`)
+        COMMENT 'Composite index for per-code date-range analytics queries (#41 / #125) — web/_functions/analytics.php',
+    INDEX `IDX_log_org_created` (`orgHandle`, `createdAt`)
+        COMMENT 'Composite index for org-wide date-range analytics queries (#41) — web/_functions/analytics.php'
 
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4

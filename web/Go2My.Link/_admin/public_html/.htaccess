@@ -55,8 +55,13 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
     Header set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(self)"
 
     # Content Security Policy
+    # frame-src 'self' explicitly allows the OWN-PAGE-preview <iframe srcdoc>
+    # (pages/linkspage/preview/index.php, #47) — the framed document is
+    # always fully sandboxed (sandbox="", no allow-scripts) so this does not
+    # widen script execution; it only lets the admin dashboard frame its own
+    # already-escaped, static-HTML preview content.
     # 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
-    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net code.jquery.com cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; font-src 'self' cdnjs.cloudflare.com data:; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net code.jquery.com cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; font-src 'self' cdnjs.cloudflare.com data:; img-src 'self' data: https:; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
 
     # HSTS — enforce HTTPS for 1 year
     # 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security
@@ -68,7 +73,7 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 # Directories prefixed with _ are not web-accessible.
 # Returns 403 Forbidden for any request to these paths.
 # =============================================================================
-RewriteRule ^_auth_keys(/|$) - [F,L]
+RewriteRule ^\.auth(/|$) - [F,L]
 RewriteRule ^_includes(/|$) - [F,L]
 RewriteRule ^_functions(/|$) - [F,L]
 RewriteRule ^_libraries(/|$) - [F,L]

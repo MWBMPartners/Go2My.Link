@@ -8,9 +8,10 @@ Go2My.Link is a multi-tenant **URL-shortening service** (a Bit.ly-style product 
 
 ## 🗒️ Run record
 
-- **last-run:** 2026-06-28  ·  **scope-setting:** strict ("when in doubt, out of scope")  ·  **depth:** brief-led (the intended feature set is well-defined in the Project Brief + audit §8; not open-ended competitor research).
+- **last-run:** 2026-06-28 (ledger content); **status annotations refreshed 2026-07-19** against verified code/issue state — see the `status:` lines added to Tier 2/3/5 gaps below. The ledger's gap analysis and scoring are otherwise as originally produced; re-run featurefind for a fresh gap-finding pass if needed.
+- **scope-setting:** strict ("when in doubt, out of scope")  ·  **depth:** brief-led (the intended feature set is well-defined in the Project Brief + audit §8; not open-ended competitor research).
 - **method:** scored brief §8 conformance + open roadmap issues against verified code state. Each gap's build/schema state was spot-checked in the codebase (see `purpose-fit` evidence).
-- **launch focus:** Components A + B. Component C is essentially unbuilt → every C feature `gate-for-approval` (large). Payments/subscriptions + advanced auth (SIGNula, Phases 10–11) → `gate-for-approval` (risky/large).
+- **launch focus (as of 2026-06-28):** Components A + B; Component C was essentially unbuilt. **⚠️ 2026-07-19: this is now stale.** Component C shipped in full (6/6, Tier 5 below); the Tier 2 API/analytics/geo/UTM gaps also shipped. Payments/subscriptions + advanced auth (SIGNula, Phases 10–11) remain `gate-for-approval` and unbuilt (accurate).
 
 ## 📚 Comparables (category norms, not researched fresh)
 
@@ -77,7 +78,9 @@ Ranked by importance within the aim, then favouring lower effort/risk. Autonomy-
   **gate:** autonomy-eligible
   **status:** ✅ BUILT — cycle 15 (2026-07-04), branch `autopilot/2026-06-05`. New `web/_functions/api_response.php` (`g2ml_apiRespond()` + pure `g2ml_apiWantsXml()`/`g2ml_arrayToXml()`/`g2ml_buildApiXmlDocument()`); new XSLT `web/Go2My.Link/public_html/api/create/response.xsl`; refactored `api/create/index.php` (10 repeated `json_encode` blocks → one `g2ml_apiRespond()` call; 0 `json_encode` left; the structured branch now also triggers on `?format=xml` / `Accept: application/xml` so API clients get structured responses); helper registered in `page_init.php`. JSON stays the default and is byte-identical to before (subprocess diff); XML emits a `<response>` document with a stylesheet PI, all values `htmlspecialchars` ENT_XML1-escaped (hostile payload proven escaped, lossless); no-JS redirect fallback and all status codes (405/403/422/429/201) + messages preserved. Regression: `tests/unit/api_response_test.php` (25 new tests). Lead re-ran: 166 unit pass (was 141); lint clean; `xmllint` confirms well-formed output; dedup confirmed (0 `json_encode` remaining in `api/create/index.php`).
 
-**Tier 1 status (2026-07-04, end of POLISH cycle 18):** FG-001, FG-002, FG-003, FG-004 and FG-005 — all five autonomy-eligible Tier-1 gaps — are now ✅ BUILT. All Tier 2–5 gaps remain gate-for-approval, unchanged.
+**Tier 1 status (2026-07-04, end of POLISH cycle 18):** FG-001, FG-002, FG-003, FG-004 and FG-005 — all five autonomy-eligible Tier-1 gaps — are now ✅ BUILT.
+
+**⚠️ 2026-07-19 update:** the note that "all Tier 2–5 gaps remain gate-for-approval, unchanged" is now **stale**. After separate owner-approved build cycles (2026-07-09/10/18), FG-006 through FG-012 (analytics, geolocation, API framework + endpoints, UTM, CSV export, OpenAPI docs) and FG-019 through FG-024 (all of Component C / Tier 5) are also now ✅ BUILT — see each gap's `status:` line below. Tier 4 (advanced redirects, FG-014–FG-018) and the payments/SIGNula items in "Out-of-scope / deferred-by-design" remain unbuilt, as originally gated.
 
 - **id:** FG-005
   **feature:** Avatar priority cascade
@@ -103,6 +106,7 @@ Ranked by importance within the aim, then favouring lower effort/risk. Autonomy-
   **confidence:** high
   **spec-seed:** Add analytics functions (time-bucketed aggregates per short code, scoped by org) and an `_admin/.../analytics/` dashboard with self-hosted chart rendering. Depends on #125 index; respect org-scoping (cf. #121 cross-org leak). Gate because of scale/perf risk and a new front-end dependency.
   **gate:** gate-for-approval
+  **status:** ✅ BUILT — 2026-07-10, branch `launch-prep/2026-07-09`. `web/_functions/analytics.php` (time-bucketed aggregates) + `/api/v1/analytics` + the #125 composite index; dashboard at `web/Go2My.Link/_admin/public_html/pages/analytics/` (Chart.js, accessible tables, theme-aware). Streaming CSV export added 2026-07-18 (#44, xlsx deferred to #152).
 
 - **id:** FG-007
   **feature:** IP geolocation + VPN/proxy flag + richer user-agent breakdown (#43)
@@ -114,6 +118,7 @@ Ranked by importance within the aim, then favouring lower effort/risk. Autonomy-
   **confidence:** high
   **spec-seed:** Vendor GeoLite2 (or equivalent) under `_libraries`; add `g2ml_geolocate($ip)` returning country→city granularity (never street); store on the activity row; add a coarse VPN/proxy heuristic flag. Document the licence/update path. Privacy-review the granularity defaults.
   **gate:** gate-for-approval
+  **status:** ✅ BUILT (geolocation only; VPN/proxy flag NOT built) — 2026-07-10, branch `launch-prep/2026-07-09`. Vendored pure-PHP `MaxMind\Db\Reader` at `web/_libraries/maxminddb/` (no C extension); `web/_functions/geolocation.php` (`g2ml_geolocateIP()`) behind `analytics.geolocation_enabled` (**OFF by default**) + a `.mmdb` file-exists check — a total no-op when off/absent. Country added to the analytics dashboard breakdown. CI-fetched via `scripts/fetch-geoip.sh` + a non-`--delete` deploy step so a failed fetch can't wipe a working DB. A coarse VPN/proxy heuristic was not built.
 
 - **id:** FG-008
   **feature:** API framework + API-key authentication (#38)
@@ -125,6 +130,7 @@ Ranked by importance within the aim, then favouring lower effort/risk. Autonomy-
   **confidence:** high
   **spec-seed:** Add key generation (prefix + secret, store only an Argon2/hash), a bearer/header verifier resolving to an org/scope, per-key rate limiting via `tblAPIRequestLog`. Reuse `createShortURL()` for the create path. Security-review before exposure (cf. global pre-PR security rules).
   **gate:** gate-for-approval
+  **status:** ✅ BUILT — 2026-07-10, branch `launch-prep/2026-07-09`. `web/_functions/api_auth.php` (key auth `g2ml_<prefix>_<sha256>`, scopes, `hash_equals`) + `api_ratelimit.php` (DB rate-limit), `public_html/api/v1/` front controller, redacted request log, JSON envelope. Passed a dedicated adversarial security cycle (1 Medium fixed; Low residuals in #149).
 
 - **id:** FG-009
   **feature:** Public REST API endpoints — modify / disable / analytics (#39)
@@ -136,6 +142,7 @@ Ranked by importance within the aim, then favouring lower effort/risk. Autonomy-
   **confidence:** high
   **spec-seed:** Add `api/modify/`, `api/disable/`, `api/analytics/` (clean-URL `index.php` per brief), each authorised via FG-008 and scoped to the key's org. Reuse the dashboard's update/disable functions and FG-006 aggregates. Emit JSON (default) + FG-004 XML.
   **gate:** gate-for-approval
+  **status:** ✅ BUILT — 2026-07-10, branch `launch-prep/2026-07-09`. URL CRUD/bulk/list + org read endpoints under `/api/v1`, cursor-paginated, BOLA-safe org-scoping (cross-org access → generic 404), pre-auth IP backoff. Key-management dashboard UI (#40) also shipped.
 
 - **id:** FG-010
   **feature:** UTM capture & forwarding on redirect (#92)
@@ -147,6 +154,7 @@ Ranked by importance within the aim, then favouring lower effort/risk. Autonomy-
   **confidence:** high
   **spec-seed:** In the B resolver, parse inbound query params, log tracking attribution on the activity row, and if `redirect.forward_utm_params` is enabled merge configured params into the destination query string (preserve existing dest params). Settings-gated, off by default. Performance-review the hot path.
   **gate:** gate-for-approval
+  **status:** ✅ BUILT — 2026-07-10, branch `launch-prep/2026-07-09`. `g2ml_extractTrackingParams()` (capture) + `g2ml_appendUtmToDestination()` (forward) in the B resolver; both settings-gated, **OFF by default**. **Residual:** captured UTM lands in `tblActivityLog.logData` (JSON blob), not yet an indexed analytics dimension or dashboard breakdown — tracked in follow-up #151.
 
 ### Tier 3 — medium/low, gate-for-approval
 
@@ -160,6 +168,7 @@ Ranked by importance within the aim, then favouring lower effort/risk. Autonomy-
   **confidence:** high
   **spec-seed:** Add a CSV exporter (native PHP, no dependency) first; offer XLSX via a vendored writer as a follow-up. Stream large result sets; org-scope the query.
   **gate:** gate-for-approval
+  **status:** ✅ BUILT (CSV only; xlsx deferred) — 2026-07-18, branch `launch-prep/2026-07-09`. Streaming CSV export at `web/Go2My.Link/_admin/public_html/analytics-export.php` (#44). XLSX via a vendored writer vs native SpreadsheetML is an open follow-up decision — tracked in #152.
 
 - **id:** FG-012
   **feature:** OpenAPI / Swagger API docs (#75)
@@ -171,6 +180,7 @@ Ranked by importance within the aim, then favouring lower effort/risk. Autonomy-
   **confidence:** high
   **spec-seed:** Author `openapi.yaml` describing the create/modify/disable/analytics endpoints + key auth; serve a self-hosted Swagger-UI / Redoc at `/api/docs`. Keep the spec in sync with FG-008/009.
   **gate:** gate-for-approval
+  **status:** ✅ BUILT — 2026-07-10, branch `launch-prep/2026-07-09`. OpenAPI 3.1 spec (9 endpoints, 26 schemas, authored from the live handlers, validated by redocly + openapi-spec-validator) + self-hosted Redoc at `/api/docs` (vendored 2.5.3, post-CVE-2024-57083; directory-scoped CSP).
 
 - **id:** FG-013
   **feature:** Additional i18n locales (#71)
@@ -235,7 +245,7 @@ Ranked by importance within the aim, then favouring lower effort/risk. Autonomy-
   **spec-seed:** Detect a Zoom-code input on create, expand to the canonical `zoom.us/j/<id>?pwd=` form, store as a normal destination.
   **gate:** gate-for-approval
 
-### Tier 5 — Component C / LinksPage (Phase 8) — all gate-for-approval (UNBUILT, large)
+### Tier 5 — Component C / LinksPage (Phase 8) — all originally gated (large); **✅ ALL 6/6 SHIPPED 2026-07 — see `status:` lines below, this header is historical**
 
 - **id:** FG-019
   **feature:** LinksPage renderer (#45)
@@ -246,6 +256,7 @@ Ranked by importance within the aim, then favouring lower effort/risk. Autonomy-
   **confidence:** high
   **spec-seed:** Resolve a handle → org/user; query `allowLinksPage` links + manual links; render a responsive page with favicon detection (brief line 312). Must not be advertised until built.
   **gate:** gate-for-approval
+  **status:** ✅ BUILT — 2026-07-10, branch `launch-prep/2026-07-09` (#45). `web/Lnks.page/_functions/linkspage_{resolver,renderer}.php`; `web/Lnks.page/public_html/index.php` is now the live renderer, not a coming-soon placeholder.
 
 - **id:** FG-020
   **feature:** Custom-domain LinksPage fallback (#46)
@@ -256,6 +267,7 @@ Ranked by importance within the aim, then favouring lower effort/risk. Autonomy-
   **confidence:** high
   **spec-seed:** In B, when a custom domain is hit with no `<linksuffix>`, route to the org's rendered LinksPage (FG-019) instead of 404. Depends on FG-019.
   **gate:** gate-for-approval
+  **status:** ✅ BUILT — 2026-07-10, branch `launch-prep/2026-07-09` (#46). `web/G2My.Link/_functions/linkspage_fallback.php`.
 
 - **id:** FG-021
   **feature:** LinksPage system templates (#47)
@@ -266,6 +278,7 @@ Ranked by importance within the aim, then favouring lower effort/risk. Autonomy-
   **confidence:** high
   **spec-seed:** Define N responsive templates with placeholder markers; store the chosen template per page; render via FG-019. Depends on FG-019.
   **gate:** gate-for-approval
+  **status:** ✅ BUILT — 2026-07-10, branch `launch-prep/2026-07-09` (#47). Template picker + owner-only IDOR-safe preview.
 
 - **id:** FG-022
   **feature:** LinksPage management UI (#48)
@@ -276,6 +289,7 @@ Ranked by importance within the aim, then favouring lower effort/risk. Autonomy-
   **confidence:** high
   **spec-seed:** Add an `_admin/.../linkspage/` area to toggle `allowLinksPage`, add manual links, reorder, and pick a template. Depends on FG-019/FG-021.
   **gate:** gate-for-approval
+  **status:** ✅ BUILT — 2026-07-10, branch `launch-prep/2026-07-09` (#48). Ownership-enforced CRUD, `maxLinksPages`-gated, at `web/Go2My.Link/_admin/public_html/pages/linkspage/`.
 
 - **id:** FG-023
   **feature:** WYSIWYG template editor + HTML upload (#49)
@@ -286,6 +300,7 @@ Ranked by importance within the aim, then favouring lower effort/risk. Autonomy-
   **confidence:** high
   **spec-seed:** Block editor producing a sanitised template; uploaded HTML strictly sanitised + placeholder-substituted at render. Heavy security review required.
   **gate:** gate-for-approval
+  **status:** ✅ BUILT (custom-HTML upload path; no separate block-based WYSIWYG editor) — 2026-07-10, branch `launch-prep/2026-07-09` (#49). DOM-allowlist sanitiser (`web/_functions/html_sanitiser.php`) + `script-src 'none'` CSP; **premium-gated with a kill switch OFF by default**, pending a dedicated security sign-off before enable — this is the product's highest stored-XSS surface (see `SECURITY.md`). Migration **016** must run before deploying to an existing DB or tier gating fails open.
 
 - **id:** FG-024
   **feature:** LinksPage age verification (#50)
@@ -296,6 +311,7 @@ Ranked by importance within the aim, then favouring lower effort/risk. Autonomy-
   **confidence:** high
   **spec-seed:** Reuse the FG-017 DOB gate at the LinksPage link level; maintain an auto-flag list for adult domains. Depends on FG-019.
   **gate:** gate-for-approval
+  **status:** ✅ BUILT (good-faith signed-cookie gate + adult-domain auto-flag; no DOB collection) — 2026-07-10, branch `launch-prep/2026-07-09` (#50). `web/_functions/adult_content.php`.
 
 ---
 

@@ -16,7 +16,10 @@
  * parsing. Uses a direct INSERT (not the sp_logActivity stored procedure)
  * to populate all columns including parsed UA fields in one query.
  *
- * GeoIP columns are left NULL until Phase 6 (MaxMind GeoLite2 library).
+ * GeoIP columns (countryCode/regionCode/cityName) are populated from the
+ * caller's $context (#43 — see web/_functions/geolocation.php) and default
+ * to NULL when the caller omits them, exactly like scanSource/
+ * qrCodeExternalID (#145) below.
  *
  * Dependencies: db_connect.php (getDB()), security.php (g2ml_getClientIP())
  *
@@ -55,7 +58,12 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
  * @param  string|null $status       Outcome status (e.g., 'success', 'error', 'not_found')
  * @param  int|null    $statusCode   HTTP status code or custom code
  * @param  array       $context      Additional context: orgHandle, userUID, shortCode, destinationURL,
- *                                   apiKeyUID, logData (JSON-encodable array)
+ *                                   apiKeyUID, logData (JSON-encodable array), scanSource,
+ *                                   qrCodeExternalID (#145 — CueRCode scan attribution; both default
+ *                                   to NULL when absent, so every pre-#145 caller is unaffected),
+ *                                   countryCode, regionCode, cityName (#43 — IP geolocation; all
+ *                                   three default to NULL when absent, so every pre-#43 caller is
+ *                                   unaffected)
  * @return bool                      True if the log was written successfully
  *
  * Usage example:
@@ -119,17 +127,39 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
         $logData = null;
     }
 
+    // CueRCode scan attribution (#145) — both default to NULL when absent, so
+    // every caller that predates this option (every redirect/action logged
+    // before #145, and any non-redirect action today) is completely
+    // unaffected. The caller (the Component B redirect hot path) is
+    // responsible for only ever passing a value here after it has already
+    // verified the scan-source param against the operator-configured
+    // expected value AND looked qrCodeExternalID up from the STORED short
+    // URL row — logActivity() itself just binds whatever it is given.
+    $scanSource       = $context['scanSource'] ?? null;
+    $qrCodeExternalID = $context['qrCodeExternalID'] ?? null;
+
+    if ($qrCodeExternalID !== null)
+    {
+        $qrCodeExternalID = (int) $qrCodeExternalID;
+    }
+
+    // IP geolocation (#43) — both default to NULL when absent, so every
+    // caller that predates this option is completely unaffected. The caller
+    // (the Component B redirect hot path) is responsible for only ever
+    // passing a value here after g2ml_geolocationAvailable() confirmed
+    // geolocation is enabled and a database is present — logActivity()
+    // itself just binds whatever it is given, with no lookup of its own.
+    $countryCode = $context['countryCode'] ?? null;
+    $regionCode  = $context['regionCode'] ?? null;
+    $cityName    = $context['cityName'] ?? null;
+
     // Gather request metadata
     $requestDomain  = $_SERVER['HTTP_HOST'] ?? null;
     $requestPath    = $_SERVER['REQUEST_URI'] ?? null;
     $requestMethod  = $_SERVER['REQUEST_METHOD'] ?? null;
     $requestReferer = $_SERVER['HTTP_REFERER'] ?? null;
     $requestUA      = $_SERVER['HTTP_USER_AGENT'] ?? null;
-    if (function_exists('g2ml_getClientIP')) {
-        $ipAddress = g2ml_getClientIP();
-    } else {
-        $ipAddress = ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
-    }
+    $ipAddress = g2ml_clientIpOrDefault($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
 
     // Parse User-Agent for structured fields
     $uaParsed = _g2ml_parseUserAgent($requestUA);
@@ -150,6 +180,34 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
         $requestUA = substr($requestUA, 0, 500);
     }
 
+    // scanSource is untrusted-input-derived (#145) — cap it to the
+    // tblActivityLog.scanSource VARCHAR(50) column width defensively, even
+    // though the caller is expected to have already bounded it to a known
+    // configured value rather than raw query-string text.
+    if ($scanSource !== null && strlen($scanSource) > 50)
+    {
+        $scanSource = substr($scanSource, 0, 50);
+    }
+
+    // Geolocation fields (#43) are derived from the vendored MaxMind reader
+    // (web/_functions/geolocation.php), not raw request input, but are
+    // capped defensively to their column widths anyway — the same
+    // defence-in-depth posture as scanSource above.
+    if ($countryCode !== null && strlen($countryCode) > 2)
+    {
+        $countryCode = substr($countryCode, 0, 2);
+    }
+
+    if ($regionCode !== null && strlen($regionCode) > 10)
+    {
+        $regionCode = substr($regionCode, 0, 10);
+    }
+
+    if ($cityName !== null && strlen($cityName) > 255)
+    {
+        $cityName = substr($cityName, 0, 255);
+    }
+
     try
     {
         $sql = "INSERT INTO tblActivityLog (
@@ -159,7 +217,9 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
                     requestReferer, requestUserAgent,
                     browserName, browserVersion, osName, osVersion, deviceType,
                     ipAddress, isBot,
-                    apiKeyUID, logData
+                    apiKeyUID, logData,
+                    scanSource, qrCodeExternalID,
+                    countryCode, regionCode, cityName
                 ) VALUES (
                     ?, ?, ?,
                     ?, ?, ?, ?,
@@ -167,7 +227,9 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
                     ?, ?,
                     ?, ?, ?, ?, ?,
                     ?, ?,
-                    ?, ?
+                    ?, ?,
+                    ?, ?,
+                    ?, ?, ?
                 )";
 
         $stmt = $db->prepare($sql);
@@ -178,8 +240,10 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
             return false;
         }
 
-        // Type string MUST have exactly one character per bound variable (21),
-        // each matching its column: s=string, i=int.
+        // Type string MUST have exactly one character per bound variable (26,
+        // extended from 23 by #43 — the three new TRAILING columns below),
+        // each matching its column: s=string, i=int. RECOUNT placeholders vs
+        // columns vs this type string on every future change to this INSERT.
         //   1  s  logAction        (VARCHAR)
         //   2  s  logStatus        (VARCHAR)
         //   3  i  statusCode       (SMALLINT UNSIGNED)
@@ -201,8 +265,13 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
         //   19 i  isBot            (TINYINT UNSIGNED)
         //   20 i  apiKeyUID        (BIGINT UNSIGNED)
         //   21 s  logData          (JSON, bound as a string)
+        //   22 s  scanSource       (VARCHAR(50) — #145, NULL when absent)
+        //   23 i  qrCodeExternalID (BIGINT UNSIGNED — #145, NULL when absent)
+        //   24 s  countryCode      (CHAR(2) — #43, NULL when absent/unknown)
+        //   25 s  regionCode       (VARCHAR(10) — #43, NULL when absent/unknown)
+        //   26 s  cityName         (VARCHAR(255) — #43, NULL when absent/unknown)
         $stmt->bind_param(
-            'ssisisssssssssssssiis',
+            'ssisisssssssssssssiississs',
             $action,
             $status,
             $statusCode,
@@ -223,7 +292,12 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
             $ipAddress,
             $uaParsed['isBot'],
             $apiKeyUID,
-            $logData
+            $logData,
+            $scanSource,
+            $qrCodeExternalID,
+            $countryCode,
+            $regionCode,
+            $cityName
         );
 
         $stmt->execute();

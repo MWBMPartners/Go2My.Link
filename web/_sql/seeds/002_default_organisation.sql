@@ -39,13 +39,27 @@ ON DUPLICATE KEY UPDATE
     `updatedAt` = NOW();
 
 -- Default short domain (g2my.link)
+--
+-- 🔒 #91 — this row must be pre-verified: sp_lookupShortURL / getOrgByDomain
+-- now require verificationStatus='verified' AND isActive=1 before ANY Host
+-- header (including this system's own default host) maps to an org. Without
+-- explicitly setting verificationStatus/verifiedAt here, a FRESH install
+-- would seed this row at the new column's default ('pending') and every
+-- redirect on g2my.link itself would 404 with "domain not configured" until
+-- someone manually verified it — there is no DNS-TXT ownership proof to run
+-- for a domain we operate ourselves, so it is verified at seed time instead.
+-- (An UPGRADE from an older schema is covered separately by migration 013's
+-- grandfather backfill, which does the equivalent UPDATE for existing rows.)
 INSERT INTO `tblOrgShortDomains` (
-    `orgHandle`, `shortDomain`, `isDefault`, `isActive`
+    `orgHandle`, `shortDomain`, `isDefault`, `isActive`,
+    `verificationStatus`, `verifiedAt`
 ) VALUES (
     '[default]',
     'g2my.link',
     1,
-    1
+    1,
+    'verified',
+    NOW()
 )
 ON DUPLICATE KEY UPDATE
     `isDefault` = VALUES(`isDefault`);

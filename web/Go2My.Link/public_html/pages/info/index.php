@@ -75,7 +75,10 @@ elseif (isset($_GET['url']) && $_GET['url'] !== '')
         []
     );
 
-    if ($customDomains !== false && is_array($customDomains))
+    // dbSelect() only ever returns array|false, so once false is
+    // eliminated the remaining value is guaranteed to be an array — no
+    // separate is_array() check is needed.
+    if ($customDomains !== false)
     {
         foreach ($customDomains as $row)
         {

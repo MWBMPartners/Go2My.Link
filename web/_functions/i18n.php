@@ -46,22 +46,22 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 // 💾 Translation Cache & State
 // ============================================================================
 
-/** @var string Current active locale code (BCP 47, e.g., 'en-GB', 'es', 'ar') */
+// Current active locale code (BCP 47, e.g., 'en-GB', 'es', 'ar')
 $GLOBALS['_g2ml_locale'] = 'en-GB';
 
-/** @var string Default/fallback locale */
+// Default/fallback locale
 $GLOBALS['_g2ml_default_locale'] = 'en-GB';
 
-/** @var string Text direction for current locale ('ltr' or 'rtl') */
+// Text direction for current locale ('ltr' or 'rtl')
 $GLOBALS['_g2ml_text_direction'] = 'ltr';
 
-/** @var array Translation cache: ['en-GB' => ['key' => 'value', ...], ...] */
+// Translation cache: ['en-GB' => ['key' => 'value', ...], ...]
 $GLOBALS['_g2ml_translations'] = [];
 
-/** @var array Loaded locale flags: ['en-GB' => true, ...] */
+// Loaded locale flags: ['en-GB' => true, ...]
 $GLOBALS['_g2ml_translations_loaded'] = [];
 
-/** @var array Language metadata cache: ['en-GB' => ['name' => ..., 'direction' => ...], ...] */
+// Language metadata cache: ['en-GB' => ['name' => ..., 'direction' => ...], ...]
 $GLOBALS['_g2ml_languages'] = [];
 
 // ============================================================================
@@ -348,7 +348,9 @@ function _n(string $key, int $count, array $replacements = [], ?string $locale =
     {
         $forms = explode('|', $translated);
 
-        if ($count === 1 && isset($forms[0]))
+        // explode() always returns a non-empty list, so offset 0 is
+        // guaranteed to exist here — no separate isset() check is needed.
+        if ($count === 1)
         {
             $translated = trim($forms[0]);
         }

@@ -174,7 +174,10 @@ function closeDB(): void
     // We need to get and close the connection without creating a new one
     $db = getDB();
 
-    if ($db !== null && $db instanceof mysqli)
+    // getDB() only ever returns ?mysqli, so once null is eliminated the
+    // remaining value is guaranteed to be a mysqli instance — no separate
+    // instanceof check is needed.
+    if ($db !== null)
     {
         @$db->close();
     }

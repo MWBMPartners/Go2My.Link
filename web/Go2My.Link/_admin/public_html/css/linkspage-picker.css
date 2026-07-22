@@ -1,0 +1,149 @@
+/**
+ * Copyright (c) 2024–2026 MWBM Partners Ltd (MWservices).
+ * All rights reserved.
+ *
+ * This source code is proprietary and confidential.
+ * Unauthorised copying, modification, or distribution is strictly prohibited.
+ */
+
+/**
+ * ============================================================================
+ * 🎨 Go2My.Link — LinksPage Template Picker + Owner Preview Stylesheet (#47)
+ * ============================================================================
+ *
+ * Scoped to the LinksPage admin pages only (loaded via its own <link> tag by
+ * pages/linkspage/create/index.php, pages/linkspage/edit/index.php, and
+ * pages/linkspage/preview/index.php — the admin dashboard does not ship a
+ * shared /css/style.css of its own, see css/analytics.css for the same
+ * per-page-stylesheet convention).
+ *
+ * Two independent pieces:
+ *   1. .lp-picker-*   — the visual system-template picker (radio-card grid).
+ *   2. .lp-preview-*  — the owner-only page preview's framed iframe + banner.
+ *
+ * Built entirely on Bootstrap 5.3's theme-aware CSS custom properties
+ * (--bs-border-color, --bs-body-bg, --bs-primary, --bs-secondary-bg, etc.),
+ * which already respond to the `data-bs-theme` attribute set on <html> — no
+ * separate light/dark media queries are needed here.
+ *
+ * @package    Go2My.Link
+ * @subpackage AdminDashboard
+ * @author     MWBM Partners Ltd (MWservices)
+ * @version    1.0.0
+ * @since      v1.2.0 — Phase 8 (#47)
+ * ============================================================================
+ */
+
+/* ============================================================================
+   1. Template picker — radio-card grid
+   ============================================================================
+   Markup shape (see pages/linkspage/{create,edit}/index.php):
+
+     <input type="radio" class="visually-hidden lp-picker-radio" ...>
+     <label class="lp-picker-card" for="...">...</label>
+
+   The native <input type="radio"> stays in the DOM and in the tab order
+   (Bootstrap's .visually-hidden clips it visually without removing it from
+   accessibility or keyboard interaction — no display:none/visibility:hidden,
+   which WOULD break keyboard operation). Selection state is driven entirely
+   by the CSS :checked pseudo-class on the adjacent sibling — no JavaScript
+   is required for the picker to function.
+   ============================================================================ */
+
+.lp-picker-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    height: 100%;
+    padding: 0.75rem;
+    border: 2px solid var(--bs-border-color);
+    border-radius: 0.75rem;
+    background-color: var(--bs-body-bg);
+    cursor: pointer;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.lp-picker-card:hover {
+    border-color: var(--bs-primary);
+}
+
+.lp-picker-radio:checked + .lp-picker-card {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+.lp-picker-radio:focus-visible + .lp-picker-card {
+    outline: 0.15rem solid var(--bs-primary);
+    outline-offset: 0.15rem;
+}
+
+.lp-picker-thumb {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    border-radius: 0.5rem;
+    background-color: var(--bs-secondary-bg);
+}
+
+/* The live-rendered iframe is drawn at a fixed "phone" size, then scaled
+   down with a CSS transform to fit the thumbnail box — this shows the
+   template's real proportions rather than a squashed/stretched render. */
+.lp-picker-thumb-live {
+    position: relative;
+}
+
+.lp-picker-thumb-iframe {
+    width: 320px;
+    height: 427px;
+    border: 0;
+    background-color: #ffffff;
+    transform: scale(0.375);
+    transform-origin: top left;
+    pointer-events: none;
+}
+
+.lp-picker-thumb-static img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.lp-picker-thumb-placeholder {
+    color: var(--bs-secondary-color);
+    font-size: 1.75rem;
+}
+
+.lp-picker-name {
+    font-weight: 600;
+    color: var(--bs-body-color);
+}
+
+.lp-picker-desc {
+    font-size: 0.8125rem;
+    color: var(--bs-secondary-color);
+}
+
+/* ============================================================================
+   2. Owner page preview — framed iframe + banner
+   ============================================================================ */
+
+.lp-preview-frame-wrapper {
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 0.75rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 1rem;
+    background-color: var(--bs-secondary-bg);
+}
+
+.lp-preview-frame {
+    display: block;
+    width: 100%;
+    height: 720px;
+    border: 0;
+    border-radius: 0.5rem;
+    background-color: #ffffff;
+}

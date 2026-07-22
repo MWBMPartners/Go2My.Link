@@ -65,8 +65,10 @@ if ($error === '' && !$isLoggedIn)
 // ============================================================================
 // Check if user is already in a non-default organisation
 // ============================================================================
+// (the "not logged in" branch above always exit()s, so by this point
+// $isLoggedIn is guaranteed true — no need to re-check it here.)
 
-if ($error === '' && $isLoggedIn)
+if ($error === '')
 {
     $currentUser = getCurrentUser();
 
@@ -85,8 +87,10 @@ if ($error === '' && $isLoggedIn)
 // ============================================================================
 // Attempt to accept the invitation
 // ============================================================================
+// (the "not logged in" branch above always exit()s, so by this point
+// $isLoggedIn is guaranteed true — no need to re-check it here.)
 
-if ($error === '' && $isLoggedIn)
+if ($error === '')
 {
     $result = acceptInvitation($token);
 

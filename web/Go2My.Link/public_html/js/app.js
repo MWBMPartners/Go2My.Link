@@ -84,7 +84,11 @@ document.addEventListener('DOMContentLoaded', function() {
     var copyText   = document.getElementById('copy-btn-text');
 
     if (form) {
-        var captchaType = form.getAttribute('data-captcha-type') || 'none';
+        var captchaType = form.getAttribute('data-captcha-type');
+
+        if (!captchaType) {
+            captchaType = 'none';
+        }
 
         // Disable submit button if CAPTCHA is required (re-enabled by callback)
         if (captchaType !== 'none' && submitBtn) {
@@ -128,7 +132,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (xhr.status === 201 && response.success) {
                     showResult(response.shortURL);
                 } else {
-                    showError(response.error || 'Failed to create short URL.');
+                    var errorMessage = response.error;
+
+                    if (!errorMessage) {
+                        errorMessage = 'Failed to create short URL.';
+                    }
+
+                    showError(errorMessage);
                 }
 
                 resetSubmitButton();
@@ -162,7 +172,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (copyBtn) {
         copyBtn.addEventListener('click', function() {
-            var url = resultLink ? resultLink.textContent : '';
+            var url;
+
+            if (resultLink) {
+                url = resultLink.textContent;
+            } else {
+                url = '';
+            }
 
             if (!url) { return; }
 
@@ -255,7 +271,11 @@ document.addEventListener('DOMContentLoaded', function() {
     function resetCaptcha() {
         if (!form) { return; }
 
-        var captchaType = form.getAttribute('data-captcha-type') || 'none';
+        var captchaType = form.getAttribute('data-captcha-type');
+
+        if (!captchaType) {
+            captchaType = 'none';
+        }
 
         if (captchaType === 'turnstile' && window.turnstile) {
             window.turnstile.reset();

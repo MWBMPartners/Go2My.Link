@@ -15,6 +15,8 @@
 -- @since      Phase 6
 -- ============================================================================
 
+USE `mwtools_Go2MyLink`;
+
 -- ============================================================================
 -- 🔧 Accessibility (a11y.*)
 -- ============================================================================
@@ -46,6 +48,65 @@ VALUES
 ('en-GB', 'about.team_heading', 'Built by MWBM Partners', 'About page', 1),
 ('en-GB', 'about.team_text', 'Go2My.Link is developed and maintained by MWBM Partners Ltd (t/a MWservices), a technology company focused on building practical, reliable web tools. We believe in clean architecture, strong security, and accessible design.', 'About page', 1),
 ('en-GB', 'about.title', 'About', 'About page', 1);
+
+-- ============================================================================
+-- 📊 Analytics Dashboard (analytics.*)
+-- ============================================================================
+
+INSERT IGNORE INTO tblTranslations (localeCode, translationKey, translationValue, context, isVerified)
+VALUES
+('en-GB', 'analytics.back_to_overview', 'Back to all links', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_browser', 'Browser Breakdown', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_browser_desc', 'Doughnut chart of clicks grouped by browser.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_clicks_over_time', 'Clicks Over Time', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_clicks_over_time_desc', 'Line chart of click counts across the selected date range.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_country', 'Country Breakdown', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_country_desc', 'Doughnut chart of clicks grouped by country (requires IP geolocation to be enabled).', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_device', 'Device Type Breakdown', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_device_desc', 'Doughnut chart of clicks grouped by device type.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_os', 'Operating System Breakdown', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_os_desc', 'Doughnut chart of clicks grouped by operating system.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_referrers', 'Top Referrers', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_scan_sources', 'QR Scan Sources', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_scan_sources_desc', 'Bar chart of clicks attributed to CueRCode QR scans, grouped by source.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_top_links', 'Top Links', 'Analytics dashboard', 1),
+('en-GB', 'analytics.chart_top_links_desc', 'Bar chart ranking your organisation''s short links by click count in the selected date range.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.description', 'View click analytics and performance for your organisation''s short links.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.error_unavailable', 'Analytics is not available for accounts that are not yet part of an organisation.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.heading', 'Analytics', 'Analytics dashboard', 1),
+('en-GB', 'analytics.no_data', 'No data for this period.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.no_referrers', 'No referrer data for this period.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.no_scan_sources', 'No QR scans recorded in this period.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.range_7', 'Last 7 days', 'Analytics dashboard', 1),
+('en-GB', 'analytics.range_30', 'Last 30 days', 'Analytics dashboard', 1),
+('en-GB', 'analytics.range_90', 'Last 90 days', 'Analytics dashboard', 1),
+('en-GB', 'analytics.range_apply', 'Apply', 'Analytics dashboard', 1),
+('en-GB', 'analytics.range_custom_toggle', 'Custom range', 'Analytics dashboard', 1),
+('en-GB', 'analytics.range_from', 'From', 'Analytics dashboard', 1),
+('en-GB', 'analytics.range_heading', 'Date range', 'Analytics dashboard', 1),
+('en-GB', 'analytics.range_to', 'To', 'Analytics dashboard', 1),
+('en-GB', 'analytics.subheading_org', 'Org-wide performance across all your short links.', 'Analytics dashboard', 1),
+('en-GB', 'analytics.table_col_clicks', 'Clicks', 'Analytics dashboard', 1),
+('en-GB', 'analytics.table_col_period', 'Period', 'Analytics dashboard', 1),
+('en-GB', 'analytics.table_col_referrer', 'Referrer', 'Analytics dashboard', 1),
+('en-GB', 'analytics.table_col_scans', 'Scans', 'Analytics dashboard', 1),
+('en-GB', 'analytics.table_col_short_code', 'Short Code', 'Analytics dashboard', 1),
+('en-GB', 'analytics.table_col_source', 'Source', 'Analytics dashboard', 1),
+('en-GB', 'analytics.table_col_value', 'Value', 'Analytics dashboard', 1),
+('en-GB', 'analytics.table_toggle', 'View data table', 'Analytics dashboard', 1),
+('en-GB', 'analytics.title', 'Analytics', 'Analytics dashboard', 1),
+('en-GB', 'analytics.view_link', 'View', 'Analytics dashboard', 1),
+('en-GB', 'analytics.viewing_link', 'Viewing analytics for {code}', 'Analytics dashboard', 1);
+
+-- ============================================================================
+-- 🔑 API Keys Page (apikeys.*)
+-- ============================================================================
+
+INSERT IGNORE INTO tblTranslations (localeCode, translationKey, translationValue, context, isVerified)
+VALUES
+('en-GB', 'apikeys.description', 'Create and manage API keys for your organisation.', 'API keys page', 1),
+('en-GB', 'apikeys.error_forbidden', 'You do not have permission to manage API keys.', 'API keys page', 1),
+('en-GB', 'apikeys.title', 'API Keys', 'API keys page', 1);
 
 -- ============================================================================
 -- 🔄 Common (common.*)
@@ -256,13 +317,18 @@ VALUES
 ('en-GB', 'error.403_message', 'You don''t have permission to access this page. If you believe this is an error, please contact support.', 'Error page — 403', 1),
 ('en-GB', 'error.403_title', '403 — Forbidden', 'Error page — 403', 1),
 ('en-GB', 'error.404.message', 'The page you are looking for could not be found.', 'Error page — 404', 1),
+('en-GB', 'error.404_description', 'The page you are looking for could not be found.', 'Error page — 404', 1),
+('en-GB', 'error.404_heading', 'Page Not Found', 'Error page — 404', 1),
+('en-GB', 'error.404_message', 'The page you are looking for could not be found. It may have been moved or deleted.', 'Error page — 404', 1),
+('en-GB', 'error.404_title', '404 — Page Not Found', 'Error page — 404', 1),
 ('en-GB', 'error.500_description', 'Something went wrong on our end.', 'Error page — 500', 1),
 ('en-GB', 'error.500_heading', 'Something Went Wrong', 'Error page — 500', 1),
 ('en-GB', 'error.500_message', 'We encountered an unexpected error. Our team has been notified. Please try again later.', 'Error page — 500', 1),
 ('en-GB', 'error.500_title', '500 — Server Error', 'Error page — 500', 1),
 ('en-GB', 'error.back_home', 'Back to Home', 'Error pages', 1),
 ('en-GB', 'error.contact_us', 'Contact Us', 'Error pages', 1),
-('en-GB', 'error.go_home', 'Go Home', 'Error pages', 1);
+('en-GB', 'error.go_home', 'Go Home', 'Error pages', 1),
+('en-GB', 'error.powered_by', 'Powered by', 'Error pages (Components B/C standalone branded pages)', 1);
 
 -- ============================================================================
 -- 📦 Data Export (export.*)
@@ -283,6 +349,7 @@ VALUES
 ('en-GB', 'export.download_button', 'Download Export', 'Data export page', 1),
 ('en-GB', 'export.download_ready', 'Your data export is ready for download.', 'Data export page', 1),
 ('en-GB', 'export.error_csrf', 'Session expired. Please try again.', 'Data export page', 1),
+('en-GB', 'export.error_download_unavailable', 'That download link is unavailable. It may be invalid or expired — you can request a new export below.', 'Data export page', 1),
 ('en-GB', 'export.error_generic', 'Failed to generate export. Please try again later.', 'Data export page', 1),
 ('en-GB', 'export.expired', 'Expired', 'Data export page', 1),
 ('en-GB', 'export.expires', 'Expires', 'Data export page', 1),
@@ -1108,9 +1175,58 @@ VALUES
 
 INSERT IGNORE INTO tblTranslations (localeCode, translationKey, translationValue, context, isVerified)
 VALUES
+('en-GB', 'linkspage.agegate_body', 'This page contains age-restricted content. Please confirm you are of legal age (18+) to continue.', 'LinksPage — age verification (C.5, #50)', 1),
+('en-GB', 'linkspage.agegate_confirm', 'I am 18 or older — Continue', 'LinksPage — age verification (C.5, #50)', 1),
+('en-GB', 'linkspage.agegate_heading', 'Age Verification Required', 'LinksPage — age verification (C.5, #50)', 1),
+('en-GB', 'linkspage.agegate_leave', 'Leave this site', 'LinksPage — age verification (C.5, #50)', 1),
+('en-GB', 'linkspage.agegate_title', 'Age Verification Required', 'LinksPage — age verification (C.5, #50)', 1),
 ('en-GB', 'linkspage.coming_soon', 'LinksPage is coming soon. Create your own customisable link listing page.', 'LinksPage', 1),
+('en-GB', 'linkspage.create_description', 'Set up a new LinksPage listing page.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.create_heading', 'Create LinksPage', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.create_new', 'Create LinksPage', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.create_title', 'Create LinksPage', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.description', 'Manage your LinksPage listing pages and their links.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.edit_description', 'Edit your LinksPage settings and manage its links.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.edit_heading', 'Edit LinksPage', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.edit_title', 'Edit LinksPage', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.heading', 'LinksPage', 'LinksPage management (admin)', 1),
 ('en-GB', 'linkspage.learn_more', 'Learn More', 'LinksPage', 1),
-('en-GB', 'linkspage.not_found', 'This LinksPage does not exist or has not been set up yet.', 'LinksPage', 1);
+('en-GB', 'linkspage.limit_reached', 'You have reached your plan''s LinksPage limit. Please upgrade your plan to create more LinksPages.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.no_pages', 'You have not created a LinksPage yet.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.not_found', 'This LinksPage does not exist or has not been set up yet.', 'LinksPage', 1),
+('en-GB', 'linkspage.preview_back_to_edit', 'Back to Edit', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.preview_banner_draft_body', 'This page has not been published yet — nobody else can see it until you publish it.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.preview_banner_draft_title', 'Preview — not yet public.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.preview_banner_published', 'This LinksPage is already published and publicly visible.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.preview_description', 'Preview your LinksPage before publishing it.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.preview_heading', 'Preview LinksPage', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.preview_iframe_title', 'Live preview of your LinksPage', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.preview_link', 'Preview', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.preview_title', 'Preview LinksPage', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.template_default_option', 'Site Default', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.template_picker_help', 'Each preview uses sample content so you can compare styles before choosing.', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.template_picker_legend', 'Choose a Template', 'LinksPage management (admin)', 1),
+('en-GB', 'linkspage.title', 'LinksPage', 'LinksPage management (admin)', 1);
+
+-- ============================================================================
+-- 🧨 LinksPage custom HTML/CSS editor (linkspage.custom_html_*) — C.6 (#49)
+-- ============================================================================
+
+INSERT IGNORE INTO tblTranslations (localeCode, translationKey, translationValue, context, isVerified)
+VALUES
+('en-GB', 'linkspage.custom_html_heading', 'Custom HTML / CSS', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_label', 'Custom HTML', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_css_label', 'Custom CSS', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_help', 'Allowed tags include headings, paragraphs, lists, links, images, and basic layout elements. Scripts, iframes, forms, and event handlers are removed. Leave both boxes empty to revert to a built-in template.', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_save', 'Save Custom HTML', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_saved', 'Custom HTML saved. It was sanitised for safety before saving.', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_safety_note', 'Your HTML and CSS are sanitised before saving and again when rendered: scripts, event handlers, iframes, forms, and unsafe URLs are removed, and the page is served with a strict security policy that blocks all scripts. The preview below shows the sanitised result.', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_unavailable', 'Custom HTML/CSS is a premium feature and is not available on your current plan (or has been disabled by the administrator). Your page uses one of the safe built-in templates.', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_upload_label', 'Upload an HTML file', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_upload_help', 'Upload a .html file (max 100 KB). It is sanitised the same way and replaces the HTML above — the raw file is never stored.', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_upload_button', 'Upload & Sanitise', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_preview_heading', 'Sanitised live preview', 'LinksPage custom HTML (C.6, #49)', 1),
+('en-GB', 'linkspage.custom_html_preview_iframe_title', 'Sanitised preview of your custom HTML', 'LinksPage custom HTML (C.6, #49)', 1);
 
 -- ============================================================================
 -- 🔐 Login Page (login.*)
@@ -1155,11 +1271,14 @@ VALUES
 INSERT IGNORE INTO tblTranslations (localeCode, translationKey, translationValue, context, isVerified)
 VALUES
 ('en-GB', 'nav.about', 'About', 'Main navigation', 1),
+('en-GB', 'nav.analytics', 'Analytics', 'Main navigation', 1),
+('en-GB', 'nav.api_keys', 'API Keys', 'Main navigation', 1),
 ('en-GB', 'nav.aria_label', 'Main navigation', 'Main navigation', 1),
 ('en-GB', 'nav.dashboard', 'Dashboard', 'Main navigation', 1),
 ('en-GB', 'nav.features', 'Features', 'Main navigation', 1),
 ('en-GB', 'nav.home', 'Home', 'Main navigation', 1),
 ('en-GB', 'nav.language', 'Language', 'Main navigation', 1),
+('en-GB', 'nav.linkspage', 'LinksPage', 'Main navigation', 1),
 ('en-GB', 'nav.login', 'Log In', 'Main navigation', 1),
 ('en-GB', 'nav.logout', 'Log Out', 'Main navigation', 1),
 ('en-GB', 'nav.my_links', 'My Links', 'Main navigation', 1),

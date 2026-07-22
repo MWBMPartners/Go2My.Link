@@ -14,7 +14,7 @@
 -- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
--- @version    0.2.0
+-- @version    0.3.0
 -- @since      Phase 1
 --
 -- Reference: https://dev.mysql.com/doc/refman/8.0/en/create-table.html
@@ -38,6 +38,19 @@ CREATE TABLE IF NOT EXISTS `tblSettings` (
 
     `settingScopeRef`       VARCHAR(100)        DEFAULT NULL
         COMMENT 'Reference for scope context — orgHandle for Organisation, userUID for User, NULL for Default/System',
+
+    -- NULL-collapsing mirror of settingScopeRef (#150). MySQL treats NULLs as
+    -- DISTINCT inside a UNIQUE index, so a raw settingScopeRef column never
+    -- deduplicates System/Default rows (where settingScopeRef IS NULL) — a
+    -- unique key including it silently permits duplicate (settingID, 'System',
+    -- NULL) rows. This STORED generated column rewrites NULL to '' so those
+    -- rows collide in UQ_setting_scope, while the base settingScopeRef column
+    -- is left completely untouched (every "settingScopeRef IS NULL" read path
+    -- keeps its exact semantics). It inherits the table's utf8mb4_unicode_ci
+    -- collation, so the '' comparison in the unique key is exact.
+    `settingScopeRefKey`    VARCHAR(100)
+                            GENERATED ALWAYS AS (COALESCE(`settingScopeRef`, '')) STORED
+        COMMENT 'NULL-collapsed mirror of settingScopeRef (NULL becomes empty string) so System/Default rows dedupe in UQ_setting_scope (#150)',
 
     `settingValue`          TEXT                DEFAULT NULL
         COMMENT 'Current active value (encrypted if isSensitive = 1)',
@@ -69,8 +82,12 @@ CREATE TABLE IF NOT EXISTS `tblSettings` (
 
     PRIMARY KEY (`settingUID`),
 
-    -- Each setting key is unique within its scope + scope reference
-    UNIQUE KEY `UQ_setting_scope` (`settingID`, `settingScope`, `settingScopeRef`),
+    -- Each setting key is unique within its scope + scope reference. The scope
+    -- reference is compared via settingScopeRefKey (COALESCE(settingScopeRef,''))
+    -- so System/Default rows (settingScopeRef IS NULL) also deduplicate — a raw
+    -- settingScopeRef column would let NULL-scope rows slip past the UNIQUE
+    -- index and accumulate duplicates (#150).
+    UNIQUE KEY `UQ_setting_scope` (`settingID`, `settingScope`, `settingScopeRefKey`),
 
     -- Fast lookup by scope
     INDEX `IDX_settings_scope` (`settingScope`),

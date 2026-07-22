@@ -78,6 +78,38 @@ CREATE TABLE IF NOT EXISTS `tblOrganisations` (
 -- =============================================================================
 -- Organisation Domains (DNS verification for custom domains)
 -- =============================================================================
+-- ⚠️  DEPRECATED (GT-6, docs/LAUNCH_PLAN_2026-07-09.md §5 / issue #91) — kept
+--     for backward compatibility with any pre-existing row only. This table
+--     was the Phase 5 (#32) custom-domain concept: an org registers a
+--     hostname here, proves ownership via its own verifyDomain() DNS-TXT
+--     flow, and tags it with a `domainType` (including 'linkspage').
+--
+--     NOTHING routes off this table. The redirect hot path (sp_lookupShortURL),
+--     getOrgByDomain() / domain_resolver.php, and the Component C.4 (#46)
+--     custom-domain LinksPage fallback (linkspage_fallback.php,
+--     linkspage_resolver.php) all resolve a Host header EXCLUSIVELY via
+--     `tblOrgShortDomains` (see that table below, and its own
+--     verifyOrgShortDomain() flow added by #91). `domainType = 'linkspage'`
+--     here is stored but has never been read by any code path — the actual
+--     custom-domain-to-LinksPage link is `tblOrgShortDomains.linksPageUID`
+--     (added by migration 015 for #46).
+--
+--     Confirmed at the 2026-07-10 GT-6 assessment: zero FKs reference
+--     `domainUID`; the legacy-data migration (`migrations/001_migrate_
+--     organisations.sql`) only ever populates `tblOrgShortDomains`, never
+--     this table; no seed populates it; no integration test exercises it.
+--     Its only consumers are its own CRUD functions in `web/_functions/
+--     org.php` (`addOrgDomain()`, `verifyDomain()`, `removeOrgDomain()`,
+--     `getOrgDomains()`) and its own admin page (`org/domains/index.php`),
+--     which as of GT-6 no longer accepts new rows — see that page and
+--     `web/_sql/migrations/018_deprecate_org_domains.sql` for the full
+--     write-up and the reconciliation-audit query for any environment that
+--     already has rows here.
+--
+--     DO NOT build new functionality against this table. DO NOT drop it or
+--     its data automatically — see migration 018 for the reviewed,
+--     owner-run reconciliation path.
+-- =============================================================================
 CREATE TABLE IF NOT EXISTS `tblOrgDomains` (
     `domainUID`             BIGINT UNSIGNED     NOT NULL AUTO_INCREMENT,
 
@@ -89,7 +121,7 @@ CREATE TABLE IF NOT EXISTS `tblOrgDomains` (
 
     `domainType`            ENUM('primary', 'redirect', 'linkspage')
                             NOT NULL DEFAULT 'primary'
-        COMMENT 'What this domain is used for',
+        COMMENT 'DEPRECATED field — never read by any resolver; kept as-is for existing rows only (see table-level GT-6 comment above)',
 
     `verificationToken`     VARCHAR(255)        DEFAULT NULL
         COMMENT 'DNS TXT record verification token',
@@ -122,7 +154,7 @@ CREATE TABLE IF NOT EXISTS `tblOrgDomains` (
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4
   COLLATE=utf8mb4_unicode_ci
-  COMMENT='Organisation custom domain DNS verification';
+  COMMENT='DEPRECATED (GT-6) — superseded by tblOrgShortDomains for routing and LinksPage designation; kept for existing rows only, see table comment above';
 
 -- =============================================================================
 -- Organisation Short Domains (custom short URL domains)
@@ -139,13 +171,34 @@ CREATE TABLE IF NOT EXISTS `tblOrgShortDomains` (
     `isDefault`             TINYINT(1) UNSIGNED NOT NULL DEFAULT 0
         COMMENT 'Whether this is the default short domain for the org',
 
-    `isActive`              TINYINT(1) UNSIGNED NOT NULL DEFAULT 1,
+    `verificationStatus`    ENUM('pending', 'verified', 'failed')
+                            NOT NULL DEFAULT 'pending'
+        COMMENT 'DNS-TXT ownership verification status — only verified domains are routable (#91)',
+
+    `verificationToken`     VARCHAR(255)        DEFAULT NULL
+        COMMENT 'Per-domain unguessable DNS TXT record verification token',
+
+    `verifiedAt`            DATETIME            DEFAULT NULL
+        COMMENT 'When DNS ownership verification succeeded',
+
+    `tlsStatus`             ENUM('none', 'pending', 'active')
+                            NOT NULL DEFAULT 'none'
+        COMMENT 'TLS provisioning status — manual Dreamhost hosted-domain today (docs/CUSTOM_DOMAINS.md); Cloudflare-for-SaaS is the roadmap automated path',
+
+    `isActive`              TINYINT(1) UNSIGNED NOT NULL DEFAULT 1
+        COMMENT 'Routable flag — a NEWLY added domain starts at 0 until verified; grandfathered pre-verification domains keep resolving (see migration 013)',
+
+    `linksPageUID`          BIGINT UNSIGNED     DEFAULT NULL
+        COMMENT 'Component C.4 (#46) — the org''s published LinksPage shown at this domain''s root, or for a path that does not resolve to a short code, instead of a 404. FK to tblLinksPages.pageUID added as a deferred ALTER at the end of 032_linkspage.sql (tblLinksPages is defined later in import order). NULL = no fallback configured (existing 404 behaviour is unchanged).',
+
     `createdAt`             DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updatedAt`             DATETIME            DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     PRIMARY KEY (`shortDomainUID`),
     UNIQUE KEY `UQ_short_domain` (`shortDomain`),
     INDEX `IDX_short_domain_org` (`orgHandle`),
+    INDEX `IDX_short_domain_status` (`verificationStatus`),
+    INDEX `IDX_short_domain_linkspage` (`linksPageUID`),
 
     CONSTRAINT `FK_short_domain_org`
         FOREIGN KEY (`orgHandle`)

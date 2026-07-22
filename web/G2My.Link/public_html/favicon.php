@@ -31,7 +31,7 @@
 // ============================================================================
 
 $componentAuthPath = dirname(__DIR__)
-    . DIRECTORY_SEPARATOR . '_auth_keys'
+    . DIRECTORY_SEPARATOR . '.auth'
     . DIRECTORY_SEPARATOR . 'auth_creds.php';
 
 if (file_exists($componentAuthPath))
@@ -83,8 +83,12 @@ $orgHandle = getOrgByDomain($requestDomain);
 // ============================================================================
 // 🏢 Try org-specific favicon
 // ============================================================================
+// getOrgByDomain() returns null (#91) when this host has been claimed as a
+// custom short domain but has not passed DNS-TXT ownership verification yet.
+// Treat that exactly like '[default]' here — fall through to the site-wide
+// favicon rather than guessing at branding for an unverified claim.
 
-if ($orgHandle !== '[default]')
+if ($orgHandle !== null && $orgHandle !== '[default]')
 {
     $orgFaviconPath = getOrgFavicon($orgHandle);
 
@@ -98,7 +102,7 @@ if ($orgHandle !== '[default]')
         // 🛡️ Path-traversal confinement (F-006 / #101)
         // --------------------------------------------------------------------
         // orgFaviconPath is DB-sourced and could contain traversal sequences
-        // ("../../_auth_keys/auth_creds.php"). basename() strips any directory
+        // ("../../.auth/auth_creds.php"). basename() strips any directory
         // component so only the bare filename survives, then realpath() is used
         // to confirm the resolved file genuinely sits inside the uploads dir.
         // Anything that escapes the uploads dir falls through to the default

@@ -101,7 +101,14 @@ function getUserAccountTypes(int $userUID, ?string $orgHandle = null): array
         );
     }
 
-    return $rows ?: [];
+    if ($rows)
+    {
+        return $rows;
+    }
+    else
+    {
+        return [];
+    }
 }
 
 /**
@@ -274,12 +281,13 @@ function canGrantAccountType(?int $actingUserUID, string $accountTypeID, string 
 
     $globalAdminLevel = 3;
 
+    // 'GlobalAdmin' is a fixed key in the G2ML_ROLE_LEVELS literal (see
+    // auth.php), so once the constant is defined the offset is always
+    // present — only the defined() guard (for the case this constant's
+    // defining file wasn't loaded) is meaningful here.
     if (defined('G2ML_ROLE_LEVELS'))
     {
-        if (isset(G2ML_ROLE_LEVELS['GlobalAdmin']))
-        {
-            $globalAdminLevel = G2ML_ROLE_LEVELS['GlobalAdmin'];
-        }
+        $globalAdminLevel = G2ML_ROLE_LEVELS['GlobalAdmin'];
     }
 
     $actingRoleLevel = 0;
@@ -599,7 +607,14 @@ function getAllAccountTypes(bool $activeOnly = true): array
         );
     }
 
-    return $rows ?: [];
+    if ($rows)
+    {
+        return $rows;
+    }
+    else
+    {
+        return [];
+    }
 }
 
 /**

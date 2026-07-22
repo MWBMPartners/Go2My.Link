@@ -81,7 +81,14 @@ var G2ML_Theme = (function() {
     {
         try
         {
-            return localStorage.getItem(STORAGE_KEY) || 'auto';
+            var storedValue = localStorage.getItem(STORAGE_KEY);
+
+            if (storedValue)
+            {
+                return storedValue;
+            }
+
+            return 'auto';
         }
         catch (e)
         {
@@ -170,12 +177,26 @@ var G2ML_Theme = (function() {
 
         if (icon)
         {
-            icon.className = ICONS[preference] || ICONS.auto;
+            var iconClass = ICONS[preference];
+
+            if (!iconClass)
+            {
+                iconClass = ICONS.auto;
+            }
+
+            icon.className = iconClass;
         }
 
         if (label)
         {
-            label.textContent = LABELS[preference] || LABELS.auto;
+            var labelText = LABELS[preference];
+
+            if (!labelText)
+            {
+                labelText = LABELS.auto;
+            }
+
+            label.textContent = labelText;
         }
 
         if (btn)
@@ -184,7 +205,14 @@ var G2ML_Theme = (function() {
             var nextIndex = (CYCLE.indexOf(preference) + 1) % CYCLE.length;
             var nextLabel = LABELS[CYCLE[nextIndex]];
 
-            btn.setAttribute('aria-label', 'Theme: ' + (LABELS[preference] || 'Auto') + '. Click for ' + nextLabel);
+            var currentLabel = LABELS[preference];
+
+            if (!currentLabel)
+            {
+                currentLabel = 'Auto';
+            }
+
+            btn.setAttribute('aria-label', 'Theme: ' + currentLabel + '. Click for ' + nextLabel);
         }
     }
 

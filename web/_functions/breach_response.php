@@ -314,13 +314,27 @@ function g2ml_sendMassResetEmails(string $reason): array
             // Build the reset URL
             $resetURL = 'https://go2my.link/reset-password?token=' . urlencode($token);
 
+            // Determine the display name to greet the user with in the email
+            if ($user['firstName'])
+            {
+                $emailFirstName = $user['firstName'];
+            }
+            elseif ($user['displayName'])
+            {
+                $emailFirstName = $user['displayName'];
+            }
+            else
+            {
+                $emailFirstName = 'User';
+            }
+
             // Send the breach notification email
             $emailSent = g2ml_sendEmail(
                 $user['email'],
                 'Security Notice — Password Reset Required — ' . $siteName,
                 'breach_notification',
                 [
-                    'firstName' => $user['firstName'] ?: ($user['displayName'] ?: 'User'),
+                    'firstName' => $emailFirstName,
                     'reason'    => $reason,
                     'resetURL'  => $resetURL,
                     'breachAt'  => date('j M Y, H:i T'),
@@ -485,11 +499,20 @@ function g2ml_rotateEncryptionSalt(string $newSalt): array
         ];
     }
 
+    if ($failed > 0)
+    {
+        $saltRotationError = $failed . ' setting(s) failed to re-encrypt. Changes were rolled back.';
+    }
+    else
+    {
+        $saltRotationError = '';
+    }
+
     return [
         'success' => ($failed === 0),
         'rotated' => $rotated,
         'failed'  => $failed,
-        'error'   => ($failed > 0) ? $failed . ' setting(s) failed to re-encrypt. Changes were rolled back.' : '',
+        'error'   => $saltRotationError,
     ];
 }
 
@@ -515,7 +538,7 @@ function g2ml_logBreachResponse(int $adminUID, string $action, array $details = 
         'timestamp' => gmdate('Y-m-d\TH:i:s\Z'),
         'adminUID'  => $adminUID,
         'action'    => $action,
-        'ip'        => function_exists('g2ml_getClientIP') ? g2ml_getClientIP() : ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'),
+        'ip'        => g2ml_clientIpOrDefault($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0'),
         'details'   => $details,
     ];
 

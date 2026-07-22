@@ -46,6 +46,32 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
     exit;
 }
 
+/**
+ * Return the current component's short code ('A'/'B'/'C'/'Admin').
+ *
+ * Thin typed wrapper around the G2ML_COMPONENT constant, which each
+ * component's own entry point (web/Go2My.Link/public_html/index.php,
+ * web/G2My.Link/public_html/index.php, web/Lnks.page/public_html/index.php,
+ * web/Go2My.Link/_admin/public_html/index.php) defines with a DIFFERENT
+ * literal value BEFORE this file is required. A shared include (like
+ * _includes/nav.php) that reads G2ML_COMPONENT directly instead gets
+ * PHPStan's cross-file constant-type inference, which only sees ONE
+ * entry point's literal rather than the real 'A'|'B'|'C'|'Admin' union —
+ * this function's declared `string` return type avoids that false
+ * narrowing without changing the runtime value at all.
+ *
+ * @return string
+ */
+function g2ml_getComponent(): string
+{
+    if (defined('G2ML_COMPONENT'))
+    {
+        return G2ML_COMPONENT;
+    }
+
+    return 'A';
+}
+
 // ============================================================================
 // ⏱️ Step 10 (early): Record start time and memory for debug panel
 // ============================================================================
@@ -108,6 +134,26 @@ else
     define('G2ML_ENVIRONMENT', 'production');
 }
 
+/**
+ * Return the current runtime environment ('alpha'/'beta'/'local'/'production').
+ *
+ * Thin typed wrapper around the G2ML_ENVIRONMENT constant defined just
+ * above. Because that constant is set via a different define() call in
+ * each branch of the if/elseif/elseif/else chain above, a caller in
+ * ANOTHER file that reads G2ML_ENVIRONMENT directly gets PHPStan's
+ * cross-file constant-type inference, which only sees ONE of those
+ * branches' literal values rather than the real
+ * 'alpha'|'beta'|'local'|'production' union — this function's declared
+ * `string` return type avoids that false narrowing without changing the
+ * runtime value at all.
+ *
+ * @return string
+ */
+function g2ml_getEnvironment(): string
+{
+    return G2ML_ENVIRONMENT;
+}
+
 // ============================================================================
 // 🐛 Step 4: Debug Mode Detection
 // ============================================================================
@@ -165,6 +211,7 @@ else
 
 // Layer 1 — Zero dependencies (depend only on auth_creds.php constants)
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'security.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'html_sanitiser.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'db_connect.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'db_query.php';
 
@@ -172,8 +219,13 @@ require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'db_query.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'error_handler.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'settings.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'api_response.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'api_auth.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'api_ratelimit.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'dnt.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'adult_content.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'geolocation.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'activity_logger.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'analytics.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'i18n.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'router.php';
 
@@ -183,11 +235,13 @@ require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'session.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'auth.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'org.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'account_types.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'entitlements.php';
 
 // Layer 4 — Compliance, Privacy & Security Response (depend on Layers 1+2+3)
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'cookie_consent.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'data_rights.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'breach_response.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'linkspage_manage.php';
 
 // ============================================================================
 // ⚠️ Step 6: Register Error/Exception/Shutdown Handlers

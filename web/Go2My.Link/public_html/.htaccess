@@ -66,7 +66,7 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 # Directories prefixed with _ are not web-accessible.
 # Returns 403 Forbidden for any request to these paths.
 # =============================================================================
-RewriteRule ^_auth_keys(/|$) - [F,L]
+RewriteRule ^\.auth(/|$) - [F,L]
 RewriteRule ^_includes(/|$) - [F,L]
 RewriteRule ^_functions(/|$) - [F,L]
 RewriteRule ^_libraries(/|$) - [F,L]
@@ -121,6 +121,15 @@ RewriteCond %{REQUEST_FILENAME}.php -f
 
 # Rewrite to the .php file (internally, no redirect)
 RewriteRule ^(.+)$ $1.php [L]
+
+# =============================================================================
+# Public API v1 — /api/v1/* route (#38)
+# Maps /api/v1/<anything> to the api/v1 front controller via ?_apiroute=.
+# The front controller itself sanitises _apiroute to [A-Za-z0-9/_-]*.
+# Must come before the catch-all route below.
+# =============================================================================
+RewriteRule ^api/v1/?$ api/v1/index.php [QSA,L]
+RewriteRule ^api/v1/(.+)$ api/v1/index.php?_apiroute=$1 [QSA,L]
 
 # =============================================================================
 # Info Page — /info/SHORTCODE route

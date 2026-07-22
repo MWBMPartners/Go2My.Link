@@ -44,8 +44,29 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
     Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
 
     # Content Security Policy
+    # LinksPage (Component C) is a PUBLIC render surface for third-party-
+    # authored content (page title/bio, item links, social links, theme
+    # colours — see web/Lnks.page/_functions/linkspage_renderer.php). Every
+    # page this component serves (the "coming soon" homepage, the branded
+    # 404, and the rendered LinksPage itself) is fully self-contained —
+    # no CDN scripts/stylesheets — so the policy below intentionally has NO
+    # third-party origins, unlike the other two components. Theme/background
+    # colours are injected into a <style> block (never an inline `style=`
+    # attribute driven by unvalidated data — see hex validation in
+    # linkspage_renderer.php), so 'unsafe-inline' is scoped to style-src only;
+    # script-src stays 'self' with no 'unsafe-inline' since this component
+    # ships no inline scripts at all. object-src is 'none' (no plugins/embeds
+    # of any kind), closing the classic Flash/Java CSP bypass vector.
+    #
+    # 🧨 Component C.6 (#49): `Header setifempty` (NOT `Header set`) so a
+    # LinksPage rendering owner-supplied CUSTOM HTML can serve an even STRICTER
+    # per-response policy (script-src 'none' — see index.php Step 9.5 and
+    # g2ml_linkspageCustomHtmlCSP()) set from PHP WITHOUT this baseline
+    # clobbering it. setifempty applies this baseline ONLY when PHP has not
+    # already set a CSP, so no other page is weakened — the coming-soon
+    # homepage, the 404, and system-template pages still receive this baseline.
     # 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
-    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net code.jquery.com cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; font-src 'self' cdnjs.cloudflare.com data:; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+    Header setifempty Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
 
     # HSTS — enforce HTTPS for 1 year
     Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
@@ -54,7 +75,7 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 # =============================================================================
 # Block Private Directories
 # =============================================================================
-RewriteRule ^_auth_keys(/|$) - [F,L]
+RewriteRule ^\.auth(/|$) - [F,L]
 RewriteRule ^_includes(/|$) - [F,L]
 RewriteRule ^_functions(/|$) - [F,L]
 RewriteRule ^_libraries(/|$) - [F,L]
@@ -110,6 +131,16 @@ RewriteRule ^(.+)$ index.php?slug=$1 [QSA,L]
 # Character Encoding
 # =============================================================================
 AddDefaultCharset UTF-8
+
+# =============================================================================
+# Error Documents
+# Custom branded error pages (routed through index.php so G2ML_COMPONENT and
+# page_init.php are defined before the pages' Direct Access Guard runs — see
+# index.php Step 3b). 404 reuses the existing 404.php.
+# =============================================================================
+ErrorDocument 403 /index.php?http_error=403
+ErrorDocument 404 /index.php?http_error=404
+ErrorDocument 500 /index.php?http_error=500
 
 # =============================================================================
 # PHP Configuration

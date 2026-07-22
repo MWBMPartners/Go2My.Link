@@ -28,13 +28,35 @@ Complete **all** items before beginning the migration:
 
 ### 📁 Application Files
 
-- [ ] All schema files (`web/_sql/schema/000-035`) are current and tested
-- [ ] All seed files (`web/_sql/seeds/001-010`) are current and tested
-- [ ] All stored procedures (`web/_sql/procedures/`) are current
-- [ ] All migration scripts (`web/_sql/migrations/001-007`) match legacy schema
+- [ ] All 15 schema files (`web/_sql/schema/` — `000`, `010`–`015`, `020`–`021`, `030`–`035`) are current and tested
+- [ ] All 17 seed files (`web/_sql/seeds/001-017`) are current and tested
+- [ ] Both stored procedures (`web/_sql/procedures/sp_generateShortCode.sql`, `sp_lookupShortURL.sql`) are current — ⚠️ `sp_logActivity.sql` no longer exists (DELETED; direct `INSERT` now)
+- [ ] All 18 migration scripts (`web/_sql/migrations/001-004,006,008-019` — there is no `005`) match legacy schema, with `016` and `019` confirmed MANDATORY (see Phase D)
 - [ ] `auth_creds.php` populated with production database credentials
 - [ ] `ENCRYPTION_SALT` generated: `php -r "echo bin2hex(random_bytes(32));"`
 - [ ] CAPTCHA keys configured (Turnstile or reCAPTCHA)
+
+### 🚨 Blocking Pre-Cutover Server Steps
+
+- [ ] 🚨 **`.auth/` directory migration run on the server.** The per-component
+      credential directory was renamed `_auth_keys/` → `.auth/`; the app boots
+      only from `<Comp>/.auth/auth_creds.php` and the SFTP mirror **cannot**
+      create this directory (untracked + excluded from every mirror phase).
+      Run, once, BEFORE the first armed deploy against the renamed layout:
+      ```bash
+      mv Go2My.Link/_auth_keys Go2My.Link/.auth
+      mv G2My.Link/_auth_keys  G2My.Link/.auth
+      mv Lnks.page/_auth_keys  Lnks.page/.auth
+      ```
+      The **shared** `web/_auth_keys/auth_creds.php` is UNCHANGED — do NOT
+      move it. Skipping this step takes all three sites down. See
+      `docs/DEPLOYMENT.md`'s BLOCKING PRE-DEPLOY STEP.
+- [ ] 🚨 **#93 — legacy DB credential rotated and file removed.**
+      `web/G2My.Link/public_html_legacy/dbConfig.php` still holds a
+      real-looking live database credential. It is untracked and gitignored
+      (git-safe), but has **not** been rotated or deleted from the server.
+      Rotate the credential at the database and delete this file/directory
+      from the server before cutover.
 
 ### 🌐 Infrastructure
 
@@ -67,52 +89,109 @@ Step A3: web/_sql/schema/011_core_subscription_tiers.sql
 Step A4: web/_sql/schema/012_core_organisations.sql
 Step A5: web/_sql/schema/013_core_users.sql
 Step A6: web/_sql/schema/014_org_invitations.sql
-Step A7: web/_sql/schema/020_shorturls_categories_tags.sql
-Step A8: web/_sql/schema/021_shorturls_advanced_redirects.sql
-Step A9: web/_sql/schema/030_analytics.sql
-Step A10: web/_sql/schema/031_api.sql
-Step A11: web/_sql/schema/032_linkspage.sql
-Step A12: web/_sql/schema/033_payments.sql
-Step A13: web/_sql/schema/034_legal_compliance.sql
-Step A14: web/_sql/schema/035_translations.sql
+Step A7: web/_sql/schema/015_account_types.sql
+Step A8: web/_sql/schema/020_shorturls_categories_tags.sql
+Step A9: web/_sql/schema/021_shorturls_advanced_redirects.sql
+Step A10: web/_sql/schema/030_analytics.sql
+Step A11: web/_sql/schema/031_api.sql
+Step A12: web/_sql/schema/032_linkspage.sql
+Step A13: web/_sql/schema/033_payments.sql
+Step A14: web/_sql/schema/034_legal_compliance.sql
+Step A15: web/_sql/schema/035_translations.sql
 ```
+
+⚠️ **A7 (`015_account_types.sql`) is not optional** — its absence was
+previously undocumented here, but Phase D's `008_migrate_account_types.sql`
+hard-depends on the `tblAccountTypes` / `tblUserAccountTypes` tables it
+creates and will fail without it (see that migration's own header).
 
 ### Phase B: Stored Procedures
 
 ```
-Step B1: web/_sql/procedures/sp_lookupShortURL.sql
-Step B2: web/_sql/procedures/sp_logActivity.sql
-Step B3: web/_sql/procedures/sp_generateShortCode.sql
+Step B1: web/_sql/procedures/sp_generateShortCode.sql
+Step B2: web/_sql/procedures/sp_lookupShortURL.sql
 ```
+
+⚠️ **Historical:** `sp_logActivity.sql` was **DELETED** — it does not exist
+in `web/_sql/procedures/` any more. The application performs a direct
+`INSERT` into `tblActivityLog` instead (`web/_functions/activity_logger.php`).
+Only **2** stored procedures exist today; do not attempt to import a third.
 
 ### Phase C: Seed Data
 
 ```
-Step C1: web/_sql/seeds/001_subscription_tiers.sql
-Step C2: web/_sql/seeds/002_default_organisation.sql
-Step C3: web/_sql/seeds/003_default_settings.sql
-Step C4: web/_sql/seeds/004_linkspage_templates.sql
-Step C5: web/_sql/seeds/005_languages.sql
-Step C6: web/_sql/seeds/006_phase3_settings.sql
-Step C7: web/_sql/seeds/007_phase4_settings.sql
-Step C8: web/_sql/seeds/008_phase5_settings.sql
-Step C9: web/_sql/seeds/009_phase6_settings.sql
+Step C1:  web/_sql/seeds/001_subscription_tiers.sql
+Step C2:  web/_sql/seeds/002_default_organisation.sql
+Step C3:  web/_sql/seeds/003_default_settings.sql
+Step C4:  web/_sql/seeds/004_linkspage_templates.sql
+Step C5:  web/_sql/seeds/005_languages.sql
+Step C6:  web/_sql/seeds/006_phase3_settings.sql
+Step C7:  web/_sql/seeds/007_phase4_settings.sql
+Step C8:  web/_sql/seeds/008_phase5_settings.sql
+Step C9:  web/_sql/seeds/009_phase6_settings.sql
 Step C10: web/_sql/seeds/010_phase6_translations.sql
+Step C11: web/_sql/seeds/011_account_types.sql
+Step C12: web/_sql/seeds/012_email_settings.sql
+Step C13: web/_sql/seeds/013_cuercode_settings.sql
+Step C14: web/_sql/seeds/014_redirect_ssrf_settings.sql
+Step C15: web/_sql/seeds/015_api_settings.sql
+Step C16: web/_sql/seeds/016_utm_tracking_settings.sql
+Step C17: web/_sql/seeds/017_geolocation_settings.sql
 ```
 
-### Phase D: Data Migration (from Legacy)
+⚠️ This list previously stopped at `010`; **7 more seed files exist**
+(`011`–`017`, added across later phases). All 17 must be loaded — several
+later migrations/features (account types, CueRCode, SSRF guard, public API,
+UTM capture, geolocation) read settings these seeds define.
 
-> ⚠️ **Requires** both `mwtools_mwlink` and `mwtools_Go2MyLink` to be accessible.
+### Phase D: Data Migration & Schema Catch-Up
 
-Execute migration scripts **in order**:
+> ⚠️ **Requires** both `mwtools_mwlink` and `mwtools_Go2MyLink` to be accessible
+> (data-migration steps D1–D6 only — the schema-catch-up steps D7–D17 touch
+> only `mwtools_Go2MyLink`).
+
+⚠️ This list previously stopped at `006`; **12 more migrations exist**
+(`008`–`019`, added across later hardening cycles) and were never added
+here. Execute ALL migration scripts below **in order** — this list also
+previously stopped after Step D5 (migration `006`):
 
 ```
-Step D1: web/_sql/migrations/001_migrate_organisations.sql   (5 orgs)
-Step D2: web/_sql/migrations/002_migrate_users.sql           (7 users, passwords INVALIDATED)
-Step D3: web/_sql/migrations/003_migrate_categories.sql      (4 categories)
-Step D4: web/_sql/migrations/004_migrate_shorturls.sql       (480 URLs — CRITICAL)
-Step D5: web/_sql/migrations/006_migrate_settings.sql        (23 settings definitions)
+Step D1:  web/_sql/migrations/001_migrate_organisations.sql        (5 orgs; grandfathers pre-existing short domains as verificationStatus='verified' — #160)
+Step D2:  web/_sql/migrations/002_migrate_users.sql                (7 users, passwords INVALIDATED)
+Step D3:  web/_sql/migrations/003_migrate_categories.sql           (4 categories)
+Step D4:  web/_sql/migrations/004_migrate_shorturls.sql            (480 URLs — CRITICAL)
+Step D5:  web/_sql/migrations/006_migrate_settings.sql             (23 settings definitions)
+Step D6:  web/_sql/migrations/008_migrate_account_types.sql        (backfills tblUserAccountTypes from tblUsers.role; needs schema 015 + seed 011 — Phase A7/C11)
+Step D7:  web/_sql/migrations/009_cuercode_qr_integration.sql       ⚠️ SKIP if Phase A/B/C imported today's schema fresh — NOT idempotent, ERRORS if the CueRCode columns already exist
+Step D8:  web/_sql/migrations/010_org_invite_pending_key.sql        ⚠️ SKIP if genuinely fresh — NOT idempotent, ERRORS if pendingKey already exists
+Step D9:  web/_sql/migrations/011_api_request_log_index.sql        (idempotent no-op if already applied)
+Step D10: web/_sql/migrations/012_api_request_log_ip_index.sql     (idempotent no-op if already applied)
+Step D11: web/_sql/migrations/013_short_domain_verification.sql    (idempotent; also grandfathers pre-existing domains to 'verified')
+Step D12: web/_sql/migrations/014_activitylog_analytics_indexes.sql (idempotent no-op if already applied)
+Step D13: web/_sql/migrations/015_org_short_domain_linkspage.sql   (idempotent no-op if already applied)
+Step D14: web/_sql/migrations/016_linkspage_custom_html.sql        🚨 MANDATORY — see below
+Step D15: web/_sql/migrations/017_apikey_prefix_unique.sql         (idempotent no-op if already applied)
+Step D16: web/_sql/migrations/018_deprecate_org_domains.sql        (Part 1 only — table COMMENT; Part 2 is a manual, owner-reviewed audit, never auto-run)
+Step D17: web/_sql/migrations/019_settings_scope_dedupe.sql        🚨 MANDATORY — see below
 ```
+
+🚨 **`016` and `019` are MANDATORY at this cutover — do not skip them even
+though their own headers say "fresh installs do not need this file":**
+
+- **`016_linkspage_custom_html.sql`** — without it, `tblSubscriptionTiers.hasCustomHTML`
+  does not exist; `g2ml_getOrgTier()`'s lookup query then errors and the
+  function **fails OPEN**, silently disabling ALL tier gating (link/domain/API
+  limits + feature flags) for every organisation platform-wide.
+- **`019_settings_scope_dedupe.sql`** — without it, duplicate System-scope
+  `tblSettings` rows can coexist (the old UNIQUE key treats NULL as distinct),
+  and `getSetting()` may read whichever stale/ambiguous duplicate the query
+  happens to return first for platform-wide kill-switches and feature toggles.
+
+`009` and `010` are the opposite case: they are **NOT idempotent** and will
+**error** if run against a database that already has their fix (i.e. one
+provisioned from today's schema/seed files) — confirm via
+`SHOW COLUMNS`/`SHOW CREATE TABLE` before running them if there is any doubt
+about this database's schema history.
 
 ### Phase E: Optional — Activity Log Migration
 
@@ -177,8 +256,17 @@ Test a random sample of migrated short URLs:
 
 For each migrated organisation with custom domains:
 
-1. Verify `tblOrgDomains` entries exist
-2. Verify `tblOrgShortDomains` entries exist with correct default flags
+1. Verify `tblOrgShortDomains` entries exist with correct default flags
+   (migration `001_migrate_organisations.sql` populates this table only —
+   `tblOrgDomains` is a separate, ⚠️ **DEPRECATED (GT-6)** table that the
+   legacy-data migration never touches; see `docs/DATABASE.md`)
+2. Confirm migrated domains show `verificationStatus = 'verified'` —
+   migration `001` now **grandfathers** every pre-existing short domain to
+   `'verified'` (#160), since it was already live and serving traffic on the
+   legacy platform and must not be forced to re-prove DNS ownership at
+   cutover. Only `verified` + active domains are routable
+   (`domain_resolver.php`), so this is what makes migrated partner domains
+   resolve immediately rather than 404 until each org re-verifies.
 3. Test custom domain resolution if DNS is already configured
 
 ---
@@ -310,6 +398,8 @@ Check **daily**:
 - [ ] All 7 users migrated (passwords invalidated)
 - [ ] All 5 organisations migrated
 - [ ] All 4 categories migrated
+- [ ] 🚨 Migration `016` (LinksPage custom-HTML entitlement gates) applied — confirm `tblSubscriptionTiers.hasCustomHTML` exists and tier gating (`g2ml_getOrgTier()`) is NOT failing open
+- [ ] 🚨 Migration `019` (System-scope settings dedupe) applied — confirm no duplicate `(settingID, 'System', NULL)` rows remain in `tblSettings`
 
 ### 🌐 Infrastructure
 
@@ -324,7 +414,12 @@ Check **daily**:
 - [ ] `auth_creds.php` has production credentials
 - [ ] `ENCRYPTION_SALT` is a unique 64-character hex string
 - [ ] `auth_creds.php` not accessible via browser (returns redirect)
-- [ ] Private directories (`_auth_keys`, `_functions`, `_includes`) return 403
+- [ ] Private directories (`_auth_keys`, `.auth`, `_functions`, `_includes`) return 403
+- [ ] 🚨 Each component's `.auth/` directory renamed from `_auth_keys/` on the
+      server (BLOCKING PRE-CUTOVER SERVER STEP, §1, complete) and
+      `<Comp>/.auth/auth_creds.php` confirmed present on all 3 components
+- [ ] 🚨 #93 — legacy credential rotated and `public_html_legacy/` removed
+      from the server (BLOCKING PRE-CUTOVER SERVER STEP, §1, complete)
 - [ ] CSP headers present on all domains
 - [ ] CSRF protection working on all forms
 - [ ] Rate limiting active on URL creation and login

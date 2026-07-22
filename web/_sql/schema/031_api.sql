@@ -57,9 +57,10 @@ CREATE TABLE IF NOT EXISTS `tblAPIKeys` (
 
     PRIMARY KEY (`apiKeyUID`),
     UNIQUE KEY `UQ_api_key` (`apiKey`),
+    UNIQUE KEY `UQ_apikey_prefix` (`apiKeyPrefix`)
+        COMMENT 'Prevents two keys from ever sharing a lookup prefix (#149.4) — a UNIQUE index also serves every lookup the old non-unique IDX_api_key_prefix provided',
     INDEX `IDX_api_key_user` (`userUID`),
     INDEX `IDX_api_key_org` (`orgHandle`),
-    INDEX `IDX_api_key_prefix` (`apiKeyPrefix`),
     INDEX `IDX_api_key_active` (`isActive`),
 
     CONSTRAINT `FK_apikey_user`
@@ -112,6 +113,10 @@ CREATE TABLE IF NOT EXISTS `tblAPIRequestLog` (
     INDEX `IDX_apireq_key` (`apiKeyUID`),
     INDEX `IDX_apireq_endpoint` (`endpoint`),
     INDEX `IDX_apireq_created` (`createdAt`),
+    INDEX `IDX_apireq_key_created` (`apiKeyUID`, `createdAt`)
+        COMMENT 'Composite index for the DB-backed rate limiter (#38) — one range scan per apiKeyUID+window instead of a full-table filter',
+    INDEX `IDX_apireq_ip_created` (`ipAddress`, `createdAt`)
+        COMMENT 'Composite index for the pre-auth IP failed-auth backoff (#39) — one range scan per ipAddress+window instead of a full-table filter',
 
     CONSTRAINT `FK_apireq_key`
         FOREIGN KEY (`apiKeyUID`)

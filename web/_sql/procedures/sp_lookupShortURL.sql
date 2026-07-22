@@ -17,11 +17,62 @@
 --   - Simplified and clarified alias chain logic
 --   - Returns structured result set instead of relying on side effects
 --
+-- 🔒 #91 ownership-verification gate (v1.1.0): a Host header only maps to an
+-- organisation when tblOrgShortDomains has a row for it with
+-- verificationStatus = 'verified' AND isActive = 1. This is deliberately a
+-- SINGLE unique-key lookup (UQ_short_domain) whose result columns are then
+-- branched on in application logic below — NOT an extra query — so the normal
+-- redirect hot path pays no additional round trip. Three outcomes:
+--   1. No row at all for this exact host  → the system's own default host
+--      (g2my.link) or a stray/unknown host → resolve in the '[default]' org
+--      namespace, unchanged from before.
+--   2. A row exists and is verified+active → resolve in THAT org's namespace
+--      (this also covers migration 013's grandfathered pre-existing domains).
+--   3. A row exists but is NOT verified+active → an org has claimed this
+--      host but has not proven DNS control yet. This must NEVER fall through
+--      to '[default]' (that would let an unverified claim read the default
+--      org's — or, before this fix, effectively anyone's — short-code
+--      namespace merely by pointing DNS at us). Returns a distinct
+--      'domain_not_configured' status with a NULL org handle instead, so the
+--      caller (redirect_resolver.php / index.php) renders a branded
+--      "domain not configured" page rather than resolving anything.
+--
+-- 🔗 #92 UTM forwarding: the link's configured tblShortURLs.utm* columns are
+-- projected as five extra OUT parameters alongside the existing three. This
+-- is added to the SAME per-hop SELECT that already reads destinationURL —
+-- NOT a second query — so a normal redirect still pays for exactly one
+-- lookup. The values are only ever populated on the 'success' outcome (the
+-- final resolved hop of an alias chain); every other status leaves them NULL,
+-- so a caller can safely treat "any outputUtm* is non-NULL" as "this was a
+-- successful resolution AND the link owner configured at least one value".
+-- The caller (resolveShortCode() in redirect_resolver.php) decides whether to
+-- actually forward them onto the destination, gated by the
+-- redirect.forward_utm_params setting — this procedure just returns what is
+-- stored, unconditionally.
+--
+-- 📝 #128 destinationType (documentation only, no logic here changed):
+-- tblShortURLs.destinationType ('url'/'alias') is NOT read anywhere in this
+-- procedure — Step 2's alias-follow below is gated purely on
+-- s.redirectAlias being non-NULL/non-empty. This was evaluated for #128 and
+-- deliberately left as-is: migration 004_migrate_shorturls.sql guarantees
+-- destinationType='alias' exactly when redirectAlias is meaningful for every
+-- row currently written by the application (see that migration's own
+-- alias-integrity verification section, and shorturl_create.php /
+-- urls.php's UPDATE handler, neither of which ever sets redirectAlias), so
+-- adding destinationType as a second gate here would buy no correctness
+-- today — only extra column reads and a wider WHERE/IF condition on the
+-- hot path for every redirect, for a case that cannot currently occur. If a
+-- future write path ever sets redirectAlias without also keeping
+-- destinationType in sync, the migration's verification queries are the
+-- place to catch that drift before it reaches production, not this
+-- procedure.
+--
 -- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
--- @version    0.2.0
--- @since      Phase 1
+-- @version    0.4.0
+-- @since      Phase 1 (ownership-verification gate added v1.1.0 / #91; UTM
+--             projection added v1.1.0 / #92)
 --
 -- Reference: https://dev.mysql.com/doc/refman/8.0/en/create-procedure.html
 -- =============================================================================
@@ -37,25 +88,38 @@ CREATE PROCEDURE `sp_lookupShortURL`(
     IN  `inputShortCode`    VARCHAR(50),
     OUT `outputDestination`  TEXT,
     OUT `outputStatus`       VARCHAR(50),
-    OUT `outputOrgHandle`    VARCHAR(50)
+    OUT `outputOrgHandle`    VARCHAR(50),
+    OUT `outputUtmSource`    VARCHAR(255),
+    OUT `outputUtmMedium`    VARCHAR(255),
+    OUT `outputUtmCampaign`  VARCHAR(255),
+    OUT `outputUtmTerm`      VARCHAR(255),
+    OUT `outputUtmContent`   VARCHAR(255)
 )
     READS SQL DATA
-    COMMENT 'Resolve a short code to its destination URL with alias chain support (max 3 hops)'
+    COMMENT 'Resolve a short code to its destination URL with alias chain support (max 3 hops); also projects the link''s configured UTM columns (#92)'
 BEGIN
     -- Local variables
     -- (MySQL requires all variable DECLAREs to appear BEFORE any handler DECLARE)
-    DECLARE v_orgHandle     VARCHAR(50)     DEFAULT NULL;
-    DECLARE v_destination   TEXT            DEFAULT NULL;
-    DECLARE v_alias         VARCHAR(50)     DEFAULT NULL;
-    DECLARE v_isActive      TINYINT         DEFAULT 0;
-    DECLARE v_startDate     DATETIME        DEFAULT NULL;
-    DECLARE v_endDate       DATETIME        DEFAULT NULL;
-    DECLARE v_hopCount      INT             DEFAULT 0;
-    DECLARE v_maxHops       INT             DEFAULT 3;
-    DECLARE v_currentCode   VARCHAR(50);
-    DECLARE v_orgFallback   VARCHAR(500)    DEFAULT NULL;
-    DECLARE v_catFallback   VARCHAR(500)    DEFAULT NULL;
-    DECLARE v_found         TINYINT         DEFAULT 0;
+    DECLARE v_orgHandle       VARCHAR(50)     DEFAULT NULL;
+    DECLARE v_destination     TEXT            DEFAULT NULL;
+    DECLARE v_alias           VARCHAR(50)     DEFAULT NULL;
+    DECLARE v_isActive        TINYINT         DEFAULT 0;
+    DECLARE v_startDate       DATETIME        DEFAULT NULL;
+    DECLARE v_endDate         DATETIME        DEFAULT NULL;
+    DECLARE v_hopCount        INT             DEFAULT 0;
+    DECLARE v_maxHops         INT             DEFAULT 3;
+    DECLARE v_currentCode     VARCHAR(50);
+    DECLARE v_orgFallback     VARCHAR(500)    DEFAULT NULL;
+    DECLARE v_catFallback     VARCHAR(500)    DEFAULT NULL;
+    DECLARE v_found           TINYINT         DEFAULT 0;
+    DECLARE v_domainFound     TINYINT         DEFAULT 0;
+    DECLARE v_domainVerified  VARCHAR(20)     DEFAULT NULL;
+    DECLARE v_domainIsActive  TINYINT         DEFAULT 0;
+    DECLARE v_utmSource       VARCHAR(255)    DEFAULT NULL;
+    DECLARE v_utmMedium       VARCHAR(255)    DEFAULT NULL;
+    DECLARE v_utmCampaign     VARCHAR(255)    DEFAULT NULL;
+    DECLARE v_utmTerm         VARCHAR(255)    DEFAULT NULL;
+    DECLARE v_utmContent      VARCHAR(255)    DEFAULT NULL;
 
     -- Exception handler: return error status on any SQL failure
     -- (declared AFTER the variables above, as MySQL requires)
@@ -64,126 +128,207 @@ BEGIN
         SET outputDestination = NULL;
         SET outputStatus = 'error';
         SET outputOrgHandle = NULL;
+        SET outputUtmSource = NULL;
+        SET outputUtmMedium = NULL;
+        SET outputUtmCampaign = NULL;
+        SET outputUtmTerm = NULL;
+        SET outputUtmContent = NULL;
     END;
 
     -- Ensure UTC timezone for date comparisons
     SET time_zone = '+00:00';
 
     -- =========================================================================
-    -- Step 1: Resolve domain to organisation
+    -- Step 1: Resolve domain to organisation (see the ownership-verification
+    -- gate note in the procedure header above)
     -- =========================================================================
     IF inputDomain IS NOT NULL AND inputDomain != '' THEN
-        SELECT osd.orgHandle
-        INTO   v_orgHandle
+        SELECT osd.orgHandle, osd.verificationStatus, osd.isActive, 1
+        INTO   v_orgHandle, v_domainVerified, v_domainIsActive, v_domainFound
         FROM   tblOrgShortDomains osd
         WHERE  osd.shortDomain = inputDomain
-           AND osd.isActive = 1
         LIMIT  1;
     END IF;
 
-    -- Fall back to default org if domain not found
-    IF v_orgHandle IS NULL THEN
+    IF v_domainFound = 0 THEN
+        -- No custom short domain claims this exact host — the system's own
+        -- default host (g2my.link) or a stray/unknown host either way.
         SET v_orgHandle = '[default]';
+    ELSEIF NOT (v_domainVerified = 'verified' AND v_domainIsActive = 1) THEN
+        -- An org has claimed this host but it is not verified+active yet.
+        -- Do NOT fall back to '[default]' — surface a distinct status so the
+        -- caller shows a branded "domain not configured" page instead.
+        SET outputDestination = NULL;
+        SET outputStatus = 'domain_not_configured';
+        SET outputOrgHandle = NULL;
+        SET outputUtmSource = NULL;
+        SET outputUtmMedium = NULL;
+        SET outputUtmCampaign = NULL;
+        SET outputUtmTerm = NULL;
+        SET outputUtmContent = NULL;
     END IF;
 
-    -- Get org fallback URL
-    SELECT o.orgFallbackURL
-    INTO   v_orgFallback
-    FROM   tblOrganisations o
-    WHERE  o.orgHandle = v_orgHandle
-    LIMIT  1;
-
     -- =========================================================================
-    -- Step 2: Resolve short code (with alias chain, max 3 hops)
+    -- Steps 2 & 3 only run when Step 1 did not already terminate resolution
+    -- (i.e. outputStatus is still NULL — same guard style used below for the
+    -- max-hops-exceeded case).
     -- =========================================================================
-    SET v_currentCode = inputShortCode;
+    IF outputStatus IS NULL THEN
 
-    resolve_loop: WHILE v_hopCount < v_maxHops DO
-        SET v_found = 0;
-        SET v_destination = NULL;
-        SET v_alias = NULL;
-        SET v_isActive = 0;
-        SET v_startDate = NULL;
-        SET v_endDate = NULL;
-
-        SELECT
-            s.destinationURL,
-            s.redirectAlias,
-            s.isActive,
-            s.startDate,
-            s.endDate,
-            1
-        INTO
-            v_destination,
-            v_alias,
-            v_isActive,
-            v_startDate,
-            v_endDate,
-            v_found
-        FROM   tblShortURLs s
-        WHERE  s.shortCode = v_currentCode
-           AND s.orgHandle = v_orgHandle
+        -- Get org fallback URL
+        SELECT o.orgFallbackURL
+        INTO   v_orgFallback
+        FROM   tblOrganisations o
+        WHERE  o.orgHandle = v_orgHandle
         LIMIT  1;
 
-        -- Short code not found
-        IF v_found = 0 THEN
+        -- =====================================================================
+        -- Step 2: Resolve short code (with alias chain, max 3 hops)
+        -- =====================================================================
+        SET v_currentCode = inputShortCode;
+
+        resolve_loop: WHILE v_hopCount < v_maxHops DO
+            SET v_found = 0;
+            SET v_destination = NULL;
+            SET v_alias = NULL;
+            SET v_isActive = 0;
+            SET v_startDate = NULL;
+            SET v_endDate = NULL;
+            SET v_utmSource = NULL;
+            SET v_utmMedium = NULL;
+            SET v_utmCampaign = NULL;
+            SET v_utmTerm = NULL;
+            SET v_utmContent = NULL;
+
+            SELECT
+                s.destinationURL,
+                s.redirectAlias,
+                s.isActive,
+                s.startDate,
+                s.endDate,
+                s.utmSource,
+                s.utmMedium,
+                s.utmCampaign,
+                s.utmTerm,
+                s.utmContent,
+                1
+            INTO
+                v_destination,
+                v_alias,
+                v_isActive,
+                v_startDate,
+                v_endDate,
+                v_utmSource,
+                v_utmMedium,
+                v_utmCampaign,
+                v_utmTerm,
+                v_utmContent,
+                v_found
+            FROM   tblShortURLs s
+            WHERE  s.shortCode = v_currentCode
+               AND s.orgHandle = v_orgHandle
+            LIMIT  1;
+
+            -- Short code not found
+            IF v_found = 0 THEN
+                SET outputDestination = v_orgFallback;
+                SET outputStatus = 'not_found';
+                SET outputOrgHandle = v_orgHandle;
+                SET outputUtmSource = NULL;
+                SET outputUtmMedium = NULL;
+                SET outputUtmCampaign = NULL;
+                SET outputUtmTerm = NULL;
+                SET outputUtmContent = NULL;
+                LEAVE resolve_loop;
+            END IF;
+
+            -- Check if active
+            IF v_isActive = 0 THEN
+                SET outputDestination = v_orgFallback;
+                SET outputStatus = 'inactive';
+                SET outputOrgHandle = v_orgHandle;
+                SET outputUtmSource = NULL;
+                SET outputUtmMedium = NULL;
+                SET outputUtmCampaign = NULL;
+                SET outputUtmTerm = NULL;
+                SET outputUtmContent = NULL;
+                LEAVE resolve_loop;
+            END IF;
+
+            -- Check date range validity
+            IF v_startDate IS NOT NULL AND v_startDate > NOW() THEN
+                SET outputDestination = v_orgFallback;
+                SET outputStatus = 'not_yet_active';
+                SET outputOrgHandle = v_orgHandle;
+                SET outputUtmSource = NULL;
+                SET outputUtmMedium = NULL;
+                SET outputUtmCampaign = NULL;
+                SET outputUtmTerm = NULL;
+                SET outputUtmContent = NULL;
+                LEAVE resolve_loop;
+            END IF;
+
+            IF v_endDate IS NOT NULL AND v_endDate < NOW() THEN
+                SET outputDestination = v_orgFallback;
+                SET outputStatus = 'expired';
+                SET outputOrgHandle = v_orgHandle;
+                SET outputUtmSource = NULL;
+                SET outputUtmMedium = NULL;
+                SET outputUtmCampaign = NULL;
+                SET outputUtmTerm = NULL;
+                SET outputUtmContent = NULL;
+                LEAVE resolve_loop;
+            END IF;
+
+            -- If this is an alias, follow the chain
+            IF v_alias IS NOT NULL AND v_alias != '' THEN
+                SET v_currentCode = v_alias;
+                SET v_hopCount = v_hopCount + 1;
+                ITERATE resolve_loop;
+            END IF;
+
+            -- We have a direct destination
+            IF v_destination IS NOT NULL AND v_destination != '' THEN
+                SET outputDestination = v_destination;
+                SET outputStatus = 'success';
+                SET outputOrgHandle = v_orgHandle;
+                -- #92: only the FINAL resolved hop's UTM columns are ever
+                -- surfaced — an alias chain's intermediate hops never
+                -- contribute (each iteration resets v_utm* to NULL above, so
+                -- these are always this hop's own stored values).
+                SET outputUtmSource = v_utmSource;
+                SET outputUtmMedium = v_utmMedium;
+                SET outputUtmCampaign = v_utmCampaign;
+                SET outputUtmTerm = v_utmTerm;
+                SET outputUtmContent = v_utmContent;
+                LEAVE resolve_loop;
+            END IF;
+
+            -- No destination and no alias — broken link
             SET outputDestination = v_orgFallback;
-            SET outputStatus = 'not_found';
+            SET outputStatus = 'no_destination';
             SET outputOrgHandle = v_orgHandle;
+            SET outputUtmSource = NULL;
+            SET outputUtmMedium = NULL;
+            SET outputUtmCampaign = NULL;
+            SET outputUtmTerm = NULL;
+            SET outputUtmContent = NULL;
             LEAVE resolve_loop;
-        END IF;
 
-        -- Check if active
-        IF v_isActive = 0 THEN
+        END WHILE;
+
+        -- Max hops exceeded
+        IF v_hopCount >= v_maxHops AND outputStatus IS NULL THEN
             SET outputDestination = v_orgFallback;
-            SET outputStatus = 'inactive';
+            SET outputStatus = 'max_hops_exceeded';
             SET outputOrgHandle = v_orgHandle;
-            LEAVE resolve_loop;
+            SET outputUtmSource = NULL;
+            SET outputUtmMedium = NULL;
+            SET outputUtmCampaign = NULL;
+            SET outputUtmTerm = NULL;
+            SET outputUtmContent = NULL;
         END IF;
 
-        -- Check date range validity
-        IF v_startDate IS NOT NULL AND v_startDate > NOW() THEN
-            SET outputDestination = v_orgFallback;
-            SET outputStatus = 'not_yet_active';
-            SET outputOrgHandle = v_orgHandle;
-            LEAVE resolve_loop;
-        END IF;
-
-        IF v_endDate IS NOT NULL AND v_endDate < NOW() THEN
-            SET outputDestination = v_orgFallback;
-            SET outputStatus = 'expired';
-            SET outputOrgHandle = v_orgHandle;
-            LEAVE resolve_loop;
-        END IF;
-
-        -- If this is an alias, follow the chain
-        IF v_alias IS NOT NULL AND v_alias != '' THEN
-            SET v_currentCode = v_alias;
-            SET v_hopCount = v_hopCount + 1;
-            ITERATE resolve_loop;
-        END IF;
-
-        -- We have a direct destination
-        IF v_destination IS NOT NULL AND v_destination != '' THEN
-            SET outputDestination = v_destination;
-            SET outputStatus = 'success';
-            SET outputOrgHandle = v_orgHandle;
-            LEAVE resolve_loop;
-        END IF;
-
-        -- No destination and no alias — broken link
-        SET outputDestination = v_orgFallback;
-        SET outputStatus = 'no_destination';
-        SET outputOrgHandle = v_orgHandle;
-        LEAVE resolve_loop;
-
-    END WHILE;
-
-    -- Max hops exceeded
-    IF v_hopCount >= v_maxHops AND outputStatus IS NULL THEN
-        SET outputDestination = v_orgFallback;
-        SET outputStatus = 'max_hops_exceeded';
-        SET outputOrgHandle = v_orgHandle;
     END IF;
 
 END//

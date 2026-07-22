@@ -38,7 +38,10 @@ $downloadURL = $downloadURL ?? '#';
 $expiryHours = $expiryHours ?? 48;
 $siteName    = $siteName ?? 'Go2My.Link';
 $siteURL     = $siteURL ?? 'https://go2my.link';
-$currentYear = $currentYear ?? date('Y');
+if (!isset($currentYear))
+{
+    $currentYear = date('Y');
+}
 $preheader   = $preheader ?? '';
 ?>
 <!doctype html>

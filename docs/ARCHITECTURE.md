@@ -70,7 +70,7 @@ web/
 ├── Go2My.Link/          ← Component A
 │   ├── _admin/          ← Admin/Dashboard application
 │   │   └── public_html/ ← Admin web root (admin.go2my.link)
-│   ├── _auth_keys/      ← Component-specific credential overrides
+│   ├── .auth/           ← Component-specific credential overrides
 │   ├── _includes/       ← Component-specific includes
 │   ├── _functions/      ← Component-specific functions
 │   ├── _libraries/      ← Component-specific libraries
@@ -80,12 +80,17 @@ web/
 └── Lnks.page/           ← Component C (same sub-structure)
 ```
 
-### 🔒 Private Directories (Underscore Prefix)
+### 🔒 Private Directories
 
-Directories prefixed with `_` are not web-accessible. They are blocked via `.htaccess` rules:
+Server-side directories are not web-accessible. Most are prefixed with `_`
+(e.g. `_includes/`, `_functions/`, `_libraries/`); each component's own
+credential-override directory is dot-prefixed `.auth/` (renamed from
+`_auth_keys/` to distinguish it from the shared, server-wide
+`web/_auth_keys/`). Both patterns are blocked via `.htaccess` rules
+(defence-in-depth, since they already sit outside every `public_html/` web root):
 
 ```apache
-RewriteRule ^_auth_keys/ - [F,L]
+RewriteRule ^\.auth/ - [F,L]
 RewriteRule ^_includes/ - [F,L]
 RewriteRule ^_functions/ - [F,L]
 RewriteRule ^_libraries/ - [F,L]

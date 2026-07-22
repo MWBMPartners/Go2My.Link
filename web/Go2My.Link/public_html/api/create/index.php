@@ -40,7 +40,7 @@
 // ============================================================================
 
 $componentAuthPath = dirname(__DIR__, 2)
-    . DIRECTORY_SEPARATOR . '_auth_keys'
+    . DIRECTORY_SEPARATOR . '.auth'
     . DIRECTORY_SEPARATOR . 'auth_creds.php';
 
 if (file_exists($componentAuthPath))
@@ -52,13 +52,15 @@ else
     error_log('[Go2My.Link] CRITICAL: Component A auth_creds.php not found');
 }
 
-if (!defined('G2ML_COMPONENT'))
-{
-    define('G2ML_COMPONENT',        'A');
-    define('G2ML_COMPONENT_NAME',   'Main Website');
-    define('G2ML_COMPONENT_DOMAIN', 'go2my.link');
-    define('G2ML_ROOT', dirname(__DIR__, 3));
-}
+// This is a standalone HTTP entry point (never require()'d by another
+// script), so — matching every other entry point in the codebase (e.g.
+// web/Go2My.Link/public_html/index.php, web/Go2My.Link/public_html/api/v1/index.php)
+// — these constants are defined unconditionally rather than guarded behind
+// a defined() check that could never actually be true in practice.
+define('G2ML_COMPONENT',        'A');
+define('G2ML_COMPONENT_NAME',   'Main Website');
+define('G2ML_COMPONENT_DOMAIN', 'go2my.link');
+define('G2ML_ROOT', dirname(__DIR__, 3));
 
 require_once G2ML_ROOT
     . DIRECTORY_SEPARATOR . '_includes'

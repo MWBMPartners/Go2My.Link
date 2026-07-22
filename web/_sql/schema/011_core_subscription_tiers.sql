@@ -69,6 +69,9 @@ CREATE TABLE IF NOT EXISTS `tblSubscriptionTiers` (
     `hasPrioritySupport`    TINYINT(1) UNSIGNED NOT NULL DEFAULT 0
         COMMENT 'Whether priority support is included',
 
+    `hasCustomHTML`         TINYINT(1) UNSIGNED NOT NULL DEFAULT 0
+        COMMENT 'Whether LinksPage custom-HTML/CSS (Component C.6, #49) is available — high-risk, premium only',
+
     `sortOrder`             INT UNSIGNED        NOT NULL DEFAULT 0
         COMMENT 'Display sort order on pricing page',
 

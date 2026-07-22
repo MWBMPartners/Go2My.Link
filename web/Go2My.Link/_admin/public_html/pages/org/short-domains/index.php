@@ -12,12 +12,30 @@
  * 🔗 Go2My.Link — Short Domain Management (Admin Dashboard)
  * ============================================================================
  *
- * Add, remove, and set default short URL domains for an organisation.
+ * Add, verify (via DNS TXT ownership proof), remove, and set the default
+ * short URL domain for an organisation. A VERIFIED domain may also be
+ * pointed at one of the org's own PUBLISHED LinksPages (#46) — the page
+ * rendered at that domain's root, or for a path that does not resolve to a
+ * short code, instead of a 404 (see web/G2My.Link/_functions/
+ * linkspage_fallback.php for the redirect hot-path's consuming side).
+ *
+ * 🔒 #91 — a newly added domain is UNVERIFIED and NOT routable
+ * (verificationStatus='pending', isActive=0) until its owner proves DNS
+ * control via the Verify action, which calls verifyOrgShortDomain().
+ * See docs/CUSTOM_DOMAINS.md for the full partner-facing walkthrough.
+ *
+ * 🔒 #46 IDOR defence — the LinksPage designation picker below only ever
+ * LISTS this org's own published pages (getOrgPublishedLinksPages()), but the
+ * actual security boundary is setShortDomainLinksPage() (web/_functions/
+ * org.php) re-verifying server-side, at write time, that the submitted
+ * pageUID belongs to THIS org and is published — a tampered form value
+ * naming another org's page is rejected outright.
  *
  * @package    Go2My.Link
  * @subpackage ComponentA_Admin
- * @version    0.6.0
- * @since      Phase 5
+ * @version    0.8.0
+ * @since      Phase 5 (ownership verification added v1.1.0 / #91; custom-domain
+ *             LinksPage designation added v1.2.0 / #46)
  * ============================================================================
  */
 
@@ -44,8 +62,10 @@ if ($orgHandle === '[default]' || !canManageOrg($orgHandle))
     return;
 }
 
-$actionSuccess = '';
-$actionError   = '';
+$actionSuccess  = '';
+$actionError    = '';
+$newDnsRecords  = null;
+$newDomainName  = '';
 
 // ============================================================================
 // Handle POST actions
@@ -53,10 +73,40 @@ $actionError   = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
-    $csrfToken  = $_POST['_csrf_token'] ?? '';
-    $actionType = $_POST['action_type'] ?? '';
+    $csrfToken     = $_POST['_csrf_token'] ?? '';
+    $actionType    = $_POST['action_type'] ?? '';
+    $postDomainUID = (int) ($_POST['domain_uid'] ?? 0);
 
-    if (!g2ml_validateCSRFToken($csrfToken, 'org_short_domains_form'))
+    // Per-row actions use a CSRF form name namespaced by the domain UID so that
+    // a page rendering many rows does not overwrite a single shared token slot
+    // (see #147). The add form keeps its own stable name.
+    if ($actionType === 'add_short_domain')
+    {
+        $csrfFormName = 'org_short_domains_add';
+    }
+    elseif ($actionType === 'verify_short_domain')
+    {
+        $csrfFormName = 'verify_short_domain_' . $postDomainUID;
+    }
+    elseif ($actionType === 'set_default')
+    {
+        $csrfFormName = 'set_default_short_domain_' . $postDomainUID;
+    }
+    elseif ($actionType === 'remove_short_domain')
+    {
+        $csrfFormName = 'remove_short_domain_' . $postDomainUID;
+    }
+    elseif ($actionType === 'set_domain_linkspage')
+    {
+        // Per-row action, namespaced by domain UID — see #147 note above.
+        $csrfFormName = 'set_domain_linkspage_' . $postDomainUID;
+    }
+    else
+    {
+        $csrfFormName = 'org_short_domains_form';
+    }
+
+    if (!g2ml_validateCSRFToken($csrfToken, $csrfFormName))
     {
         $actionError = 'Session expired. Please try again.';
     }
@@ -67,8 +117,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             case 'add_short_domain':
                 $domain = strtolower(trim(g2ml_sanitiseInput($_POST['short_domain'] ?? '')));
                 $result = addOrgShortDomain($orgHandle, $domain);
-                if ($result['success']) { $actionSuccess = 'Short domain added.'; }
-                else { $actionError = $result['error']; }
+                if ($result['success'])
+                {
+                    $actionSuccess = 'Short domain added. Set the DNS records below, then click Verify.';
+                    $newDnsRecords = $result['dnsRecords'];
+                    $newDomainName = $domain;
+                }
+                else
+                {
+                    $actionError = $result['error'];
+                }
+                break;
+
+            case 'verify_short_domain':
+                $domainUID = (int) ($_POST['domain_uid'] ?? 0);
+                $result    = verifyOrgShortDomain($domainUID, $orgHandle);
+                if ($result['verified'])
+                {
+                    $actionSuccess = 'Domain verified — it is now live and routable.';
+                }
+                else
+                {
+                    $actionError = $result['error'] ?? 'Verification failed.';
+                }
                 break;
 
             case 'set_default':
@@ -84,12 +155,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                 if ($result['success']) { $actionSuccess = 'Short domain removed.'; }
                 else { $actionError = $result['error']; }
                 break;
+
+            case 'set_domain_linkspage':
+                $domainUID = (int) ($_POST['domain_uid'] ?? 0);
+
+                // Type-check BEFORE any string coercion — a crafted array
+                // value (links_page_uid[]=x) is treated as absent rather than
+                // triggering an "Array to string conversion" warning.
+                if (isset($_POST['links_page_uid']) && is_string($_POST['links_page_uid']))
+                {
+                    $linksPageRaw = trim($_POST['links_page_uid']);
+                }
+                else
+                {
+                    $linksPageRaw = '';
+                }
+
+                // "" (the "None" option) clears the designation. A submitted
+                // pageUID is re-verified server-side inside
+                // setShortDomainLinksPage() — this raw (int) cast is NEVER
+                // trusted as proof of ownership on its own (#46 IDOR defence).
+                if ($linksPageRaw === '')
+                {
+                    $selectedLinksPageUID = null;
+                }
+                else
+                {
+                    $selectedLinksPageUID = (int) $linksPageRaw;
+                }
+
+                $result = setShortDomainLinksPage($domainUID, $orgHandle, $selectedLinksPageUID);
+
+                if ($result['success'])
+                {
+                    $actionSuccess = 'LinksPage designation updated.';
+                }
+                else
+                {
+                    $actionError = $result['error'];
+                }
+                break;
         }
     }
 }
 
 // Load data
-$shortDomains = getOrgShortDomains($orgHandle);
+$shortDomains         = getOrgShortDomains($orgHandle);
+$dnsPrefix            = getSetting('org.dns_verify_prefix', '_g2ml-verify');
+$orgPublishedLinksPages = getOrgPublishedLinksPages($orgHandle);
 ?>
 
 <section class="py-4" aria-labelledby="short-domains-heading">
@@ -125,8 +238,54 @@ $shortDomains = getOrgShortDomains($orgHandle);
         <div class="alert alert-info mb-4">
             <i class="fas fa-info-circle" aria-hidden="true"></i>
             Short domains are used in your shortened URLs (e.g., <code>yourdomain.link/abc123</code>).
-            The domain must be configured at the DNS level to point to the Go2My.Link redirect engine servers.
+            A domain only starts routing traffic once its ownership is <strong>verified</strong> below —
+            see the full step-by-step guide in
+            <a href="https://github.com/MWBMPartners/Go2My.Link/blob/main/docs/CUSTOM_DOMAINS.md">docs/CUSTOM_DOMAINS.md</a>.
         </div>
+
+        <?php if ($newDnsRecords !== null) { ?>
+        <!-- ================================================================ -->
+        <!-- Just-added domain — DNS records to set right now                  -->
+        <!-- ================================================================ -->
+        <div class="card shadow-sm mb-4 border-warning">
+            <div class="card-header bg-warning-subtle">
+                <h2 class="h5 mb-0">
+                    <i class="fas fa-globe" aria-hidden="true"></i>
+                    DNS records for <?php echo g2ml_sanitiseOutput($newDomainName); ?>
+                </h2>
+            </div>
+            <div class="card-body">
+                <p>Add these two records at your domain registrar's DNS panel, then come back and click <strong>Verify</strong>.</p>
+                <div class="table-responsive mb-2">
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead>
+                            <tr>
+                                <th scope="col">Purpose</th>
+                                <th scope="col">Type</th>
+                                <th scope="col">Host / Name</th>
+                                <th scope="col">Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Ownership proof</td>
+                                <td><code>TXT</code></td>
+                                <td><code><?php echo g2ml_sanitiseOutput($newDnsRecords['txt']['host']); ?></code></td>
+                                <td><code class="small"><?php echo g2ml_sanitiseOutput($newDnsRecords['txt']['value']); ?></code></td>
+                            </tr>
+                            <tr>
+                                <td>Routing</td>
+                                <td><code><?php echo g2ml_sanitiseOutput($newDnsRecords['routing']['type']); ?></code></td>
+                                <td><code><?php echo g2ml_sanitiseOutput($newDnsRecords['routing']['host']); ?></code></td>
+                                <td><code class="small"><?php echo g2ml_sanitiseOutput($newDnsRecords['routing']['value']); ?></code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <?php echo g2ml_dnsProviderHintsHTML(); ?>
+            </div>
+        </div>
+        <?php } ?>
 
         <!-- ================================================================ -->
         <!-- Short Domains Table                                               -->
@@ -147,7 +306,8 @@ $shortDomains = getOrgShortDomains($orgHandle);
                     <thead>
                         <tr>
                             <th scope="col">Domain</th>
-                            <th scope="col">Status</th>
+                            <th scope="col">Verification</th>
+                            <th scope="col">Routing</th>
                             <th scope="col">Actions</th>
                         </tr>
                     </thead>
@@ -161,27 +321,51 @@ $shortDomains = getOrgShortDomains($orgHandle);
                                 <?php } ?>
                             </td>
                             <td>
+                                <?php
+                                $shortDomainStatusBadgeClass = 'bg-secondary';
+                                if ($sd['verificationStatus'] === 'verified') { $shortDomainStatusBadgeClass = 'bg-success'; }
+                                else if ($sd['verificationStatus'] === 'pending') { $shortDomainStatusBadgeClass = 'bg-warning text-dark'; }
+                                else if ($sd['verificationStatus'] === 'failed') { $shortDomainStatusBadgeClass = 'bg-danger'; }
+                                ?>
+                                <span class="badge <?php echo $shortDomainStatusBadgeClass; ?>">
+                                    <?php echo g2ml_sanitiseOutput(ucfirst($sd['verificationStatus'])); ?>
+                                </span>
+                            </td>
+                            <td>
                                 <?php if ((int) $sd['isActive']) { ?>
-                                <span class="badge bg-success">Active</span>
+                                <span class="badge bg-success">Routing live</span>
                                 <?php } else { ?>
-                                <span class="badge bg-secondary">Inactive</span>
+                                <span class="badge bg-secondary">Not routing</span>
                                 <?php } ?>
                             </td>
                             <td>
-                                <div class="d-flex gap-1">
-                                    <?php if (!(int) $sd['isDefault']) { ?>
+                                <div class="d-flex flex-wrap gap-1">
+                                    <?php if ($sd['verificationStatus'] !== 'verified') { ?>
                                     <form action="/org/short-domains" method="POST" class="d-inline">
-                                        <?php echo g2ml_csrfField('org_short_domains_form'); ?>
+                                        <?php echo g2ml_csrfField('verify_short_domain_' . (int) $sd['shortDomainUID']); ?>
+                                        <input type="hidden" name="action_type" value="verify_short_domain">
+                                        <input type="hidden" name="domain_uid" value="<?php echo (int) $sd['shortDomainUID']; ?>">
+                                        <button type="submit" class="btn btn-outline-success btn-sm" title="Check DNS and verify ownership">
+                                            <i class="fas fa-check" aria-hidden="true"></i> Verify
+                                        </button>
+                                    </form>
+                                    <?php } ?>
+
+                                    <?php if (!(int) $sd['isDefault'] && $sd['verificationStatus'] === 'verified') { ?>
+                                    <form action="/org/short-domains" method="POST" class="d-inline">
+                                        <?php echo g2ml_csrfField('set_default_short_domain_' . (int) $sd['shortDomainUID']); ?>
                                         <input type="hidden" name="action_type" value="set_default">
                                         <input type="hidden" name="domain_uid" value="<?php echo (int) $sd['shortDomainUID']; ?>">
                                         <button type="submit" class="btn btn-outline-primary btn-sm" title="Set as default">
                                             <i class="fas fa-star" aria-hidden="true"></i> Set Default
                                         </button>
                                     </form>
+                                    <?php } ?>
 
+                                    <?php if (!(int) $sd['isDefault']) { ?>
                                     <form action="/org/short-domains" method="POST" class="d-inline"
                                           onsubmit="return confirm('Remove this short domain?');">
-                                        <?php echo g2ml_csrfField('org_short_domains_form'); ?>
+                                        <?php echo g2ml_csrfField('remove_short_domain_' . (int) $sd['shortDomainUID']); ?>
                                         <input type="hidden" name="action_type" value="remove_short_domain">
                                         <input type="hidden" name="domain_uid" value="<?php echo (int) $sd['shortDomainUID']; ?>">
                                         <button type="submit" class="btn btn-outline-danger btn-sm"
@@ -191,6 +375,66 @@ $shortDomains = getOrgShortDomains($orgHandle);
                                     </form>
                                     <?php } ?>
                                 </div>
+
+                                <?php if ($sd['verificationStatus'] === 'verified') { ?>
+                                <!-- ============================================================ -->
+                                <!-- Custom-domain LinksPage fallback designation (Component C.4, #46) -->
+                                <!-- Only offered for a VERIFIED domain — an unverified domain routes -->
+                                <!-- no traffic at all (#91), so a designation would be meaningless. -->
+                                <!-- ============================================================ -->
+                                <form action="/org/short-domains" method="POST" class="mt-2 d-flex flex-wrap align-items-end gap-2">
+                                    <?php echo g2ml_csrfField('set_domain_linkspage_' . (int) $sd['shortDomainUID']); ?>
+                                    <input type="hidden" name="action_type" value="set_domain_linkspage">
+                                    <input type="hidden" name="domain_uid" value="<?php echo (int) $sd['shortDomainUID']; ?>">
+                                    <div>
+                                        <label for="links-page-<?php echo (int) $sd['shortDomainUID']; ?>" class="form-label small mb-1">
+                                            LinksPage fallback
+                                        </label>
+                                        <select id="links-page-<?php echo (int) $sd['shortDomainUID']; ?>" name="links_page_uid" class="form-select form-select-sm">
+                                            <option value="">None (show 404 as normal)</option>
+                                            <?php foreach ($orgPublishedLinksPages as $lp) { ?>
+                                            <option value="<?php echo (int) $lp['pageUID']; ?>"
+                                                <?php if ($sd['linksPageUID'] !== null && (int) $sd['linksPageUID'] === (int) $lp['pageUID']) { echo ' selected'; } ?>>
+                                                <?php echo g2ml_sanitiseOutput($lp['pageTitle'] . ' (/' . $lp['slug'] . ')'); ?>
+                                            </option>
+                                            <?php } ?>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-save" aria-hidden="true"></i> Save
+                                    </button>
+                                </form>
+                                <?php if (empty($orgPublishedLinksPages)) { ?>
+                                <p class="small text-body-secondary mt-1 mb-0">
+                                    You have no published LinksPages yet — publish one from
+                                    <a href="/linkspage">LinksPage management</a> to offer it here.
+                                </p>
+                                <?php } ?>
+                                <?php } ?>
+
+                                <?php if ($sd['verificationStatus'] !== 'verified' && $sd['verificationToken'] !== null) { ?>
+                                <details class="mt-2">
+                                    <summary class="small text-body-secondary" style="cursor: pointer;">Show DNS records</summary>
+                                    <div class="table-responsive mt-1">
+                                        <table class="table table-sm table-bordered mb-0">
+                                            <tbody>
+                                                <tr>
+                                                    <th scope="row" class="small">TXT host</th>
+                                                    <td><code class="small"><?php echo g2ml_sanitiseOutput($dnsPrefix . '.' . $sd['shortDomain']); ?></code></td>
+                                                </tr>
+                                                <tr>
+                                                    <th scope="row" class="small">TXT value</th>
+                                                    <td><code class="small"><?php echo g2ml_sanitiseOutput($sd['verificationToken']); ?></code></td>
+                                                </tr>
+                                                <tr>
+                                                    <th scope="row" class="small">Routing</th>
+                                                    <td><code class="small">CNAME → g2my.link (subdomain) or A/ALIAS → your Dreamhost server IP (apex/root)</code></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </details>
+                                <?php } ?>
                             </td>
                         </tr>
                         <?php } ?>
@@ -203,7 +447,7 @@ $shortDomains = getOrgShortDomains($orgHandle);
         <!-- ================================================================ -->
         <!-- Add Short Domain Form                                             -->
         <!-- ================================================================ -->
-        <div class="card shadow-sm">
+        <div class="card shadow-sm mb-4">
             <div class="card-header">
                 <h2 class="h5 mb-0">
                     <i class="fas fa-plus-circle" aria-hidden="true"></i> Add Short Domain
@@ -211,7 +455,7 @@ $shortDomains = getOrgShortDomains($orgHandle);
             </div>
             <div class="card-body">
                 <form action="/org/short-domains" method="POST" novalidate>
-                    <?php echo g2ml_csrfField('org_short_domains_form'); ?>
+                    <?php echo g2ml_csrfField('org_short_domains_add'); ?>
                     <input type="hidden" name="action_type" value="add_short_domain">
 
                     <div class="row g-3">
@@ -224,7 +468,7 @@ $shortDomains = getOrgShortDomains($orgHandle);
                                 'type'     => 'text',
                                 'required' => true,
                                 'value'    => '',
-                                'helpText' => 'e.g., mylinks.co — must be configured in DNS to point to our servers.',
+                                'helpText' => 'e.g., mylinks.co — you will be shown DNS records to verify ownership after adding.',
                             ]);
                             ?>
                         </div>
@@ -235,6 +479,23 @@ $shortDomains = getOrgShortDomains($orgHandle);
                         </div>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- ================================================================ -->
+        <!-- DNS provider hints (reference)                                    -->
+        <!-- ================================================================ -->
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h2 class="h5 mb-0"><i class="fas fa-book" aria-hidden="true"></i> DNS Provider Reference</h2>
+            </div>
+            <div class="card-body">
+                <?php echo g2ml_dnsProviderHintsHTML(); ?>
+                <p class="text-body-secondary small mb-0">
+                    TLS/HTTPS for custom domains is currently provisioned manually per domain — see
+                    <a href="https://github.com/MWBMPartners/Go2My.Link/blob/main/docs/CUSTOM_DOMAINS.md#tls--https">docs/CUSTOM_DOMAINS.md</a>
+                    for the current manual process and the planned automated (Cloudflare-for-SaaS) path.
+                </p>
             </div>
         </div>
 

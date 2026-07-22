@@ -46,10 +46,10 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 // When debug mode is enabled, all queries are logged here for the debug panel.
 // ============================================================================
 
-/** @var array Global query log for debug panel (populated when G2ML_DEBUG is true) */
+// Global query log for debug panel (populated when G2ML_DEBUG is true)
 $GLOBALS['_g2ml_query_log'] = [];
 
-/** @var int MySQLi error number from the most recent write (dbInsert/dbUpdate); 0 when none. */
+// MySQLi error number from the most recent write (dbInsert/dbUpdate); 0 when none.
 $GLOBALS['_g2ml_last_errno'] = 0;
 
 /**
@@ -88,7 +88,7 @@ function _g2ml_logQuery(string $sql, array $params, float $duration, bool $succe
             'params'   => $params,
             'duration' => round($duration, 3),
             'success'  => $success,
-            'time'     => date('H:i:s.') . substr(microtime(true), -3),
+            'time'     => date('H:i:s.') . substr((string) microtime(true), -3),
         ];
     }
 }

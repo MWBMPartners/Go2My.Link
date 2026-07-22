@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🚨 BREAKING — 2026-07 launch-prep cycle (API, Component C, CI/deploy hardening)
+
+- **BREAKING: per-component credential directory renamed `_auth_keys/` → `.auth/`.** Every
+  entry point now requires `<Component>/.auth/auth_creds.php` (dot-prefixed, a deliberate
+  exception to the underscore-prefix directory convention — see `patterns.md`). The
+  server-wide shared file (`web/_auth_keys/auth_creds.php`) is **unchanged**. **Any existing
+  deployment must run 3 `mv`s before this lands** (`<Component>/_auth_keys` →
+  `<Component>/.auth`, once per component) — there is no automatic migration, and the
+  installer/bootstrap will not find credentials at the old path. The web installer now
+  `mkdir`s `.auth/` (0700) when absent so fresh installs bootstrap correctly (#160).
+- ✨ **Public API v1** — key auth/scopes/DB rate-limiting/request log/envelope
+  (`web/_functions/api_auth.php`, `api_ratelimit.php`), URL CRUD/bulk/list + org endpoints
+  (BOLA-safe org-scoping), a key-management dashboard, and an OpenAPI 3.1 spec with
+  self-hosted Redoc at `/api/docs` (#38, #39, #40, #75). CueRCode dynamic-QR integrates via
+  `/api/v1` with a `qr:link`-scoped key (#145).
+- ✨ **Analytics** — time-bucketed click aggregates, an accessible Chart.js dashboard, and a
+  streaming CSV export (#41, #42, #44).
+- ✨ **IP geolocation** (#43) — vendored pure-PHP MaxMind reader (no C extension), gated OFF
+  by default, a total no-op when off/absent.
+- ✨ **UTM capture/forward on redirect** (#92) — settings-gated, OFF by default.
+- ✨ **Custom domains** — DNS-TXT ownership verification + verified-only routing (#91).
+- ✨ **Premium-tier entitlement gating** (#146) — enforces `maxLinks`/API-daily/domain-cap
+  from `tblSubscriptionTiers`; the Free tier is now enforced, so migrated orgs need a paid
+  tier assigned before cutover.
+- ✨ **Component C (LinksPage) — 6/6 shipped** (#45–#50): renderer, management UI, template
+  picker + preview, custom-domain fallback, age-gate, and a sanitised custom-HTML/WYSIWYG
+  builder. Custom-HTML is premium-gated with a **kill switch OFF by default** pending a
+  security sign-off — it is the product's highest stored-XSS surface (DOM allowlist
+  sanitiser + `script-src 'none'` CSP as mitigations).
+- 🔧 **PHPStan CI gate repaired and enforced** (#159, #76) — `phpstan.neon` had used two
+  configuration keys removed in PHPStan 2.x, so the pinned 2.2.4 aborted on config while
+  `continue-on-error: true` silently hid it: **CI had been running zero static analysis**.
+  Repaired for 2.x; the resulting 45 real level-5 errors in shipping code were fixed
+  root-cause (no baseline/ignore); the CI step is now a hard gate.
+- 🐛 **SFTP deploy fixed, then re-disarmed** (#156, #158) — a `|` inside unquoted `--exclude`
+  regexes was parsed by lftp as a pipe operator, aborting all four mirror phases on every
+  run (fails closed; nothing was ever uploaded or deleted). After the fix, a dry run showed
+  it would issue 47 removals against live Dreamhost content (component credential
+  directories, `private_html/`, and an unrelated brand-assets site at the SFTP root) — fixed
+  by dropping `--delete` from the shared-backend mirror phase and adding directory excludes.
+  **Deploy remains disarmed** (`vars.SFTP_ENABLED=false`) pending the structural fix.
+- 🐛 **Migrated custom short domains would 404 at cutover** (#160) — migration `001` inserted
+  them without `verificationStatus`, defaulting to `pending`, while the router requires
+  `verified`. Fixed by grandfathering migrated domains in as `verified`.
+- 🐛 **`sp_logActivity` stored procedure removed** (#126) — dead code, the app does a direct
+  `INSERT`; a correctly-provisioned DB now has 2 stored procedures, not 3.
+- 📋 A cross-device lost-work event occurred and was recovered: ~59 issues had been closed
+  citing commits that were later rewritten by a rebase during recovery; 42 issues received a
+  "commit references remapped" comment with their live SHAs. See `.claude/HISTORY.md`
+  (2026-07-19 entry) for the full account.
+- ⚠️ **Mandatory pre-deploy migrations for any existing DB:** `016` (custom-HTML tier
+  gating — without it `getOrgTier` fails open and all tier gating silently disables) and
+  `019` (System-scope settings dedupe).
+
 ### 🔒 Security & 🐛 Fixed — 2026-06-04 deployment-readiness audit remediation
 
 - 🔐 **`.gitignore` guards for plaintext credentials** — added `**/dbConfig.php` and `**/public_html_legacy/` so the legacy MWlink config (which held a plaintext production DB credential) can never be committed. The credential was verified never committed to git history; it must still be rotated out-of-band. (#93)

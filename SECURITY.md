@@ -7,6 +7,22 @@
 > **Date:** 2026-06-28 · **Branch:** `autopilot/2026-06-05`
 > **ID prefix:** `F-` (security findings). Mapped to GitHub issue # where one exists.
 > **Inputs reconciled:** `docs/AUDIT_2026-06-04.md` §3, `docs/SCHEMA_REVIEW_2026-06-04.md`, issues #93–#128.
+>
+> ⚠️ **2026-07-19 update — the attack surface has grown since this snapshot (2026-06-28).**
+> The public API (#38/#39/#40/#75) and Component C (LinksPage, #45–#50) were both **built**
+> after this document's last full pass — every reference below to the API being
+> "schema-only"/"not yet live" or to Component C being "scaffolding only" is now **stale**.
+> The single highest-priority addition to the threat model: **Component C's `customHTML`/
+> WYSIWYG feature (#49) is now the highest stored-XSS surface in the product** — a
+> DOM-allowlist sanitiser + `script-src 'none'` CSP mitigate it, and it ships **premium-gated
+> with a kill switch OFF by default**, pending a dedicated security sign-off before it may be
+> enabled. The API surface has been through its own adversarial security cycle (1 Medium
+> finding fixed; Low residuals tracked in #149, awaiting owner ratification) — see
+> `HANDOFF.md` for that review's outcome rather than re-deriving it here. Sections below
+> that still describe the pre-API/pre-C state are marked inline; a full re-pass of this
+> document (new attack-surface rows for `/api/v1`, Component C's render/sanitiser/upload
+> path, geolocation, and entitlements) has not yet been done and is recommended before the
+> next purple-team cycle.
 
 ---
 
@@ -40,7 +56,8 @@ operations/rotation task, **not** an incident — proceed normally.
 | 👑 Encryption keys / DB creds | `web/_auth_keys/auth_creds.php` (0600, gitignored) | AES-256-GCM salt/key + DB password; compromise decrypts all sensitive settings. |
 | 👑 The installer | `web/Go2My.Link/public_html/install/` | Pre-lock, can create a GlobalAdmin and write `auth_creds.php`. Re-runnable = full takeover. |
 | Org data & memberships | `tblOrganisations`, `tblOrgMembers`, `tblOrgShortDomains`, invitations | Cross-org (tenant) data exposure / IDOR. |
-| API keys (future) | `tblAPIKeys` (schema-only; #38 unbuilt) | CueRCode / external API auth once built. **Not yet an attack surface.** |
+| 👑 API keys | `tblAPIKeys` — **BUILT and LIVE** (#38/#39, 2026-07-10; adversarial security cycle passed, 1 Medium fixed) | Bearer-token external auth for all `/api/v1` endpoints + CueRCode. **This is now a live attack surface** — see the 2026-07-19 banner at the top of this document. |
+| 👑 Rendered custom HTML | Component C `customHTML` field (#49), sanitised at render | User-supplied raw HTML rendered on a public LinksPage. **Highest stored-XSS surface in the product** (see banner) — mitigated by a DOM-allowlist sanitiser + `script-src 'none'` CSP, premium-gated, kill switch OFF by default. |
 | PII | `tblUsers`, `tblActivityLog`, data-export JSON | GDPR/CCPA exposure; data in logs. |
 
 ### 1.2 Actors / roles
@@ -49,17 +66,17 @@ operations/rotation task, **not** an incident — proceed normally.
 - **User** — owns links, edits own profile/sessions, member of one org (`orgHandle`).
 - **Admin** (of an org) — manages own org, members, invites, short domains.
 - **GlobalAdmin** — cross-org; breach-response and platform tooling.
-- **External API / CueRCode** — authenticates via `tblAPIKeys` (**not live** — #38 unbuilt).
+- **External API / CueRCode** — authenticates via `tblAPIKeys` — **live since 2026-07-10** (#38/#39/#145), a `qr:link`-scoped key for CueRCode specifically.
 
 ### 1.3 Trust boundaries
 
-1. **Component A** (go2my.link) — public site + create/consent APIs + auth pages.
+1. **Component A** (go2my.link) — public site + create/consent APIs + auth pages + `/api/v1` (BOLA-safe org-scoping) + `/api/docs`.
 2. **Component A Admin** (admin.go2my.link) — gated dashboard; `requireAuth()` at the router.
 3. **Component B** (g2my.link) — the **redirect hot path**; takes a short code from the URL and emits a `Location:` to an attacker-influenceable stored destination. Highest blast radius.
-4. **Component C** (lnks.page) — **scaffolding only**; must not be advertised. Minimal surface (logs a slug, 404s).
+4. **Component C** (lnks.page) — **BUILT** (6/6, #45–#50), no longer scaffolding: renders owner-curated links and, when enabled, sanitised custom HTML on a public page. The `customHTML` path (kill switch OFF by default) is the product's highest stored-XSS surface — see the 2026-07-19 banner.
 5. **The installer** — privileged bootstrap; self-locking trust boundary.
 6. **App ↔ DB** — MySQLi prepared statements throughout (verified).
-7. **App ↔ third-party** — Turnstile/reCAPTCHA siteverify, optional destination HEAD fetch (off by default), CDN assets.
+7. **App ↔ third-party** — Turnstile/reCAPTCHA siteverify, optional destination HEAD fetch (off by default), CDN assets, MaxMind GeoIP database (vendored, gated off).
 
 ### 1.4 Adversaries / abuse cases
 
@@ -68,7 +85,8 @@ operations/rotation task, **not** an incident — proceed normally.
 - Attacker tricking a victim's browser into a state-changing GET (deletion-cancel CSRF — **F-002**).
 - Malicious/compromised destination (migrated legacy `javascript:` URL) surfacing on an interstitial (**F-003**).
 - Admin/SSRF-enabled fetch reaching internal hosts (**F-004**, **F-005**).
-- Future: API-key abuse once #38 ships (not yet live).
+- API-key abuse against `/api/v1` — reviewed in a dedicated adversarial cycle (2026-07-10): 1 Medium finding fixed (audit-log INSERT length-bound); Low-severity residuals (rate-limit model, `maxLinks` TOCTOU) tracked in #149, awaiting owner ratification — **not** re-derived here.
+- A malicious org uploading crafted `customHTML` (#49) to achieve stored XSS against LinksPage visitors — the primary reason the feature ships gated + kill-switched OFF pending a dedicated sign-off.
 
 ### 1.5 Crown-jewel paths to red-team hardest
 
@@ -125,7 +143,7 @@ Every untrusted input → sensitive sink, with the controls verified present.
 | SSRF | 918 | **N/A — controlled** | `validateDestination()` now calls `g2ml_destinationHostIsAllowed()` before any HEAD fetch (F-004 fixed, cycle 8); `createShortURL()` rejects disallowed hosts at creation time (F-005 fixed, cycle 8); loopback/link-local/metadata/reserved always blocked; RFC1918/ULA blocked by default; fails closed. |
 | Insecure deserialization | 502 | **N/A** | No `unserialize()` of untrusted input. |
 | Mass assignment | 915 | **N/A — controlled** | Explicit column allowlists in INSERT/UPDATE. |
-| XXE | 611 | **N/A** | No XML parsing of untrusted input (XML API output is deferred/unbuilt). |
+| XXE | 611 | **N/A** | XML API *output* shipped (`?format=xml`, `web/_functions/api_response.php`) but it only serialises trusted server-side data — no XML *parsing* of untrusted input exists anywhere in the codebase, so the verdict is unchanged. |
 | Business-logic / TOCTOU | 367 | **investigate** | Short-code generation check-then-insert without 1062 retry (schema review; ties to #124). |
 | Sensitive data exposure | 200/532 | **partial** | Spoofable client IP poisons logs (**F-001**). No raw passwords/tokens logged (verified). |
 | Weak crypto | 327/916 | **N/A — controlled** | Argon2id + AES-256-GCM; no MD5/SHA1 for passwords. |
@@ -135,7 +153,7 @@ Every untrusted input → sensitive sink, with the controls verified present.
 | Security misconfig | 16 | **partial** | Installer well-locked. SRI corrected on all CDN tags (F-008 fixed, cycle 9 — Bootstrap CSS hash was wrong/inconsistent and would have blocked the asset). Non-shipping `public_html_*` variants remain a hygiene risk. |
 | Container/IaC | — | **N/A** | Shared hosting (Dreamhost); no Docker/k8s/Terraform. |
 | Missing rate-limit / ReDoS | 770/1333 | **partial** | Anon create + login limited (IP key spoofable — F-001). No obvious ReDoS in own regexes. |
-| API excessive exposure / inventory | 200 | **investigate (future)** | `docs/API.md` documents endpoints that don't exist (doc/code drift); `tblAPIKeys` schema-only. Re-audit when #38 ships. |
+| API excessive exposure / inventory | 200 | **reviewed** | `/api/v1` is BUILT and live (#38/#39); a dedicated adversarial cycle (2026-07-10) reviewed the full endpoint surface — 1 Medium finding fixed, Low residuals tracked in #149. Treat `/api/docs` (the self-hosted Redoc, generated from the live handlers, #75) as authoritative over any older prose description of the API. |
 
 ---
 
@@ -229,7 +247,8 @@ micro-framework (`tests/bootstrap.php`); MySQL available locally.
 | Dependencies (CWE-1035) | **yes** | version/SRI grep + cycle-9 hash verification | PASS; F-008 fixed (Bootstrap CSS hash corrected — wrong hash would have blocked the asset in production; all other CDN hashes re-verified correct) | gitleaks/semgrep/osv-scanner not installed |
 | Misconfig/installer (CWE-16) | no | manual read | well-locked | no test that re-run installer refuses post-lock |
 | Container/IaC | n/a | — | shared hosting | n/a |
-| API inventory (CWE-200) | n/a (future) | — | #38 unbuilt | re-audit when API-key auth ships |
+| API inventory (CWE-200) | **yes** | dedicated adversarial cycle, 2026-07-10 | `/api/v1` BUILT + reviewed; 1 Medium fixed | Low residuals (#149) awaiting owner ratification; not yet folded into this ledger's row-by-row format |
+| Stored XSS via custom HTML (CWE-79, Component C) | partial | manual read + sanitiser design review (#49) | DOM-allowlist sanitiser + `script-src 'none'` CSP; premium-gated; kill switch OFF by default | no dedicated adversarial-XSS test battery recorded in this ledger yet; ships OFF pending a security sign-off before enable |
 
 ---
 

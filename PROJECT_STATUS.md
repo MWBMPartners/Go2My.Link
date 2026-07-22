@@ -1,10 +1,22 @@
 # 📊 Go2My.Link — Project Status
 
-> Last updated: 2026-02-24
+> Last updated: 2026-02-24 — **⚠️ SUPERSEDED, kept for historical reference only.**
+> Everything below reflects the project as of Phase 7's early work, before the
+> 2026-06/07 launch-hardening + launch-prep cycles. For the current, accurate state read
+> **[HANDOFF.md](HANDOFF.md)** (live pick-up point) and
+> **[.claude/memory/MEMORY.md](.claude/memory/MEMORY.md)** (project memory) — both updated
+> **2026-07-19**. In one line: **A + B are code-complete for launch; Component C
+> (LinksPage) is fully BUILT** (this doc still says Phase 8/LinksPage is "Not Started" —
+> that is no longer true); the public API, analytics, geolocation, UTM tracking, custom
+> domains, and premium-tier gating described as future work below have all shipped too.
+> "Blockers: None" below is also stale — see HANDOFF.md's owner-action list (credential
+> rotation, DB cutover, legal sign-off, SIGNula/billing credentials).
 
 ## 🏗️ Current Phase
 
 **Phase 7: API & Analytics** — ⏳ In Progress (early work: email modernization + breach response)
+
+> _(Historical as of 2026-02-24 — superseded; see the banner above.)_
 
 ## 📋 Build Progress
 
@@ -176,7 +188,10 @@ Comprehensive security, WCAG, and W3C compliance audit across all components. **
 
 ## ❌ Current Blockers
 
-None.
+None. _(Historical, 2026-02-24 — superseded. As of 2026-07-19 the remaining pre-launch
+items are owner-blocked, not dev blockers: #93 DB-credential rotation, DB cutover
+[migrations 016 + 019 mandatory], legal sign-off on 5 legal documents, and SIGNula/billing
+credentials. See HANDOFF.md.)_
 
 ## 📝 Recent Decisions
 

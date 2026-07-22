@@ -21,10 +21,10 @@
  * This file stores sensitive database connection credentials and encryption
  * keys used across ALL THREE components of the Go2My.Link service
  * (Go2My.Link, G2My.Link, Lnks.page). Each component's own thin
- * "<Component>/_auth_keys/auth_creds.php" include requires this shared file
- * in — see web/Go2My.Link/_auth_keys/auth_creds.php,
- * web/G2My.Link/_auth_keys/auth_creds.php, and
- * web/Lnks.page/_auth_keys/auth_creds.php for the include pattern.
+ * "<Component>/.auth/auth_creds.php" include requires this shared file
+ * in — see web/Go2My.Link/.auth/auth_creds.php,
+ * web/G2My.Link/.auth/auth_creds.php, and
+ * web/Lnks.page/.auth/auth_creds.php for the include pattern.
  *
  * ⚠️  HOW TO USE THIS TEMPLATE:
  *     1. Copy this file to web/_auth_keys/auth_creds.php (drop the

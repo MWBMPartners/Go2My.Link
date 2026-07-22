@@ -222,17 +222,25 @@ Go2My.Link/
    git clone https://github.com/MWBMPartners/Go2My.Link.git
    ```
 
-2. Copy the auth credentials template:
+2. Copy the auth credentials template — `auth_creds.php` itself is gitignored
+   and does **not** exist on a fresh clone; only the example template is
+   tracked:
 
    ```bash
-   cp web/_auth_keys/auth_creds.php web/_auth_keys/auth_creds.local.php
+   cp web/_auth_keys/auth_creds.example.php web/_auth_keys/auth_creds.php
    ```
 
-3. Edit `web/_auth_keys/auth_creds.local.php` with your database credentials.
+   > ⚠️ The app loads `auth_creds.php` directly (there is no
+   > `auth_creds.local.php` mechanism — do not create one, it is never
+   > `require`d). See [`docs/INSTALL.md`](docs/INSTALL.md) for the full
+   > installer-driven setup, including the per-component
+   > `<Component>/.auth/auth_creds.php` thin includes each site needs to boot.
 
-4. Import the database schema from `web/_sql/schema/`.
+3. Edit `web/_auth_keys/auth_creds.php` with your database credentials.
 
-5. Run the seed scripts from `web/_sql/seeds/`.
+4. Import the database schema from `web/_sql/schema/` (15 files).
+
+5. Run the seed scripts from `web/_sql/seeds/` (17 files).
 
 6. Point your web server document roots to the appropriate `public_html/` directories.
 

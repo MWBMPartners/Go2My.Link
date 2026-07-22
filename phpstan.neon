@@ -32,10 +32,29 @@ parameters:
     excludePaths:
         - web/_libraries
         - web/_auth_keys
+        - web/*/public_html_legacy/*
+        - web/*/public_html_redir/*
 
-    # Relaxations for shared-hosting PHP without strict typing
-    checkMissingIterableValueType: false
-    checkGenericClassInNonGenericObjectType: false
-
+    # Relaxations for shared-hosting PHP without strict typing.
+    #
+    # NB: checkMissingIterableValueType and checkGenericClassInNonGenericObjectType
+    # were valid in PHPStan 1.x but REMOVED in 2.x, which rejects unknown
+    # `parameters` keys outright. Because the CI step is `continue-on-error: true`,
+    # their presence silently killed every analysis run rather than failing the
+    # build — see #159. Do not reintroduce them while the pin is 2.x.
     # Allow superglobals and dynamic variables common in legacy PHP
     checkDynamicProperties: false
+
+    # These constants are defined per entry point (each component's index.php
+    # sets its own value), so their value is NOT fixed across the codebase.
+    # Without this, PHPStan resolves each to whichever single definition it saw
+    # first and then reports shared code as unreachable — e.g. nav.php's
+    # `$component === 'A' || $component === 'Admin'` was flagged
+    # identical.alwaysFalse even though _admin/public_html/index.php really does
+    # define G2ML_COMPONENT as 'Admin'. See #159.
+    dynamicConstantNames:
+        - G2ML_COMPONENT
+        - G2ML_COMPONENT_NAME
+        - G2ML_COMPONENT_DOMAIN
+        - G2ML_ENVIRONMENT
+        - G2ML_DEBUG

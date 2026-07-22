@@ -52,8 +52,8 @@ Schema files are located in `web/_sql/schema/`.
 | `tblUsers` | 👤 User accounts (Argon2id hashing, roles, 2FA, PassKey, avatar) |
 | `tblUserSocialLogins` | 🔗 OAuth provider links, encrypted tokens |
 | `tblUserSessions` | 🔐 Active session tracking |
-| `tblOrgDomains` | 🌐 Organisation domain DNS verification |
-| `tblOrgShortDomains` | 🔗 Organisation custom short domains |
+| `tblOrgDomains` | 🌐 ⚠️ **DEPRECATED (GT-6)** — legacy Phase 5 domain DNS verification; superseded by `tblOrgShortDomains`, gates no routing. See `web/_sql/migrations/018_deprecate_org_domains.sql`. |
+| `tblOrgShortDomains` | 🔗 Organisation custom short domains — the ONLY table the redirect resolver and LinksPage custom-domain fallback (#46) read (`isActive` + `verificationStatus='verified'`, #91) |
 | `tblAccountTypes` | 🏷️ Reference table of available account types (system + custom) |
 | `tblUserAccountTypes` | 🔀 Junction table linking users to account types (org-scoped, multi-type) |
 

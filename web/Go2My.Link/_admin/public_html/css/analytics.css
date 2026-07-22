@@ -1,0 +1,156 @@
+/**
+ * Copyright (c) 2024–2026 MWBM Partners Ltd (MWservices).
+ * All rights reserved.
+ *
+ * This source code is proprietary and confidential.
+ * Unauthorised copying, modification, or distribution is strictly prohibited.
+ */
+
+/**
+ * ============================================================================
+ * 📊 Go2My.Link — Analytics Dashboard Stylesheet (#42)
+ * ============================================================================
+ *
+ * Scoped to the analytics dashboard page only (loaded by
+ * pages/analytics/index.php via its own <link> tag — the admin dashboard
+ * does not currently ship a shared /css/style.css of its own, unlike
+ * Component A's public web root).
+ *
+ * Defines a validated Chart.js colour palette as --g2ml-chart-* CSS custom
+ * properties, themed for both `[data-bs-theme="light"]` and
+ * `[data-bs-theme="dark"]` (the same selector convention used by the
+ * --g2ml-brand-* variables in
+ * web/Go2My.Link/public_html/css/style.css), so
+ * web/Go2My.Link/_admin/public_html/js/analytics.js can read concrete
+ * colour values via getComputedStyle() and hand them to Chart.js — canvas
+ * 2D contexts do not reliably resolve `var(--x)` themselves, so the
+ * resolution happens in JS, not in the canvas.
+ *
+ * The 8-slot categorical palette + chart chrome/ink tokens below are the
+ * validated reference palette from the project's dataviz skill
+ * (references/palette.md) — every slot passes the six-check categorical
+ * validator (lightness band, chroma floor, CVD separation, contrast vs
+ * surface) in both light and dark mode. Three light-mode slots and the
+ * dark-mode CVD pair sit in the WARN/floor band, which is legal only with a
+ * "relief channel" (visible labels or a table view) — every chart on this
+ * page ships an accessible data table alongside it for exactly this reason
+ * (see pages/analytics/index.php), independent of colour.
+ *
+ * @package    Go2My.Link
+ * @subpackage AdminDashboard
+ * @version    1.1.0
+ * @since      v1.1.0 — Phase 7 (#42)
+ * ============================================================================
+ */
+
+/* ============================================================================
+   🎨 SECTION 1: Chart Colour Tokens — Light (default)
+   ============================================================================ */
+:root,
+[data-bs-theme="light"] {
+
+    /* ----- Chart surface & ink -------------------------------------------- */
+    --g2ml-chart-surface:       #fcfcfb;
+    --g2ml-chart-ink-primary:   #0b0b0b;
+    --g2ml-chart-ink-secondary: #52514e;
+    --g2ml-chart-ink-muted:     #898781;
+    --g2ml-chart-gridline:      #e1e0d9;
+    --g2ml-chart-baseline:      #c3c2b7;
+
+    /* ----- Categorical series (fixed order — never cycled/reassigned) ----- */
+    --g2ml-chart-series-1: #2a78d6;  /* blue    */
+    --g2ml-chart-series-2: #1baf7a;  /* aqua    */
+    --g2ml-chart-series-3: #eda100;  /* yellow  */
+    --g2ml-chart-series-4: #008300;  /* green   */
+    --g2ml-chart-series-5: #4a3aa7;  /* violet  */
+    --g2ml-chart-series-6: #e34948;  /* red     */
+    --g2ml-chart-series-7: #e87ba4;  /* magenta */
+    --g2ml-chart-series-8: #eb6834;  /* orange  */
+
+    /* ----- Status (fixed — never themed by the categorical order) --------- */
+    --g2ml-chart-status-good:     #0ca30c;
+    --g2ml-chart-status-warning:  #fab219;
+    --g2ml-chart-status-serious:  #ec835a;
+    --g2ml-chart-status-critical: #d03b3b;
+}
+
+/* ============================================================================
+   🌙 SECTION 2: Chart Colour Tokens — Dark
+   ============================================================================ */
+[data-bs-theme="dark"] {
+
+    --g2ml-chart-surface:       #1a1a19;
+    --g2ml-chart-ink-primary:   #ffffff;
+    --g2ml-chart-ink-secondary: #c3c2b7;
+    --g2ml-chart-ink-muted:     #898781;
+    --g2ml-chart-gridline:      #2c2c2a;
+    --g2ml-chart-baseline:      #383835;
+
+    --g2ml-chart-series-1: #3987e5;
+    --g2ml-chart-series-2: #199e70;
+    --g2ml-chart-series-3: #c98500;
+    --g2ml-chart-series-4: #008300;
+    --g2ml-chart-series-5: #9085e9;
+    --g2ml-chart-series-6: #e66767;
+    --g2ml-chart-series-7: #d55181;
+    --g2ml-chart-series-8: #d95926;
+
+    --g2ml-chart-status-good:     #0ca30c;
+    --g2ml-chart-status-warning:  #fab219;
+    --g2ml-chart-status-serious:  #ec835a;
+    --g2ml-chart-status-critical: #d03b3b;
+}
+
+/* ============================================================================
+   📐 SECTION 3: Layout — chart figures, canvases, data-table disclosures
+   ============================================================================ */
+
+.g2ml-chart-figure {
+    margin: 0;
+}
+
+.g2ml-chart-canvas-wrap {
+    position: relative;
+    height: 280px;
+    width: 100%;
+}
+
+.g2ml-chart-canvas-wrap canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+.g2ml-chart-figcaption {
+    font-size: 0.875rem;
+}
+
+/* Native <details>/<summary> disclosure used for the accessible data table
+   companion to every chart — works with no JavaScript at all, is keyboard
+   operable by default, and is announced correctly by screen readers without
+   any custom ARIA wiring. */
+.g2ml-chart-datatable-toggle {
+    margin-top: 0.5rem;
+}
+
+.g2ml-chart-datatable-toggle > summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.g2ml-chart-datatable-toggle > summary:focus-visible {
+    outline: 3px solid var(--g2ml-focus-color, #1976D2);
+    outline-offset: 2px;
+}
+
+/* ============================================================================
+   🎞️ SECTION 4: Reduced Motion
+   ============================================================================ */
+/* Chart.js animation is disabled entirely in JS when this media feature is
+   set (see analytics.js) — this rule only covers the CSS-driven <details>
+   marker transition some browsers apply by default. */
+@media (prefers-reduced-motion: reduce) {
+
+    .g2ml-chart-datatable-toggle > summary {
+        transition: none;
+    }
+}

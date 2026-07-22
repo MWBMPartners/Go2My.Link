@@ -3,11 +3,99 @@
 > 📦 **Portable copy** — this directory is the repo-tracked mirror of the Claude
 > project memory so it travels to every machine/platform via git. See
 > [README.md](../README.md) for how it maps to the device-local auto-memory.
-> Last synced: **2026-06-05**.
+> Last synced: **2026-07-19**.
 
+> 🚨 **2026-07-19 (supersedes everything below — read this first, then [HANDOFF.md](../../HANDOFF.md)):**
+> **A lost-work event and recovery happened.** Work done 2026-07-09→18 lived on an unpushed
+> branch on another device; ~59 issues were closed citing commits that turned out not to
+> exist once the branch was recovered and **rebased** onto the 9 commits the remote had
+> gained independently — all those SHAs changed. 42 issues got a "commit references
+> remapped" comment with their live SHAs. Treat any commit SHA cited in notes dated
+> 2026-07-09→18 below as **historical/possibly stale** — the code they describe is real and
+> in-tree, but the exact hash may have changed under rebase.
+> Since reconciliation, four more issues were found + fixed: **#156** SFTP deploy was
+> broken 100% (lftp parsed the `|` in `--exclude '(^|/)…'` regexes as a pipe operator,
+> aborting all four mirror phases — fixed by single-quoting; it failed closed, nothing was
+> ever uploaded/deleted). **#158** with deploy working, a dry run showed **47 removals**
+> against live Dreamhost (`_auth_keys/`, `private_html/`, and a live brand-assets site at
+> the SFTP root) — fixed by dropping `--delete` from the Phase-2 mirror + directory excludes;
+> **deploy is currently DISARMED** (`vars.SFTP_ENABLED=false`). **#159** `phpstan.neon` used
+> PHPStan 1.x-only keys, so the pinned 2.2.4 aborted on config while `continue-on-error: true`
+> hid it — CI had been running **zero** static analysis; repaired, plus `dynamicConstantNames`
+> for the per-entry-point `G2ML_*` constants. **#160** migration `001` inserted migrated short
+> domains without `verificationStatus` (defaulted `pending`, router requires `verified` — every
+> migrated partner domain would 404); fixed by grandfathering. Also: the `_auth_keys/` → `.auth/`
+> rename had no live-server migration step and the installer never created `.auth/` — both fixed.
+> PR **#157** re-aligned `main`/`alpha` (they had diverged with neither a superset) and landed
+> the #156 fix. **Open issues: 32 of 160 total** (verify via `gh issue list`, counts drift).
+> **CI is now 5 workflows:** `ci.yml` (Frontend/Backend gate — PHP lint + PHPStan L5 hard-fail
+> since #159/#76; PHPCS advisory), `lint.yml` (actionlint), `php-lint.yml`, `release.yml`,
+> `sftp-deploy.yml` (armed but disarmed via the `SFTP_ENABLED` var — see above).
+> Still outstanding: **#93** (rotate the leaked legacy DB credential — MANUAL), the live
+> `.auth/` rename, DB cutover incl. mandatory migrations **016** + **019**, legal sign-off on 5
+> `{{LEGAL_REVIEW_NEEDED}}` docs, SIGNula/billing need owner credentials.
+
+> 🏁 **2026-07-18 launch-prep close-out (supersedes the 2026-07-09/10 notes just below):**
+> 20 commits (`feab6b1`→`cc3e2e7`); **open issues 61 → 28**. ~22 built-but-open issues closed
+> with evidence (#38–#50 cluster, #75, #91, #92, #120, #135–#138, #145–#147) + a hygiene/a11y/db
+> cluster fixed and closed (#109/#110/#112/#114–#119/#126/#128/#150 + #44 CSV export + #117
+> No-Shorthand sweep). **PHPStan is now an enforced CI gate** (`phpstan.neon` fixed for 2.x;
+> 45 shipping-code L5 errors → 0, root-caused, no baseline/ignore) — the phpcs half (~9,700
+> findings) is deferred to follow-up **#153**, so #76 stays open for that half only. Two real
+> bugs found+fixed along the way: `public_html_landing/index.php` blank logo `alt`
+> (`$siteName` undefined) and a dead date-range-preset "active" highlight in the analytics
+> dashboard (string-vs-int compare). New follow-ups filed: **#151** (UTM as an analytics
+> dimension), **#152** (xlsx export), **#153** (phpcs). **Run migration
+> `019_settings_scope_dedupe.sql`** on any existing DB before deploying (also: `sp_logActivity`
+> removed, a DB now has 2 stored procedures, not 3). **Correction:** the leaked legacy
+> `public_html_legacy/dbConfig.php` is already gone from disk (deleted ~2026-07-10, outside
+> tracked work) — **#93 stays open**, the credential still needs actual rotation; do not infer
+> it was rotated. See [HANDOFF.md](../../HANDOFF.md) for the full close-out detail.
+
+> 🚀 **[Launch Plan 2026-07-09](../../docs/LAUNCH_PLAN_2026-07-09.md)** — Fable-5 strategic launch & roadmap plan (11 sections: verdict, API arch, CueRCode contract, SIGNula OIDC, custom-domain DNS, tier ladder, Component C, exec backlog P0–P4). **Read this for current direction.**
+> 🤝 **[HANDOFF.md](../../HANDOFF.md)** — session pick-up point: what's done, in-flight, decisions pending, next steps.
 > 📑 [Audit 2026-06-04](audit-2026-06-04.md) — full deployment-readiness audit; A+B launchable after fixes, C unbuilt; issues #93–#120 filed.
 > 🗄️ [Installer, schema & CueRCode 2026-06](installer-schema-cuercode-2026-06.md) — web installer + 2 critical schema fixes + CueRCode dynamic-QR integration; issues #121–#128.
 > 🕓 [HISTORY.md](../HISTORY.md) — chronological work log.
+
+> ⚠️ **2026-07-09 current state (supersedes the 2026-06-05 notes below):** the
+> `autopilot/2026-06-05` + `hardening/cycle-2` runs reached **VERIFY PASS / COMPLETE**
+> (merged PR #130; cycle-2 = commit `46fe7a5`). **~19–24 launch-hardening issues are
+> fixed in CODE but still OPEN on GitHub** — close them with commit refs. A+B are
+> **code-complete for launch**. Found + fixed **3 launch-blockers** (#135 login
+> `avatarURL`→`avatarPath`, #136 registration missing `NOT NULL username`, #138 GDPR export
+> non-existent cols) + a column-audit sweep (0 remaining P0). Closed 21 verified-fixed issues;
+> filed 6 enhancement issues (#139–144).
+> 🎉 **P1 API milestone shipped (2026-07-10):** #38 framework (key auth/scopes/DB rate-limit/log/
+> envelope — `web/_functions/api_auth.php` + `api_ratelimit.php`, `public_html/api/v1/`) → #39
+> endpoints (URL CRUD/bulk/list + org, BOLA-safe) → #145 CueRCode wiring (QR-link create/re-point/
+> scan attribution; `createShortURL()` + `logActivity()` extended) → #75 OpenAPI 3.1 + self-hosted
+> Redoc at `/api/docs`. All security-reviewed; 244 unit / 74 integration green. **CueRCode integrates
+> via `/api/v1` with a `qr:link`-scoped key.**
+> **Since shipped (2026-07-10):** #40 key UI, #91 custom domains, #41/#42 analytics, #146 premium-tier
+> entitlement gating, #92 UTM, #147 CSRF fix, and **Component C (LinksPage) 6/6 COMPLETE** (#45 renderer,
+> #48 mgmt UI, #47 picker+preview, #46 custom-domain fallback, #50 age-gate, #49 custom-HTML/WYSIWYG on
+> Opus — DOM sanitiser + `script-src 'none'` CSP + premium-gated + kill-switch off). **⚠️ #49 deploy notes:**
+> run **migration 016** before deploying to an existing DB (else `getOrgTier` fails-open, all gating off);
+> keep custom-HTML OFF (default) until a security sign-off (highest XSS surface). **Remaining dev needs owner
+> input:** SIGNula OIDC endpoints/creds, multi-provider billing (Stripe/PayPal/SIGNula keys), final tier
+> naming/currency. ✅ API adversarial security cycle DONE (`bad789a`, 1 Medium fixed; residuals #149).
+> ✅ geo #43 DONE (`89fb2e1`). **Owner ops/legal deferred:** #93 cred rotation, 480-URL migration (+ assign tiers — Free tier
+> now enforced), legal sign-off, push/review the branch.
+> **🌍 #43 IP geolocation shipped (2026-07-10):** vendored pure-PHP `MaxMind\Db\Reader`
+> (maxmind-db/reader-php v1.13.1, Apache-2.0) at `web/_libraries/maxminddb/` — NO ext-maxminddb
+> C extension required. `web/_functions/geolocation.php` — `g2ml_geolocateIP()` behind the
+> `analytics.geolocation_enabled` setting (OFF by default) AND a file-exists check on the
+> `.mmdb` (`analytics.geoip_db_path`, seed `017_geolocation_settings.sql`) — a total no-op,
+> byte-identical redirect, when either is off/absent (proven by test). `logActivity()` INSERT
+> extended to 26 bound columns (countryCode/regionCode/cityName trailing #23→26). Country added
+> to the `g2ml_analyticsBreakdown()` dimension whitelist + a dashboard doughnut widget. CI fetch:
+> `scripts/fetch-geoip.sh` + `sftp-deploy.yml` (uses the `MAXMIND_LICENSE_KEY` org secret; `.mmdb`
+> is git-ignored, deployed via its own non-`--delete` mirror step so a failed fetch never wipes a
+> working production database). **`analytics.geolocation_enabled` must be turned on manually,
+> post-deploy, only after confirming the database landed.** 502 unit / 171 integration green.
+> See **[HANDOFF.md](../../HANDOFF.md)** for the live pick-up point. Do **NOT** merge stale local `main`
+> (would resurrect the legacy engine + #93 credential file).
 
 ## 📋 Project Overview
 
@@ -16,17 +104,18 @@
 - **Tech Stack:** PHP 8.4+/8.5+, MySQL (MySQLi only), Bootstrap 5.3, HTML5/CSS3
 - **Hosting:** Dreamhost shared hosting (no CLI/Composer)
 - **3 Domains:** go2my.link (main, Component A), g2my.link (shortlinks, Component B), lnks.page (LinksPage, Component C)
-- **Current state (2026-06-05):** A built through Phase 6 (v1.0.0-rc); B core redirect engine built; **C is scaffolding only** (Phase 8 not started). A+B are launchable after the launch-hardening fixes below.
+- **Current state (2026-07-19):** A + B are code-complete for launch. **C (LinksPage) is BUILT** (6/6, #45–#50) — renderer, custom-domain fallback, templates, management UI, sanitised custom-HTML, age gate; custom-HTML is premium-gated with a kill switch OFF pending security sign-off. Public API v1, analytics/dashboard/CSV export, IP geolocation (gated off), UTM capture/forward (gated off), custom domains, and premium-tier entitlement gating are all BUILT too. Remaining work is owner-blocked (see the banner above and [HANDOFF.md](../../HANDOFF.md)).
 
 ## 🏗️ GitHub Project Management
 
 - **Org-level Project:** "Go2My.Link Development" (project #4, MWBMPartners org)
   - URL: https://github.com/orgs/MWBMPartners/projects/4
   - **Must be maintained throughout development** — update issue statuses as work progresses
-- **~125 issues** across **13 milestones** (Phase 0–11 + **v1.0.0 — Launch Hardening**, milestone #13)
-  - #1–#92: original build (≈59 closed / 30 open as of pre-June-2026)
-  - **#93–#120:** deployment-readiness audit findings (2026-06-04) — all open
-  - **#121–#128:** schema-review findings (2026-06-04) — all open
+- **160 issues total, 32 open** (measured 2026-07-19 via `gh issue list`; re-check, these drift fast) across **8 milestones** (Phase 5–11 + **v1.0.0 — Launch Hardening**, #13 — Phases 0–4 predate milestone tracking)
+  - #1–#92: original build (≈59 closed / open count folded into totals above)
+  - **#93–#128:** deployment-readiness audit + schema-review findings (2026-06-04) — mostly closed with commit refs since; **#93** (cred rotation) and **#127** (orgHandle decision) still open
+  - **#129–#153:** launch-prep cycle (2026-07-09/10/18) — API, analytics, Component C, entitlements, CI hardening; open ones are owner-triage/for-consideration (#139–144, #149, #151–153)
+  - **#154–#160:** CI/deploy hardening (2026-07-19) — see the top banner; #158/#159/#160 still open (deploy re-arm, phpstan follow-up, cutover checklist)
 - Milestone assignment: launch-blocking/high/medium audit + schema items → **v1.0.0 — Launch Hardening** (#13); low/roadmap → v1.1.0+
 - Labels: phase-0..11, component-A/B/C/shared/api/database, tier-1..4, priority-*, security, bug, infrastructure, compliance, documentation, etc. (NB: **no `accessibility` label** — WCAG work uses `compliance`)
 - **Issue protocol:** Create issues for all bugs/features, close with commit refs, update project board
@@ -43,28 +132,36 @@
 | 5 | v0.6.0 | Organisation Management | ✅ Complete (1 issue) |
 | **6** | **v0.7.0** | **Compliance, Legal & Pre-Launch** | ✅ Complete (v0.7.0 + v1.0.0-rc tagged) |
 | — | **v1.0.0-rc** | **PRE-RELEASE CANDIDATE** | ✅ Tagged |
-| — | **v1.0.0 — Launch Hardening** | **Audit + schema remediation (#13)** | ⏳ In progress (branch `audit/launch-hardening-2026-06-04`) |
-| 7 | v1.1.0 | API & Analytics | ⏳ In Progress (early work) |
-| 8 | v1.2.0 | LinksPage | 🔜 6 issues (Component C unbuilt) |
-| 9 | v1.3.0 | Advanced Redirects | 🔜 6 issues |
+| — | **v1.0.0 — Launch Hardening** | **Audit + schema remediation (#13)** | ✅ Dev-side work complete on `launch-prep/2026-07-09`; remaining items are owner actions (see HANDOFF.md) |
+| 7 | v1.1.0 | API & Analytics | ✅ Complete — API framework/endpoints/keys/docs (#38–40, #75), analytics + dashboard + CSV export (#41/#42/#44), geolocation (#43, gated off), UTM (#92, gated off) |
+| 8 | v1.2.0 | LinksPage | ✅ Complete (6/6, #45–#50) — Component C is BUILT, not scaffolding |
+| 9 | v1.3.0 | Advanced Redirects | 🔜 6 issues (#51–56, post-launch) |
 | 10 | v1.4.0 | Advanced Authentication (SIGNula) | 🔜 4 issues |
 | 11 | v1.5.0 | Payments & Subscriptions (SIGNula) | 🔜 4 issues |
 
 **Key restructuring (2026-02-23):** org mgmt (Phase 5) + legal/compliance (Phase 6) → v1.0.0-rc; post-launch phases reordered to prioritise API & Analytics; Advanced Auth and Payments deferred to SIGNula (Phases 10-11).
 
-## 🚦 Launch Readiness (2026-06-04 audit verdict)
+## 🚦 Launch Readiness
+
+> ⚠️ **Historical snapshot below is the 2026-06-04 audit verdict** — superseded by the
+> 2026-07-19 banner at the top of this file and by [HANDOFF.md](../../HANDOFF.md). Kept for
+> the record. Current one-liner: **A + B are code-complete for launch; Component C is BUILT**
+> (not "not built" as this snapshot says); the launch-hardening branch was merged (PR #130,
+> then #157 re-aligned `main`/`alpha`); remaining blockers are owner actions (#93 cred
+> rotation, DB cutover, legal sign-off, SIGNula/billing credentials), not dev work.
 
 - **Component A (go2my.link):** 🟡 ready-with-fixes. **Component B (g2my.link):** 🔴 was blocked (legacy DB password + 2 schema bugs) — fixes applied on the branch. **Component C (lnks.page):** ⛔ not built — must NOT be advertised beyond its coming-soon landing page.
 - Fix branch **`audit/launch-hardening-2026-06-04`** (commits `6897165`, `9f58807`) — not yet pushed/merged.
 - 🔴 **Outstanding manual action (#93):** rotate the plaintext legacy DB credential that was in `web/G2My.Link/public_html_legacy/dbConfig.php` (never committed to git; now gitignored; treat as compromised) and remove/archive that legacy dir.
 - See [audit-2026-06-04](audit-2026-06-04.md) and [installer-schema-cuercode-2026-06](installer-schema-cuercode-2026-06.md) for detail; reports in `docs/AUDIT_2026-06-04.md` and `docs/SCHEMA_REVIEW_2026-06-04.md`.
 
-## 🧰 Installer (2026-06)
+## 🧰 Installer (2026-06, credential-dir note updated 2026-07-19)
 
 - **Web installer:** `web/Go2My.Link/public_html/install/index.php` (+ `.htaccess`) — self-locking, HTTPS-required, proof-of-control-token-gated, full-bootstrap wizard for all 3 components. Steps: requirements → DB test → import schema/procedures/seeds → create GlobalAdmin → generate keys + write shared `auth_creds.php` (0600) → lock.
-- **Credential model:** the 3 components share ONE server-wide `web/_auth_keys/auth_creds.php`; each component's `<Component>/_auth_keys/auth_creds.php` is a thin `require_once` include of it. The installer writes only the shared file.
+- **Credential model:** the 3 components share ONE server-wide `web/_auth_keys/auth_creds.php`; each component's `<Component>/.auth/auth_creds.php` (dot-prefixed, renamed from `_auth_keys/` — see #160 and patterns.md) is a thin `require_once` include of it. The installer writes the shared file and now also `mkdir`s each component's `.auth/` (0700) when absent (#160 — previously a fresh install couldn't bootstrap). The installer's own lock/token files stay at the shared `web/_auth_keys/.installed` / `.install_token` — unaffected by the rename.
 - **GlobalAdmin creation:** `g2ml_hashPassword()` (Argon2id) + INSERT into `tblUsers` (role `GlobalAdmin`, org `[default]`) + `tblUserAccountTypes` (accountTypeID `globaladmin`).
-- Docs: `docs/INSTALL.md`. Runtime files `_auth_keys/.install_token` + `.installed` are gitignored.
+- Docs: `docs/INSTALL.md`. Runtime files `_auth_keys/.install_token` + `.installed` (shared) and each component's `.auth/auth_creds.php` are gitignored/untracked.
+- ⚠️ **Live-server cutover gap (#160):** the rename has no live-server migration step yet — the production host still has the old `<Component>/_auth_keys/` dirs. The one-off fix is 3 `mv`s (`_auth_keys` → `.auth` per component); see HANDOFF.md.
 
 ## 🎨 Dark/Light Mode
 
@@ -91,8 +188,8 @@
 - **Settings seed:** `web/_sql/seeds/012_email_settings.sql`
 - **Auth changes:** `loginUser()` checks `forcePasswordReset`, stores token in `$_SESSION`
 - **Security audit:** issues #79–#90 created and closed (CRLF injection, path traversal, TOCTOU, transaction wrapping) — re-verified intact by the 2026-06-04 audit
-- **UTM tracking (#92):** ⚠️ **NOT IMPLEMENTED** (corrected 2026-06-04). `g2ml_extractTrackingParams()` / `g2ml_appendUtmToDestination()`, migration `009_add_utm…`, activity-log UTM capture, and the `redirect.forward_utm_params` / `analytics.capture_tracking_params` settings **do not exist**. (`tblShortURLs` does have stored `utm*` columns from schema 020, but redirect-time capture/forwarding is unbuilt.) #92 remains OPEN. See [[audit-2026-06-04]].
-- **API framework (#38/#39) still unbuilt:** `tblAPIKeys` is schema-only (no app code issues/verifies keys) — required before CueRCode or any external API goes live.
+- **UTM tracking (#92):** ✅ **SHIPPED** (`ea857f1`, 2026-07-10), settings-gated, OFF by default. Capture: `g2ml_extractTrackingParams()`; forward: `g2ml_appendUtmToDestination()` — both in `web/G2My.Link/_functions/redirect_resolver.php` + Component B `public_html/index.php`; settings seed `016_utm_tracking_settings.sql` (`redirect.forward_utm_params`, `analytics.capture_tracking_params`). #92 CLOSED. **Residual:** captured UTM lands in `tblActivityLog.logData` (JSON blob), not yet an indexed analytics dimension or dashboard breakdown — tracked in follow-up **#151**.
+- **API framework (#38/#39):** ✅ **SHIPPED** and CLOSED, along with key-management UI (#40), OpenAPI 3.1 + self-hosted Redoc docs (#75), and CueRCode wiring (#145). See the header block above and [HANDOFF.md](../../HANDOFF.md) for detail rather than duplicating here.
 
 ## 🔗 CueRCode Dynamic-QR Integration (2026-06, schema-ready)
 
@@ -139,17 +236,23 @@
 
 ## 🚀 CI/CD & Releases
 
-- **PHP Lint workflow:** `.github/workflows/php-lint.yml` — uses `parallel-lint` (NOT `php-parallel-lint`) via `shivammathur/setup-php@v2`
-- **Release workflow:** `.github/workflows/release.yml` — per-component releases; lint tool aligned to `parallel-lint` (#111)
-- **OpenAPI/Swagger docs:** Issue #75 (Phase 7)
+**5 workflows** in `.github/workflows/` as of 2026-07-19:
+
+- **`ci.yml` ("CI"):** the required gate (`Frontend (ubuntu-latest)` + `Backend (ubuntu-latest)` status checks on the main-branch ruleset — job names are fixed, don't rename). Backend = PHP lint (`parallel-lint`) + **PHPStan level 5, now a hard gate** (`continue-on-error: false` — fixed by #159/#76, see the top banner: it was silently not running before). PHP_CodeSniffer steps remain `continue-on-error: true` (advisory; #153 tracks conformance).
+- **`lint.yml` ("Lint Workflows"):** `actionlint` over the workflow YAML files (added by #154/#155).
+- **`php-lint.yml`:** standalone PHP Lint workflow — uses `parallel-lint` (NOT `php-parallel-lint`) via `shivammathur/setup-php@v2`.
+- **`release.yml`:** per-component releases; lint tool aligned to `parallel-lint` (#111).
+- **`sftp-deploy.yml`:** the real lftp/Dreamhost mirror pipeline (4 phases). Fixed #156 (unquoted `|` in exclude regexes made lftp treat it as a pipe, aborting every run). **Currently DISARMED** (`vars.SFTP_ENABLED=false`) pending #158 (the `--delete` mirror would wipe live `_auth_keys/`, `private_html/`, and an unrelated brand-assets site at the SFTP root).
+- **OpenAPI/Swagger docs:** self-hosted Redoc at `/api/docs`, issue #75 — BUILT (Phase 7).
 
 ## 🗄️ Database — key facts & gotchas
 
 - New DB: `mwtools_Go2MyLink` (InnoDB, utf8mb4_unicode_ci). Schema in `web/_sql/schema/` (000–035), procedures in `procedures/`, seeds in `seeds/`, data-migrations in `migrations/`.
 - Redirect hot path: `sp_lookupShortURL` + `tblShortURLs.UQ_shortcode_org (shortCode, orgHandle)`.
 - **Fixed on branch (2026-06-04, verified on MySQL 9.6):** `sp_lookupShortURL` declared its EXIT HANDLER before variable DECLAREs (proc wouldn't compile → broke all B redirects); `033_payments.sql` had `tblPayments` FK to `tblPaymentDiscounts` before that table was created (aborted import).
-- Stored procedures use `DELIMITER //`; schema files begin with `USE mwtools_Go2MyLink;` and `000_create_database.sql` has `CREATE DATABASE`.
-- Open schema-review findings: cross-org category JOIN leak (#121), migration zero-date guards (#123), short-code TOCTOU (#124), activity-log composite index (#125), `sp_logActivity` drift (#126), orgHandle-vs-orgUID FK decision (#127), alias-chain integrity (#128).
+- Stored procedures use `DELIMITER //`; schema files begin with `USE mwtools_Go2MyLink;` and `000_create_database.sql` has `CREATE DATABASE`. `sp_logActivity` was **removed** (#126, dead code — the app does a direct INSERT) — a correctly-provisioned DB now has **2** stored procedures, not 3; `dry_run.sql` matches.
+- Schema-review findings #121/#123/#124/#125/#126/#128 are all **closed** (fixed on branch); **#127** (orgHandle-vs-orgUID FK decision) remains open pending an owner/dev tech-debt call.
+- **⚠️ Mandatory pre-cutover migrations (new DB deploys onto an existing schema):** `016` (custom-HTML gating — else `getOrgTier` fails-open and ALL tier gating silently disables) and `019` (System-scope settings dedupe). Also `001` was fixed (#160) to grandfather migrated short domains as `verified` — previously they landed `pending` and every migrated partner domain would 404 against `domain_resolver.php`'s `verificationStatus === 'verified'` check.
 
 ## 🗄️ Existing Data to Migrate
 
@@ -158,10 +261,23 @@
 ## 📁 Key Directory Notes
 
 - Component A: `web/Go2My.Link/` (NOT `GoToMy.Link`) · Admin: `web/Go2My.Link/_admin/public_html/` → admin.go2my.link
-- Shared: `web/_functions`, `web/_includes`, `web/_sql`, `web/_schemas`, `web/_auth_keys`
+- Shared: `web/_functions`, `web/_includes`, `web/_sql`, `web/_schemas`, `web/_auth_keys` (shared credential file only — per-component dirs are `.auth/`, see Installer section)
 - BrandKit: `web/assets/BrandKit/` · Web logos: `web/{component}/public_html/img/logo.{svg,png}`
 - Landing pages: `web/{component}/public_html_landing/index.php`
 - ⚠️ Non-shipping web-root variants exist (`public_html_dev_alpha/_dev_beta/_redir/_landing`, and the untracked `public_html_legacy`) — hygiene risk (#112, #20-era).
+
+## 📡 File map additions (2026-07-19) — API, analytics, Component C, entitlements, geo, tests
+
+These were built in the 2026-07-09/10/18 launch-prep cycle but were missing from this map:
+
+- **API framework (#38/#39/#40/#75):** `web/_functions/api_auth.php` (key auth, scopes, `hash_equals`), `api_ratelimit.php` (DB rate-limit), `web/Go2My.Link/public_html/api/v1/` (front controller + endpoint handlers: URL CRUD/bulk/list + org, `/analytics`), `web/Go2My.Link/_admin/public_html/pages/api-keys/` (key-management UI). OpenAPI 3.1 spec + self-hosted Redoc at `/api/docs`; vendored Redoc under `web/_libraries/` (post-CVE-2024-57083 version). `web/_schemas/api/` holds the JSON schemas.
+- **Analytics (#41/#42/#44):** `web/_functions/analytics.php` (time-bucketed aggregates), `web/Go2My.Link/_admin/public_html/pages/analytics/` (Chart.js dashboard, theme-aware), `web/Go2My.Link/_admin/public_html/analytics-export.php` (streaming CSV export), `web/_sql/schema/030_analytics.sql`, index migration `014_activitylog_analytics_indexes.sql`.
+- **IP geolocation (#43, gated OFF):** `web/_functions/geolocation.php` (`g2ml_geolocateIP()`), vendored pure-PHP `MaxMind\Db\Reader` at `web/_libraries/maxminddb/` (no C extension needed), seed `web/_sql/seeds/017_geolocation_settings.sql`, CI fetch `scripts/fetch-geoip.sh`.
+- **UTM capture/forward (#92, gated OFF):** in `web/G2My.Link/_functions/redirect_resolver.php` + Component B `public_html/index.php`; seed `016_utm_tracking_settings.sql`.
+- **Premium-tier entitlements (#146):** `web/_functions/entitlements.php` (fail-open; enforces `maxLinks`/API-daily/domain-cap from `tblSubscriptionTiers`).
+- **Component C — LinksPage (#45–#50, 6/6 BUILT):** `web/Lnks.page/` is the live component (public_html/index.php resolves a handle to a rendered page — no longer a coming-soon placeholder); `web/Lnks.page/_functions/linkspage_{resolver,renderer}.php`; shared `web/_functions/{linkspage_manage,html_sanitiser,adult_content}.php`; custom-domain fallback `web/G2My.Link/_functions/linkspage_fallback.php`; management UI `web/Go2My.Link/_admin/public_html/pages/linkspage/`. `customHTML`/WYSIWYG (#49) is DOM-allowlist-sanitised, `script-src 'none'` CSP, premium-gated, **kill switch OFF by default** pending security sign-off — the product's highest stored-XSS surface.
+- **CueRCode wiring (#145):** QR-link create/re-point/scan attribution folded into `createShortURL()` + `logActivity()`; authenticates via a `qr:link`-scoped API key (no local `tblQRCodes`).
+- **Tests:** `tests/unit/` (DB-free, 58 test files as of 2026-07-19) and `tests/integration/` (DB-backed, skips cleanly with no DB) — see `tests/README.md` for the throwaway-MySQL one-liner. 519 unit tests passing per the 2026-07-19 gate run (see the top banner).
 
 ## 📌 Standing Practices (Apply Every Session)
 

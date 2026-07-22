@@ -130,12 +130,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                             $globalAdminLevel = 3;
                             $actingRoleLevel  = 0;
 
+                            // 'GlobalAdmin' is a fixed key in the
+                            // G2ML_ROLE_LEVELS literal (see auth.php), so
+                            // once the constant is defined that offset is
+                            // always present — only the defined() guard
+                            // (for the case this constant's defining file
+                            // wasn't loaded) is meaningful here. The second
+                            // lookup, by the acting user's own DB-sourced
+                            // role name, is NOT guaranteed present, so it
+                            // keeps its isset() check.
                             if (defined('G2ML_ROLE_LEVELS'))
                             {
-                                if (isset(G2ML_ROLE_LEVELS['GlobalAdmin']))
-                                {
-                                    $globalAdminLevel = G2ML_ROLE_LEVELS['GlobalAdmin'];
-                                }
+                                $globalAdminLevel = G2ML_ROLE_LEVELS['GlobalAdmin'];
 
                                 if (isset(G2ML_ROLE_LEVELS[$currentUser['role']]))
                                 {
@@ -206,12 +212,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                             $globalAdminLevel = 3;
                             $actingRoleLevel  = 0;
 
+                            // 'GlobalAdmin' is a fixed key in the
+                            // G2ML_ROLE_LEVELS literal (see auth.php), so
+                            // once the constant is defined that offset is
+                            // always present — only the defined() guard
+                            // (for the case this constant's defining file
+                            // wasn't loaded) is meaningful here. The second
+                            // lookup, by the acting user's own DB-sourced
+                            // role name, is NOT guaranteed present, so it
+                            // keeps its isset() check.
                             if (defined('G2ML_ROLE_LEVELS'))
                             {
-                                if (isset(G2ML_ROLE_LEVELS['GlobalAdmin']))
-                                {
-                                    $globalAdminLevel = G2ML_ROLE_LEVELS['GlobalAdmin'];
-                                }
+                                $globalAdminLevel = G2ML_ROLE_LEVELS['GlobalAdmin'];
 
                                 if (isset(G2ML_ROLE_LEVELS[$currentUser['role']]))
                                 {
@@ -328,9 +340,14 @@ $invitations = getPendingInvitations($orgHandle);
                             <td><?php echo g2ml_sanitiseOutput($member['email']); ?></td>
                             <td>
                                 <?php
-                                $memberTypes = function_exists('getUserAccountTypes')
-                                    ? getUserAccountTypes((int) $member['userUID'], $orgHandle)
-                                    : [];
+                                if (function_exists('getUserAccountTypes'))
+                                {
+                                    $memberTypes = getUserAccountTypes((int) $member['userUID'], $orgHandle);
+                                }
+                                else
+                                {
+                                    $memberTypes = [];
+                                }
 
                                 if (!empty($memberTypes))
                                 {

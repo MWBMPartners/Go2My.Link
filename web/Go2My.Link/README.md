@@ -13,7 +13,7 @@ The public-facing website for the Go2My.Link URL shortening service.
 Go2My.Link/
 ├── _admin/              ← Admin/Dashboard application
 │   └── public_html/     ← Admin web root (admin.go2my.link)
-├── _auth_keys/          ← Website-specific DB credentials (outside web root)
+├── .auth/               ← Website-specific DB credentials (outside web root)
 ├── _includes/           ← Website-specific shared includes
 ├── _functions/          ← Website-specific shared functions
 ├── _libraries/          ← Website-specific libraries
