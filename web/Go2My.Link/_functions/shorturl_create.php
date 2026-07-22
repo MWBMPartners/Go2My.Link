@@ -1161,8 +1161,19 @@ function checkAnonymousRateLimit(string $ipAddress): array
 // ============================================================================
 // 🌐 getDefaultShortDomain — Get the default short domain for an org
 // ============================================================================
-// Queries tblOrgShortDomains for the default active short domain of the
-// given organisation. Falls back to 'g2my.link'.
+// Queries tblOrgShortDomains for the default active AND VERIFIED short domain
+// of the given organisation. Falls back to 'g2my.link'.
+//
+// #166: this MUST mirror the redirect resolver's acceptance condition exactly.
+// The resolver (web/G2My.Link/_functions/domain_resolver.php) only serves a
+// short domain when `verificationStatus = 'verified' AND isActive = 1`. If we
+// minted short URLs on a merely-active-but-unverified default domain, the
+// resolver would then refuse to serve them -> dead links. Requiring
+// verificationStatus = 'verified' here can only PREVENT dead links: any domain
+// that currently resolves already satisfies this (it could not resolve
+// otherwise), so grandfathered/migrated domains — which migration 013 marks
+// verified so they keep resolving — are unaffected. When no verified default
+// domain exists we fall back to 'g2my.link', which is always routable.
 //
 // @param  string $orgHandle  The organisation handle
 // @return string             The short domain (e.g., 'g2my.link', 'camsda.link')
@@ -1175,6 +1186,7 @@ function getDefaultShortDomain(string $orgHandle): string
          WHERE orgHandle = ?
            AND isDefault = 1
            AND isActive = 1
+           AND verificationStatus = 'verified'
          LIMIT 1",
         's',
         [$orgHandle]
