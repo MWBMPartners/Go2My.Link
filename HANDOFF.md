@@ -26,12 +26,22 @@
   price structures (PAYG-capped, lifetime, coupons, usage metering), resolver `web/_functions/pricing.php`,
   backfill from legacy columns, `Pricing_Strategy.md`. **Additive & DISABLED** (`billing.pricing_engine_enabled='0'`);
   entitlements.php behaviour byte-unchanged until the owner flips it. Enable pending sign-off (D4).
-- **Issue review complete (Fable):** 158 issues, **0 wrongly-closed**. Closed #159/#164/#166/#175;
-  filed #178 (Dreamhost scheduling decision — gates GDPR #163/#167) and #180 (pricing engine).
-- **Next up (unblocked, buildable now):** #163 GDPR deletion + #167 retention (via a token-guarded
-  cron endpoint — works with any trigger, so D1 doesn't block the *code*); #165 non-org analytics;
-  #153 phpcs. See `PRE_LAUNCH_CHECKLIST.md` for owner decisions D1–D7 and the **cross-project
-  integration contract** (CueRCode / SIGNula — repo access declined via add-repo, D6).
+- **GDPR launch-blockers CLOSED (#182 → alpha):** #163 (deletion execution) + #167 (retention) now
+  have a **token-guarded cron endpoint** + jobs library wiring the existing `data_rights.php`
+  functions, shipped **fully inert** (all `cron.*`/`gdpr.*`/`retention.*` settings OFF, deletion in
+  dry-run). 45 unit + 17 integration tests. **Activation** (enable + turn dry-run off + wire a daily
+  trigger) is an owner action — D1/#178. Deletion is endpoint-only; a 1-in-500 `page_init.php`
+  fallback runs retention only.
+- **⚠️ New finding #183 (potential install blocker):** `036_pricing_engine.sql`'s STORED generated
+  column `effectiveFromKey` imports on `mysql:8` (our only CI engine) but is reported to **fail on
+  MariaDB 10.11** — and Dreamhost runs MariaDB. Fix = explicit `CAST(... AS DATETIME)` **+ add
+  MariaDB to the integration CI matrix**. Pricing ships disabled but the schema imports regardless,
+  so this is install-time. **This is the recommended next task.**
+- **Issue review complete (Fable):** 158 issues, **0 wrongly-closed**. Closed #159/#163/#164/#166/#167/#175;
+  filed #178 (scheduling decision), #180 (pricing engine), #183 (MariaDB portability).
+- **Still-open next steps:** #183 (MariaDB fix) → #165 non-org analytics → #153 phpcs. See
+  `PRE_LAUNCH_CHECKLIST.md` for owner decisions D1–D7 + the **cross-project integration contract**
+  (CueRCode / SIGNula — repo access declined via add-repo, D6).
 - ⚠️ Still true: do **NOT** merge stale `main` down into `alpha`/`beta`.
 
 **State in one line:** the codebase is in good shape and the recovery is verified, but launch is
