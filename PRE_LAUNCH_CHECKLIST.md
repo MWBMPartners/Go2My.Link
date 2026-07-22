@@ -49,23 +49,26 @@
 | ✅ **#176 → `alpha`** (#175, #164) | CI now runs the **528-test unit suite** (required) + an **advisory `mysql:8` integration job**; seeded the 5 missing analytics i18n keys. |
 | ✅ **#177 → `alpha`** (#166) | Short URLs can no longer be minted on **unverified** custom domains (creation now mirrors the resolver's `verificationStatus='verified'` gate → no more dead links). |
 | ✅ **#179 → `alpha`** (#180) | **Flexible pricing/entitlement engine** — 10-table data-driven model (unlimited tiers/features/price structures incl. PAYG-capped, lifetime, coupons, usage metering), resolver, backfill, `Pricing_Strategy.md`. **Additive & DISABLED by default**; CI green incl. schema import. |
-| ✅ **Issue hygiene** | Closed #159 (delivered), #164, #166, #175; filed #178 (scheduling decision), #180 (pricing engine). Full open+closed backlog review done (Fable) — **0 wrongly-closed issues**. |
+| ✅ **#182 → `alpha`** (#163, #167) | **GDPR scheduled-jobs engine** — token-guarded cron endpoint + jobs wiring the existing `data_rights.php` deletion/anonymisation + retention sweeps. **Ships fully inert** (all settings OFF, deletion dry-run); 45 unit + 17 integration tests. Activation is an owner action (D1). |
+| ✅ **Issue hygiene** | Closed #159/#163/#164/#166/#167/#175; filed #178 (scheduling), #180 (pricing engine), #183 (MariaDB portability). Full open+closed backlog review (Fable) — **0 wrongly-closed**. |
 
 ---
 
 ## 📌 Open backlog highlights (authoritative live list in `HANDOFF.md` + the tracker)
 
 **Launch-gating, still open:**
-- 🔴 **#163** — GDPR account-deletion requests never executed (blocked on D1; code buildable now via the token-guarded endpoint).
-- 🔴 **#167** — published data-retention periods not enforced (blocked on D1).
+- 🔴 **#183** — `036_pricing_engine.sql` STORED generated column may fail to import on **MariaDB** (our production host); CI only tests `mysql:8`. Fix = explicit `CAST` + add MariaDB to CI. **Recommended next task** (also confirm target DB: MariaDB vs MySQL).
 - 🟠 **#165** — individually-registered users (`[default]` org) get **no analytics** (per-user scoping fix).
 - 🟠 **#158** — SFTP deploy: remaining owner decisions (base path, branch gate, re-arm after dry-run).
+
+**Now DONE (activation is owner-gated, not code):**
+- ✅ **#163 / #167** — GDPR deletion + retention engine built & merged (#182), shipped **disabled**. Enable per D1/#178.
 
 **Quality / near-launch:** #153 (phpcs conformance + flip the gate; ~9.3k auto-fixable), #151 (UTM analytics dimension), #152 (xlsx export), #127 (orgHandle-vs-surrogate-FK design), #71 (9 locales).
 
 **Post-launch (correctly open):** #51–#56 Phase-9 advanced redirects; #34–#37 SIGNula auth; #57–#60 billing; #139–#144 enhancements (need owner triage).
 
-**Fixed & closed this session:** #159, #162 (verified), #164, #166, #175.
+**Fixed & closed this session:** #159, #162 (verified), #163, #164, #166, #167, #175.
 
 ---
 
