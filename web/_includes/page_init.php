@@ -251,6 +251,16 @@ require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'entitlements.php';
 // Layer 4 — Compliance, Privacy & Security Response (depend on Layers 1+2+3)
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'cookie_consent.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'data_rights.php';
+
+// Scheduled jobs (#163 GDPR deletion executor + #167 retention sweeps).
+// Guarded require_once so a partially-deployed tree (file missing) degrades
+// to a no-op rather than a fatal error — the probabilistic hook below is
+// itself function_exists()-guarded for the same reason.
+if (file_exists(G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'cron.php'))
+{
+    require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'cron.php';
+}
+
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'breach_response.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'linkspage_manage.php';
 
@@ -350,6 +360,22 @@ if (function_exists('cleanExpiredSessions') && mt_rand(1, 100) === 1)
 // ============================================================================
 
 loadSettingsCache();
+
+// ============================================================================
+// 🧹 Step 8.5: Probabilistic Retention Fallback (#167 / #178)
+// ============================================================================
+// Mirrors the existing 1% session-cleanup idiom above, but MUST run AFTER
+// loadSettingsCache() (unlike that hook, which needs no settings at all) —
+// this hook's very first checks read retention.* settings. Inert unless
+// retention.enforcement_enabled is explicitly on; see cron.php for the full
+// gate chain. NEVER runs the #163 deletion job — that executor is
+// endpoint-only by design (web/Go2My.Link/_admin/public_html/cron.php).
+// ============================================================================
+
+if (function_exists('g2ml_cronMaybeRunProbabilisticRetention'))
+{
+    g2ml_cronMaybeRunProbabilisticRetention();
+}
 
 // ============================================================================
 // 🌍 Step 9: Detect and Set Locale
