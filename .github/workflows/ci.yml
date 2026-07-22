@@ -209,7 +209,11 @@ jobs:
             db-health-cmd: "mysqladmin ping --silent"
           - os: ubuntu-latest
             db-image: "mariadb:11"
-            db-health-cmd: "mariadb-admin ping --silent"
+            # MariaDB's `ping` returns NON-zero on access-denied (unlike MySQL
+            # 8's, which reports the server alive without creds), so the health
+            # check must authenticate. The password is the throwaway CI root
+            # password set on the service container above.
+            db-health-cmd: "mariadb-admin ping --silent --user=root --password=g2ml_ci_root_password"
     runs-on: ${{ matrix.os }}
 
     services:
