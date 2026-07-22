@@ -235,6 +235,17 @@ require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'session.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'auth.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'org.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'account_types.php';
+
+// Optional pricing-engine resolver (#TBD — scaffold). Only DEFINES functions;
+// the guarded hook inside entitlements.php's _g2ml_resolveOrgTier() is the
+// only place that calls into it, and only when
+// getSetting('billing.pricing_engine_enabled') === '1'. Loaded immediately
+// before entitlements.php so that hook can see g2ml_pricingResolveOrgTier().
+if (file_exists(G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'pricing.php'))
+{
+    require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'pricing.php';
+}
+
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'entitlements.php';
 
 // Layer 4 — Compliance, Privacy & Security Response (depend on Layers 1+2+3)

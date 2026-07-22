@@ -308,6 +308,29 @@ function _g2ml_resolveOrgTier(string $orgHandle): array
             return _g2ml_entitlementsUnlimitedTier('globaladmin');
         }
 
+        // -------------------------------------------------------------------
+        // 💷 OPTIONAL pricing-engine hook: when web/_functions/pricing.php is
+        // loaded AND the operator has switched 'billing.pricing_engine_enabled'
+        // ON, resolve entitlements from the flexible model instead. Any failure
+        // (false/non-array) falls through to the legacy resolution below —
+        // fail OPEN to OLD behaviour, never to a block. With the setting at
+        // its seeded '0' this block is inert and the function behaves exactly
+        // as before (see web/_sql/seeds/019_pricing_settings.sql).
+        // -------------------------------------------------------------------
+        if (function_exists('g2ml_pricingEngineEnabled')
+            && function_exists('g2ml_pricingResolveOrgTier'))
+        {
+            if (g2ml_pricingEngineEnabled() === true)
+            {
+                $engineTier = g2ml_pricingResolveOrgTier($orgHandle);
+
+                if (is_array($engineTier))
+                {
+                    return $engineTier;
+                }
+            }
+        }
+
         $row = _g2ml_fetchOrgTierRow($orgHandle);
 
         if ($row === false)
