@@ -528,6 +528,53 @@ test('analyticsTotals: org-wide totals for org A never include org B\'s 10 click
 });
 
 // ============================================================================
+// 🔐 #165 — per-user scoping for the shared "[default]" bucket org
+// ============================================================================
+// User A owns analyticsA1/A2 in the shared '[default]' org; user B owns
+// analyticsB1 in the real org 'orgbanalytics' and therefore owns NOTHING in
+// '[default]'. So a '[default]' aggregate scoped to user B MUST be empty even
+// though the '[default]' org-wide total is 6 — that is the exact cross-user
+// isolation this feature must guarantee (one unassigned user can never see
+// another's analytics). Scoped to user A it returns A's own data; scoped to
+// null it is the unchanged pre-#165 org-wide behaviour.
+
+test('#165 analyticsTotals: [default] scoped to the OWNING user returns their own clicks', function () use ($g2mlAnalyticsFrom, $g2mlAnalyticsTo, $g2mlAnalyticsUserA): void
+{
+    $totals = g2ml_analyticsTotals('[default]', null, $g2mlAnalyticsFrom, $g2mlAnalyticsTo, $g2mlAnalyticsUserA);
+    assert_same(6, $totals['totalClicks'], 'User A owns analyticsA1(5)+A2(1) in [default] => 6');
+});
+
+test('#165 analyticsTotals: [default] scoped to a NON-owning user returns ZERO (no cross-user leak)', function () use ($g2mlAnalyticsFrom, $g2mlAnalyticsTo, $g2mlAnalyticsUserB): void
+{
+    $totals = g2ml_analyticsTotals('[default]', null, $g2mlAnalyticsFrom, $g2mlAnalyticsTo, $g2mlAnalyticsUserB);
+    assert_same(0, $totals['totalClicks'], 'User B owns no [default] links => 0, NOT the org-wide 6');
+});
+
+test('#165 analyticsTopLinks: [default] scoped to the owner returns only their codes', function () use ($g2mlAnalyticsFrom, $g2mlAnalyticsTo, $g2mlAnalyticsUserA): void
+{
+    $topLinks = g2ml_analyticsTopLinks('[default]', $g2mlAnalyticsFrom, $g2mlAnalyticsTo, 10, $g2mlAnalyticsUserA);
+    assert_same(2, count($topLinks), 'User A owns exactly two [default] codes with clicks (A1, A2)');
+});
+
+test('#165 analyticsTopLinks: [default] scoped to a non-owning user returns an EMPTY ranking', function () use ($g2mlAnalyticsFrom, $g2mlAnalyticsTo, $g2mlAnalyticsUserB): void
+{
+    $topLinks = g2ml_analyticsTopLinks('[default]', $g2mlAnalyticsFrom, $g2mlAnalyticsTo, 10, $g2mlAnalyticsUserB);
+    assert_same(0, count($topLinks), 'User B owns no [default] codes => empty, never A1/A2');
+});
+
+test('#165 analyticsBreakdown: [default] scoped to a non-owning user returns nothing', function () use ($g2mlAnalyticsFrom, $g2mlAnalyticsTo, $g2mlAnalyticsUserB): void
+{
+    $rows = g2ml_analyticsBreakdown('[default]', null, 'browserName', $g2mlAnalyticsFrom, $g2mlAnalyticsTo, 10, $g2mlAnalyticsUserB);
+    assert_same(0, count($rows), 'A non-owning [default] user sees no breakdown rows');
+});
+
+test('#165 analyticsTotals: null scope keeps the org-wide behaviour unchanged', function () use ($g2mlAnalyticsFrom, $g2mlAnalyticsTo): void
+{
+    $totals = g2ml_analyticsTotals('[default]', null, $g2mlAnalyticsFrom, $g2mlAnalyticsTo, null);
+    assert_same(6, $totals['totalClicks'], 'null scope = the pre-#165 org-wide [default] total (6)');
+});
+
+// ============================================================================
 // 🏆 g2ml_analyticsTopLinks()
 // ============================================================================
 

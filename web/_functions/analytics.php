@@ -221,7 +221,7 @@ function _g2ml_analyticsClampLimit(int $limit, int $default, int $max): int
  * @param  string      $to         Inclusive range end, 'Y-m-d H:i:s'.
  * @return array{where: string, types: string, params: array<int, mixed>}
  */
-function _g2ml_analyticsClickWhere(string $orgHandle, ?string $shortCode, string $from, string $to): array
+function _g2ml_analyticsClickWhere(string $orgHandle, ?string $shortCode, string $from, string $to, ?int $createdByUserUID = null): array
 {
     $conditions = [
         "logAction = 'redirect'",
@@ -239,6 +239,22 @@ function _g2ml_analyticsClickWhere(string $orgHandle, ?string $shortCode, string
         $conditions[] = 'shortCode = ?';
         $types        = $types . 's';
         $params[]     = $shortCode;
+    }
+
+    // #165: per-user scoping for the shared "[default]" bucket org. Every
+    // unassigned user shares orgHandle '[default]', so an org-wide aggregate
+    // would leak OTHER users' clicks. When a positive createdByUserUID is
+    // supplied, additionally restrict to the activity rows whose short code the
+    // user OWNS, resolved via a subquery on tblShortURLs (shortCode is unique
+    // per org — UQ_shortcode_org — so a '[default]' user sees only their own
+    // links). Uses IDX_url_creator (createdByUserUID). Callers pass null for a
+    // real org, which keeps the existing org-wide behaviour unchanged.
+    if ($createdByUserUID !== null && $createdByUserUID > 0)
+    {
+        $conditions[] = 'shortCode IN (SELECT shortCode FROM tblShortURLs WHERE orgHandle = ? AND createdByUserUID = ?)';
+        $types        = $types . 'si';
+        $params[]     = $orgHandle;
+        $params[]     = $createdByUserUID;
     }
 
     return [
@@ -262,10 +278,10 @@ function _g2ml_analyticsClickWhere(string $orgHandle, ?string $shortCode, string
  * @param  string      $bucket     'day' (default), 'week', or 'month'.
  * @return array<int, array{bucket: string, clicks: int}>  Ordered ascending by bucket.
  */
-function g2ml_analyticsClicksOverTime(string $orgHandle, ?string $shortCode, string $from, string $to, string $bucket = 'day'): array
+function g2ml_analyticsClicksOverTime(string $orgHandle, ?string $shortCode, string $from, string $to, string $bucket = 'day', ?int $createdByUserUID = null): array
 {
     $bucketFormat = _g2ml_analyticsBucketFormat($bucket);
-    $whereClause  = _g2ml_analyticsClickWhere($orgHandle, $shortCode, $from, $to);
+    $whereClause  = _g2ml_analyticsClickWhere($orgHandle, $shortCode, $from, $to, $createdByUserUID);
 
     $sql = 'SELECT DATE_FORMAT(createdAt, ?) AS bucketLabel, COUNT(*) AS clicks '
         . 'FROM tblActivityLog '
@@ -315,9 +331,9 @@ function g2ml_analyticsClicksOverTime(string $orgHandle, ?string $shortCode, str
  * @param  string      $to         Inclusive range end, 'Y-m-d H:i:s'.
  * @return array{totalClicks: int, uniqueIPs: int, botClicks: int, humanClicks: int, unknownClicks: int}
  */
-function g2ml_analyticsTotals(string $orgHandle, ?string $shortCode, string $from, string $to): array
+function g2ml_analyticsTotals(string $orgHandle, ?string $shortCode, string $from, string $to, ?int $createdByUserUID = null): array
 {
-    $whereClause = _g2ml_analyticsClickWhere($orgHandle, $shortCode, $from, $to);
+    $whereClause = _g2ml_analyticsClickWhere($orgHandle, $shortCode, $from, $to, $createdByUserUID);
 
     $sql = 'SELECT '
         . 'COUNT(*) AS totalClicks, '
@@ -367,20 +383,39 @@ function g2ml_analyticsTotals(string $orgHandle, ?string $shortCode, string $fro
  * @param  int    $limit      Maximum rows to return (default 10, clamped 1-100).
  * @return array<int, array{shortCode: string, clicks: int}>  Ordered descending by clicks.
  */
-function g2ml_analyticsTopLinks(string $orgHandle, string $from, string $to, int $limit = 10): array
+function g2ml_analyticsTopLinks(string $orgHandle, string $from, string $to, int $limit = 10, ?int $createdByUserUID = null): array
 {
     $clampedLimit = _g2ml_analyticsClampLimit($limit, 10, 100);
+
+    // #165: this function builds its SQL directly (not via the shared WHERE
+    // builder), so it applies the same per-user scope inline. See
+    // _g2ml_analyticsClickWhere() for the rationale.
+    $userScopeSql = '';
+    $types        = 'sss';
+    $params       = [$orgHandle, $from, $to];
+
+    if ($createdByUserUID !== null && $createdByUserUID > 0)
+    {
+        $userScopeSql = 'AND shortCode IN (SELECT shortCode FROM tblShortURLs WHERE orgHandle = ? AND createdByUserUID = ?) ';
+        $types        = $types . 'si';
+        $params[]     = $orgHandle;
+        $params[]     = $createdByUserUID;
+    }
 
     $sql = 'SELECT shortCode, COUNT(*) AS clicks '
         . 'FROM tblActivityLog '
         . "WHERE logAction = 'redirect' AND logStatus = 'success' "
         . 'AND orgHandle = ? AND createdAt >= ? AND createdAt <= ? '
         . 'AND shortCode IS NOT NULL '
+        . $userScopeSql
         . 'GROUP BY shortCode '
         . 'ORDER BY clicks DESC '
         . 'LIMIT ?';
 
-    $rows = dbSelect($sql, 'sssi', [$orgHandle, $from, $to, $clampedLimit]);
+    $types    = $types . 'i';
+    $params[] = $clampedLimit;
+
+    $rows = dbSelect($sql, $types, $params);
 
     if ($rows === false)
     {
@@ -421,7 +456,7 @@ function g2ml_analyticsTopLinks(string $orgHandle, string $from, string $to, int
  * @param  int         $limit      Maximum distinct values to return (clamped 1-100).
  * @return array<int, array{value: string, clicks: int}>  Ordered descending by clicks; empty when $dimension is not whitelisted.
  */
-function g2ml_analyticsBreakdown(string $orgHandle, ?string $shortCode, string $dimension, string $from, string $to, int $limit = 10): array
+function g2ml_analyticsBreakdown(string $orgHandle, ?string $shortCode, string $dimension, string $from, string $to, int $limit = 10, ?int $createdByUserUID = null): array
 {
     $column = _g2ml_analyticsDimensionColumn($dimension);
 
@@ -431,7 +466,7 @@ function g2ml_analyticsBreakdown(string $orgHandle, ?string $shortCode, string $
     }
 
     $clampedLimit = _g2ml_analyticsClampLimit($limit, 10, 100);
-    $whereClause  = _g2ml_analyticsClickWhere($orgHandle, $shortCode, $from, $to);
+    $whereClause  = _g2ml_analyticsClickWhere($orgHandle, $shortCode, $from, $to, $createdByUserUID);
 
     $sql = 'SELECT `' . $column . '` AS dimensionValue, COUNT(*) AS clicks '
         . 'FROM tblActivityLog '
@@ -482,9 +517,9 @@ function g2ml_analyticsBreakdown(string $orgHandle, ?string $shortCode, string $
  * @param  string      $to         Inclusive range end, 'Y-m-d H:i:s'.
  * @return array<int, array{scanSource: string, scans: int}>  Ordered descending by scans.
  */
-function g2ml_analyticsScanSources(string $orgHandle, ?string $shortCode, string $from, string $to): array
+function g2ml_analyticsScanSources(string $orgHandle, ?string $shortCode, string $from, string $to, ?int $createdByUserUID = null): array
 {
-    $whereClause = _g2ml_analyticsClickWhere($orgHandle, $shortCode, $from, $to);
+    $whereClause = _g2ml_analyticsClickWhere($orgHandle, $shortCode, $from, $to, $createdByUserUID);
 
     $sql = 'SELECT scanSource, COUNT(*) AS scans '
         . 'FROM tblActivityLog '

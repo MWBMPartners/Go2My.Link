@@ -146,12 +146,15 @@ requireAuth('User');
 $currentUser = getCurrentUser();
 $orgHandle   = $currentUser['orgHandle'];
 
+// #165: scope the shared "[default]" bucket org to the caller's OWN links
+// (mirrors pages/analytics/index.php) instead of blocking the export outright,
+// so individually-registered users can export their own analytics. A real-org
+// user keeps the org-wide export ($analyticsUserScope stays null).
+$analyticsUserScope = null;
+
 if ($orgHandle === '[default]')
 {
-    http_response_code(403);
-    header('Content-Type: text/plain; charset=utf-8');
-    echo 'Analytics export is not available for accounts that are not yet part of an organisation.';
-    exit;
+    $analyticsUserScope = (int) ($currentUser['userUID'] ?? 0);
 }
 
 // ============================================================================
@@ -195,11 +198,23 @@ if ($rawCode !== '')
 {
     if (preg_match('/^[A-Za-z0-9_-]{1,50}$/', $rawCode) === 1)
     {
-        $codeRow = dbSelectOne(
-            'SELECT shortCode FROM tblShortURLs WHERE shortCode = ? AND orgHandle = ? LIMIT 1',
-            'ss',
-            [$rawCode, $orgHandle]
-        );
+        if ($analyticsUserScope !== null)
+        {
+            // #165: a '[default]' user may only export a code they OWN.
+            $codeRow = dbSelectOne(
+                'SELECT shortCode FROM tblShortURLs WHERE shortCode = ? AND orgHandle = ? AND createdByUserUID = ? LIMIT 1',
+                'ssi',
+                [$rawCode, $orgHandle, $analyticsUserScope]
+            );
+        }
+        else
+        {
+            $codeRow = dbSelectOne(
+                'SELECT shortCode FROM tblShortURLs WHERE shortCode = ? AND orgHandle = ? LIMIT 1',
+                'ss',
+                [$rawCode, $orgHandle]
+            );
+        }
 
         if ($codeRow !== null && $codeRow !== false)
         {
@@ -307,7 +322,7 @@ $filenameSlug = $exportType;
 
 if ($exportType === 'top-links')
 {
-    $topLinks = g2ml_analyticsTopLinks($orgHandle, $range['from'], $range['to'], $rawLimit);
+    $topLinks = g2ml_analyticsTopLinks($orgHandle, $range['from'], $range['to'], $rawLimit, $analyticsUserScope);
 
     $csvHeaders = [g2ml_csvHumaniseHeader('shortCode'), g2ml_csvHumaniseHeader('clicks')];
 
@@ -318,7 +333,7 @@ if ($exportType === 'top-links')
 }
 elseif ($exportType === 'clicks-over-time')
 {
-    $clicksSeries = g2ml_analyticsClicksOverTime($orgHandle, $shortCode, $range['from'], $range['to'], $bucket);
+    $clicksSeries = g2ml_analyticsClicksOverTime($orgHandle, $shortCode, $range['from'], $range['to'], $bucket, $analyticsUserScope);
 
     $csvHeaders = [g2ml_csvHumaniseHeader('bucket'), g2ml_csvHumaniseHeader('clicks')];
 
@@ -329,7 +344,7 @@ elseif ($exportType === 'clicks-over-time')
 }
 elseif ($exportType === 'breakdown')
 {
-    $breakdownRows = g2ml_analyticsBreakdown($orgHandle, $shortCode, $dimension, $range['from'], $range['to'], $rawLimit);
+    $breakdownRows = g2ml_analyticsBreakdown($orgHandle, $shortCode, $dimension, $range['from'], $range['to'], $rawLimit, $analyticsUserScope);
 
     $csvHeaders   = [g2ml_csvHumaniseHeader($dimension), g2ml_csvHumaniseHeader('clicks')];
     $filenameSlug = $filenameSlug . '-' . $dimension;
@@ -341,7 +356,7 @@ elseif ($exportType === 'breakdown')
 }
 elseif ($exportType === 'scan-sources')
 {
-    $scanSourceRows = g2ml_analyticsScanSources($orgHandle, $shortCode, $range['from'], $range['to']);
+    $scanSourceRows = g2ml_analyticsScanSources($orgHandle, $shortCode, $range['from'], $range['to'], $analyticsUserScope);
 
     $csvHeaders = [g2ml_csvHumaniseHeader('scanSource'), g2ml_csvHumaniseHeader('scans')];
 
@@ -354,7 +369,7 @@ else
 {
     // 'totals' — a single summary row (validated above; this is the only
     // remaining branch of $validExportTypes).
-    $totalsRow = g2ml_analyticsTotals($orgHandle, $shortCode, $range['from'], $range['to']);
+    $totalsRow = g2ml_analyticsTotals($orgHandle, $shortCode, $range['from'], $range['to'], $analyticsUserScope);
 
     foreach (array_keys($totalsRow) as $totalsKey)
     {
