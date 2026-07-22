@@ -16,15 +16,22 @@
 
 ### 🗓️ 2026-07-22 update (automation session)
 
-- Merged the two Dependabot bumps as a single PR **#171 → `main`** (#168/#169 superseded & closed).
-- Merged the full launch-prep branch **#170 → `alpha`** (alpha now carries API v1, Component C,
-  analytics, entitlements, GDPR export, etc.), with the `checkout` v7.0.1 bump propagated first.
-- **#172 → `main`**: Dependabot now covers **all three tiers** (`main`/`alpha`/`beta`) and **groups**
-  action bumps into one PR per branch (kills the #168/#169-style race). This session also syncs the
-  same `.github/dependabot.yml` forward onto `alpha`.
-- Added **`PRE_LAUNCH_CHECKLIST.md`** — owner decisions + manual actions; **read it before launch**.
-- Flexible **pricing/tiering** model + `Pricing_Strategy.md` being designed and scaffolded *disabled*.
-- A full open+closed **issue review** is running to drive the next prioritized/bundled work.
+**Merged to `alpha` this session (in order):** #170 (launch-prep integration) → #176 (CI runs the
+528-test unit suite + advisory `mysql:8` integration job; #175 + analytics i18n #164) → #177
+(unverified-domain dead-link fix #166) → #179 (**flexible pricing engine**, disabled — #180).
+**Merged to `main`:** #171 (combined Dependabot bumps; #168/#169 closed) + #172 (Dependabot 3-tier
++ grouped). **Merged to `beta`:** #173 (first grouped Dependabot PR — proves the 3-tier config works).
+
+- **Pricing engine (#179/#180):** 10-table data-driven model on `alpha` — unlimited tiers/features/
+  price structures (PAYG-capped, lifetime, coupons, usage metering), resolver `web/_functions/pricing.php`,
+  backfill from legacy columns, `Pricing_Strategy.md`. **Additive & DISABLED** (`billing.pricing_engine_enabled='0'`);
+  entitlements.php behaviour byte-unchanged until the owner flips it. Enable pending sign-off (D4).
+- **Issue review complete (Fable):** 158 issues, **0 wrongly-closed**. Closed #159/#164/#166/#175;
+  filed #178 (Dreamhost scheduling decision — gates GDPR #163/#167) and #180 (pricing engine).
+- **Next up (unblocked, buildable now):** #163 GDPR deletion + #167 retention (via a token-guarded
+  cron endpoint — works with any trigger, so D1 doesn't block the *code*); #165 non-org analytics;
+  #153 phpcs. See `PRE_LAUNCH_CHECKLIST.md` for owner decisions D1–D7 and the **cross-project
+  integration contract** (CueRCode / SIGNula — repo access declined via add-repo, D6).
 - ⚠️ Still true: do **NOT** merge stale `main` down into `alpha`/`beta`.
 
 **State in one line:** the codebase is in good shape and the recovery is verified, but launch is
