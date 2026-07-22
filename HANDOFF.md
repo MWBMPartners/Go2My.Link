@@ -3,7 +3,7 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-19 (post-recovery conformance audit) · **Branch:** `launch-prep/2026-07-09`.
+> **Last updated:** 2026-07-22 (automation session: PR merges, Dependabot 3-tier, pricing) · earlier: 2026-07-19 (post-recovery conformance audit) · **Branch:** `alpha` (launch-prep merged in).
 > **Status:** recovery + cross-device reconciliation complete and **independently verified**. A
 > full conformance audit of **all 156 issues + the project brief against the actual code** then
 > ran. It found **no closed issue whose code is missing** — the recovery is sound — but it did
@@ -13,6 +13,19 @@
 ---
 
 ## ▶️ START HERE — pick-up point (next session / owner)
+
+### 🗓️ 2026-07-22 update (automation session)
+
+- Merged the two Dependabot bumps as a single PR **#171 → `main`** (#168/#169 superseded & closed).
+- Merged the full launch-prep branch **#170 → `alpha`** (alpha now carries API v1, Component C,
+  analytics, entitlements, GDPR export, etc.), with the `checkout` v7.0.1 bump propagated first.
+- **#172 → `main`**: Dependabot now covers **all three tiers** (`main`/`alpha`/`beta`) and **groups**
+  action bumps into one PR per branch (kills the #168/#169-style race). This session also syncs the
+  same `.github/dependabot.yml` forward onto `alpha`.
+- Added **`PRE_LAUNCH_CHECKLIST.md`** — owner decisions + manual actions; **read it before launch**.
+- Flexible **pricing/tiering** model + `Pricing_Strategy.md` being designed and scaffolded *disabled*.
+- A full open+closed **issue review** is running to drive the next prioritized/bundled work.
+- ⚠️ Still true: do **NOT** merge stale `main` down into `alpha`/`beta`.
 
 **State in one line:** the codebase is in good shape and the recovery is verified, but launch is
 **no longer** gated only on owner actions — the conformance audit found real code gaps, two of
