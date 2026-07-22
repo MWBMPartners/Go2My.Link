@@ -192,40 +192,38 @@ jobs:
   # PR. Promote to a required check once it has run green a few times.
   # ===========================================================================
   tests-integration:
-    name: "Tests (Integration) — ${{ matrix.db-image }}"
+    name: Tests (Integration)
     continue-on-error: true
     strategy:
       fail-fast: false
-      # #183: import + test on BOTH engines. MySQL 8 is the CI baseline;
-      # MariaDB is what Dreamhost (production) runs, so schema-portability
-      # regressions surface here instead of at install time. Each engine gets
-      # its OWN health command via `include`: MariaDB 11 dropped the
-      # `mysqladmin` symlink, so it uses `mariadb-admin`. Both use `ping`,
-      # which reports server liveness without needing valid credentials.
       matrix:
-        include:
-          - os: ubuntu-latest
-            db-image: "mysql:8"
-            db-health-cmd: "mysqladmin ping --silent"
-          - os: ubuntu-latest
-            db-image: "mariadb:11"
-            # MariaDB's `ping` returns NON-zero on access-denied (unlike MySQL
-            # 8's, which reports the server alive without creds), so the health
-            # check must authenticate. The password is the throwaway CI root
-            # password set on the service container above.
-            db-health-cmd: "mariadb-admin ping --silent --user=root --password=g2ml_ci_root_password"
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
 
+    # #183 follow-up: a MariaDB (mariadb:11) matrix leg was attempted here so
+    # schema-portability against Dreamhost's production engine would be caught
+    # in CI. It could NOT be kept on this runner: the MariaDB service container
+    # reaches "ready for connections" but the sandbox-restricted runner (note
+    # the `io_uring ... EPERM` in its log) tears it down and reports "failed to
+    # initialize container", regardless of the health command tried
+    # (mysqladmin/mariadb-admin, with and without credentials). GitHub-hosted
+    # runners orchestrate it fine; this environment does not.
+    #
+    # The production-relevant part — the schema importing on MariaDB — is fixed
+    # in web/_sql/schema/036_pricing_engine.sql + migrations/020 (the explicit
+    # CAST(... AS DATETIME), #186) and is verified green on mysql:8. Re-adding
+    # the MariaDB leg on a capable runner is tracked in #183; until then,
+    # validate the schema on the target MariaDB before a production cutover.
     services:
       mysql:
-        image: "${{ matrix.db-image }}"
+        image: "mysql:8"
         env:
           MYSQL_ROOT_PASSWORD: "g2ml_ci_root_password"
           MYSQL_DATABASE: "mwtools_Go2MyLink"
         ports:
           - "3306:3306"
         options: >-
-          --health-cmd="${{ matrix.db-health-cmd }}"
+          --health-cmd="mysqladmin ping --silent"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
