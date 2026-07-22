@@ -32,16 +32,20 @@
   dry-run). 45 unit + 17 integration tests. **Activation** (enable + turn dry-run off + wire a daily
   trigger) is an owner action — D1/#178. Deletion is endpoint-only; a 1-in-500 `page_init.php`
   fallback runs retention only.
-- **⚠️ New finding #183 (potential install blocker):** `036_pricing_engine.sql`'s STORED generated
-  column `effectiveFromKey` imports on `mysql:8` (our only CI engine) but is reported to **fail on
-  MariaDB 10.11** — and Dreamhost runs MariaDB. Fix = explicit `CAST(... AS DATETIME)` **+ add
-  MariaDB to the integration CI matrix**. Pricing ships disabled but the schema imports regardless,
-  so this is install-time. **This is the recommended next task.**
+- **#183 MariaDB portability (schema FIXED; CI validation deferred):** `036_pricing_engine.sql` +
+  `migrations/020` used a STORED generated column with an implicit string→DATETIME coercion that
+  MySQL 8 accepts but MariaDB (Dreamhost's engine) rejects. **Fixed with an explicit
+  `CAST('1000-01-01 00:00:00' AS DATETIME)` (#186, green on `mysql:8`).** An attempt to add a
+  `mariadb:11` CI leg (#186/#187) was **reverted** — this sandbox runner can't initialise a MariaDB
+  service container (`io_uring EPERM`; it reaches "ready" then GitHub tears it down), so `alpha`'s CI
+  is back to `mysql:8`-only + green. **#183 stays OPEN** for two remainders: (a) re-add a MariaDB CI
+  leg on a capable runner (or start MariaDB as a step, not a GH service), (b) import the full schema
+  on the real Dreamhost MariaDB once before cutover. Also landed: **#185** (gitignore agent worktrees).
 - **Issue review complete (Fable):** 158 issues, **0 wrongly-closed**. Closed #159/#163/#164/#166/#167/#175;
-  filed #178 (scheduling decision), #180 (pricing engine), #183 (MariaDB portability).
-- **Still-open next steps:** #183 (MariaDB fix) → #165 non-org analytics → #153 phpcs. See
-  `PRE_LAUNCH_CHECKLIST.md` for owner decisions D1–D7 + the **cross-project integration contract**
-  (CueRCode / SIGNula — repo access declined via add-repo, D6).
+  filed #178 (scheduling decision), #180 (pricing engine), #183 (MariaDB portability — still open).
+- **Still-open next steps:** #165 non-org analytics → #153 phpcs → #183 remainder (MariaDB CI on a
+  capable runner). See `PRE_LAUNCH_CHECKLIST.md` for owner decisions D1–D7 + the **cross-project
+  integration contract** (CueRCode / SIGNula — repo access declined via add-repo, D6).
 - ⚠️ Still true: do **NOT** merge stale `main` down into `alpha`/`beta`.
 
 **State in one line:** the codebase is in good shape and the recovery is verified, but launch is
