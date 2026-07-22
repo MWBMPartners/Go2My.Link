@@ -41,11 +41,18 @@
   is back to `mysql:8`-only + green. **#183 stays OPEN** for two remainders: (a) re-add a MariaDB CI
   leg on a capable runner (or start MariaDB as a step, not a GH service), (b) import the full schema
   on the real Dreamhost MariaDB once before cutover. Also landed: **#185** (gitignore agent worktrees).
-- **Issue review complete (Fable):** 158 issues, **0 wrongly-closed**. Closed #159/#163/#164/#166/#167/#175;
+- **🎉 ALL launch-gating CODE items are now CLOSED:** #163, #164, #165, #166, #167 (+ #159/#162).
+  **#165 (#189):** individually-registered (`[default]`-org) users now get analytics scoped to their
+  OWN links across dashboard, export, and API — plus two ownership leaks closed (the `?code=`
+  drill-down and the API existence-check verified only `orgHandle`); isolation regression test green.
+- **Issue review (Fable):** 158 issues, **0 wrongly-closed**. Closed #159/#163/#164/#165/#166/#167/#175;
   filed #178 (scheduling decision), #180 (pricing engine), #183 (MariaDB portability — still open).
-- **Still-open next steps:** #165 non-org analytics → #153 phpcs → #183 remainder (MariaDB CI on a
-  capable runner). See `PRE_LAUNCH_CHECKLIST.md` for owner decisions D1–D7 + the **cross-project
-  integration contract** (CueRCode / SIGNula — repo access declined via add-repo, D6).
+- **Still-open next steps (non-launch-blocking):** #153 phpcs conformance (large, mechanical —
+  ~9.3k `phpcbf`-auto-fixable + flip the gate; best done by a dedicated agent/clean context) →
+  #183 remainder (re-add MariaDB CI on a capable runner + import once on the real Dreamhost MariaDB)
+  → post-launch phases (#51–#56, #34–#37 SIGNula, #57–#60 billing) + #139–#144 triage. See
+  `PRE_LAUNCH_CHECKLIST.md` for owner decisions D1–D7 + the **cross-project integration contract**
+  (CueRCode / SIGNula — repo access declined via add-repo, D6).
 - ⚠️ Still true: do **NOT** merge stale `main` down into `alpha`/`beta`.
 
 **State in one line:** the codebase is in good shape and the recovery is verified, but launch is
