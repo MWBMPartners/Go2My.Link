@@ -73,6 +73,7 @@ on:
       - main
       - alpha
       - beta
+      - release-candidate
     paths:
       - 'web/**'
       - '.github/workflows/sftp-deploy.yml'
