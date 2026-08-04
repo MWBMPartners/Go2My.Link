@@ -18,11 +18,21 @@
 # EXCEPT the three component public_html/ directories, which are remapped per
 # branch (the "channel"):
 #
-#   main   →  web/<Comp>/public_html/  ⇒  SFTP_BASE_PATH/<Comp>/public_html/
-#   alpha  →  web/<Comp>/public_html/  ⇒  SFTP_BASE_PATH/<Comp>/public_html_dev_alpha/
-#   beta   →  web/<Comp>/public_html/  ⇒  SFTP_BASE_PATH/<Comp>/public_html_dev_beta/
+#   main              →  web/<Comp>/public_html/  ⇒  SFTP_BASE_PATH/<Comp>/public_html/
+#   alpha             →  web/<Comp>/public_html/  ⇒  SFTP_BASE_PATH/<Comp>/public_html_dev_alpha/
+#   beta              →  web/<Comp>/public_html/  ⇒  SFTP_BASE_PATH/<Comp>/public_html_dev_beta/
+#   release-candidate →  web/<Comp>/public_html/  ⇒  SFTP_BASE_PATH/<Comp>/public_html_dev_rc/
 #
 #   <Comp> ∈ { Go2My.Link, G2My.Link, Lnks.page }
+#
+# NOTE ON release-candidate (pre-production staging tier):
+#   `release-candidate` is intentionally NOT in the `push:` branch list above,
+#   so a push to it does NOT auto-deploy. The channel mapping below still gives
+#   it a dedicated `public_html_dev_rc` target so that a MANUAL workflow_dispatch
+#   run on the RC ref lands in its own staging web-root and can NEVER fall
+#   through the default `*)` case onto production `public_html`. Before using
+#   RC deploy at all, provision `SFTP_BASE_PATH/<Comp>/public_html_dev_rc/` on
+#   the server (owner action). To make RC auto-deploy, add it to `push:` too.
 #
 # Nothing outside web/ is ever uploaded.
 #
@@ -308,10 +318,11 @@ jobs:
         id: channel
         run: |
           case "${{ github.ref_name }}" in
-            main)  TARGET="public_html" ;;
-            alpha) TARGET="public_html_dev_alpha" ;;
-            beta)  TARGET="public_html_dev_beta" ;;
-            *)     TARGET="public_html" ;;
+            main)              TARGET="public_html" ;;
+            alpha)             TARGET="public_html_dev_alpha" ;;
+            beta)              TARGET="public_html_dev_beta" ;;
+            release-candidate) TARGET="public_html_dev_rc" ;;
+            *)                 TARGET="public_html" ;;
           esac
           echo "target=$TARGET" >> "$GITHUB_OUTPUT"
           echo "Channel web root: $TARGET"

@@ -1,0 +1,175 @@
+# Copyright (c) 2024–2026 MWBM Partners Ltd (MWservices).
+# All rights reserved.
+#
+# This source code is proprietary and confidential.
+# Unauthorised copying, modification, or distribution is strictly prohibited.
+
+# =============================================================================
+# Go2My.Link — Backport dependency & security fixes off the default branch
+# =============================================================================
+#
+# WHY THIS EXISTS
+#   Dependabot *security* updates (CVE auto-patches) and GitHub's own security
+#   fixes ALWAYS target the default branch (main) — `target-branch` in
+#   dependabot.yml cannot retarget them. So a security fix merged into main
+#   would leave the alpha / beta / release-candidate tiers exposed.
+#
+#   This workflow closes that gap: when a dependency/security PR is MERGED into
+#   main, it opens a cherry-pick PR of that fix onto every other tier, so the
+#   fix flows to all deployed branches instead of only production.
+#
+#   (Scheduled *version* updates are handled separately, per-branch, by
+#   .github/dependabot.yml — this workflow is specifically the SECURITY-update
+#   propagation the target-branch mechanism cannot do.)
+#
+# SAFETY
+#   - Runs ONLY for merged PRs into main carrying a dependencies/security/
+#     infrastructure label (Dependabot labels its PRs "dependencies").
+#   - Never runs any code from the merged PR — it only cherry-picks the commit
+#     and opens PRs, so `pull_request_target` is safe here.
+#   - A target branch that does not exist yet is skipped cleanly.
+#   - On a cherry-pick CONFLICT it pushes NOTHING; it opens a tracking issue so
+#     a human can backport by hand. It can never leave a branch half-modified.
+#
+# CI ON THE BACKPORT PRs (owner action)
+#   PRs opened with the default GITHUB_TOKEN do NOT trigger further workflows
+#   (GitHub's recursion guard), so their CI checks will not auto-run. To have
+#   the backport PRs run CI automatically, add a repo secret `BACKPORT_TOKEN`
+#   (a fine-grained PAT / GitHub App token with contents:write + pull-requests:
+#   write). This workflow uses it when present and falls back to GITHUB_TOKEN
+#   otherwise (PR still created; re-run its checks manually).
+#
+# @package    Go2My.Link
+# @author     MWBM Partners Ltd (MWservices)
+# @since      v1.6.0 — four-tier security coverage
+# =============================================================================
+
+name: Backport dependency & security fixes
+
+on:
+  pull_request_target:
+    types:
+      - closed
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: "backport-${{ github.event.pull_request.number }}"
+  cancel-in-progress: false
+
+jobs:
+  backport:
+    name: "Backport to ${{ matrix.target }}"
+    # Only for MERGED PRs that are dependency / security related.
+    if: >-
+      github.event.pull_request.merged == true &&
+      (
+        contains(github.event.pull_request.labels.*.name, 'dependencies') ||
+        contains(github.event.pull_request.labels.*.name, 'security') ||
+        contains(github.event.pull_request.labels.*.name, 'infrastructure')
+      )
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - alpha
+          - beta
+          - release-candidate
+
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.BACKPORT_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: Cherry-pick onto ${{ matrix.target }} and open a backport PR
+        env:
+          GH_TOKEN: ${{ secrets.BACKPORT_TOKEN || secrets.GITHUB_TOKEN }}
+          TARGET: ${{ matrix.target }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+
+          # ---- Skip cleanly if the target branch does not exist yet. --------
+          if ! git ls-remote --exit-code --heads origin "${TARGET}" >/dev/null 2>&1
+          then
+            echo "::notice::Target branch '${TARGET}' does not exist — nothing to backport."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin "${TARGET}"
+
+          BACKPORT_BRANCH="backport/pr-${PR_NUMBER}/${TARGET}"
+
+          # If a previous run already opened this backport, do nothing.
+          if git ls-remote --exit-code --heads origin "${BACKPORT_BRANCH}" >/dev/null 2>&1
+          then
+            echo "::notice::Backport branch '${BACKPORT_BRANCH}' already exists — skipping."
+            exit 0
+          fi
+
+          git checkout -B "${BACKPORT_BRANCH}" "origin/${TARGET}"
+
+          # ---- Cherry-pick the merged change. -------------------------------
+          # This repo merges PRs with merge commits, so MERGE_SHA is a merge
+          # commit and needs `-m 1` (its diff against the first parent is the
+          # PR's net change). A squash/rebase merge is a single-parent commit,
+          # so fall back to a plain cherry-pick.
+          CHERRY_OK="no"
+
+          set +e
+          git cherry-pick -m 1 "${MERGE_SHA}"
+          if [ "$?" -eq 0 ]
+          then
+            CHERRY_OK="yes"
+          else
+            git cherry-pick --abort 2>/dev/null
+            git cherry-pick "${MERGE_SHA}"
+            if [ "$?" -eq 0 ]
+            then
+              CHERRY_OK="yes"
+            fi
+          fi
+          set -e
+
+          # ---- Conflict path: push NOTHING, open a tracking issue. ----------
+          if [ "${CHERRY_OK}" != "yes" ]
+          then
+            git cherry-pick --abort 2>/dev/null || true
+
+            ISSUE_BODY="$(printf 'The automated backport of #%s ("%s") onto `%s` hit a merge conflict, so it was NOT pushed.\n\nThis is a dependency/security fix that landed on `main` and must also reach the `%s` tier. Please cherry-pick it by hand:\n\n```\ngit fetch origin\ngit checkout -B backport/pr-%s/%s origin/%s\ngit cherry-pick -m 1 %s   # resolve conflicts\ngit push -u origin backport/pr-%s/%s\n```\n\nOpened automatically by .github/workflows/backport-dependencies.yml.' \
+              "${PR_NUMBER}" "${PR_TITLE}" "${TARGET}" "${TARGET}" "${PR_NUMBER}" "${TARGET}" "${TARGET}" "${MERGE_SHA}" "${PR_NUMBER}" "${TARGET}")"
+
+            gh issue create \
+              --title "Manual backport needed: #${PR_NUMBER} → ${TARGET}" \
+              --label "infrastructure" \
+              --body "${ISSUE_BODY}" || echo "::warning::Could not open the tracking issue for ${TARGET}."
+
+            echo "::warning::Backport onto ${TARGET} conflicted; opened a tracking issue instead of pushing."
+            exit 0
+          fi
+
+          # ---- Clean path: push the branch + open the backport PR. ----------
+          git push -u origin "${BACKPORT_BRANCH}"
+
+          PR_BODY="$(printf 'Automated backport of #%s onto `%s`.\n\nDependabot *security* updates and GitHub security fixes only target the default branch (`main`), so this propagates the fix to the `%s` tier to keep it patched. Review and merge.\n\nOpened by .github/workflows/backport-dependencies.yml.' \
+            "${PR_NUMBER}" "${TARGET}" "${TARGET}")"
+
+          gh pr create \
+            --base "${TARGET}" \
+            --head "${BACKPORT_BRANCH}" \
+            --title "[Backport ${TARGET}] ${PR_TITLE}" \
+            --label "infrastructure" \
+            --body "${PR_BODY}" || echo "::warning::Branch pushed but PR create failed for ${TARGET} (open it manually)."
