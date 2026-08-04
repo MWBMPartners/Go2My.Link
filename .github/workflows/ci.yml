@@ -41,6 +41,7 @@ on:
       - main
       - alpha
       - beta
+      - release-candidate
   pull_request:
 
 permissions:

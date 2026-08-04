@@ -12,27 +12,32 @@
 # No Composer/npm dependencies to monitor (Dreamhost has no CLI), so the only
 # ecosystem tracked is "github-actions" (the workflow action pins themselves).
 #
-# THREE-TIER COVERAGE (alpha > beta > main)
+# FOUR-TIER COVERAGE (alpha > beta > release-candidate > main)
 # -----------------------------------------------------------------------------
 # Dependabot reads this file ONLY from the default branch (main), but each
 # `updates` entry can point at a different branch via `target-branch`. We
-# therefore declare one entry per tier so version-update PRs are opened against
-# ALL THREE branches, not just main. This closes the drift/variance gap where
-# alpha and beta (which may be deployed for small-group testing) would otherwise
-# fall behind main on action pins.
+# therefore declare one entry per tier so scheduled VERSION-update PRs are
+# opened against ALL FOUR branches, not just main. This closes the drift gap
+# where alpha / beta / release-candidate (which may be deployed for testing)
+# would otherwise fall behind main on action pins.
 #
 # GROUPING: each entry groups every github-actions bump into ONE pull request
 # per branch (a "grouped update"), so a week's action bumps arrive as a single
 # mergeable PR per tier instead of several racing PRs (see #168/#169/#171).
 #
-# NOTE ON SECURITY UPDATES (owner action, tracked in the launch checklist):
-#   Dependabot *security* updates (the automatic CVE-patch PRs, distinct from
-#   these scheduled *version* updates) are a repository setting and ALWAYS
-#   target the default branch — GitHub does not let `target-branch` retarget
-#   them. To keep alpha/beta patched for security we rely on (a) these version
-#   updates, and (b) regular promotion of main's fixes down the tiers. Enabling
-#   "Dependabot security updates" + secret scanning + push protection in the
-#   repo Security settings is tracked as a pre-launch owner action.
+# SECURITY UPDATES (the important part — see .github/workflows/backport-dependencies.yml)
+#   Dependabot *security* updates (the automatic CVE-patch PRs) and GitHub's
+#   security fixes ALWAYS target the default branch (main) — `target-branch`
+#   CANNOT retarget them. So a CVE patch merged on main would leave alpha /
+#   beta / release-candidate exposed. The `backport-dependencies.yml` workflow
+#   closes this: when a dependency/security PR merges into main it automatically
+#   opens cherry-pick PRs onto every other tier. Together, these two mechanisms
+#   keep all four tiers patched — the scheduled version updates below, plus the
+#   backport of security updates.
+#
+# NOTE: `release-candidate` may not exist yet. Dependabot simply skips an entry
+# whose target-branch is absent; the entry activates the moment the branch is
+# created. (The backport workflow likewise skips a missing target branch.)
 #
 # @package    Go2My.Link
 # @author     MWBM Partners Ltd (MWservices)
@@ -86,6 +91,25 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     target-branch: "beta"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    labels:
+      - "infrastructure"
+    commit-message:
+      prefix: "ci"
+    open-pull-requests-limit: 10
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # ---------------------------------------------------------------------------
+  # release-candidate — pre-production tier (activates once the branch exists)
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "release-candidate"
     schedule:
       interval: "weekly"
       day: "monday"

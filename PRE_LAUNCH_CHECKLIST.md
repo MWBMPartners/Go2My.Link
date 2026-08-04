@@ -8,7 +8,7 @@
 >
 > **Legend:** 🔴 launch-blocking · 🟠 important · 🟢 nice-to-have · ✅ done · ⏳ in progress · ❓ needs your decision
 >
-> **Last updated:** 2026-07-22 (session wrap: pricing engine + launch-gap fixes landed on `alpha`)
+> **Last updated:** 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow synced onto `alpha`)
 
 ---
 
@@ -17,7 +17,7 @@
 | # | Decision | Why it matters | Options / recommendation |
 |---|---|---|---|
 | D1 🔴 | **How does periodic/scheduled work run on Dreamhost shared hosting?** (no assumable cron) — tracked in **#178** | Blocks GDPR **account-deletion execution (#163)** and **data-retention enforcement (#167)** — the privacy policy legally commits to both. Also affects log purging, trial expiry, subscription renewals. | (a) Dreamhost Panel cron; (b) external scheduler (cron-job.org / GitHub Actions `schedule:`) hitting a **token-guarded** `/_cron/run.php` endpoint; (c) run-on-request "lazy cron". **Recommendation: (b)** — portable, testable, provider-agnostic, works today. The *code* can be built now (the endpoint works with any trigger); only wiring the trigger is an owner action. |
-| D2 🔴 | **When do we promote `alpha → beta → main` for the real production launch?** | `main` is **stale** (legacy engine + #93 credential file — HANDOFF warns *do not merge main*). All real work lives on `alpha` (now ~95 commits ahead). Production go-live = a deliberate promotion + cutover window. | Needs owner sign-off. Dependabot/CI now cover all tiers so the mechanics are ready. **Do not** let anything merge `main` back down. |
+| D2 🔴 | **When do we promote `alpha → beta → release-candidate → main` for the real production launch?** | `main` is **stale** (legacy engine + #93 credential file — HANDOFF warns *do not merge main*). All real work lives on `alpha` (now ~95 commits ahead). The **`release-candidate`** pre-production tier now exists (cut from `alpha` 2026-08-04). Production go-live = a deliberate promotion + cutover window. | Needs owner sign-off. Dependabot/CI now cover **all four tiers** (main/alpha/beta/release-candidate) so the mechanics are ready. **Do not** let anything merge `main` back down. |
 | D3 🟠 | **Payment provider** for paid tiers (Stripe / Paddle / **SIGNula**)? | The pricing engine is provider-agnostic (`paymentProvider` column) but integration + webhooks need a concrete choice. Paddle = merchant-of-record (handles UK/EU VAT). SIGNula (your own) is an option — see the cross-project section. | Choose before enabling any paid tier. |
 | D4 🟠 | **Pricing & tier sign-off** — tracked in **#180** | The flexible pricing engine is **built and merged DISABLED** (see below). Final tier names/slugs, **GBP** prices, custom-HTML tier placement, VAT handling, lifetime-deal, and the enable sequence need your approval before the master switch is flipped. | Review **`Pricing_Strategy.md`** (repo root). The engine stays inert until `billing.pricing_engine_enabled='1'`. |
 | D5 🟠 | **`beta` branch drift** — finish aligning it to `alpha`? | `beta` still uses floating action tags (`@v7` for checkout) and lacks the `lint.yml` (actionlint) workflow. Dependabot already opened & I merged **#173** (setup-node 4→7 on beta), but full alignment (SHA-pin + add lint.yml) remains. | Recommend a one-off "align beta CI + SHA-pin actions" PR. Low risk. |
@@ -31,14 +31,26 @@
 | # | Action | Status |
 |---|---|---|
 | A1 🔴 | **Rotate the legacy DB credential (#93)** that was in `web/G2My.Link/public_html_legacy/dbConfig.php` (treat as compromised) and remove/archive that legacy dir. | ❓ verify done |
-| A2 🟠 | **GitHub → Settings → Security:** enable **Dependabot security updates**, **Secret scanning**, **Push protection**. Dependabot *version* updates now target all 3 tiers (done in code); *security* updates are a repo setting, default-branch only. | ⏳ owner toggle |
+| A2 🟠 | **GitHub → Settings → Security:** enable **Dependabot security updates**, **Secret scanning**, **Push protection**. Dependabot *version* updates now target **all four tiers** (main/alpha/beta/release-candidate, done in code); *security* updates are a repo setting, default-branch (`main`) only — the **backport workflow** (below) fans a merged security/dependency PR out to the other three tiers automatically. | ⏳ owner toggle |
 | A3 🟠 | **Legal review** of legal pages (terms/privacy/cookies/copyright/acceptable-use) — `{{LEGAL_REVIEW_NEEDED}}` placeholders; retention promises must match what the code enforces (see #167). | ⏳ |
 | A4 🟢 | Confirm **DNS / TLS** for all three domains (go2my.link, g2my.link, lnks.page) + admin subdomain before public launch. | ⏳ |
 | A5 🟢 | Provide **MaxMind license/secret** if country-level analytics geolocation (#43) should be enabled (currently gated off, graceful-absent). | ⏳ |
+| A6 🟠 | **Add repo secret `BACKPORT_TOKEN`** (fine-grained PAT: `contents:write` + `pull-requests:write`) so the dependency-backport workflow's cherry-pick PRs run CI and can be reviewed/merged like any PR. Without it the workflow falls back to `GITHUB_TOKEN`, whose pushes **don't trigger CI** on the new backport branch. | ⏳ owner toggle |
+| A7 🟠 | **`main`'s `sftp-deploy.yml` sends an armed `release-candidate` push to PRODUCTION.** `main` lists `release-candidate` in the deploy `push:` branches (via #191) but its channel `case` has no `release-candidate)` arm, so it falls through `*) → public_html`. Before ever setting `SFTP_ENABLED=true`, either add the `release-candidate) TARGET="public_html_dev_rc"` case to `main` (as already done on `alpha`), or drop `release-candidate` from `main`'s deploy `push:` list. If you want RC to auto-deploy at all, first provision `SFTP_BASE_PATH/<Comp>/public_html_dev_rc/` on the server. (Deploy is off by default, so this is not yet live — but fix before arming.) | ⏳ owner action |
 
 ---
 
-## 🤖 Done autonomously this session (2026-07-22) — for your visibility
+## 🤖 Done autonomously (2026-08-04) — four-tier CI/security + RC branch
+
+| Change | Detail |
+|---|---|
+| ✅ **`release-candidate` branch cut** | New pre-production tier branched from `alpha` (at `f3646d7`). Flow is now `alpha → beta → release-candidate → main`. |
+| ✅ **#191 → `main`** | Dependabot config extended to **four tiers** (adds a `release-candidate` `target-branch` entry) + new **`backport-dependencies.yml`** workflow that cherry-picks a merged dependency/security PR from `main` onto `alpha`/`beta`/`release-candidate` (opens a tracking issue on conflict). Also added `lint.yml` (actionlint) to `main` and `release-candidate` to `ci.yml`/`sftp-deploy.yml` push triggers. |
+| ✅ **four-tier infra synced onto `alpha`** | `alpha` (the real source of truth) now carries the same **4-tier `dependabot.yml`** + **`backport-dependencies.yml`**, `release-candidate` in `ci.yml` push, and a **safe `release-candidate) → public_html_dev_rc` channel case** in `sftp-deploy.yml` (RC deploy is *not* auto-triggered and can never fall through to production). Eliminates alpha-vs-main infra drift. |
+| ✅ **#165 → `alpha`** (#189) | Per-user analytics for individually-registered (`[default]`-org) users, with a proven data-isolation guarantee + two extra ownership-leak fixes. |
+| ⏳ **New owner actions logged** | A6 (add `BACKPORT_TOKEN` secret so backport PRs run CI) and A7 (fix `main`'s `sftp-deploy.yml` RC→production fall-through before arming SFTP). |
+
+## 🤖 Done autonomously (2026-07-22) — for your visibility
 
 | Change | Detail |
 |---|---|

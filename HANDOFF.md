@@ -3,7 +3,7 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-07-22 (automation session: PR merges, Dependabot 3-tier, pricing) · earlier: 2026-07-19 (post-recovery conformance audit) · **Branch:** `alpha` (launch-prep merged in).
+> **Last updated:** 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow; per-user analytics #165) · earlier: 2026-07-22 (PR merges, Dependabot 3-tier, pricing) · 2026-07-19 (post-recovery conformance audit) · **Branch:** `alpha` (launch-prep merged in).
 > **Status:** recovery + cross-device reconciliation complete and **independently verified**. A
 > full conformance audit of **all 156 issues + the project brief against the actual code** then
 > ran. It found **no closed issue whose code is missing** — the recovery is sound — but it did
@@ -13,6 +13,40 @@
 ---
 
 ## ▶️ START HERE — pick-up point (next session / owner)
+
+### 🗓️ 2026-08-04 update (four-tier CI/security + release-candidate)
+
+**Branch flow is now `alpha → beta → release-candidate → main`.** The
+**`release-candidate`** pre-production tier was cut from `alpha` (at `f3646d7`).
+
+- **Dependabot + dependency-backport now cover all four tiers.** `#191 → main`
+  extended `.github/dependabot.yml` to **four `target-branch` entries**
+  (main/alpha/beta/release-candidate) and added
+  **`.github/workflows/backport-dependencies.yml`**: on a merged
+  dependency/security/infrastructure PR to `main` it cherry-picks the merge
+  commit onto each other tier and opens a `backport/pr-<N>/<target>` PR (or a
+  tracking issue if the cherry-pick conflicts). This closes the gap that
+  Dependabot **security** updates can only ever target the default branch —
+  they now fan out to alpha/beta/release-candidate automatically.
+- **Same infra synced onto `alpha`** (the real source of truth, to kill
+  alpha-vs-main drift): 4-tier `dependabot.yml`, the backport workflow,
+  `release-candidate` added to `ci.yml` push triggers, and a **safe
+  `release-candidate) → public_html_dev_rc`** channel case in `sftp-deploy.yml`.
+  RC is deliberately **left out of the deploy `push:` list** (no auto-deploy)
+  and its channel case exists only so a manual `workflow_dispatch` on the RC ref
+  can never fall through the default `*)` case onto production `public_html`.
+- **Two new owner actions** (see `PRE_LAUNCH_CHECKLIST.md` A6/A7):
+  (A6) add repo secret **`BACKPORT_TOKEN`** (fine-grained PAT, `contents:write`
+  + `pull-requests:write`) so backport PRs trigger CI; (A7) **`main`'s
+  `sftp-deploy.yml` currently maps an armed `release-candidate` push to
+  PRODUCTION** (it lists RC in `push:` but has no `release-candidate)` case →
+  `*) → public_html`) — apply the RC case to `main` as done on `alpha`, or drop
+  RC from `main`'s deploy `push:` list, before ever arming `SFTP_ENABLED`.
+- **#165 → alpha (#189):** individually-registered (`[default]`-org) users now
+  get **per-user analytics** with a proven data-isolation guarantee (a
+  non-owning user's `[default]` aggregate returns 0) + two extra
+  ownership-leak fixes in the analytics export + API v1 handlers.
+- ⚠️ Still true: do **NOT** merge stale `main` down into `alpha`/`beta`/`release-candidate`.
 
 ### 🗓️ 2026-07-22 update (automation session)
 
