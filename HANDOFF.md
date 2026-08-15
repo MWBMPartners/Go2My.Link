@@ -46,6 +46,11 @@
   get **per-user analytics** with a proven data-isolation guarantee (a
   non-owning user's `[default]` aggregate returns 0) + two extra
   ownership-leak fixes in the analytics export + API v1 handlers.
+- **CI runner convention codified (#194):** audited every workflow on every tier
+  — all jobs already run on `ubuntu-latest` (no windows/macos/self-hosted),
+  including both `sftp-deploy.yml` jobs. Recorded the standing rule in
+  `.claude/memory/patterns.md` ("CI/CD & GitHub Actions") + a point-of-use note
+  in `sftp-deploy.yml` so future workflows stay on `ubuntu-latest`.
 - ⚠️ Still true: do **NOT** merge stale `main` down into `alpha`/`beta`/`release-candidate`.
 
 ### 🗓️ 2026-07-22 update (automation session)
