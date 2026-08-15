@@ -71,6 +71,29 @@
 - YAML: valid syntax, proper indentation
 - SQL: valid syntax, consistent naming
 
+## 🚢 CI/CD & GitHub Actions (Standing Rule — ALL Projects)
+
+- **OS runner: `ubuntu-latest` for every job, always.** All GitHub Actions
+  workflows — CI (`ci.yml`), linting (`lint.yml`, `php-lint.yml`), the
+  dependency backport (`backport-dependencies.yml`), release (`release.yml`),
+  and **SFTP deploy (`sftp-deploy.yml`)** — run every job on `ubuntu-latest`.
+  Do NOT introduce `windows-*`, `macos-*`, or `self-hosted` runners. Rationale:
+  the production target (Dreamhost shared hosting) is Linux, so a Linux runner
+  keeps PHP, the lint toolchain, and the `lftp`/SFTP deploy tooling at
+  dev/CI/deploy parity; `ubuntu-latest` is also the fastest, free, best-supported
+  runner. **When adding any new workflow or job, set `runs-on: ubuntu-latest`.**
+- **Keep `ci.yml`'s single-value matrix.** `ci.yml` deliberately expresses the
+  runner as `os: [ubuntu-latest]` → `runs-on: ${{ matrix.os }}`. That single
+  matrix value is what makes GitHub render the required status-check contexts as
+  `Frontend (ubuntu-latest)` / `Backend (ubuntu-latest)` for the "Protect main
+  branch" ruleset. Keep the matrix (and keep it `ubuntu-latest`); collapsing it
+  to a bare `runs-on` orphans the required checks and soft-locks every PR to main.
+- **Pin actions by commit SHA**, not by floating tag — e.g.
+  `actions/checkout@<sha>  # v7.0.1`. Dependabot (`github-actions` ecosystem)
+  keeps the pins current across all four tiers (main/alpha/beta/release-candidate);
+  security patches merged on `main` fan out to the other tiers via
+  `backport-dependencies.yml`.
+
 ## 🐘 PHP Standards
 
 - PHP 8.5+ with 8.4 backward compat via `version_compare()`

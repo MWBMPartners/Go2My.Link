@@ -118,6 +118,11 @@
 #   SFTP_ENABLED      Set to 'true' to arm deployment (kill switch; off by default)
 #
 # ---------------------------------------------------------------------------
+# RUNNER — both jobs run on `ubuntu-latest` (house rule, see
+# .claude/memory/patterns.md → "CI/CD & GitHub Actions"). The production target
+# (Dreamhost) is Linux, so a Linux runner keeps the PHP + lftp/SFTP toolchain at
+# dev/CI/deploy parity. Do NOT switch any job to windows-*/macos-*/self-hosted.
+# ---------------------------------------------------------------------------
 # GeoIP DATABASE DEPLOYMENT (#43) — read before touching the mirror commands
 # ---------------------------------------------------------------------------
 # web/_libraries/maxminddb/*.mmdb is EXCLUDED from every `--delete` mirror
