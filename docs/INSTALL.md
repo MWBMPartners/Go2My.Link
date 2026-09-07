@@ -11,6 +11,38 @@
 - An **empty MySQL/MariaDB database** already created in your hosting panel
   (on Dreamhost: *Goodies → MySQL Databases*). Note its host (e.g.
   `mysql.yourdomain.com`), name, user, and password.
+
+  > 🚨 **Check the database's collation before you go any further.** A collation
+  > is the rule the database uses to compare two pieces of text. Ours must be
+  > `utf8mb4_unicode_ci`, and hosting panels usually create a database with
+  > whatever the server's own default is instead — which is something else.
+  >
+  > ```sql
+  > SELECT DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA
+  > WHERE SCHEMA_NAME = 'your_database_name';
+  > ```
+  >
+  > If that does not say `utf8mb4_unicode_ci`, fix it **before importing
+  > anything**:
+  >
+  > ```sql
+  > ALTER DATABASE `your_database_name`
+  >   CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  > ```
+  >
+  > **Why this matters so much.** The tables all state their own collation, so
+  > they are fine either way. The two stored procedures are not: a variable
+  > inside a stored procedure takes the *database's* collation, so if the two
+  > disagree, comparing a variable against a column fails with "illegal mix of
+  > collations". `sp_generateShortCode` catches that error and returns nothing,
+  > so what you actually see is every attempt to create a short link failing
+  > with "Failed to generate a unique short code. Please try again." — and
+  > nothing in any log explaining why. See issues #196 and #197.
+  >
+  > Our own `web/_sql/schema/000_create_database.sql` sets the right collation,
+  > but only when it is the thing creating the database. If the panel made it
+  > first, `CREATE DATABASE IF NOT EXISTS` does nothing and the wrong collation
+  > stays.
 - The repository deployed so that `web/_auth_keys/` is **writable** by PHP and
   **outside** every public web root (it already sits above each
   `public_html/`).
