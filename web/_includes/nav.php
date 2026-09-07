@@ -130,6 +130,32 @@ if (function_exists('getCurrentRoute')) {
                         <?php if (function_exists('__')) { echo __('nav.pricing'); } else { echo 'Pricing'; } ?>
                     </a>
                 </li>
+                <!-- ==================================================== -->
+                <!-- Help. Marked active for /help and for every page      -->
+                <!-- beneath it (/help/analytics and so on), so somebody   -->
+                <!-- reading a guide can still see where they are.         -->
+                <!-- ==================================================== -->
+                <li class="nav-item">
+                    <?php
+                    $g2mlInHelpSection = false;
+
+                    if ($currentRoute === 'help')
+                    {
+                        $g2mlInHelpSection = true;
+                    }
+
+                    if (strncmp($currentRoute, 'help/', 5) === 0)
+                    {
+                        $g2mlInHelpSection = true;
+                    }
+                    ?>
+                    <a class="nav-link<?php if ($g2mlInHelpSection === true) { echo ' active'; } ?>"
+                       <?php if ($g2mlInHelpSection === true) { echo 'aria-current="page"'; } ?>
+                       href="/help">
+                        <i class="fas fa-circle-question" aria-hidden="true"></i>
+                        <?php if (function_exists('__')) { echo __('nav.help'); } else { echo 'Help'; } ?>
+                    </a>
+                </li>
             </ul>
             <?php } ?>
 

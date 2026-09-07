@@ -1,0 +1,450 @@
+-- Copyright (c) 2024–2026 MWBM Partners Ltd (MWservices).
+-- All rights reserved.
+--
+-- This source code is proprietary and confidential.
+-- Unauthorised copying, modification, or distribution is strictly prohibited.
+
+-- ============================================================================
+-- 🌍 Go2My.Link — Seed: the in-app Help section (en-GB)
+-- ============================================================================
+--
+-- Every word of the Help section lives here, not in the page files. The pages
+-- ask for a key and this file supplies the English text, which is how the rest
+-- of the site works and what lets the Help pages be translated later without
+-- touching any code.
+--
+-- ⚠️ IF THIS FILE IS NOT IMPORTED, THE HELP PAGES SHOW THEIR KEY NAMES.
+-- The translation helper prints the key itself when it cannot find a
+-- translation for it (web/_functions/i18n.php, the last resort at the end of
+-- __()). So a visitor to /help would read "help.home.heading" instead of
+-- "Help". This is the same fault that reached the product in #164 and #199.
+-- On an existing database this file must be applied along with the code.
+--
+-- Sections, in the order the pages appear:
+--   nav.help / footer.help  the two links into the section
+--   help.home.*             /help                  the hub and quick answers
+--   help.short_links.*      /help/short-links      creating and managing links
+--   help.analytics.*        /help/analytics        reading your click figures
+--   help.custom_domains.*   /help/custom-domains   using your own short domain
+--   help.api.*              /help/api              using the API
+--
+-- Dependencies: 035_translations.sql (schema), 005_languages.sql (en-GB)
+--
+-- Safe to re-run: every statement is INSERT IGNORE.
+--
+-- @version    1.0.0
+-- @since      2026-09-07
+-- ============================================================================
+
+USE `mwtools_Go2MyLink`;
+
+-- ============================================================================
+-- 🧭 The two links that lead into the Help section
+-- ----------------------------------------------------------------------------
+-- Used at: web/_includes/nav.php (main navigation bar)
+--          web/_includes/footer.php (Quick Links column)
+-- ============================================================================
+
+INSERT IGNORE INTO tblTranslations (localeCode, translationKey, translationValue, context, isVerified)
+VALUES
+('en-GB', 'nav.help', 'Help', 'Navigation', 1),
+('en-GB', 'footer.help', 'Help & Guides', 'Footer', 1);
+
+
+-- Help Hub page (/help)
+
+INSERT IGNORE INTO tblTranslations (localeCode, translationKey, translationValue, context, isVerified)
+VALUES
+('en-GB', 'help.home.title', 'Help', 'Help — Home', 1),
+('en-GB', 'help.home.description', 'Guides and quick answers for using Go2My.Link.', 'Help — Home', 1),
+('en-GB', 'help.home.heading', 'Help', 'Help — Home', 1),
+('en-GB', 'help.home.subtitle', 'Guides and quick answers for using Go2My.Link.', 'Help — Home', 1),
+('en-GB', 'help.home.intro', 'This page brings together our step-by-step guides and the questions people ask most when they are getting started. Pick a topic below for a full guide, or scan the quick answers further down if you just need a quick answer.', 'Help — Home', 1),
+('en-GB', 'help.home.topics_heading', 'Help topics', 'Help — Home', 1),
+('en-GB', 'help.home.topic_shortlinks_title', 'Creating and managing short links', 'Help — Home', 1),
+('en-GB', 'help.home.topic_shortlinks_desc', 'How to turn a long web address into a short one, choose your own ending, and change where it points later.', 'Help — Home', 1),
+('en-GB', 'help.home.topic_analytics_title', 'Understanding your click statistics', 'Help — Home', 1),
+('en-GB', 'help.home.topic_analytics_desc', 'How to see how many people clicked your links, and where those clicks came from.', 'Help — Home', 1),
+('en-GB', 'help.home.topic_domains_title', 'Using your own short domain', 'Help — Home', 1),
+('en-GB', 'help.home.topic_domains_desc', 'How to send your short links out from a web address you already own, instead of g2my.link.', 'Help — Home', 1),
+('en-GB', 'help.home.topic_api_title', 'Using the API', 'Help — Home', 1),
+('en-GB', 'help.home.topic_api_desc', 'How to create and manage short links from your own code, without using the website.', 'Help — Home', 1),
+('en-GB', 'help.home.qa_heading', 'Quick answers', 'Help — Home', 1),
+('en-GB', 'help.home.qa1_q', 'Do I need an account to shorten a link?', 'Help — Home', 1),
+('en-GB', 'help.home.qa1_a', 'No. Go to the Go2My.Link homepage, paste your long web address, and press Shorten URL — no sign-in needed. Creating a free account additionally lets you choose your own ending for a link, give it a start and end date, and change or track it later.', 'Help — Home', 1),
+('en-GB', 'help.home.qa2_q', 'How long does a short link last?', 'Help — Home', 1),
+('en-GB', 'help.home.qa2_a', 'A short link works for as long as you like — there is no automatic expiry. If you are signed in, you can optionally give a link a start date and an end date when you create or edit it, after which it stops working.', 'Help — Home', 1),
+('en-GB', 'help.home.qa3_q', 'Can I choose my own ending instead of random letters?', 'Help — Home', 1),
+('en-GB', 'help.home.qa3_a', 'Yes, once you are signed in. When you create a link from your dashboard, you can type your own ending instead of letting Go2My.Link pick one at random. An ending cannot be changed once the link has been created, so choose it carefully.', 'Help — Home', 1),
+('en-GB', 'help.home.qa4_q', 'Can I change where a link points after I have shared it?', 'Help — Home', 1),
+('en-GB', 'help.home.qa4_a', 'Yes, if you created the link while signed in. Open Links in your dashboard, edit the link, and change its destination web address — the short link itself stays exactly the same, so anyone who already has it will now be sent to the new destination. A link created anonymously from the homepage cannot be edited afterwards, because it is not attached to any account.', 'Help — Home', 1),
+('en-GB', 'help.home.qa5_q', 'Where do I see how many people have clicked my link?', 'Help — Home', 1),
+('en-GB', 'help.home.qa5_a', 'Sign in and open Analytics in your dashboard. It shows your total clicks over time, your best-performing links, and a breakdown by browser, device, and country.', 'Help — Home', 1),
+('en-GB', 'help.home.qa6_q', 'How do I get help if something is wrong?', 'Help — Home', 1),
+('en-GB', 'help.home.qa6_a', 'Send us a message from our Contact page and we will get back to you.', 'Help — Home', 1),
+('en-GB', 'help.home.closing_heading', 'Still need help?', 'Help — Home', 1),
+('en-GB', 'help.home.closing_text', 'If none of the topics above cover what you need, get in touch and we will help you directly. You may also want to read our legal pages.', 'Help — Home', 1),
+('en-GB', 'help.home.contact_cta', 'Contact us', 'Help — Home', 1),
+('en-GB', 'help.home.legal_privacy', 'Privacy Policy', 'Help — Home', 1),
+('en-GB', 'help.home.legal_terms', 'Terms of Use', 'Help — Home', 1),
+('en-GB', 'help.home.legal_cookies', 'Cookie Policy', 'Help — Home', 1);
+
+-- Help — Creating and Managing Short Links (/help/short-links)
+INSERT IGNORE INTO tblTranslations (localeCode, translationKey, translationValue, context, isVerified)
+VALUES
+('en-GB', 'help.short_links.title', 'Creating and Managing Short Links', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.description', 'A practical guide to shortening web addresses, choosing your own ending, setting dates, editing links, tags, and turning a link off.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.heading', 'Creating and Managing Short Links', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.subtitle', 'How to turn a long web address into a short one, choose your own ending, and manage it afterwards.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.toc_heading', 'On this page', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s1_title', 'Shortening a link without signing in', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s2_title', 'Shortening a link once you are signed in', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s3_title', 'Choosing your own ending', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s4_title', 'Start and end dates', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s5_title', 'Editing a link later', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s6_title', 'Tags', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s7_title', 'Turning a link off', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s8_title', 'Checking where a link goes before clicking it', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s9_title', 'Things that can go wrong', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s1_heading', '1. Shortening a link without signing in', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s1_p1', 'Go to the Go2My.Link homepage. There is one box on the page: paste your long web address into it and press Shorten URL.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s1_p2', 'You get back a short web address on the g2my.link domain, made of a random mix of upper and lower-case letters and numbers, seven characters long — for example https://g2my.link/aB3xQ9z. Anyone who visits that address is sent straight to the web address you pasted in.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s1_p3', 'This quick way of shortening a link does not need an account, but it comes with a few limits: you cannot choose your own ending, you cannot set a start or end date, and you cannot add a title, notes, or tags. A link made this way is also not attached to any account, so there is no way to go back and change its destination afterwards. To lift these limits, create a free account and shorten the link from your dashboard instead — see the next section.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s1_p4', 'To stop the homepage box being used to send spam, there is also a limit on how many links one connection can create this way: currently 10 in any hour and 50 in any day. If you reach that limit, wait a while and try again, or sign in and use your dashboard instead, which does not have this limit.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s2_heading', '2. Shortening a link once you are signed in', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s2_p1', 'Once you have an account, sign in and open Links in your dashboard, then choose Create a New Link. The form gives you more control than the homepage box:', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s2_field_destination', '<strong>Destination web address</strong> (required) — the long address you want to shorten. It must start with http:// or https://.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s2_field_title', '<strong>Title</strong> (optional) — a name for the link, purely for your own reference. It is never shown to anyone who clicks the link.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s2_field_alias', '<strong>Custom alias</strong> (optional) — choose your own ending instead of a random one. Covered in the next section.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s2_field_tags', '<strong>Tags</strong> (optional) — labels to help you organise your links. Covered further down.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s2_field_category', '<strong>Category</strong> (optional) — pick one of your own categories from a drop-down list, if you have set any up, to group related links together.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s2_field_notes', '<strong>Notes</strong> (optional) — a longer note to yourself about the link. Like the title, notes are never shown to visitors.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s2_field_dates', '<strong>Start Date and End Date</strong> (optional) — covered in the next section but one.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s2_field_active', '<strong>Active</strong> — a switch that is on by default. Covered in Turning a link off below.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s2_p2', 'When you press Create Short Link, you get back your new short address straight away, ready to copy and share.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s3_heading', '3. Choosing your own ending instead of random letters', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s3_p1', 'When you are signed in, the Custom alias field on the create form lets you choose the part after the slash yourself, instead of letting Go2My.Link pick one at random. It must be between 3 and 50 characters long, and can only contain letters, numbers, hyphens (-), and underscores (_) — no spaces or other punctuation.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s3_p2', 'If somebody has already used the ending you want, you will see a message telling you it is already taken, and you will need to choose a different one. A small number of endings are also reserved by Go2My.Link itself, because they are already used for other pages on the service — for example api, admin, and robots — so those cannot be chosen either.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s3_p3', 'Leave the Custom alias field blank to get a random ending instead, exactly like the homepage box gives you.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s3_p4', 'Once a link has been created, its ending cannot be changed — see Editing a link later below. Choose it carefully before you create the link, especially if you plan to print it or share it somewhere it will be hard to update.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s4_heading', '4. Start and end dates', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s4_p1', 'When you are signed in, you can optionally give a link a Start Date, an End Date, or both, when you create or edit it. These are only available to signed-in users; the homepage box does not offer them.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s4_p2', 'A start date means the link will not work until that date and time arrive. An end date means the link will stop working once that date and time have passed. Leaving either one blank means there is no limit on that side — a link with no dates at all works for as long as you like.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s4_p3', 'If somebody clicks the link before its start date, or after its end date, they do not reach your destination address. Instead they see a short page saying the link is not yet active, or has expired, with a button to continue to Go2My.Link — and if they do nothing, that page moves on by itself after five seconds.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s5_heading', '5. Editing a link later', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s5_p1', 'Open Links in your dashboard and press the pencil icon next to any link you created to edit it. You can change its destination web address, title, notes, category, start date, end date, and whether it is active. You can also see, but not change, its short address and how many times it has been clicked so far.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s5_p2', 'The important part: the short address itself never changes when you edit a link. Only the destination behind it does. That means a short link you have already printed on a flyer, put in an email footer, or posted on social media keeps working exactly as before — it will simply take people to the new destination address from now on, instead of the old one.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s5_p3', 'You can only edit a link you created while signed in. A link made from the homepage without signing in has no owner and cannot be edited afterwards.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s6_heading', '6. Tags', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s6_p1', 'Tags are short labels you can attach to a link to help you find and group it later — for example marketing or q3. Type them into the Tags field on the create form, separated by commas, such as marketing, q3. You can add up to 10 tags to a single link.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s6_p2', 'Tags you have added appear as small labelled badges next to the link in your Links list, so you can see at a glance what each link is for.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s6_p3', 'Tags can only be added when you first create a link. There is currently no way to add or change a link''s tags from the edit page afterwards, so decide on them at creation time.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s7_heading', '7. Turning a link off', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s7_p1', 'You do not have to delete a link to stop it working. On the Links list, press the bin icon next to a link and confirm Deactivate this link? — this switches the link off without removing it or its click history. You can also turn a link off, or back on, from its edit page using the Active switch.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s7_p2', 'While a link is switched off, anyone who visits its short address sees a page saying the link has been disabled by its owner — this is a different message from the one shown for a link that simply has not started yet or has already ended (see Start and end dates above).', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s7_p3', 'To turn a link back on, open it from the Links list and switch Active back on in the edit page.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s8_heading', '8. Checking where a link goes before clicking it', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s8_p1', 'If you are ever unsure where a Go2My.Link short address will take you, go to go2my.link/info and paste the full short address, or just its code, into the box, then press Look Up.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s8_p2', 'You will see the full short address, its current status (Active, Inactive, Scheduled, or Expired), and where it leads. If you are not signed in, only the destination''s domain is shown, with the rest of the address hidden, along with a link to sign in and see the whole thing; if you are signed in, the complete destination address is shown. If the link has a title, category, or start and end dates, those are shown too.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s8_p3', 'This lookup currently only finds links made from the Go2My.Link homepage without signing in. A link you created in your own signed-in dashboard does not currently appear in this lookup.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s9_heading', '9. Things that can go wrong', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s9_intro', 'A few messages you might see, and what they mean:', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s9_item1', '<strong>"Invalid URL format"</strong> — the web address you entered must start with http:// or https://. Check for typos and try again.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s9_item2', '<strong>"Cannot shorten URLs that point to this service"</strong> — you cannot shorten a g2my.link, go2my.link, or lnks.page address, or your own custom short domain, because that would send visitors round in a loop.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s9_item3', '<strong>"That destination is not permitted"</strong> — the web address you enter has to be a normal, publicly reachable web page; addresses that point to internal or private networks are rejected for safety.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s9_item4', '<strong>A problem with your chosen ending</strong> — a message saying it is the wrong length, contains characters that are not allowed, is already taken, or is a reserved word, means you need to pick a different ending. See Choosing your own ending above.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s9_item5', '<strong>"Rate limit exceeded"</strong> when not signed in — the homepage box allows up to 10 new links an hour and 50 a day from the same connection, to stop it being used for spam. Wait a while, or sign in and use your dashboard instead, which does not have this limit.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s9_item6', '<strong>"You have reached your plan''s link limit"</strong> when signed in — your account has a maximum number of active links allowed by your plan. Turn off links you no longer need, or upgrade your plan, to create more.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s9_item7', '<strong>"Link not found or you do not have permission to edit it"</strong> — you can only edit or turn off a link you created yourself while signed in.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.s9_item8', '<strong>A link you made while signed in does not show up on the /info lookup page</strong> — this is expected for now (see Checking where a link goes above); it does not mean the link is broken.', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.related_heading', 'Related guides', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.link_help_home', 'Help home', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.link_analytics', 'Understanding your click statistics', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.link_custom_domains', 'Using your own short domain', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.link_api', 'Using the API', 'Help — Short Links', 1),
+('en-GB', 'help.short_links.contact_cta', 'Questions? Contact us', 'Help — Short Links', 1);
+
+-- Help — Understanding your click statistics (/help/analytics)
+
+INSERT IGNORE INTO tblTranslations (localeCode, translationKey, translationValue, context, isVerified)
+VALUES
+('en-GB', 'help.analytics.title', 'Understanding your click statistics — Help', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.description', 'A plain-English guide to what a click means, what is recorded, and how to read your Go2My.Link statistics.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.heading', 'Understanding your click statistics', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.subtitle', 'What a click means, what we record, and how to read the numbers on your dashboard.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.toc_heading', 'On this page', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.intro', 'Every short link you create has its own set of statistics, and your account also has a combined view across all of your links. This page explains what counts as a click, what we store about it, and how to make sense of the charts and figures you will see when you sign in.', 'Help — Click statistics', 1),
+
+('en-GB', 'help.analytics.s1_title', 'What counts as a click', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s1_heading', '1. What counts as a click', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s1_p1', 'A click is counted when someone follows your short link and we successfully send their browser on to your destination web address. That is the only thing that counts — nothing is added to your figures until the visitor has actually been redirected.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s1_p2', 'If a short link does not exist, has been switched off, has expired, or has not started yet, following it does not add to your click count — the visitor sees an error or "not available" page instead of being sent anywhere, so there is nothing meaningful to count.', 'Help — Click statistics', 1),
+
+('en-GB', 'help.analytics.s2_title', 'What we record about each click', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s2_heading', '2. What we record about each click', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s2_intro', 'When a click is counted, we store the following about that one visit:', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s2_item_when_label', 'When it happened', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s2_item_when_desc', 'the exact date and time of the click.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s2_item_link_label', 'Which link and web address', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s2_item_link_desc', 'which of your short links was used, and the destination web address it sent the visitor to.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s2_item_referrer_label', 'Where the click came from', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s2_item_referrer_desc', 'the web page the visitor was on immediately beforehand, when their browser tells us this (some apps and browsers do not send it, in which case it is simply blank).', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s2_item_device_label', 'Browser, operating system and device type', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s2_item_device_desc', 'worked out from the technical information every browser sends automatically (for example, that a visit came from Chrome on Windows using a desktop computer). We do not ask the visitor for any of this — it is read from what their browser already announces.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s2_item_ip_label', 'The visitor''s IP address', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s2_item_ip_desc', 'the address identifying the visitor''s device on the internet, stored as it was received. Being honest about this: it is not shortened, masked, or disguised before it is stored.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s2_item_bot_label', 'Our best guess at "human or automated"', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s2_item_bot_desc', 'whether the visit looks like it came from a person, or from an automated program such as a search-engine crawler or a link-preview fetcher. This is a best-effort guess based on the technical information mentioned above, not a certainty.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s2_item_qr_label', 'Whether it came from a QR code', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s2_item_qr_desc', 'if the link was reached by scanning one of our dynamic QR codes, we note that the click came from a scan.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s2_geo_note', 'One thing is deliberately not always recorded: the visitor''s country. This is only worked out from their IP address, and only when the site operator has specifically switched that feature on. Where it has not been switched on, that part of your statistics simply stays empty — it is off by default.', 'Help — Click statistics', 1),
+
+('en-GB', 'help.analytics.s3_title', 'Do Not Track, Global Privacy Control, and cookies', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s3_heading', '3. Do Not Track, Global Privacy Control, and cookies', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s3_p1', 'Some browsers send a "Do Not Track" signal, or the newer "Global Privacy Control" signal, to say the visitor does not want to be tracked. When this feature is switched on for the site (it is switched on by default), a click from a visitor sending either signal is not recorded at all — the link still works and the visitor is still sent to your destination, it simply is not added to your figures.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s3_p2', 'Declining analytics cookies in the cookie banner is a different thing, and it is worth being clear about the difference: a cookie banner controls what is stored in a visitor''s own browser, not whether a click is written to your statistics on our server. This service does not currently set any analytics cookies at all — so, right now, declining them has no effect on your click count either way. Whether a click is counted is controlled entirely by the Do Not Track / Global Privacy Control setting described above.', 'Help — Click statistics', 1),
+
+('en-GB', 'help.analytics.s4_title', 'Choosing a date range', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s4_heading', '4. Choosing a date range', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s4_p1', 'At the top of the Analytics page you can pick one of three quick ranges — the last 7 days, the last 30 days (the one shown by default), or the last 90 days.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s4_p2', 'If you need a specific period instead, open "Custom range" and enter your own start ("From") and end ("To") dates. There is one limit worth knowing: a custom range cannot cover more than 366 days. If you pick a wider span, it is automatically trimmed back to the most recent 366 days ending on your chosen end date. If your start date is after your end date, or the dates are not filled in properly, your custom range is ignored and the page falls back to the last 30 days instead.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s4_p3', 'The "Clicks Over Time" chart automatically groups your figures to keep the line readable: by day for a range of up to 45 days, by week for a range of up to 180 days, and by month for anything longer. This grouping is chosen for you based on the range you picked — there is no separate setting for it.', 'Help — Click statistics', 1),
+
+('en-GB', 'help.analytics.s5_title', 'The charts and figures on your dashboard', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s5_heading', '5. The charts and figures on your dashboard', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s5_intro', 'For the date range you have chosen, the Analytics page shows:', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s5_item_totals_label', 'Total clicks, human clicks and bot clicks', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s5_item_totals_desc', 'four summary figures at the top of the page: the total number of clicks, how many looked human (with a percentage), how many looked automated (also with a percentage), and an approximate number of unique visitors.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s5_item_unique_label', '"Unique Visitors (approx.)"', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s5_item_unique_desc', 'a count of the distinct IP addresses seen in the period. It is labelled "approx." on purpose: several people sharing the same internet connection (an office, a household, public Wi-Fi) can share one IP address and be counted once, while one person switching between Wi-Fi and mobile data can be counted twice.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s5_item_time_label', 'Clicks Over Time', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s5_item_time_desc', 'a line chart showing how your clicks are spread across the selected period, grouped by day, week or month as explained above.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s5_item_toplinks_label', 'Top Links', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s5_item_toplinks_desc', 'a ranking of your best-performing short links in the period (up to eight), shown only on the combined, all-links view — ranking a single link against itself would not mean anything.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s5_item_browser_label', 'Browser, operating system, and device type', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s5_item_browser_desc', 'three separate breakdowns showing which browsers, operating systems, and device types your visitors used.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s5_item_country_label', 'Country', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s5_item_country_desc', 'a breakdown by visitor country. As explained above, this only has anything in it when the site operator has switched on IP-based location lookup — otherwise it simply shows no data.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s5_item_referrers_label', 'Top Referrers', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s5_item_referrers_desc', 'a table listing the web pages that sent visitors to your links most often.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s5_item_qr_label', 'QR Scan Sources', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s5_item_qr_desc', 'a chart of clicks that came from scanning one of your dynamic QR codes. This only shows anything if you have QR codes that have actually been scanned in the period.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s5_table_note', 'Underneath every chart is a "View data table" option, which shows exactly the same figures written out as plain numbers — useful if you would rather read the numbers directly than interpret a chart.', 'Help — Click statistics', 1),
+
+('en-GB', 'help.analytics.s6_title', 'Looking at a single link', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s6_heading', '6. Looking at a single link', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s6_p1', 'By default, the Analytics page shows combined figures across every one of your short links. To see just one link''s own figures instead, click "View" next to it in the Top Links table.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s6_p2', 'When you are looking at a single link, the date range you had selected stays applied, and there is a link back to the combined view at the top of the page. The Top Links ranking itself is not shown while you are viewing one link, because ranking a link against itself would not mean anything.', 'Help — Click statistics', 1),
+
+('en-GB', 'help.analytics.s7_title', 'Downloading your figures as a CSV file', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s7_heading', '7. Downloading your figures as a CSV file', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s7_p1', 'Underneath most charts and tables on the Analytics page, you will find a "Download CSV" button. A CSV file (short for "comma-separated values") is simply a plain text file that lists rows of data with a comma between each value — it is one of the most widely supported ways of moving figures between different pieces of software.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s7_p2', 'If you open it with a spreadsheet program, such as Microsoft Excel or Google Sheets, it will automatically split each row into columns for you, so it looks and behaves like an ordinary spreadsheet rather than a block of text. From there, you can sort it, chart it yourself, or keep it as a record for your own reporting.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s7_p3', 'Each download reflects exactly what you are currently looking at — the same date range, and, if you are viewing a single link, that link only.', 'Help — Click statistics', 1),
+
+('en-GB', 'help.analytics.s8_title', 'Why do my numbers look wrong?', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s8_heading', '8. Why do my numbers look wrong?', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s8_intro', 'It is common for click counts to look lower, or different, than you expected. A few honest reasons why:', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s8_item_caching_label', 'Caching and automatic previews', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s8_item_caching_desc', 'when a link is shared in a messaging app or on social media, that app often fetches the link automatically to generate a preview, before any person has actually clicked it. That automatic fetch can be recorded as a click, even though a human has not seen your destination page yet.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s8_item_bots_label', 'Bots and crawlers', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s8_item_bots_desc', 'search engines and other automated programs follow links too. We try to identify these and split them out into the separate "Bot Clicks" figure, but this is a best-effort guess based on the technical information the visitor''s software sends — it will not catch every automated visit, and it will occasionally mis-classify a genuine one.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s8_item_sharing_label', 'One link, many people', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s8_item_sharing_desc', 'if a single short link is shared onward and many people click the same one, all of those clicks are counted against that one link — there is no way to tell from the figures how many different places it was shared to.', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s8_item_unique_label', '"Unique Visitors" is only approximate', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.s8_item_unique_desc', 'as covered above, this figure counts distinct IP addresses, not distinct people, so it can under-count (shared connections) or over-count (one person on several networks) compared with what you might expect.', 'Help — Click statistics', 1),
+
+('en-GB', 'help.analytics.link_help_home', 'Back to Help', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.link_short_links', 'Creating and managing short links', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.link_custom_domains', 'Using your own short domain', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.link_api', 'Using the API', 'Help — Click statistics', 1),
+('en-GB', 'help.analytics.contact_cta', 'Still stuck? Contact us', 'Help — Click statistics', 1);
+
+-- Help — Using Your Own Domain for Short Links (help.custom_domains.*)
+
+INSERT IGNORE INTO tblTranslations (localeCode, translationKey, translationValue, context, isVerified)
+VALUES
+('en-GB', 'help.custom_domains.title', 'Using Your Own Domain — Help', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.description', 'A step-by-step guide to using your own domain name for your Go2My.Link short links.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.heading', 'Using Your Own Domain for Short Links', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.subtitle', 'Make your short links match your own brand, instead of g2my.link.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.intro_p1', 'When someone shares one of your Go2My.Link short links, the address they see is the domain in it — normally g2my.link. Adding your own domain (for example, links.yourcompany.com or yourbrand.link) means every short link you create shows your own name instead, so the people who click it recognise it as coming from you rather than from an unfamiliar link-shortening service.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.intro_p2', 'This page walks through the whole process: adding the domain, proving you own it, pointing it at Go2My.Link, and what to expect along the way.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.toc_heading', 'Table of Contents', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s1_title', 'What you need before you start', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s2_title', 'Adding your domain in the dashboard', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s3_title', 'Proving you own it — the TXT record', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s4_title', 'Pointing your domain at Go2My.Link — the routing record', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s5_title', 'Checking it has worked — click Verify', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s6_title', 'Why new links wait for verification to finish', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s7_title', 'Choosing a default domain', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s8_title', 'Removing a domain', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_title', 'Troubleshooting common problems', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s1_heading', '1. What you need before you start', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s1_p1', 'You can only point a domain at Go2My.Link if you already own it. We do not sell, register, or transfer domain names ourselves — if you do not already have one, you will need to buy one first from a domain registrar (companies such as GoDaddy, Namecheap, or Cloudflare, among many others).', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s1_item_domain', 'A domain name you own — either a whole domain, such as yourbrand.link, or a subdomain of one you own, such as links.yourcompany.com.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s1_item_dns', 'Access to wherever that domain''s DNS settings are managed. This is usually the account you bought the domain through, but some people manage their DNS separately (for example, through Cloudflare) even when the domain itself was bought somewhere else. If you are not sure who manages this for your organisation, ask whoever looks after your website or company email — they will know.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s1_item_admin', 'Administrator access to your organisation on Go2My.Link. Ordinary members of an organisation cannot add or change short domains — only an Administrator can.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s2_heading', '2. Adding your domain in the dashboard', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s2_p1', 'Sign in at', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s2_p1b', 'then go to', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s2_p1_link', 'Organisation &rarr; Short Domains', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s2_p2', 'Under &ldquo;Add Short Domain&rdquo;, type your domain &mdash; just the domain itself, with no https:// in front and no slash at the end (for example, mylinks.co or links.yourcompany.com) &mdash; then click Add.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s2_p3', 'The page immediately shows you two DNS records to add, covered in the next two sections. You do not need to write them down &mdash; you can come back to this screen at any time before verification finishes by clicking &ldquo;Show DNS records&rdquo; next to your domain.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s2_note_limit', 'Depending on your plan, there may be a limit on how many domains your organisation can add. If you reach it, the Add button will tell you your current limit rather than adding the domain.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s3_heading', '3. Proving you own it — the TXT record', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s3_p1_dns', 'Every domain name has a set of settings attached to it, called DNS records. They tell the internet things like which server runs your website and which server handles your email. You add, change, and remove these records on whichever site manages your domain''s DNS (see &ldquo;What you need before you start&rdquo; above).', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s3_p2_txt', 'One kind of DNS record, called a TXT record, simply stores a short piece of text against your domain. It does not point visitors anywhere and it does not change how your website or email works &mdash; it is just a place to put a value that something else can check later. Go2My.Link uses a TXT record to prove that whoever is setting up the domain here also controls its DNS settings, without needing any other kind of access to your domain. Adding one is a normal, safe step that many online services ask for, and it will not affect your existing website or email in any way.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s3_p3_steps', 'Go2My.Link shows you the exact TXT record to add on the Add Short Domain screen. At your DNS provider, add a new record with these details:', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s3_table_caption', 'The TXT record to add at your DNS provider', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.col_field', 'Field', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.col_value', 'What to enter', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s3_field_type', 'Type', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s3_field_host', 'Host / Name', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s3_field_host_value', 'The exact value shown on your screen — it will look something like', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s3_field_value', 'Value', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s3_field_value_value', 'The long string of random letters and numbers that Go2My.Link shows you for this domain', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s3_p4_prefix_note', 'Some DNS providers (Cloudflare and GoDaddy among them) automatically add your domain name after whatever you type into the Name/Host field. If that happens to you, type only the first part — for example, _g2ml-verify — rather than the whole host including your domain. See the provider notes in the next section if you are not sure.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s3_warning', 'Use the exact value Go2My.Link shows you for the Value field — not your organisation''s name, handle, or anything you make up yourself. Every domain gets its own unique value, and it is never reused, so we can be sure the record was really added by whoever controls that domain.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s4_heading', '4. Pointing your domain at Go2My.Link — the routing record', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s4_p1', 'The TXT record above only proves you own the domain — it does not send any visitors anywhere. To actually make your short links work, you need a second record, and which kind you need depends on the shape of your domain.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s4_subdomain_heading', 'If you are using a subdomain (recommended)', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s4_subdomain_desc', 'A subdomain is a domain with something in front of it, such as links.yourcompany.com or go.yourbrand.com. If your domain looks like this, add a CNAME record with your subdomain as the Host/Name and g2my.link as the Value. A CNAME record simply tells the internet &ldquo;this address is really just another name for that address&rdquo; — visitors are quietly sent on to Go2My.Link''s servers without ever seeing g2my.link in their browser.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s4_apex_heading', 'If you are using a bare (apex/root) domain', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s4_apex_desc', 'A bare domain has nothing in front of it, such as yourbrand.link. Domains like this cannot use a CNAME record at all — that is a rule built into how DNS works everywhere, not something specific to Go2My.Link. Instead:', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s4_apex_alias', 'If your DNS provider offers a record type called ALIAS or ANAME (sometimes described as &ldquo;CNAME flattening&rdquo;), use that instead — it behaves like a CNAME even though bare domains cannot normally have one. Point it at g2my.link, the same as the CNAME above.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s4_apex_a_record', 'If your provider does not offer that, use a plain A record instead, which points at a numeric address rather than a name. Since this address can occasionally change on our side, contact us once you are ready for this step and we will give you the current one to use.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s4_recommend', 'If you can choose either shape for your domain, we would recommend a subdomain — it is simpler to set up and does not depend on a numeric address that can change.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s4_provider_heading', 'Notes for common DNS providers', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s4_provider_cloudflare', 'DNS &rarr; Records &rarr; Add record. Enter just the prefix (for example, _g2ml-verify) in the Name field, not your full domain — Cloudflare adds it for you. For the routing record, set the proxy status to &ldquo;DNS only&rdquo; (grey cloud), not &ldquo;Proxied&rdquo;.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s4_provider_godaddy', 'My Products &rarr; DNS &rarr; Add New Record. GoDaddy also wants just the prefix in the Name field, not your full domain.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s4_provider_namecheap', 'Domain List &rarr; Manage &rarr; Advanced DNS &rarr; Add New Record. Namecheap does not support a plain CNAME on a bare domain — use their ALIAS or URL Redirect record type instead, or use a subdomain.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s5_heading', '5. Checking it has worked — click Verify', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s5_p1', 'Once both records are added, go back to Organisation &rarr; Short Domains in your dashboard and click Verify next to your domain.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s5_p2_propagation', 'DNS changes do not appear everywhere on the internet the instant you save them. Copies of your old and new records are temporarily stored (&ldquo;cached&rdquo;) by countless computers around the world, and it takes time for all of them to notice the change and pick up the new version — this is usually called DNS propagation.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s5_p3_timing', 'This is usually done within a few minutes, but it can occasionally take as long as 48 hours, depending on your DNS provider and how long the record you replaced was set to be cached for.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s5_p4_early_check', 'If you click Verify before your TXT record has spread everywhere, Go2My.Link may not be able to find it yet and will tell you so — that does not mean you have done anything wrong. It usually just means you need to wait a little longer and try again. It is completely safe to click Verify as many times as you need.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s5_p5_success', 'Once verification succeeds, your domain''s badge changes to Verified, and a second badge shows Routing live — from that point on, it is ready to carry your short links.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s6_heading', '6. Why new links wait for verification to finish', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s6_p1_warning', 'Until your domain shows Verified, Go2My.Link will not build any of your short links using it. A short link only works if the domain in its address is fully set up — a link built on a domain that is not ready yet would look fine but do nothing for anyone who clicked it.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s6_p2', 'So if you add a new domain and set it as your default before it finishes verifying, Go2My.Link automatically carries on giving out new links on g2my.link behind the scenes, rather than risk creating a link that does not work. As soon as your domain finishes verifying, new links start using it straight away — nothing you have already shared changes or breaks in the meantime.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s7_heading', '7. Choosing a default domain', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s7_p1', 'If your organisation has more than one verified domain, one of them is your default. This is the address you are shown when you create a new link, and the address shown next to your existing links throughout the dashboard.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s7_p2', 'Your short links still work through any of your organisation''s verified domains, not only the default one — the default setting only decides which address you are shown; it does not limit which domain a link can be reached on.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s7_p3', 'To make a different domain the default, find it in your list of Short Domains and click Set Default. This is only available for domains that are already Verified.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s8_heading', '8. Removing a domain', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s8_p1', 'You can remove a short domain you no longer want from the same Short Domains page. You cannot remove your current default domain — set a different one as default first, then remove the one you no longer need.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s8_p2_links', 'Removing a domain does not delete any of your links. Your short links and their destinations stay exactly as they are, and they carry on working through any of your organisation''s other verified domains. What stops working is that one address: once a domain is removed, anyone who visits a link using it will no longer reach your organisation at all.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s8_p3_dns', 'Removing the domain from Go2My.Link does not remove the DNS records at your provider. If you want the domain to stop pointing at us altogether, delete or change those records yourself afterwards. If you leave them in place without the domain registered here, visits to that domain will no longer resolve any of your short links.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_heading', '9. Troubleshooting common problems', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_intro', 'Where a step below depends on your own DNS provider, we say so plainly rather than pretending there is one set of instructions that fits everyone — the exact screens differ between providers, even though the records themselves are the same.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_table_caption', 'Common domain setup problems and how to fix them', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.col_symptom', 'What you see', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.col_cause', 'Likely cause', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.col_fix', 'What to do', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_row1_symptom', 'Verify says &ldquo;No TXT record found&rdquo;', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_row1_cause', 'Your DNS change has not spread everywhere yet, or the record was added at the wrong Host/Name.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_row1_fix', 'Double-check the exact Host/Name shown on your Short Domains screen, including the _g2ml-verify prefix and your domain. Then wait a while and click Verify again.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_row2_symptom', 'Verify says &ldquo;the value does not match&rdquo;', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_row2_cause', 'A TXT record exists at the right Host/Name, but its value is wrong — often a typo, or a leftover record from an earlier attempt.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_row2_fix', 'Check for and remove any duplicate or old TXT record at that Host/Name, then click Verify again.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_row3_symptom', 'Visitors to my domain see &ldquo;Domain Not Configured&rdquo;', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_row3_cause', 'You have not clicked Verify yet, or verification has not succeeded.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_row3_fix', 'Adding the DNS records alone does not switch anything on — click Verify and wait for it to succeed before sharing links on this domain.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_row4_symptom', 'My DNS provider says &ldquo;CNAME not allowed&rdquo; on my bare domain', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_row4_cause', 'A bare (apex/root) domain cannot have a CNAME record — this is a general DNS rule, not specific to your provider.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_row4_fix', 'Use an ALIAS/ANAME record if your provider offers one, or an A record, as described in section 4 above — or use a subdomain instead.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_row5_symptom', 'My links work over http:// but not https://', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_row5_cause', 'Secure browsing (https://) needs a security certificate set up for your domain. Today this is a manual step on our side that happens after verification, not something that switches on automatically.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_row5_fix', 'Once your domain shows Verified, contact us and we will arrange this for you.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_row6_symptom', 'Propagation is taking a long time', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_row6_cause', 'How long a DNS change takes to spread is limited by how long the record it replaced was set to be cached for (its &ldquo;TTL&rdquo;).', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.s9_row6_fix', 'Wait it out — it will finish on its own. Next time, if you know you are about to change a record, you can lower its cache time in advance and raise it again afterwards.', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.contact_lead', 'Still stuck, or need us to set up your certificate?', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.related_heading', 'Related help topics', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.link_help_home', 'Help Home', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.link_short_links', 'Creating and Managing Short Links', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.link_analytics', 'Understanding Your Click Statistics', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.link_api', 'Using the API', 'Help — Custom Domains', 1),
+('en-GB', 'help.custom_domains.contact_cta', 'Questions? Contact Us', 'Help — Custom Domains', 1);
+
+-- Help — Using the API (help.api.*)
+
+INSERT IGNORE INTO tblTranslations (localeCode, translationKey, translationValue, context, isVerified)
+VALUES
+('en-GB', 'help.api.title', 'Using the API', 'Help — API', 1),
+('en-GB', 'help.api.description', 'How to use the Go2My.Link API to shorten links, read your click statistics, and manage your account from your own programs.', 'Help — API', 1),
+('en-GB', 'help.api.heading', 'Using the API', 'Help — API', 1),
+('en-GB', 'help.api.subtitle', 'Let your own programs create and manage short links, the same way you can from the dashboard.', 'Help — API', 1),
+('en-GB', 'help.api.content_heading', 'API Help Content', 'Help — API', 1),
+('en-GB', 'help.api.toc_heading', 'On this page', 'Help — API', 1),
+('en-GB', 'help.api.s1_title', 'What is an API?', 'Help — API', 1),
+('en-GB', 'help.api.s2_title', 'What you can do with it', 'Help — API', 1),
+('en-GB', 'help.api.s3_title', 'Getting a key', 'Help — API', 1),
+('en-GB', 'help.api.s4_title', 'Permissions', 'Help — API', 1),
+('en-GB', 'help.api.s5_title', 'Keeping your key safe', 'Help — API', 1),
+('en-GB', 'help.api.s6_title', 'How often you can call it', 'Help — API', 1),
+('en-GB', 'help.api.s7_title', 'Full technical documentation', 'Help — API', 1),
+('en-GB', 'help.api.s1_heading', '1. What is an API?', 'Help — API', 1),
+('en-GB', 'help.api.s1_p1', 'An API is a way for another computer program to do the same things you can do on this website, without a person clicking any buttons. Instead of you signing in and creating a short link by hand, a program you write yourself — or one you buy from someone else, such as an automation tool — can create it for you automatically.', 'Help — API', 1),
+('en-GB', 'help.api.s1_p2', 'You only need this if you want to connect Go2My.Link to another system: your own website, a script you run at work, or a tool such as Zapier. If you only ever create links by signing in and using the dashboard, you do not need the API at all.', 'Help — API', 1),
+('en-GB', 'help.api.s2_heading', '2. What you can do with it', 'Help — API', 1),
+('en-GB', 'help.api.s2_intro', 'The API can do most of what you can already do in the dashboard. Every request needs an API key (see the next section), and a key can only ever see and change your own account — never anyone else''s.', 'Help — API', 1),
+('en-GB', 'help.api.s2_links_heading', 'Your short links', 'Help — API', 1),
+('en-GB', 'help.api.s2_links_desc', 'Create a new short link, create several at once, look up one link''s details, see a list of all your links, change a link''s destination, or turn a link off. Turning a link off does not delete it — the link and its history stay in your account, it simply stops working.', 'Help — API', 1),
+('en-GB', 'help.api.s2_stats_heading', 'Click statistics', 'Help — API', 1),
+('en-GB', 'help.api.s2_stats_desc', 'Get an overview of clicks across all your links, or the click details for one specific link.', 'Help — API', 1),
+('en-GB', 'help.api.s2_account_heading', 'Your account and organisation', 'Help — API', 1),
+('en-GB', 'help.api.s2_account_desc', 'Read back your own account details, and the basic details of your organisation.', 'Help — API', 1),
+('en-GB', 'help.api.s2_ping_heading', 'Checking the connection', 'Help — API', 1),
+('en-GB', 'help.api.s2_ping_desc', 'A simple check a program can call to prove its key and connection are working, without reading or changing any of your data.', 'Help — API', 1),
+('en-GB', 'help.api.s3_heading', '3. Getting a key', 'Help — API', 1),
+('en-GB', 'help.api.s3_p1', 'You create a key from your dashboard, under Organisation, then API Keys. Give it a name that reminds you what it is for — for example, "CI pipeline" or "Zapier integration" — choose the permissions it needs, and, if you like, set a date it should stop working.', 'Help — API', 1),
+('en-GB', 'help.api.s3_warning', 'The key is shown to you exactly once, straight after you create it. Go2My.Link does not keep a copy of it anywhere — only a one-way scrambled version is stored, which cannot be turned back into the real key. If you close the page, navigate away, or lose the key, it is gone for good and cannot be shown again. Your only option at that point is to withdraw that key and create a new one.', 'Help — API', 1),
+('en-GB', 'help.api.s3_p2', 'Only an organisation administrator can create or withdraw API keys.', 'Help — API', 1),
+('en-GB', 'help.api.s4_heading', '4. Permissions', 'Help — API', 1),
+('en-GB', 'help.api.s4_intro', 'In the technical documentation these are called "scopes", but they are simply a list of what a key is allowed to do. When you create a key, you tick the boxes for what it needs. A key can only do what it has been given permission for — nothing else.', 'Help — API', 1),
+('en-GB', 'help.api.s4_advice', 'Grant only what a key actually needs. A key that only reads click statistics, for example, should not also be given permission to turn links off. If that key is ever seen by someone it should not be, the damage it can do is limited to what you ticked.', 'Help — API', 1),
+('en-GB', 'help.api.s4_list_intro', 'The permissions you can grant a key are:', 'Help — API', 1),
+('en-GB', 'help.api.s4_urls_read_label', 'View short links', 'Help — API', 1),
+('en-GB', 'help.api.s4_urls_read_desc', 'read your existing links and their details.', 'Help — API', 1),
+('en-GB', 'help.api.s4_urls_write_label', 'Create and edit short links', 'Help — API', 1),
+('en-GB', 'help.api.s4_urls_write_desc', 'create new links and change the destination of existing ones.', 'Help — API', 1),
+('en-GB', 'help.api.s4_urls_delete_label', 'Turn off short links', 'Help — API', 1),
+('en-GB', 'help.api.s4_urls_delete_desc', 'stop a link working. This does not delete it — the link stays in your account, switched off.', 'Help — API', 1),
+('en-GB', 'help.api.s4_analytics_read_label', 'View click statistics', 'Help — API', 1),
+('en-GB', 'help.api.s4_analytics_read_desc', 'read click counts and reports for your links.', 'Help — API', 1),
+('en-GB', 'help.api.s4_domains_read_label', 'View custom domains', 'Help — API', 1),
+('en-GB', 'help.api.s4_not_used_badge', 'Not used yet', 'Help — API', 1),
+('en-GB', 'help.api.s4_domains_read_desc', 'not used by anything in the API yet. You can tick it when creating a key, but it currently has no effect.', 'Help — API', 1),
+('en-GB', 'help.api.s4_domains_write_label', 'Manage custom domains', 'Help — API', 1),
+('en-GB', 'help.api.s4_domains_write_desc', 'not used by anything in the API yet. You can tick it when creating a key, but it currently has no effect.', 'Help — API', 1),
+('en-GB', 'help.api.s4_org_read_label', 'View organisation details', 'Help — API', 1),
+('en-GB', 'help.api.s4_org_read_desc', 'read your organisation''s basic information.', 'Help — API', 1),
+('en-GB', 'help.api.s4_account_read_label', 'View account details', 'Help — API', 1),
+('en-GB', 'help.api.s4_account_read_desc', 'read your own account information.', 'Help — API', 1),
+('en-GB', 'help.api.s4_qr_link_label', 'Link a QR code', 'Help — API', 1),
+('en-GB', 'help.api.s4_qr_link_desc', 'connect a short link to a dynamic QR code. Only relevant if your organisation uses that feature.', 'Help — API', 1),
+('en-GB', 'help.api.s5_heading', '5. Keeping your key safe', 'Help — API', 1),
+('en-GB', 'help.api.s5_intro', 'An API key works like a password for your account. Anyone who has it can do whatever it is permitted to do, as if they were you. A few simple habits keep it safe:', 'Help — API', 1),
+('en-GB', 'help.api.s5_rule_web', 'Never put a key in a web page, an app that runs in someone''s browser, or anywhere a visitor could view the page''s underlying code. Keep it on your own server, in a script, or in a password manager.', 'Help — API', 1),
+('en-GB', 'help.api.s5_rule_email', 'Never send a key by email or instant message, and never paste it into a support ticket or a public forum post.', 'Help — API', 1),
+('en-GB', 'help.api.s5_rule_code', 'Never save a key inside code you share publicly, such as a public code repository.', 'Help — API', 1),
+('en-GB', 'help.api.s5_rule_separate', 'Create a separate key for each application or purpose. If one of them ever needs to be withdrawn, the others keep working undisturbed.', 'Help — API', 1),
+('en-GB', 'help.api.s5_rule_withdraw', 'Withdraw a key the moment you think it may have been seen by someone else. Withdrawing takes effect immediately, and anything still using that key will stop working straight away.', 'Help — API', 1),
+('en-GB', 'help.api.s6_heading', '6. How often you can call it', 'Help — API', 1),
+('en-GB', 'help.api.s6_p1', 'To keep the service fair and reliable for everyone, each key is limited in how many requests it can make: a short-term limit on requests per minute, and a longer-term limit on requests per day. The exact numbers depend on your organisation''s plan.', 'Help — API', 1),
+('en-GB', 'help.api.s6_p2', 'If a key goes over its limit, the next request gets an error back instead of the answer it asked for, along with a note saying how many seconds to wait before trying again. Once that time has passed, requests are accepted normally again.', 'Help — API', 1),
+('en-GB', 'help.api.s7_heading', '7. Full technical documentation', 'Help — API', 1),
+('en-GB', 'help.api.s7_intro', 'This page is a plain-English introduction. When you are ready to write code against the API, two more detailed resources are available:', 'Help — API', 1),
+('en-GB', 'help.api.s7_docs_label', 'Reference manual', 'Help — API', 1),
+('en-GB', 'help.api.s7_docs_desc', 'every request and response, laid out in full. Best for reading and looking things up while you build.', 'Help — API', 1),
+('en-GB', 'help.api.s7_swagger_label', 'Interactive console', 'Help — API', 1),
+('en-GB', 'help.api.s7_swagger_desc', 'a page where you paste in your own key and send a request straight from your browser, to see exactly what comes back.', 'Help — API', 1),
+('en-GB', 'help.api.s7_swagger_warning', 'The interactive console sends real requests against your real account. If you use it to create a link, that link is created in your account, exactly as if you had called the API from your own code. There is no separate practice area.', 'Help — API', 1),
+('en-GB', 'help.api.closing', 'Anything not covered on this page can go to our contact page, and we will help.', 'Help — API', 1),
+('en-GB', 'help.api.contact_cta', 'Contact us', 'Help — API', 1),
+('en-GB', 'help.api.link_home', 'Help home', 'Help — API', 1),
+('en-GB', 'help.api.link_short_links', 'Creating and managing short links', 'Help — API', 1),
+('en-GB', 'help.api.link_analytics', 'Understanding your click statistics', 'Help — API', 1),
+('en-GB', 'help.api.link_custom_domains', 'Using your own short domain', 'Help — API', 1);
