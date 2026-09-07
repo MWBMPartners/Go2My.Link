@@ -22,6 +22,7 @@
 
 ## Non-negotiable house rules (see patterns.md for the full list)
 
+- 🗣️ **Plain, everyday English in everything a human reads** — chat replies, code comments, commit messages, issue and pull-request text, all `.md` docs, in-app help, and any string shown to a user. Explain it the way you would to a capable colleague who does not work on this system: ordinary words, short sentences, the "why" not just the "what", technical terms spelled out in plain words the first time. More words are fine if they make the meaning clearer. When reporting on work, say plainly what is finished, what is not, and what was not checked. This changes how work is *explained*, never how rigorous the work itself is. Full rule: [patterns.md → Plain, Everyday English](.claude/memory/patterns.md).
 - 🚫 **No shorthand notation** in any language: no PHP alternative syntax / ternary / Elvis / short-echo / short-open-tag; no JS ternary / `||` default / braceless ifs / one-line arrows. Use full `if/else` with braces (Allman). `??` only when both sides are simple values.
 - 🗄️ **MySQLi only**, prepared statements for every query; InnoDB + utf8mb4_unicode_ci; sensitive values AES-256-GCM encrypted. DB credentials live only in the shared `web/_auth_keys/auth_creds.php` (never committed); each component's `.auth/auth_creds.php` (dot-prefixed — a deliberate exception, see patterns.md) is a thin include of it.
 - ♿ **WCAG 2.1 AA** built-in (labelled as `compliance` in issues — there is no `accessibility` label). 🌍 All UI strings via `__('key')`. 🌓 Dark/light via `data-bs-theme`.
