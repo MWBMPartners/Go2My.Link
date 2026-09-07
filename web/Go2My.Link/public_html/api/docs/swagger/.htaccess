@@ -1,0 +1,131 @@
+# Copyright (c) 2024–2026 MWBM Partners Ltd (MWservices).
+# All rights reserved.
+#
+# This source code is proprietary and confidential.
+# Unauthorised copying, modification, or distribution is strictly prohibited.
+
+# =============================================================================
+# Go2My.Link — .htaccess for public_html/api/docs/swagger (scoped CSP)
+# =============================================================================
+#
+# WHY THIS FILE EXISTS
+#
+# The directory above this one (/api/docs/, the Redoc page) has to relax the
+# site's Content-Security-Policy in two ways that Redoc genuinely needs:
+# `worker-src blob:` (Redoc builds its search index inside a Web Worker made
+# from a blob: address) and `style-src 'unsafe-inline'` (Redoc themes itself by
+# injecting stylesheets at runtime).
+#
+# Apache applies a deeper directory's `Header set` last, so without a file
+# here, this Swagger UI page would silently inherit Redoc's looser policy. It
+# does not need it. Swagger UI 5.x was measured against its own shipped bundle
+# before this policy was written:
+#
+#   `new Worker(`                      0 occurrences  -> no worker-src needed
+#   `document.createElement("style")`  0 occurrences  -> no style injection
+#   `insertRule` / styled-components   0 occurrences  -> no CSS-in-JS
+#   `eval(`                            0 occurrences  -> no 'unsafe-eval'
+#   `new Function`                     1 occurrence, and it is the webpack
+#                                      globalThis polyfill, wrapped in
+#                                      try/catch with a `window` fallback, so
+#                                      it fails safely under a policy that
+#                                      forbids it
+#   external `url(...)` in the CSS     0 occurrences  -> no font or image host
+#   `URL.createObjectURL`              3 occurrences, all on the *response*
+#                                      path: the download link for a response
+#                                      body, and <img src> when an endpoint
+#                                      returns an image. This is the only
+#                                      reason `blob:` appears in img-src below.
+#
+# So this page can run under a policy that is STRICTER than both the site-wide
+# one and Redoc's — which is the right outcome, and worth keeping that way.
+#
+# WHAT IS AND IS NOT ALLOWED
+#
+#   script-src  'self'          Only our own vendored bundle and init.js. No
+#                               inline script anywhere on the page — the theme
+#                               is decided server-side in index.php precisely
+#                               so that stays true.
+#   style-src   'self'          Only the two stylesheets we ship.
+#   connect-src 'self'          This is what makes "Try it out" work: the
+#                               console calls /api/v1/* on this same origin.
+#                               No other host can be contacted.
+#   img-src     'self' data: blob:
+#                               data: for the small icons baked into the
+#                               stylesheet; blob: only so an endpoint that
+#                               returns an image can preview it.
+#   object-src  'none'          No plugins, ever.
+#   frame-ancestors 'self'      This page cannot be framed by another site,
+#                               so a pasted API key cannot be captured by a
+#                               look-alike page wrapped around it.
+#
+# Nothing here whitelists an external CDN. The Swagger UI build is vendored
+# locally in vendor/, so the page works on a server with no outbound internet
+# access at all — which is exactly what shared hosting like Dreamhost gives us.
+#
+# @package    Go2My.Link
+# @subpackage Configuration
+# @author     MWBM Partners Ltd (MWservices)
+# @version    1.0.0
+# @since      v1.1.0 — Phase 7
+#
+# 📖 References:
+#     - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
+#     - https://swagger.io/docs/open-source-tools/swagger-ui/usage/installation/
+# =============================================================================
+<IfModule mod_headers.c>
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'none'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
+
+    # =========================================================================
+    # An API key typed into the Authorize box must never end up in a referrer
+    # header sent to someone else's server. The page makes no cross-origin
+    # request, but this closes the door explicitly rather than by luck.
+    # =========================================================================
+    Header set Referrer-Policy "same-origin"
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+</IfModule>
+
+# =============================================================================
+# Serving the right content types.
+#
+# Some shared hosts do not have an up-to-date mime.types, and a JavaScript file
+# served as text/plain is simply ignored by the browser with no visible error.
+# Declaring these here means the page works on a host we do not control.
+# =============================================================================
+<IfModule mod_mime.c>
+    AddType application/javascript .js
+    AddType text/css .css
+    AddType application/yaml .yaml
+</IfModule>
+
+# =============================================================================
+# Caching.
+#
+# The vendored bundle and stylesheet are pinned to one exact Swagger UI version
+# and only change when we deliberately upgrade it, so they can be cached hard.
+# The page itself is cached only briefly, so a change to the wording or the
+# navigation shows up quickly.
+# =============================================================================
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/html "access plus 5 minutes"
+    ExpiresByType application/javascript "access plus 1 year"
+    ExpiresByType text/javascript "access plus 1 year"
+    ExpiresByType text/css "access plus 1 year"
+</IfModule>
+
+# =============================================================================
+# DirectoryIndex.
+#
+# A request for /api/docs/swagger/ must land on index.php. The component's
+# main rewrite rules pass real directories straight through
+# (RewriteCond %{REQUEST_FILENAME} !-d), so this is what actually chooses the
+# file to serve.
+# =============================================================================
+DirectoryIndex index.php
+
+# =============================================================================
+# Never list the contents of this directory if index.php is ever missing.
+# =============================================================================
+Options -Indexes
