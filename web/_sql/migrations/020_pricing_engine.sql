@@ -48,10 +48,34 @@
 -- both run before the settings block (unrelated tables, but kept in the same
 -- relative order as the fresh-install file-sort sequence for clarity).
 --
--- ZERO BEHAVIOUR CHANGE. Every billing.* setting below seeds to '0' (except
--- the two currency/region display defaults). Until an operator flips
--- billing.pricing_engine_enabled to '1', web/_functions/entitlements.php
--- resolves tiers exactly as it did before this migration ran.
+-- ZERO BEHAVIOUR CHANGE FOR THE LEGACY FEATURES. Every billing.* setting
+-- below seeds to '0' (except the two currency/region display defaults).
+-- Until an operator switches billing.pricing_engine_enabled on,
+-- web/_functions/entitlements.php resolves the has*/max* features exactly as
+-- it did before this migration ran.
+--
+-- ⚠️ BUT THREE OF THESE TABLES ARE LIVE WHATEVER THE SWITCH SAYS (LP-01,
+-- #216). tblFeatures, tblTierFeatures and tblOrgFeatureOverrides are read on
+-- every install by entitlements.php's g2ml_featureAllowed() and
+-- g2ml_featureLimit(), the gate for new features with no has*/max* column
+-- (the LinksPage extras, whose rows come from migration 021). Editing those
+-- rows changes what customers get straight away. The stored description of
+-- the master switch below used to say the new tables were "completely
+-- inert" with the switch off; it was corrected to match seed 019 word for
+-- word, and re-running this file rewrites only that description, never the
+-- switch's value. That re-run is the ONLY way the corrected text reaches a
+-- database that already had this migration: migration 021 does not touch
+-- tblSettings (it must stay statement-for-statement identical to seed 023).
+-- So docs/DEPLOYMENT.md and PRE_LAUNCH_CHECKLIST.md (A10) say to run this
+-- file again even when tblTierFeatures already exists.
+--
+-- ⚠️ A RE-RUN NEEDS MIGRATION 019 IN PLACE FIRST. The settings INSERT below
+-- relies on 019's unique key (built on settingScopeRefKey) to recognise an
+-- existing System row. Without it, MySQL treats the NULL settingScopeRef as
+-- different every time, so a re-run adds a SECOND copy of each billing.*
+-- setting instead of refreshing the first. Measured on MySQL 8.4 on
+-- 2026-09-21: with 019 in place a re-run kept every row count the same;
+-- with 019's old key restored it added a duplicate master-switch row.
 --
 -- @package    Go2My.Link
 -- @subpackage Migrations
@@ -805,7 +829,7 @@ INSERT INTO `tblSettings` (
     `settingDataType`, `isSensitive`, `isEditable`
 ) VALUES
 ('billing.pricing_engine_enabled', 'System', NULL,
- '0', '0', 'MASTER SWITCH for the flexible pricing/entitlement engine. OFF (0) = entitlements.php resolves tiers from the legacy tblSubscriptionTiers has*/max* columns exactly as before — the new tables are completely inert. ON (1) = web/_functions/pricing.php resolves entitlements from tblFeatures + tblTierFeatures + tblOrgFeatureOverrides (fail-open contract preserved).',
+ '0', '0', 'MASTER SWITCH for the flexible pricing/entitlement engine. It controls the LEGACY has*/max* features only. OFF (0) = entitlements.php resolves those from the tblSubscriptionTiers has*/max* columns exactly as before. ON (1) = web/_functions/pricing.php resolves them from tblFeatures + tblTierFeatures + tblOrgFeatureOverrides (fail-open contract preserved). WARNING: whatever this switch says, those three tables are ALWAYS live for registry-gated features such as the LinksPage extras (LP-01, #216) — entitlements.php g2ml_featureAllowed() and g2ml_featureLimit() read them with the switch off or on, so editing their rows changes what customers get straight away.',
  'boolean', 0, 1),
 ('billing.payg_enabled', 'System', NULL,
  '0', '0', 'Enables pay-as-you-go and PAYG-capped price plans (planType payg / payg_capped). OFF by default — requires usage metering proven in production first.',

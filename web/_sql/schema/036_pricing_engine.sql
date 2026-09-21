@@ -34,11 +34,37 @@
 --   2. tblSubscriptions / tblPayments / tblPaymentDiscounts are untouched.
 --      These new tables REFERENCE them; nothing changes their shape or
 --      semantics.
---   3. DISABLED BY DEFAULT. The resolver in web/_functions/pricing.php only
---      activates when tblSettings 'billing.pricing_engine_enabled' = '1'
---      (seeded '0' in web/_sql/seeds/019_pricing_settings.sql). Until then,
---      entitlements.php behaves EXACTLY as before this file was added, byte
---      for byte. Every table below is inert data until that flag flips.
+--   3. DISABLED BY DEFAULT — FOR THE LEGACY FEATURES. The resolver in
+--      web/_functions/pricing.php only takes over the legacy has* and max*
+--      features when the tblSettings switch 'billing.pricing_engine_enabled'
+--      is on (seeded '0', meaning off, in
+--      web/_sql/seeds/019_pricing_settings.sql). While it is off,
+--      g2ml_canUseFeature() and g2ml_checkLimit() in entitlements.php resolve
+--      those features from tblSubscriptionTiers exactly as they did before
+--      this file was added.
+--
+--      ⚠️ THREE OF THESE TABLES ARE LIVE WHATEVER THE SWITCH SAYS (LP-01,
+--      #216). tblFeatures, tblTierFeatures and tblOrgFeatureOverrides are
+--      read on EVERY install, with the switch off or on, by
+--      entitlements.php's g2ml_featureAllowed() and g2ml_featureLimit().
+--      Those two functions are the gate for NEW features that have no has*
+--      or max* column, starting with the LinksPage extras seeded by
+--      web/_sql/seeds/023_linkspage_feature_registry.sql. They reach these
+--      tables through pricing.php's g2ml_pricingResolveOrgTier(), which
+--      never checks the switch. So editing, adding or deleting rows in those
+--      three tables changes which LinksPage extras customers get, from the
+--      next page view.
+--
+--      This paragraph used to say "every table below is inert data until
+--      that flag flips". That was true when the file was written and stopped
+--      being true in LP-01; it was corrected so nobody edits these rows
+--      thinking the change has no effect. Of the remaining tables, no code
+--      reads or writes the price plans, coupons, coupon redemptions,
+--      subscription-plan pins or usage credits yet (checked 2026-09-21).
+--      tblUsageCounters and tblUsageEvents are written only by
+--      pricing.php's g2ml_pricingMeterUsage(), and only while
+--      'billing.usage_metering_enabled' (and, for events,
+--      'billing.usage_event_log_enabled') is on; both ship off.
 --   4. entitlements.php's public API is PRESERVED: g2ml_getOrgTier(),
 --      g2ml_canUseFeature(), g2ml_checkLimit(), the two whitelist constants,
 --      and the FAIL-OPEN contract all keep their exact signatures/behaviour.
@@ -89,10 +115,26 @@
 --   HOOK POINT: inside _g2ml_resolveOrgTier(), AFTER the '[default]'-org and
 --   GlobalAdmin sentinel branches (those short-circuit exactly as today), and
 --   BEFORE the legacy JOIN lookup — only when pricing.php is loaded AND
---   getSetting('billing.pricing_engine_enabled', '0') === '1'. Any failure
+--   g2ml_pricingEngineEnabled() says the master switch is on. That function
+--   reads 'billing.pricing_engine_enabled' through pricing.php's
+--   _g2ml_pricingSettingIsOn(), which accepts a real PHP true, 1, '1',
+--   'true', 'yes' or 'on'. (This used to describe the test as
+--   getSetting(...) === '1'. That comparison was a bug, fixed in LP-01,
+--   #216: getSetting() returns a real PHP true for a 'boolean' setting, never
+--   the text '1', so the switch could never be turned on.) Any failure
 --   (false/non-array) falls through to the legacy path (fail OPEN to the OLD
 --   behaviour, never to a block). With the setting at its seeded '0' value
---   this hook is dead code — current behaviour is preserved byte-for-byte.
+--   this hook never runs, so the has* and max* features resolve exactly as
+--   before.
+--
+--   SECOND CALLER, WITH THE SWITCH OFF (LP-01, #216): entitlements.php's
+--   g2ml_featureAllowed() / g2ml_featureLimit() call
+--   g2ml_pricingResolveOrgTier() DIRECTLY, on every install, to read the
+--   registry rows for new features that have no has* or max* column. They
+--   treat a false result differently from the hook: the yes/no check answers
+--   "no" (fail closed — it only ever hides an optional extra) and the limit
+--   check answers "allowed, unlimited" (fail open). See the comment block
+--   above those two functions in entitlements.php.
 --
 --   RESOLUTION (g2ml_pricingResolveOrgTier), all reads prepared-statement
 --   MySQLi, every failure returning false so the caller falls back:
@@ -112,8 +154,13 @@
 --        the mapping; isUnlimited=1 → NULL (legacy unlimited semantics);
 --        hasAdvancedRedirects = umbrella row OR any granular redirects.* on.
 --        Granular slugs are ADDITIONALLY exposed under a 'features' sub-array
---        for new callers (g2ml_pricingCanUse()/g2ml_pricingGetLimit()) —
---        legacy keys stay primitive so existing callers notice nothing.
+--        for new callers — legacy keys stay primitive so existing callers
+--        notice nothing. Since LP-01 (#216) new code reads that sub-array
+--        through entitlements.php's g2ml_featureAllowed() /
+--        g2ml_featureLimit(), which work with the switch off or on.
+--        pricing.php's g2ml_pricingCanUse() / g2ml_pricingGetLimit() read it
+--        too, but deny everybody while the switch is off, so they are not
+--        used to gate anything today.
 --   FAIL-OPEN: any DB/system error at steps 1–5 → return false → caller falls
 --   back to the legacy resolver, which itself fails open to the unlimited
 --   sentinel — strictly no new blocking failure mode.
@@ -122,8 +169,12 @@
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
 -- @version    1.0.0
--- @since      v1.6.0 — Pricing Engine phase (scaffold — all tables inert until
---             billing.pricing_engine_enabled is switched on)
+-- @since      v1.6.0 — Pricing Engine phase (scaffold — the legacy has*/max*
+--             features ignore these tables until
+--             billing.pricing_engine_enabled is switched on; since LP-01,
+--             #216, tblFeatures / tblTierFeatures / tblOrgFeatureOverrides
+--             are read on every install for registry-gated features — see
+--             guarantee 3 above)
 --
 -- 📖 References:
 --     - Legacy tier columns:   web/_sql/schema/011_core_subscription_tiers.sql
@@ -173,6 +224,12 @@ USE `mwtools_Go2MyLink`;
 -- configured): the resolver falls back to these — which default to
 -- "off"/0/not-unlimited — so a forgotten mapping can never accidentally grant
 -- a premium capability.
+--
+-- ⚠️ LIVE ON EVERY INSTALL (LP-01, #216): rows here are read with the pricing
+-- engine switch off or on, by entitlements.php's g2ml_featureAllowed() /
+-- g2ml_featureLimit(). Setting a LinksPage row's isActive to 0, or deleting
+-- it, makes the yes/no check answer "no" for that feature for every
+-- customer. See guarantee 3 in this file's header.
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS `tblFeatures` (
     `featureUID`            BIGINT UNSIGNED     NOT NULL AUTO_INCREMENT
@@ -447,6 +504,11 @@ CREATE TABLE IF NOT EXISTS `tblPricePlans` (
 -- effectiveFrom (same #150 idiom as tblSettings.settingScopeRefKey, using the
 -- sentinel '1000-01-01' — a VALID date under NO_ZERO_DATE sql_mode) so two
 -- undated rows for the same pair are impossible.
+--
+-- ⚠️ LIVE ON EVERY INSTALL (LP-01, #216): for registry-gated features (every
+-- LinksPage extra) these rows decide which plan gets what, with the pricing
+-- engine switch off or on — see guarantee 3 in this file's header. Changing
+-- one row moves that feature to or from a plan from the next page view.
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS `tblTierFeatures` (
     `tierFeatureUID`        BIGINT UNSIGNED     NOT NULL AUTO_INCREMENT
@@ -540,6 +602,11 @@ CREATE TABLE IF NOT EXISTS `tblTierFeatures` (
 -- automatic expiry of purchased add-ons (billing renews by extending
 -- effectiveUntil). sourceType+sourcePlanUID record WHY the override exists —
 -- 'addon' rows point at the tblPricePlans addon plan that sold it.
+--
+-- ⚠️ LIVE ON EVERY INSTALL (LP-01, #216): for registry-gated features (every
+-- LinksPage extra) an active override here takes effect with the pricing
+-- engine switch off or on — see guarantee 3 in this file's header. It does
+-- NOT affect the legacy has*/max* features until the switch is on.
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS `tblOrgFeatureOverrides` (
     `overrideUID`           BIGINT UNSIGNED     NOT NULL AUTO_INCREMENT

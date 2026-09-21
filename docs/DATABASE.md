@@ -147,7 +147,7 @@ The `tblUsers.role` ENUM column is retained as a cached **"effective role"** —
 
 Settings use a dictionary pattern with scope hierarchy:
 
-```
+```text
 Resolution order: User > Organisation > System > Default
 ```
 
@@ -157,6 +157,103 @@ Resolution order: User > Organisation > System > Default
 - **👤 User:** Per-user override
 
 🔒 Sensitive settings (where `isSensitive = 1`) are encrypted with AES-256-GCM using the `ENCRYPTION_SALT` from `auth_creds.php`.
+
+## 🧩 Feature Registry for LinksPage (LP-01, #216)
+
+### 📋 Two kinds of feature
+
+Some features are only on some plans. There are two ways the code decides who gets what:
+
+| Kind of feature | Where the plan values live | How the code checks it |
+| --- | --- | --- |
+| **Older features** (link limits, analytics, API access, custom HTML …) | A fixed column on `tblSubscriptionTiers`, such as `hasAnalytics` or `maxLinks` | `g2ml_canUseFeature()` / `g2ml_checkLimit()` in `web/_functions/entitlements.php` |
+| **New features** (everything the LinksPage programme adds) | One row per feature in `tblFeatures` (the feature registry), plus one row per plan in `tblTierFeatures` | `g2ml_featureAllowed()` / `g2ml_featureLimit()` in the same file |
+
+New features deliberately do **not** get a new column. Adding a column for every feature means a schema change and a deploy each time; the registry means the owner moves a feature between plans by changing **one row**, with no code change:
+
+```sql
+UPDATE tblTierFeatures
+   SET valueBoolean = 1
+ WHERE tierID = 'basic'
+   AND featureUID = (SELECT featureUID FROM tblFeatures
+                      WHERE featureSlug = 'linkspage.hide_branding');
+```
+
+A change takes effect on the next page view: the checks run when a setting is saved **and** again when the public page is shown, so a customer who moves to a cheaper plan loses the extra straight away, with no clean-up job.
+
+### 🔌 Works with the pricing engine off or on
+
+The registry tables belong to the pricing engine (`web/_sql/schema/036_pricing_engine.sql`), whose master switch `billing.pricing_engine_enabled` ships **off**. The two new functions give the **same answer either way**:
+
+- With the switch **off**, they ask `g2ml_pricingResolveOrgTier()` in `web/_functions/pricing.php` directly. That function never checks the switch itself.
+- With the switch **on**, the organisation's tier already carries the same resolved values.
+
+In both cases the same rows are merged in the same order: the registry default, then the plan's row, then any per-organisation override in `tblOrgFeatureOverrides`.
+
+> 🐛 **Fixed in LP-01:** three switches could never actually be turned on: the master switch, and the two usage-metering switches (`billing.usage_metering_enabled` and `billing.usage_event_log_enabled`). They are `boolean` settings, `getSetting()` returns a real PHP `true` for them, and `pricing.php` compared the value with the text `'1'`. The switches now work. They are still seeded **off**, and turning any of them on is a separate owner decision.
+
+#### ⚠️ Before deploying LP-01: check that all three switches are still off
+
+Until now, a stored "on" value (`1`, `true`, `yes` or `on`) was silently ignored because of the bug above. After this release it takes effect straight away. So if anyone ever set one of these directly in the live database, deploying would quietly switch the pricing engine or usage metering on. No admin screen writes these settings, so only a direct database edit could have done it, but it costs one query to be sure:
+
+```sql
+SELECT settingID, settingScope, settingScopeRef, settingValue
+  FROM tblSettings
+ WHERE settingID IN ('billing.pricing_engine_enabled',
+                     'billing.usage_metering_enabled',
+                     'billing.usage_event_log_enabled');
+```
+
+Every row returned should have `settingValue` = `0`. No rows at all is also fine, because a missing setting counts as off. The code only reads the `System` and `Default` rows here, but a row at any level that is not `0` is worth asking about. If one is not `0`, ask the owner whether it was meant, and set it back to `0` before deploying unless they say otherwise.
+
+The same check is step 1 of the deploy steps in [DEPLOYMENT.md](DEPLOYMENT.md) ("Migration `021` — the LinksPage feature registry") and owner action **A10** in [PRE_LAUNCH_CHECKLIST.md](../PRE_LAUNCH_CHECKLIST.md), which are the pages followed during a deploy.
+
+### 🛡️ What happens when something goes wrong
+
+| Situation | `g2ml_featureAllowed()` (yes/no) | `g2ml_featureLimit()` (numbers) |
+| --- | --- | --- |
+| The `[default]` organisation, or a GlobalAdmin | ✅ Allowed | ✅ Unlimited |
+| A database or system error | ❌ Denied, and one line in the error log | ✅ Allowed, unlimited |
+| A feature name that is not in the registry (usually a typo) | ❌ Denied, and one line in the error log | ✅ Allowed, unlimited, and one line in the error log |
+| A plan with no row for the feature | The registry default (off for every LinksPage feature) | The registry default |
+
+The yes/no check fails **closed** on purpose: every feature behind it is an optional extra on a page that still works without it, so a fault can only hide a paid extra — it can never block creating a link, a redirect or a login. The number check fails **open**, like the older `g2ml_checkLimit()`, because a limit only ever blocks creating something, and a fault in this system must never block a legitimate action.
+
+To read a limit's value rather than test a count against it (for example how many days of statistics a plan may see), call `g2ml_featureLimit($org, 'linkspage.analytics_retention_days', 0)` and use `['limit']`. `null` means unlimited.
+
+A LinksPage whose organisation was deleted has a `NULL` `orgHandle`. Callers pass `''` in that case, which resolves to the Free plan; they never skip the check.
+
+### 📋 The registered features and their proposed plan values
+
+These values are a **proposal for the owner to confirm** (issue #216). Each one is a single row and can be changed later without any code change.
+
+| Feature name (`featureSlug`) | Free | Basic | Premium | Enterprise | Built in |
+| --- | --- | --- | --- | --- | --- |
+| `linkspage.hide_branding` | No | Yes | Yes | Yes | LP-03 |
+| `linkspage.seo` | No | Yes | Yes | Yes | LP-04 |
+| `linkspage.click_tracking` | Yes | Yes | Yes | Yes | LP-05 |
+| `linkspage.analytics_retention_days` | 30 days | 90 days | 365 days | All time | LP-06 |
+| `linkspage.scheduled_links` | No | Yes | Yes | Yes | LP-07 |
+| `linkspage.password_protect` | No | No | Yes | Yes | 🔜 not built yet |
+| `linkspage.image_upload` | No | Yes | Yes | Yes | 🔜 not built yet |
+| `linkspage.verified_badge` | No | No | Yes | Yes | 🔜 not built yet |
+| `linkspage.lead_capture` | No | No | Yes | Yes | ❌ needs legal sign-off |
+| `linkspage.tracking_pixels` | No | No | Yes | Yes | ❌ needs legal sign-off |
+| `linkspage.embeds` | No | No | Yes | Yes | 🔜 not built yet |
+| `linkspage.all_templates` | Yes | Yes | Yes | Yes | describes today; not enforced through the registry |
+| `linkspage.agegate` | Yes | Yes | Yes | Yes | describes today; not enforced through the registry |
+| `linkspage.custom_domain` | No | Yes | Yes | Yes | describes today; not enforced through the registry |
+
+### 📁 Files
+
+- 🗄️ **Fresh installs:** `web/_sql/seeds/023_linkspage_feature_registry.sql`
+- 🚢 **Databases installed before it:** `web/_sql/migrations/021_linkspage_feature_registry.sql` (the same statements; safe to run more than once). Run migration `020` first, **even on a database that already has it**: a re-run is the only thing that corrects the master switch's stored description, which used to say the pricing tables were "completely inert" with the switch off. The deploy steps, including the check that migration `019` is in place first, are in [DEPLOYMENT.md](DEPLOYMENT.md) ("Migration `021` — the LinksPage feature registry").
+- 🔧 **The checks:** `web/_functions/entitlements.php` — `g2ml_featureAllowed()`, `g2ml_featureLimit()`
+- 🔧 **The merge rules:** `web/_functions/pricing.php` — `g2ml_pricingResolveOrgTier()`
+
+Re-running the seed or the migration never overwrites a plan value someone has changed since; it only refreshes each feature's description.
+
+> ⚠️ **MariaDB (Dreamhost):** on 2026-09-21, schema `036` was found not to create `tblTierFeatures` on MariaDB 11.4 (its generated column `effectiveFromKey` is refused — issue **#183**). Without that table no plan has any LinksPage extra: the yes/no check denies them all. Short links, redirects and logins are not affected. Check that `tblTierFeatures` exists on the production database before relying on these features.
 
 ## 🔧 Stored Procedures
 

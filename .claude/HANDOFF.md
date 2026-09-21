@@ -72,7 +72,7 @@ yet; enabling does not add payments (#57–#60 need billing credentials).
 
 | Key | Issue | What | Builder | Status |
 | --- | --- | --- | --- | --- |
-| LP-01 | #216 | Feature-gate foundation (works with the pricing engine off and on) + fix the engine's on/off switch | Opus | ⏳ queued (batch A) |
+| LP-01 | #216 | Feature-gate foundation (works with the pricing engine off and on) + fix the engine's on/off switch | Opus | ✅ done — Review: 4 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
 | LP-09 | #217 | Session cookie domain: lnks.page and g2my.link sessions work (age gate loops in production) | Sonnet | ⏳ queued (batch A) |
 | LP-02 | #218 | Save bugs: social links lost, font saved as "0", republish "not found", unreachable slugs | Sonnet | ⏳ queued (batch A) |
 | LP-11 | #219 | GDPR: LinksPages included in data export and account deletion | Sonnet | ⏳ queued (batch B) |

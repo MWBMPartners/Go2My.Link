@@ -17,12 +17,23 @@
  * is DISABLED BY DEFAULT: every public function first checks
  * g2ml_pricingEngineEnabled(), which reads tblSettings
  * 'billing.pricing_engine_enabled' — seeded '0' by
- * web/_sql/seeds/019_pricing_settings.sql. While that setting is '0', this
- * file is loaded (see web/_includes/page_init.php) but produces NO output
- * that anything reads: the single guarded hook in
- * web/_functions/entitlements.php's _g2ml_resolveOrgTier() only calls into
- * this file when the flag is '1', so entitlements.php's behaviour is
- * byte-for-byte unchanged until an operator flips that switch.
+ * web/_sql/seeds/019_pricing_settings.sql. While that setting is off, the
+ * guarded hook in web/_functions/entitlements.php's _g2ml_resolveOrgTier()
+ * never calls into this file, so the LEGACY features (the has* and max* columns)
+ * behave byte-for-byte as before until an operator flips that switch.
+ *
+ * ONE DELIBERATE EXCEPTION (LP-01, #216): entitlements.php's
+ * g2ml_featureAllowed() / g2ml_featureLimit() — the gate for NEW features
+ * that have no has* or max* column (the LinksPage programme's
+ * linkspage.hide_branding and friends) — call g2ml_pricingResolveOrgTier()
+ * DIRECTLY whether the switch is on or off. That resolver never checks the
+ * switch itself, so the registry rows in tblFeatures / tblTierFeatures are
+ * read by the same merge routine in both modes and a new feature gives the
+ * same answer either way. It changes nothing for the legacy features.
+ *
+ * FIXED (LP-01, #216): the switches could never actually be turned on. They
+ * are 'boolean' settings, getSetting() returns a real PHP true for them, and
+ * this file compared with `=== '1'`. See _g2ml_pricingSettingIsOn().
  *
  * Like entitlements.php, this file only DEFINES functions/constants at
  * include time — no top-level side effects, no queries run merely by
@@ -41,7 +52,7 @@
  *   - g2ml_pricingCanUse()           — granular boolean feature check
  *   - g2ml_pricingGetLimit()         — granular limit/quota check
  *   - g2ml_pricingMeterUsage()       — records metered usage (no-op unless
- *                                      billing.usage_metering_enabled='1')
+ *                                      billing.usage_metering_enabled is on)
  *   - g2ml_clearPricingCache()       — invalidate this file's request caches
  *
  * FAIL-OPEN CONTRACT (non-negotiable, mirrors entitlements.php): every DB
@@ -250,6 +261,49 @@ function _g2ml_pricingReadSetting(string $settingID, mixed $default): mixed
     }
 
     return $default;
+}
+
+/**
+ * Does a raw on/off setting value mean "on"? (LP-01, #216)
+ *
+ * WHY THIS EXISTS: the billing.* switches are stored with
+ * settingDataType = 'boolean' (seed 019). getSetting() runs every value
+ * through settings.php's _g2ml_castSettingValue(), which turns a 'boolean'
+ * setting into a real PHP true or false — never the text '1'. This file used
+ * to test `=== '1'`, so an operator who set the switch to 1 in the database
+ * still got "off": the engine could never actually be switched on. A default
+ * value passed in by the caller (the string '0') or a test override can
+ * still arrive as text, so this accepts every form a "yes" can take.
+ *
+ * Mirrors g2ml_linkspageCustomHtmlKillSwitchEnabled() in html_sanitiser.php,
+ * which reads its own 'boolean' setting the same way for the same reason.
+ *
+ * Returns true for: boolean true, the integer 1, and the text '1', 'true',
+ * 'yes' or 'on' (any letter case, surrounding spaces ignored). Everything
+ * else — false, 0, '0', '', null, any other text, arrays — is "off", so an
+ * unexpected value can only ever leave a switch OFF, never turn it on.
+ *
+ * @param  mixed $value  The value returned by _g2ml_pricingReadSetting().
+ * @return bool
+ */
+function _g2ml_pricingSettingIsOn(mixed $value): bool
+{
+    if ($value === true || $value === 1)
+    {
+        return true;
+    }
+
+    if (is_string($value))
+    {
+        $normalisedValue = strtolower(trim($value));
+
+        if (in_array($normalisedValue, ['1', 'true', 'yes', 'on'], true))
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -542,6 +596,14 @@ function _g2ml_pricingResolveFeatureValue(array $featureRow, ?array $tierFeature
  * install until an operator explicitly flips it. Request-cached so repeated
  * calls within one request never re-hit the settings cache.
  *
+ * FIXED (LP-01, #216): this used to compare the setting with `=== '1'`. But
+ * the setting is declared 'boolean', and getSetting() hands back a real PHP
+ * true for it (settings.php, _g2ml_castSettingValue()), so the comparison was
+ * always false and the switch could never be turned on. It now goes through
+ * _g2ml_pricingSettingIsOn(), which accepts true, 1, '1', 'true', 'yes' and
+ * 'on'. The seeded value is still '0': this makes the switch WORK, it does
+ * not turn the engine on.
+ *
  * @return bool
  */
 function g2ml_pricingEngineEnabled(): bool
@@ -556,7 +618,7 @@ function g2ml_pricingEngineEnabled(): bool
 
     try
     {
-        $enabled = (_g2ml_pricingReadSetting(G2ML_PRICING_SETTING_MASTER, '0') === '1');
+        $enabled = _g2ml_pricingSettingIsOn(_g2ml_pricingReadSetting(G2ML_PRICING_SETTING_MASTER, '0'));
     }
     catch (Throwable $unexpectedError)
     {
@@ -576,10 +638,27 @@ function g2ml_pricingEngineEnabled(): bool
  * limits, has* flags, unlimited, source), PLUS a 'features' sub-array keyed
  * by every ACTIVE feature slug for new granular callers.
  *
- * Does NOT itself check g2ml_pricingEngineEnabled() — the caller
- * (entitlements.php's guarded hook) already does that; this function always
- * attempts a full resolution when called directly, which is what the unit
- * tests and g2ml_pricingCanUse()/g2ml_pricingGetLimit() need.
+ * Does NOT itself check g2ml_pricingEngineEnabled(), and this function
+ * always attempts a full resolution when called. It has more than one
+ * caller, and they need different things:
+ *   - entitlements.php's guarded hook in _g2ml_resolveOrgTier() checks the
+ *     switch before calling, and only calls when it is on.
+ *   - g2ml_pricingCanUse() / g2ml_pricingGetLimit() and the unit tests call
+ *     it directly.
+ *   - entitlements.php's g2ml_featureAllowed() / g2ml_featureLimit() (via
+ *     _g2ml_resolveFeatureValues()) call it directly with the switch OFF.
+ *     They are the gate for new features that have no has* / max* column.
+ *
+ * Must never check the master switch: entitlements.php's
+ * g2ml_featureAllowed() / g2ml_featureLimit() call this directly with the
+ * engine off (LP-01, #216). If a switch check were added here, every
+ * new-feature yes/no check would answer "no" for every customer on every
+ * install where the engine is off, which is all of them today. That failure
+ * would be silent. Only the "identical answers with the switch '0', '1',
+ * false and true" tests in tests/unit/feature_gate_test.php would catch it,
+ * through their switch-'0' and switch-false runs. This comment used to
+ * name the guarded hook as the only caller, which stopped being true in
+ * LP-01.
  *
  * FAIL-OPEN: any DB/system error at any step returns false so the caller
  * falls back to the legacy resolver (which itself fails open to the
@@ -815,6 +894,13 @@ function g2ml_pricingResolveOrgTier(string $orgHandle): array|false
  * using g2ml_canUseFeature() until an operator switches the engine on; this
  * function is for code written AFTER that migration.
  *
+ * ⚠️ Do NOT use this to gate a new feature today (LP-01, #216). Because it
+ * denies everybody while the engine is off — and skips the '[default]' org
+ * and GlobalAdmin "never gated" rules — it would switch a new feature off
+ * for every customer. Use entitlements.php's g2ml_featureAllowed() /
+ * g2ml_featureLimit() instead: they read the same registry rows and give
+ * the same answer with the engine off or on.
+ *
  * @param  string $orgHandle
  * @param  string $featureSlug
  * @return bool
@@ -958,8 +1044,15 @@ function _g2ml_pricingPruneUsageEvents(): void
 /**
  * Record metered usage for a meterable feature. A NO-OP (returns true
  * without touching the database) unless 'billing.usage_metering_enabled' is
- * '1' — so this is safe to sprinkle into call sites ahead of the engine (or
+ * on — so this is safe to sprinkle into call sites ahead of the engine (or
  * even ahead of PAYG) going live.
+ *
+ * FIXED (LP-01, #216): both switches read here —
+ * 'billing.usage_metering_enabled' and 'billing.usage_event_log_enabled' —
+ * used to be compared with `=== '1'`. Both are declared 'boolean' in seed
+ * 019, so getSetting() returns a real PHP true for them and the comparison
+ * could never succeed: metering could not be switched on. They now go
+ * through _g2ml_pricingSettingIsOn(). Both are still seeded '0' (off).
  *
  * Metering failures are LOGGED and return false but NEVER throw — the
  * caller must never let a metering failure block the underlying action
@@ -976,7 +1069,7 @@ function g2ml_pricingMeterUsage(string $orgHandle, string $featureSlug, int $qua
 {
     try
     {
-        $meteringEnabled = (_g2ml_pricingReadSetting('billing.usage_metering_enabled', '0') === '1');
+        $meteringEnabled = _g2ml_pricingSettingIsOn(_g2ml_pricingReadSetting('billing.usage_metering_enabled', '0'));
 
         if ($meteringEnabled !== true)
         {
@@ -1048,7 +1141,7 @@ function g2ml_pricingMeterUsage(string $orgHandle, string $featureSlug, int $qua
             return false;
         }
 
-        $eventLogEnabled = (_g2ml_pricingReadSetting('billing.usage_event_log_enabled', '0') === '1');
+        $eventLogEnabled = _g2ml_pricingSettingIsOn(_g2ml_pricingReadSetting('billing.usage_event_log_enabled', '0'));
 
         if ($eventLogEnabled === true)
         {

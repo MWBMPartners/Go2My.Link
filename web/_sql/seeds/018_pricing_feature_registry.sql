@@ -15,9 +15,25 @@
 --     features — then copy every tier's current column values into
 --     tblTierFeatures via idempotent INSERT…SELECTs. Legacy NULL (=unlimited)
 --     becomes isUnlimited=1. Booleans copy verbatim. After this file runs, the
---     new model REPRODUCES the legacy model exactly; nothing reads it yet
---     (billing.pricing_engine_enabled is still '0' — seeded by
---     019_pricing_settings.sql).
+--     new model REPRODUCES the legacy model exactly. The legacy has*/max*
+--     features do not read it yet: billing.pricing_engine_enabled is still
+--     '0' (off), seeded by 019_pricing_settings.sql.
+--
+--     ⚠️ THE REGISTRY ITSELF IS LIVE (LP-01, #216). This paragraph used to
+--     say "nothing reads it yet". Since LP-01, entitlements.php's
+--     g2ml_featureAllowed() and g2ml_featureLimit() read tblFeatures,
+--     tblTierFeatures and tblOrgFeatureOverrides on every install, with the
+--     switch off or on, to gate new features that have no has*/max* column
+--     (the LinksPage extras, registered by
+--     023_linkspage_feature_registry.sql). Those two functions will answer
+--     for ANY active registry name, including the rows this file writes. As
+--     of LP-01 no code asks them about this file's rows (the legacy features
+--     are still checked through g2ml_canUseFeature() / g2ml_checkLimit()),
+--     so in practice these rows only matter once the switch is on. That
+--     changes the moment a caller is added, so do not assume they are
+--     unused. The three linkspage.* rows this file registers
+--     (all_templates, custom_domain, agegate) get their plan rows from seed
+--     023.
 --
 --   STEP 2 (operator, later): flip billing.pricing_engine_enabled to '1'.
 --     entitlements.php now resolves through web/_functions/pricing.php (merge

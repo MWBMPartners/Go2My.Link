@@ -225,11 +225,12 @@ The application detects its environment from the hostname:
 3. 📋 Import all **16** schema files from `web/_sql/schema/`, in filename order
 4. 🔧 Import both stored procedures from `web/_sql/procedures/`
    (`sp_generateShortCode.sql`, `sp_lookupShortURL.sql`)
-5. 🌱 Import all **22** seed files from `web/_sql/seeds/`, in order
+5. 🌱 Import all **23** seed files from `web/_sql/seeds/`, in order
 
-> 📝 Counts as at 2026-09-07: 16 schema files, 2 stored procedures, 22 seeds,
-> 19 migrations. Import order is schema → procedures → seeds, which is the
-> order `.github/workflows/ci.yml` uses.
+> 📝 Counts as at 2026-09-21: 16 schema files, 2 stored procedures, 23 seeds,
+> 20 migrations. Import order is schema → procedures → seeds, which is the
+> order `.github/workflows/ci.yml` uses. (Seed `023` and migration `021`, the
+> LinksPage feature registry, were added on 2026-09-21 — see below.)
 
 #### 🚨 The collation check — do this first, every time
 
@@ -277,6 +278,96 @@ key names instead of words:
 
 Both are `INSERT IGNORE`, so they are safe to run more than once and safe on a
 database that already has them.
+
+#### 🧩 Migration `021` — the LinksPage feature registry (needed on an EXISTING database)
+
+`web/_sql/migrations/021_linkspage_feature_registry.sql` registers every
+LinksPage extra (hiding the "Powered by" line, search and sharing controls,
+statistics history and so on) and gives each of the four plans a value for it.
+A fresh install gets exactly the same rows from seed
+`023_linkspage_feature_registry.sql`, so it does not need this file. A
+database installed **before** 2026-09-21 does (issue #216).
+
+**Why it matters.** The code checks each LinksPage extra by looking up that
+feature's row. When the row is missing, the check answers "no" on purpose, so
+skipping this migration quietly takes every LinksPage extra away from every
+plan, paid ones included. Short links, redirects and logins are not affected.
+
+Do these three steps, in this order:
+
+1. 🚨 **Before deploying the code, check that the three `billing.*` switches
+   are still off.** This release fixes a bug that made these switches
+   impossible to turn on. Because of the fix, a stored "on" value (`1`,
+   `true`, `yes` or `on`) takes effect the moment the new code is live, so a
+   forgotten "on" would quietly switch on the pricing engine or usage
+   metering. No admin screen writes these settings, so only a direct database
+   edit could have set one, but it takes one query to be sure:
+
+   ```sql
+   SELECT settingID, settingScope, settingScopeRef, settingValue
+     FROM tblSettings
+    WHERE settingID IN ('billing.pricing_engine_enabled',
+                        'billing.usage_metering_enabled',
+                        'billing.usage_event_log_enabled');
+   ```
+
+   Every row should show `settingValue` = `0`. No rows at all is also fine,
+   because a missing setting counts as off. If a row is not `0`, ask the owner
+   whether it was meant, and set it back to `0` before deploying unless they
+   say otherwise. The background is in [DATABASE.md](DATABASE.md), section
+   "Feature Registry for LinksPage", under "Before deploying LP-01".
+
+2. **Run `web/_sql/migrations/020_pricing_engine.sql`, even if it has been
+   run before.** It creates the tables that `021` writes to. On a database
+   that already has those tables, run it anyway, for a second reason: it is
+   the only file that corrects the stored description of the master switch
+   `billing.pricing_engine_enabled`. The old description says that with the
+   switch off "the new tables are completely inert". That stopped being true
+   in this release, because the LinksPage checks read three of those tables
+   whether the switch is off or on (see [DATABASE.md](DATABASE.md), section
+   "Feature Registry for LinksPage"). Migration `021` does not touch settings,
+   so it cannot correct it.
+
+   A re-run only adds what is missing and refreshes descriptions. It never
+   changes a switch's value or a plan value someone has edited. *(Checked on
+   2026-09-21 against MySQL 8.4: re-running `020` on a fully migrated
+   database kept every row count the same, left the switch at `0`, kept a
+   plan value that had been changed by hand, and replaced the old
+   description.)*
+
+   ⚠️ **First, confirm that migration `019` has been applied.** A re-run of
+   `020` depends on it:
+
+   ```sql
+   SHOW INDEX FROM tblSettings
+    WHERE Key_name = 'UQ_setting_scope'
+      AND Column_name = 'settingScopeRefKey';
+   ```
+
+   One row back means `019` is in place. No rows means it is not. Without
+   `019`, the database cannot tell that a platform-wide setting already
+   exists, so the re-run adds a second copy of each `billing.*` setting
+   instead of updating the first one (seen in the same 2026-09-21 check).
+   In that case run `web/_sql/migrations/019_settings_scope_dedupe.sql`
+   first, **exactly once** (it is not safe to run twice; see the skip list
+   under "Migration (from MWlink)" below), and then `020`.
+
+   **After running `020`, check that the table exists:**
+
+   ```sql
+   SHOW TABLES LIKE 'tblTierFeatures';
+   ```
+
+   One row back means it is there. ⚠️ **MariaDB (Dreamhost):** migration
+   `020` has been found not to create `tblTierFeatures` on MariaDB 11.4
+   (issue **#183**). If the table is still missing after running `020`, stop
+   and tell the owner: the LinksPage extras cannot work on that database
+   until #183 is fixed.
+
+3. **Run `web/_sql/migrations/021_linkspage_feature_registry.sql`.** It only
+   adds rows, so it is safe to run more than once. A re-run refreshes each
+   feature's description and never overwrites a plan value someone has
+   changed since.
 
 ### 🔄 Migration (from MWlink)
 
@@ -331,6 +422,14 @@ not from a single fresh import of today's files:
 | `017_apikey_prefix_unique.sql` | Optional | Idempotent — harmless no-op if already applied |
 | `018_deprecate_org_domains.sql` | Optional (Part 1 only) | Part 1 (table `COMMENT`) is idempotent metadata-only; Part 2 is a manual, owner-reviewed reconciliation audit — **never auto-run** |
 | `019_settings_scope_dedupe.sql` | 🚨 **No — MANDATORY** | NOT idempotent (forward-only, one-shot; errors if re-applied) — run exactly once. Without it, duplicate System-scope `tblSettings` rows can coexist (MySQL treats NULL as distinct in the old UNIQUE key) and `getSetting()` may read a stale/ambiguous duplicate for platform-wide kill-switches and feature toggles |
+
+> 🧩 **Migrations `020` and `021`** work differently from the ones in this
+> table: they add whole tables and rows rather than patching a column. A
+> genuinely fresh install does not need either one, because schema `036` and
+> seeds `018`, `019` and `023` already contain the same things. An existing
+> database needs both, in that order — and needs the `billing.*` switch check
+> **before** the code is deployed. See **Migration `021` — the LinksPage
+> feature registry** above.
 
 ## 🔑 Credentials Setup
 

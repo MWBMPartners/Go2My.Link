@@ -335,6 +335,74 @@ test('pricingEngineEnabled: reflects the master switch and is request-cached', f
 });
 
 // ============================================================================
+// 🔌 LP-01 (#216): the switches accept a REAL boolean from the settings layer.
+//
+// Every case above drives the switch with the strings '1' / '0'. But the
+// billing.* switches are 'boolean' settings (seed 019), and getSetting()
+// returns a real PHP true or false for those (settings.php,
+// _g2ml_castSettingValue()) — never '1'. pricing.php used to compare with
+// `=== '1'`, so in production the switches could never be turned on, and
+// this suite could not see it because it only ever fed in strings. These
+// cases feed in exactly what getSetting() really returns.
+// ============================================================================
+
+test('engine switch: a boolean true from the settings layer switches the engine on (and false keeps it off)', function (): void
+{
+    g2ml_pr_unit_reset();
+
+    $GLOBALS['g2ml_pr_unit_settings'] = ['billing.pricing_engine_enabled' => true];
+    unset($GLOBALS['g2ml_pricing_engine_enabled_cache']);
+    assert_true(g2ml_pricingEngineEnabled(), 'A real boolean true (what getSetting() returns for a boolean setting) switches the engine on');
+
+    $GLOBALS['g2ml_pr_unit_settings'] = ['billing.pricing_engine_enabled' => false];
+    unset($GLOBALS['g2ml_pricing_engine_enabled_cache']);
+    assert_false(g2ml_pricingEngineEnabled(), 'A real boolean false keeps it off');
+
+    g2ml_pr_unit_reset();
+});
+
+test('metering switch: a boolean true from the settings layer switches usage metering on (and false keeps it off)', function (): void
+{
+    g2ml_pr_unit_reset();
+
+    $GLOBALS['g2ml_pricing_features_override'] = function (): array
+    {
+        return g2ml_pr_unit_features();
+    };
+
+    // With metering OFF the function returns true straight away, whatever the
+    // slug. With it ON, an unknown slug gets past that early return and is
+    // refused with false — so false here PROVES the switch was read as on.
+    $GLOBALS['g2ml_pr_unit_settings'] = ['billing.usage_metering_enabled' => true];
+    assert_false(g2ml_pricingMeterUsage('org-meter-bool', 'not.a.real.slug'), 'A real boolean true switches metering on (the unknown slug is now refused)');
+
+    $GLOBALS['g2ml_pr_unit_settings'] = ['billing.usage_metering_enabled' => false];
+    assert_true(g2ml_pricingMeterUsage('org-meter-bool', 'not.a.real.slug'), 'A real boolean false keeps metering off (a no-op that returns true)');
+
+    g2ml_pr_unit_reset();
+});
+
+test('_g2ml_pricingSettingIsOn: accepts every form a "yes" can take and nothing else', function (): void
+{
+    assert_true(_g2ml_pricingSettingIsOn(true), 'boolean true');
+    assert_true(_g2ml_pricingSettingIsOn(1), 'integer 1');
+    assert_true(_g2ml_pricingSettingIsOn('1'), "'1'");
+    assert_true(_g2ml_pricingSettingIsOn('true'), "'true'");
+    assert_true(_g2ml_pricingSettingIsOn('yes'), "'yes'");
+    assert_true(_g2ml_pricingSettingIsOn('on'), "'on'");
+    assert_true(_g2ml_pricingSettingIsOn(' ON '), 'letter case and surrounding spaces are ignored');
+
+    assert_false(_g2ml_pricingSettingIsOn(false), 'boolean false');
+    assert_false(_g2ml_pricingSettingIsOn(0), 'integer 0');
+    assert_false(_g2ml_pricingSettingIsOn('0'), "'0' (the seeded value)");
+    assert_false(_g2ml_pricingSettingIsOn(''), 'empty text');
+    assert_false(_g2ml_pricingSettingIsOn(null), 'null (setting missing)');
+    assert_false(_g2ml_pricingSettingIsOn('off'), "'off'");
+    assert_false(_g2ml_pricingSettingIsOn(2), 'any other number stays off');
+    assert_false(_g2ml_pricingSettingIsOn(['1']), 'an array stays off');
+});
+
+// ============================================================================
 // 🚫 Hook OFF — entitlements.php ignores pricing.php entirely
 // ============================================================================
 

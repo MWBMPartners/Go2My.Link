@@ -17,12 +17,34 @@
 -- Every switch below seeds '0' (OFF) except the two currency/region defaults,
 -- which are informational display defaults, not behaviour switches:
 --
---   billing.pricing_engine_enabled   — MASTER switch. OFF (0) = entitlements.php
---     resolves tiers from the legacy tblSubscriptionTiers has*/max* columns
---     exactly as before this phase — web/_sql/schema/036_pricing_engine.sql's
---     tables are completely inert. ON (1) = web/_functions/pricing.php
---     resolves entitlements from tblFeatures + tblTierFeatures +
---     tblOrgFeatureOverrides (fail-open contract preserved throughout).
+--   billing.pricing_engine_enabled   — MASTER switch for the LEGACY has*/max*
+--     features. OFF (0) = entitlements.php resolves those from the
+--     tblSubscriptionTiers has*/max* columns exactly as before this phase.
+--     ON (1) = web/_functions/pricing.php resolves them from tblFeatures +
+--     tblTierFeatures + tblOrgFeatureOverrides (fail-open contract preserved
+--     throughout).
+--
+--     ⚠️ NOT A SWITCH FOR THE WHOLE REGISTRY (LP-01, #216). Whatever this
+--     switch says, tblFeatures, tblTierFeatures and tblOrgFeatureOverrides
+--     are read on every install by entitlements.php's g2ml_featureAllowed()
+--     and g2ml_featureLimit() — the gate for new features that have no
+--     has*/max* column, such as the LinksPage extras. Editing those rows
+--     changes what customers get straight away, even with this switch off.
+--     This header, and the stored settingDescription below, used to say
+--     that with the switch off "the new tables are completely inert". That
+--     stopped being true in LP-01 and was corrected. The switch itself is
+--     read through pricing.php's _g2ml_pricingSettingIsOn(), because
+--     getSetting() returns a real PHP true for a 'boolean' setting, never
+--     the text '1'.
+--
+--     Re-running this seed on an existing database refreshes the stored
+--     description to the corrected text (the ON DUPLICATE KEY UPDATE below
+--     rewrites settingDescription only) and never touches settingValue.
+--     That relies on migration 019's unique key (on settingScopeRefKey)
+--     being in place; without it a re-run adds a second copy of each
+--     billing.* row instead. An existing database gets the corrected text
+--     by re-running migration 020, which carries the same statement; see
+--     docs/DEPLOYMENT.md, "Migration 021 — the LinksPage feature registry".
 --   billing.payg_enabled             — pay-as-you-go / PAYG-capped plans.
 --   billing.usage_metering_enabled   — writes to tblUsageCounters (can run ON
 --     ahead of PAYG launch purely to gather baseline usage, no billing effect).
@@ -56,7 +78,7 @@ INSERT INTO `tblSettings` (
     `settingDataType`, `isSensitive`, `isEditable`
 ) VALUES
 ('billing.pricing_engine_enabled', 'System', NULL,
- '0', '0', 'MASTER SWITCH for the flexible pricing/entitlement engine. OFF (0) = entitlements.php resolves tiers from the legacy tblSubscriptionTiers has*/max* columns exactly as before — the new tables are completely inert. ON (1) = web/_functions/pricing.php resolves entitlements from tblFeatures + tblTierFeatures + tblOrgFeatureOverrides (fail-open contract preserved).',
+ '0', '0', 'MASTER SWITCH for the flexible pricing/entitlement engine. It controls the LEGACY has*/max* features only. OFF (0) = entitlements.php resolves those from the tblSubscriptionTiers has*/max* columns exactly as before. ON (1) = web/_functions/pricing.php resolves them from tblFeatures + tblTierFeatures + tblOrgFeatureOverrides (fail-open contract preserved). WARNING: whatever this switch says, those three tables are ALWAYS live for registry-gated features such as the LinksPage extras (LP-01, #216) — entitlements.php g2ml_featureAllowed() and g2ml_featureLimit() read them with the switch off or on, so editing their rows changes what customers get straight away.',
  'boolean', 0, 1),
 ('billing.payg_enabled', 'System', NULL,
  '0', '0', 'Enables pay-as-you-go and PAYG-capped price plans (planType payg / payg_capped). OFF by default — requires usage metering proven in production first.',

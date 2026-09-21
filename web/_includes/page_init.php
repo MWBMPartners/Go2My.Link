@@ -237,10 +237,28 @@ require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'org.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'account_types.php';
 
 // Optional pricing-engine resolver (#TBD — scaffold). Only DEFINES functions;
-// the guarded hook inside entitlements.php's _g2ml_resolveOrgTier() is the
-// only place that calls into it, and only when
-// getSetting('billing.pricing_engine_enabled') === '1'. Loaded immediately
-// before entitlements.php so that hook can see g2ml_pricingResolveOrgTier().
+// nothing runs merely by loading it. Two places in entitlements.php call it:
+//
+//   1. The guarded hook inside _g2ml_resolveOrgTier(). It only runs when the
+//      master switch 'billing.pricing_engine_enabled' is on, as read by
+//      g2ml_pricingEngineEnabled() through _g2ml_pricingSettingIsOn(). The
+//      switch ships off, so for the older has* / max* features this file is
+//      normally never used.
+//   2. The gate for NEW features that have no has* / max* column,
+//      g2ml_featureAllowed() / g2ml_featureLimit() (LP-01, #216). With the
+//      switch OFF, they call g2ml_pricingResolveOrgTier() directly to read
+//      the feature registry, so this second route is used on every install.
+//
+// This comment used to say the hook was the ONLY caller and that it ran
+// only when getSetting() returned exactly the text '1'. Neither is true any
+// more. The '1' test was also a bug: getSetting() returns a real PHP true
+// for a 'boolean' setting, so the switch could never be turned on. LP-01
+// fixed that as well.
+//
+// Loaded immediately before entitlements.php, so both callers can see
+// g2ml_pricingResolveOrgTier(). If this file is missing, the older features
+// behave as they always have. Every new-feature yes/no check answers "no"
+// (and logs why). Every new-feature limit is treated as unlimited.
 if (file_exists(G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'pricing.php'))
 {
     require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'pricing.php';
