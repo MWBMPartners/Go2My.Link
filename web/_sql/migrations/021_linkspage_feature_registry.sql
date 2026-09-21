@@ -44,16 +44,28 @@
 -- migration 019 in place first. docs/DEPLOYMENT.md ("Migration 021 — the
 -- LinksPage feature registry", step 2) has the checks for both.
 --
--- ⚠️  MARIADB (Dreamhost): CHECK THAT tblTierFeatures EXISTS FIRST. On
---     2026-09-21, schema 036 / migration 020 were found NOT to create
---     tblTierFeatures on MariaDB 11.4 — its generated column effectiveFromKey
---     is refused with ERROR 1901, even with the #186 CAST (see issue #183).
---     tblFeatures is still created, so on such a database section 1 below
---     succeeds and every tblTierFeatures statement fails. The gate then
---     denies every LinksPage extra for every plan (it fails closed; links,
---     redirects and logins are unaffected) until #183 is fixed and this file
---     is re-run. These statements themselves were checked on MariaDB 11.4
---     against a tblTierFeatures created without that generated column.
+-- ⚠️  MARIADB (Dreamhost) — FIXED 2026-09-21, ISSUE #183. Schema 036 /
+--     migration 020 used to fail to create tblTierFeatures on MariaDB 11.4
+--     (its generated column effectiveFromKey was refused with ERROR 1901,
+--     even with the earlier #186 CAST); on such a database section 1 below
+--     used to succeed (tblFeatures exists) while every tblTierFeatures
+--     statement failed, so the gate denied every LinksPage extra for every
+--     plan (it fails closed; links, redirects and logins were never
+--     affected). #183 replaced that CAST with a plain TIMESTAMP literal,
+--     which both engines accept — see the comment above effectiveFromKey in
+--     web/_sql/schema/036_pricing_engine.sql for the full story. Confirmed
+--     fixed on 2026-09-21 by importing schema 036 and this file's statements
+--     into a throwaway MariaDB 11.4 container: 0 errors, tblTierFeatures
+--     created, every row written. .github/workflows/mariadb-import.yml
+--     checks the fresh-install files (web/_sql/schema, procedures, seeds) on
+--     MariaDB 11.4 on every change under web/_sql/, but it does NOT import
+--     web/_sql/migrations — this file is never run by that workflow, so a
+--     MariaDB-only regression written into a migration still has to be
+--     checked on MariaDB by hand, and even for the files it does cover the
+--     workflow is a warning check, not a required one.
+--     If you are running this migration against a database that still fails
+--     here, it was installed before the #183 fix — apply the corrected
+--     migration 020 first, then re-run this file.
 --
 -- NO ALTERs, NO GUARD PROCEDURES NEEDED. Like migration 020, this only ADDS
 -- rows with idempotent INSERT … ON DUPLICATE KEY UPDATE statements, so there

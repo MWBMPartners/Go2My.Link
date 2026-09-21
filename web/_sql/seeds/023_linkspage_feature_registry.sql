@@ -64,10 +64,12 @@
 -- web/_sql/seeds/001_subscription_tiers.sql (the plans) and
 -- web/_sql/seeds/018_pricing_feature_registry.sql (the three older LinksPage
 -- rows in section 3). All three sort earlier, so a fresh install runs them
--- first. ⚠️ On MariaDB 11.4, schema 036 was found on 2026-09-21 not to create
--- tblTierFeatures at all (issue #183); on such a database section 1 below
--- succeeds and the plan rows fail. See migration 021's header for what that
--- means for customers.
+-- first. ⚠️ Issue #183 (fixed 2026-09-21): schema 036 used to fail to create
+-- tblTierFeatures at all on MariaDB, which would have left section 1 below
+-- succeeding and every tblTierFeatures row here failing. See the comment
+-- above effectiveFromKey in web/_sql/schema/036_pricing_engine.sql for the
+-- fix, and migration 021's header for what the fault meant for a MariaDB
+-- database installed before the #183 fix.
 --
 -- SAFE TO RE-RUN. tblFeatures rows refresh their description only;
 -- tblTierFeatures rows use an ON DUPLICATE KEY no-op. The SAME statements are

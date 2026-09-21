@@ -1,0 +1,204 @@
+# Copyright (c) 2024–2026 MWBM Partners Ltd (MWservices).
+# All rights reserved.
+#
+# This source code is proprietary and confidential.
+# Unauthorised copying, modification, or distribution is strictly prohibited.
+
+# =============================================================================
+# .github/workflows/mariadb-import.yml — MariaDB schema-import check (#183)
+# =============================================================================
+#
+# WHY THIS EXISTS. Dreamhost, the production host, runs MariaDB — but
+# ci.yml's own integration job only ever imports the schema into a mysql:8
+# service container (see the comment above that job in ci.yml). That gap let
+# a MariaDB-only fault sit in the committed schema unnoticed: the
+# `effectiveFromKey` generated column in web/_sql/schema/036_pricing_engine.sql
+# used a form that MySQL 8 accepts silently but MariaDB refuses outright
+# (ERROR 1901), so `tblTierFeatures` — and every table created after it in
+# that file — never got created on MariaDB, and a fresh install of the
+# pricing engine's tables could not finish there. The full story, and the fix
+# that actually works on both engines, is in the comment above that column in
+# web/_sql/schema/036_pricing_engine.sql.
+#
+# WHAT THIS WORKFLOW DOES. Imports web/_sql/schema, then web/_sql/procedures,
+# then web/_sql/seeds — the exact fresh-install order documented in
+# docs/INSTALL.md and used by ci.yml's own mysql:8 leg — into a throwaway
+# MariaDB 11.4 container, and fails the job the moment any file fails to
+# import. That single question — does the schema go in cleanly on the engine
+# the live site actually runs — is all this workflow checks.
+#
+# WHAT THIS WORKFLOW CANNOT DO. It does not run the PHP unit or integration
+# test suites (those already run against MySQL 8 in ci.yml); it only proves
+# the import, not the application code. It does NOT import web/_sql/migrations
+# at all — only web/_sql/schema, web/_sql/procedures and web/_sql/seeds (the
+# fresh-install files) — so a MariaDB-only fault written into a migration
+# file (the way an already-deployed database gets upgraded) is not caught
+# here and still has to be checked on MariaDB by hand before it ships. It is
+# a warning check, not a required one, and it must never be added to the
+# "Protect main branch" ruleset's list of required status checks. The reason
+# is the `paths:` filter below: this workflow only runs when a change
+# touches web/_sql/**, so on every other pull request GitHub skips it
+# entirely rather than running it — and GitHub leaves a required check from a
+# skipped workflow stuck at "Pending" forever instead of marking it not
+# applicable. Making this workflow required would therefore block every
+# pull request that does not touch the SQL from ever merging, for a check
+# that was never going to run. Treat a red result here as a hold-everything
+# signal regardless of that: it means a fresh install cannot complete on
+# Dreamhost. It also only proves the schema against MariaDB 11.4, not
+# whatever exact point release Dreamhost happens to run — a real import
+# against the live database is still worth doing once before a production
+# cutover (see docs/DEPLOYMENT.md). One more limit, stated plainly rather
+# than left to be found out later: as of 2026-09-21 this workflow has only
+# ever been run locally, against Docker on the lead's own machine — it has
+# NOT yet run on a real GitHub-hosted runner. The `docker run` approach it
+# uses to sidestep #187's `services:`-container failure is expected to work
+# the same way there, but that is an expectation, not something confirmed
+# yet.
+#
+# WHY MARIADB IS STARTED AS A PLAIN STEP, NOT A `services:` CONTAINER. ci.yml
+# already tried a MariaDB `services:` leg for this same purpose (#186) and had
+# to revert it (#187): the container itself came up and logged "ready for
+# connections", but the runner's own container-orchestration/health-check
+# machinery for `services:` containers failed to bring it up cleanly, logging
+# an `io_uring ... EPERM` error, regardless of which health-check command was
+# tried (`mysqladmin ping`, `mariadb-admin ping`, with and without
+# credentials). Starting the container ourselves with a plain `docker run`
+# step below, and waiting on it with an ordinary shell loop instead of
+# Actions' own health-check option, sidesteps that machinery entirely.
+# `--innodb-use-native-aio=0` additionally stops MariaDB's storage engine from
+# using the io_uring call that the EPERM was logged against, in case that is
+# what actually failed — cheap to set, and it is what let this exact
+# container start cleanly when the fix was verified by hand on 2026-09-21.
+#
+# @package    Go2My.Link
+# @subpackage CI
+# @author     MWBM Partners Ltd (MWservices)
+# @since      v1.0.0 — Launch Hardening (#183)
+# =============================================================================
+
+name: MariaDB Import Check
+
+on:
+  push:
+    paths:
+      - 'web/_sql/**'
+      - '.github/workflows/mariadb-import.yml'
+  pull_request:
+    paths:
+      - 'web/_sql/**'
+      - '.github/workflows/mariadb-import.yml'
+  workflow_dispatch:
+
+# Read-only: this job only checks out the repository and talks to a
+# throwaway container it starts itself. It writes nothing back to GitHub.
+permissions:
+  contents: read
+
+concurrency:
+  group: mariadb-import-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mariadb-import:
+    name: Import schema on MariaDB 11.4
+    # Standing rule: every job runs on ubuntu-latest (see patterns.md).
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      # Starts MariaDB directly with `docker run` rather than as a GitHub
+      # Actions `services:` container — see the header comment above for why.
+      - name: Start MariaDB 11.4
+        run: |
+          set -euo pipefail
+          docker run \
+            --detach \
+            --name mariadb \
+            --publish "3306:3306" \
+            --env MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=1 \
+            mariadb:11.4 \
+            --character-set-server=utf8mb4 \
+            --collation-server=utf8mb4_unicode_ci \
+            --innodb-use-native-aio=0
+
+      # The MariaDB image runs a temporary, socket-only server first (its log
+      # line reports "port: 0") to initialise itself, then restarts as the
+      # real server on port 3306. Importing during that first window fails
+      # with "Can't connect", so we wait for the FINAL server's own
+      # "Version: ... port: 3306" log line (confirmed by hand on 2026-09-21:
+      # the temporary server logs "port: 0", the final one "port: 3306"),
+      # then confirm it actually answers a query before importing anything.
+      #
+      # `grep -q` is deliberately NOT used here. `-q` makes grep exit the
+      # instant it finds a match, without reading the rest of its input; if
+      # `docker logs` is still writing to the pipe at that exact moment, it
+      # gets killed by SIGPIPE (the signal a program receives when the far
+      # end of its pipe has gone away) and exits 141, and with `pipefail` set
+      # that 141 fails the whole pipeline even though the line WAS found.
+      # Confirmed locally against an early log line: 7 failures out of 8
+      # runs. Today's pattern only happens to be safe because "Version: ...
+      # port: 3306" is the LAST line MariaDB logs before going ready — but
+      # that is a coincidence of this image's current log output, not
+      # something this workflow should depend on. Dropping `-q` makes grep
+      # read all of its input every time, so `docker logs` is never cut off;
+      # the redirect to /dev/null still keeps the loop quiet.
+      - name: Wait for MariaDB to accept connections
+        run: |
+          set -uo pipefail
+          TRIES=0
+          until docker logs mariadb 2>&1 | grep "Version:.*port: 3306" >/dev/null
+          do
+              TRIES=$((TRIES + 1))
+              if [ "${TRIES}" -gt 60 ]
+              then
+                  echo "MariaDB did not report a listening port within the timeout."
+                  docker logs mariadb
+                  exit 1
+              fi
+              sleep 2
+          done
+          TRIES=0
+          until docker exec mariadb mariadb --user="root" --execute="SELECT 1;" >/dev/null 2>&1
+          do
+              TRIES=$((TRIES + 1))
+              if [ "${TRIES}" -gt 60 ]
+              then
+                  echo "MariaDB reported a listening port but never answered a query."
+                  docker logs mariadb
+                  exit 1
+              fi
+              sleep 2
+          done
+          echo "MariaDB is ready."
+
+      # The `mariadb` client stops at the first statement that errors and
+      # exits non-zero when it does (confirmed by hand on 2026-09-21 by
+      # re-importing the pre-#183 form of 036_pricing_engine.sql: it stopped
+      # at the failing CREATE TABLE tblTierFeatures and returned exit code 1,
+      # leaving tblTierFeatures and every table declared after it in that
+      # file missing) — so checking each file's exit code below is enough to
+      # catch a MariaDB-only failure; no separate "does the table exist"
+      # check is needed on top of it.
+      - name: Import schema + procedures + seeds (fresh-install order, see docs/INSTALL.md)
+        run: |
+          set -euo pipefail
+          for SQLDIR in schema procedures seeds
+          do
+              for SQLFILE in $(find "web/_sql/${SQLDIR}" -maxdepth 1 -name "*.sql" | sort)
+              do
+                  echo "Importing ${SQLFILE}"
+                  if ! docker exec --interactive mariadb mariadb --user="root" < "${SQLFILE}"
+                  then
+                      echo "IMPORT FAILED: ${SQLFILE}"
+                      exit 1
+                  fi
+              done
+          done
+          echo "Full schema, procedures and seeds imported with no errors."
+
+      - name: Stop MariaDB
+        if: always()
+        run: |
+          docker rm --force mariadb >/dev/null 2>&1 || true

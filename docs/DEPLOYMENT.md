@@ -98,6 +98,7 @@ SFTP to Dreamhost). Manual VS Code FTP-Sync is no longer the deployment path.
 | 🔍 `ci.yml` | Push to `main`/`alpha`/`beta`, all PRs | Frontend + Backend gates (PHPStan, PHPCS) |
 | 🔍 `php-lint.yml` | Push / PR | PHP syntax validation |
 | 🧹 `lint.yml` | Changes under `.github/workflows/**` | `actionlint` workflow linting |
+| 🐬 `mariadb-import.yml` | Push / PR touching `web/_sql/**`, plus manual dispatch | MariaDB 11.4 import check for schema/procedures/seeds (**advisory, not required — see #183**) |
 | 🚢 `sftp-deploy.yml` | Push to `main`/`alpha`/`beta` touching `web/**`; manual dispatch | SFTP deployment (**gated by `vars.SFTP_ENABLED`**) |
 | 🏷️ `release.yml` | Tag push | Per-component releases |
 
@@ -358,11 +359,24 @@ Do these three steps, in this order:
    SHOW TABLES LIKE 'tblTierFeatures';
    ```
 
-   One row back means it is there. ⚠️ **MariaDB (Dreamhost):** migration
-   `020` has been found not to create `tblTierFeatures` on MariaDB 11.4
-   (issue **#183**). If the table is still missing after running `020`, stop
-   and tell the owner: the LinksPage extras cannot work on that database
-   until #183 is fixed.
+   One row back means it is there. ✅ **MariaDB (Dreamhost) — fixed
+   2026-09-21, issue #183:** migration `020` used to fail to create
+   `tblTierFeatures` on MariaDB 11.4 (its generated column was refused); the
+   fix swaps a `CAST` for a plain `TIMESTAMP` literal that both engines
+   accept, confirmed by importing the full schema into a throwaway MariaDB
+   11.4 container with 0 errors. `.github/workflows/mariadb-import.yml`
+   checks the fresh-install form of this table (schema `036`) on MariaDB
+   11.4 on every change under `web/_sql/`. It does not run migration `020`
+   itself, and it is a warning check, not a required one — so a real install
+   still needs the manual check above after running `020`. If the table
+   is still missing after running `020` on a real install, that install most
+   likely predates the #183 fix — pull the latest schema and migration files
+   and re-run `020` before continuing. **If the table is still missing after
+   running the current `020`** (the one with the `TIMESTAMP` literal, not the
+   old `CAST`), stop and tell the owner rather than re-running it again —
+   something else is wrong (a foreign-key or permission error, or a MariaDB
+   point release nobody has tested), and repeating the same migration will
+   not fix it.
 
 3. **Run `web/_sql/migrations/021_linkspage_feature_registry.sql`.** It only
    adds rows, so it is safe to run more than once. A re-run refreshes each

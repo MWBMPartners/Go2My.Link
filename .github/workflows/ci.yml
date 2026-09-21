@@ -210,11 +210,23 @@ jobs:
     # (mysqladmin/mariadb-admin, with and without credentials). GitHub-hosted
     # runners orchestrate it fine; this environment does not.
     #
-    # The production-relevant part — the schema importing on MariaDB — is fixed
-    # in web/_sql/schema/036_pricing_engine.sql + migrations/020 (the explicit
-    # CAST(... AS DATETIME), #186) and is verified green on mysql:8. Re-adding
-    # the MariaDB leg on a capable runner is tracked in #183; until then,
-    # validate the schema on the target MariaDB before a production cutover.
+    # #186's CAST(... AS DATETIME) fix, mentioned in an earlier version of this
+    # comment as having settled the schema-portability question, turned out
+    # NOT to: the MariaDB leg above was reverted before it ever actually
+    # exercised that CAST against a real MariaDB, so the fix went unverified
+    # until #183 was re-checked by hand on 2026-09-21 and the CAST was found
+    # to still fail on MariaDB 11.4 (ERROR 1901). The working fix — a plain
+    # TIMESTAMP literal instead of a CAST — is in
+    # web/_sql/schema/036_pricing_engine.sql + migrations/020 (see the comment
+    # above effectiveFromKey there for the full story), and this job still
+    # only proves it against mysql:8. MariaDB coverage now lives in its own
+    # workflow instead of a second leg of this job's `services:` container:
+    # .github/workflows/mariadb-import.yml starts MariaDB with a plain
+    # `docker run` step, which sidesteps the `services:` container health-check
+    # machinery that failed here, rather than trying again to fix that
+    # machinery. Before a production cutover, still validate the schema
+    # against the actual Dreamhost database — that workflow proves MariaDB
+    # 11.4 in general, not whatever exact point release Dreamhost runs.
     services:
       mysql:
         image: "mysql:8"

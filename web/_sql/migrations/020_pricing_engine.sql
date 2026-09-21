@@ -270,10 +270,33 @@ CREATE TABLE IF NOT EXISTS `tblTierFeatures` (
         COMMENT 'When this entitlement value starts applying (NULL = since forever)',
     `effectiveUntil`        DATETIME            DEFAULT NULL
         COMMENT 'When this entitlement value stops applying (NULL = open-ended)',
-    -- #183: explicit CAST(... AS DATETIME) for MariaDB compatibility (see the
-    -- matching note in web/_sql/schema/036_pricing_engine.sql).
+    -- #183: the CAST(... AS DATETIME) fix from #186 did NOT actually make this
+    -- portable — MariaDB still refuses it inside a STORED generated column
+    -- with ERROR 1901 ("Function or expression … cannot be used in the
+    -- GENERATED ALWAYS AS clause"), because MariaDB treats a CAST of a string
+    -- literal here as non-deterministic even though the value never changes.
+    -- The MariaDB CI leg meant to catch that had to be reverted (#187 — the
+    -- runner could not initialise the service container), so the CAST went
+    -- unchecked against a real MariaDB until #183 was re-verified by hand on
+    -- 2026-09-21. The fix that actually works on both engines is the
+    -- SQL-standard typed literal TIMESTAMP'1000-01-01 00:00:00': both engines
+    -- read it as a genuine constant, not an expression, so it is accepted as
+    -- deterministic on both. Confirmed on 2026-09-21 by importing this file
+    -- into a throwaway mariadb:11.4 AND a throwaway mysql:8.4 container — 0
+    -- import errors on either. See the full explanation and the matching fix
+    -- in web/_sql/schema/036_pricing_engine.sql (the fresh-install form of
+    -- this same table). .github/workflows/mariadb-import.yml now imports
+    -- web/_sql/schema, web/_sql/procedures and web/_sql/seeds — the
+    -- fresh-install files — into MariaDB 11.4 on every change under
+    -- web/_sql/, so a MariaDB-only fault in THOSE files would show up there.
+    -- It does NOT import web/_sql/migrations (this file included), so a
+    -- MariaDB-only fault that only shows up in a migration still has to be
+    -- checked by hand, and the workflow is a warning check, not a required
+    -- one — a red result does not block a pull request from merging. Do not
+    -- read either of those as "this class of drift cannot happen again";
+    -- they only cover what they actually run.
     `effectiveFromKey`      DATETIME
-                            GENERATED ALWAYS AS (COALESCE(`effectiveFrom`, CAST('1000-01-01 00:00:00' AS DATETIME))) STORED
+                            GENERATED ALWAYS AS (COALESCE(`effectiveFrom`, TIMESTAMP'1000-01-01 00:00:00')) STORED
         COMMENT 'NULL-collapsed mirror of effectiveFrom so undated rows dedupe in UQ_tierfeature (settings #150 idiom)',
     `createdAt`             DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updatedAt`             DATETIME            DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

@@ -546,13 +546,50 @@ CREATE TABLE IF NOT EXISTS `tblTierFeatures` (
     -- so without this two undated rows for the same (tier, feature) pair would
     -- both insert. '1000-01-01' is a legal DATETIME under the project's
     -- NO_ZERO_DATE sql_mode (000_create_database.sql) — NOT a zero-date.
-    -- #183: the sentinel is wrapped in an explicit CAST(... AS DATETIME) so the
-    -- STORED expression is deterministic on MariaDB too. MariaDB rejects the
-    -- implicit string->DATETIME coercion inside a PERSISTENT/STORED generated
-    -- column that MySQL 8 silently accepts (Dreamhost runs MariaDB); the CAST
-    -- imports cleanly on both. CI now exercises the schema on both engines.
+    --
+    -- #183: getting this constant onto BOTH engines took two tries.
+    --   Try 1 (#186) wrapped the sentinel in CAST('1000-01-01 00:00:00' AS
+    --   DATETIME). That does NOT work: MariaDB still refuses it inside a
+    --   STORED generated column with ERROR 1901 ("Function or expression …
+    --   cannot be used in the GENERATED ALWAYS AS clause"), because MariaDB
+    --   treats a CAST of a string literal as a non-deterministic expression
+    --   in this position even though the value never changes. #186 also added
+    --   a MariaDB leg to CI to prove the fix, but that leg could not run on
+    --   this project's sandboxed runner: the MariaDB container itself reached
+    --   "ready for connections", then the runner's own container machinery
+    --   tore it down and reported "failed to initialize container" (an
+    --   `io_uring ... EPERM` error in the log), regardless of which health
+    --   check was tried. The leg was reverted in #187, so the CAST was never
+    --   actually re-checked against a real MariaDB before now. It was only
+    --   when #183 was re-verified by hand on 2026-09-21, importing the
+    --   schema into a throwaway MariaDB 11.4 container, that the CAST turned
+    --   out to still fail.
+    --   Try 2 (this one) uses the SQL-standard typed literal
+    --   TIMESTAMP'1000-01-01 00:00:00' instead of a CAST. Both engines read a
+    --   typed literal as a genuine constant, not an expression to evaluate, so
+    --   it is accepted as deterministic on both. Confirmed by importing this
+    --   file into a throwaway mariadb:11.4 AND a throwaway mysql:8.4 container
+    --   on 2026-09-21: 0 import errors on either, and every tblTierFeatures
+    --   row written by the shipped seeds (96 rows, as of seed 023) got
+    --   effectiveFromKey = '1000-01-01 00:00:00' as expected. That check is
+    --   also now automated for the FRESH-INSTALL files: on every push and
+    --   pull request that touches web/_sql/**, .github/workflows/mariadb-
+    --   import.yml imports web/_sql/schema, web/_sql/procedures and
+    --   web/_sql/seeds — this file among them — into MariaDB 11.4. It does
+    --   NOT import web/_sql/migrations, so a MariaDB-only fault written into
+    --   a migration (rather than here) still has to be checked on MariaDB by
+    --   hand, and it is a warning check, not a required one — a red result
+    --   does not by itself block a pull request from merging. ci.yml's own
+    --   integration job still only runs mysql:8. The MariaDB
+    --   check lives in its own workflow, not a second leg of that job's
+    --   `services:` container, because it starts MariaDB with a plain
+    --   `docker run` step instead — see that workflow's own header for why
+    --   (in short: it sidesteps the GitHub `services:` container's own
+    --   startup/health-check machinery, which is what actually failed in
+    --   #187, and disables MariaDB's native AIO to avoid the io_uring
+    --   restriction #187 hit).
     `effectiveFromKey`      DATETIME
-                            GENERATED ALWAYS AS (COALESCE(`effectiveFrom`, CAST('1000-01-01 00:00:00' AS DATETIME))) STORED
+                            GENERATED ALWAYS AS (COALESCE(`effectiveFrom`, TIMESTAMP'1000-01-01 00:00:00')) STORED
         COMMENT 'NULL-collapsed mirror of effectiveFrom so undated rows dedupe in UQ_tierfeature (settings #150 idiom)',
 
     `createdAt`             DATETIME            NOT NULL DEFAULT CURRENT_TIMESTAMP,
