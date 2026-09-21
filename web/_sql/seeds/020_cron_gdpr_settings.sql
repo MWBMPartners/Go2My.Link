@@ -9,7 +9,7 @@
 -- ============================================================================
 -- Every setting below defaults OFF/safe. A fresh install with this seed
 -- applied changes NOTHING until an operator explicitly flips settings, in the
--- order documented in the design runbook (HANDOFF.md / issue #178):
+-- order documented in the design runbook (.claude/HANDOFF.md / issue #178):
 --
 --   1. cron.enabled = '0' and cron.dispatch_token = NULL — the dispatch
 --      endpoint (web/Go2My.Link/_admin/public_html/cron.php) answers a

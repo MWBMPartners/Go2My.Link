@@ -1,3 +1,6 @@
+<!-- GENERATED FILE — do not edit. Copied from the root CLAUDE.md by scripts/sync-ai-context.sh. -->
+<!-- Links below are relative to the REPOSITORY ROOT, not to this .OpenAI/ folder. Edit CLAUDE.md instead. -->
+
 # CLAUDE.md — Go2My.Link
 
 > Project context entry point. This file auto-loads on **any** machine/platform

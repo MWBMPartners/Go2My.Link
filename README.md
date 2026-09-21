@@ -178,7 +178,7 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 Go2My.Link/
 ├── 🎨 assets/BrandKit/          ← Full brand kit: logos, icons, favicons, PWA icons, press kit
 ├── 🤖 .claude/                  ← Claude AI context (project brief, plans, memory)
-├── 🤖 .openai/                  ← OpenAI context
+├── 🤖 .OpenAI/                  ← Codex context (generated copy of .claude/ — see AGENTS.md)
 ├── ⚙️ .github/workflows/        ← CI/CD (PHP lint, release, SFTP deploy)
 ├── 📚 docs/                     ← ARCHITECTURE, DATABASE, API, DEPLOYMENT
 ├── 🌐 web/

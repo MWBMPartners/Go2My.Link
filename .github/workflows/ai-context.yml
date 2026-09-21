@@ -1,0 +1,68 @@
+# Copyright (c) 2024–2026 MWBM Partners Ltd (MWservices).
+# All rights reserved.
+#
+# This source code is proprietary and confidential.
+# Unauthorised copying, modification, or distribution is strictly prohibited.
+
+# =============================================================================
+# .github/workflows/ai-context.yml — AI Context Mirror check
+# =============================================================================
+#
+# Check that the Codex copy of the project notes matches the Claude notes.
+#
+# Two AI coding tools work on this repository. Claude Code reads the root
+# CLAUDE.md and .claude/; Codex reads the root AGENTS.md and .OpenAI/. The
+# .OpenAI/ copy is generated from the Claude side by
+# scripts/sync-ai-context.sh. This check fails when somebody edits the Claude
+# notes and forgets to run that script, so drift shows up as a red check
+# instead of going unnoticed (a sister project that copied by hand found its
+# two copies had drifted badly).
+#
+# WHAT IT CANNOT DO: it warns, it does not block. `alpha` has no required
+# checks, and this check cannot simply be made required, because its path
+# filters mean it does not run on unrelated pull requests — a required check
+# that never runs would leave those pull requests waiting for ever.
+#
+# It only runs when one of those files changes, so it costs nothing on
+# ordinary code pushes. It changes nothing: the script's --check mode only
+# compares and reports.
+name: AI Context Mirror
+
+on:
+  push:
+    paths:
+      - 'CLAUDE.md'
+      - '.claude/memory/**'
+      - '.claude/HISTORY.md'
+      - '.OpenAI/**'
+      - 'scripts/sync-ai-context.sh'
+      - '.github/workflows/ai-context.yml'
+  pull_request:
+    paths:
+      - 'CLAUDE.md'
+      - '.claude/memory/**'
+      - '.claude/HISTORY.md'
+      - '.OpenAI/**'
+      - 'scripts/sync-ai-context.sh'
+      - '.github/workflows/ai-context.yml'
+  workflow_dispatch:
+
+# The job is given read-only access: it only reads the checked-out files.
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-context-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-mirror:
+    name: Codex notes match Claude notes
+    # Standing rule: every job runs on ubuntu-latest (see patterns.md).
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Compare .OpenAI/ with CLAUDE.md and .claude/
+        run: sh scripts/sync-ai-context.sh --check

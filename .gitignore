@@ -39,8 +39,17 @@
 **/.auth/.install_token
 **/.auth/.installed
 
-# dev-team autopilot loop lock (runtime only; state file autopilot.json IS tracked)
+# dev-team autopilot loop lock (runtime only; state file autopilot.json IS tracked —
+# whether it should stay tracked is an open owner decision, raised 2026-09-21)
 .dev-team/loop.lock/
+
+# The dev-team plugin writes (and tries to commit) its own ~40-line "resume card" at
+# HANDOFF.md in the repository ROOT, replacing whatever is there. The project's real
+# handoff lives at .claude/HANDOFF.md (moved there on 2026-09-21, as the owner asked), so
+# the root file is only the plugin's scratch copy and must never be committed — otherwise
+# it becomes a second, competing handoff (issue #202). The leading slash means "only the
+# root one": .claude/HANDOFF.md is NOT ignored.
+/HANDOFF.md
 
 # MaxMind GeoLite2 database (#43) — a large, licensed, frequently-updated
 # binary. NEVER committed; fetched at DEPLOY time by scripts/fetch-geoip.sh

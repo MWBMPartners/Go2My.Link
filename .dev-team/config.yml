@@ -1,0 +1,94 @@
+# Copyright (c) 2024–2026 MWBM Partners Ltd (MWservices).
+# All rights reserved.
+#
+# This source code is proprietary and confidential.
+# Unauthorised copying, modification, or distribution is strictly prohibited.
+
+# =============================================================================
+# .dev-team/config.yml — settings for the dev-team Claude Code plugin
+# =============================================================================
+#
+# The dev-team plugin (a set of helper skills that plan, build, review and
+# document with teams of AI agents) reads this file for its repository-wide
+# defaults. Added 2026-09-21 (issue #202). Before this file existed, every
+# plugin default applied, and two of those defaults were wrong for this
+# project:
+#
+#   1. It would have branched from, and aimed pull requests at, `main`.
+#      With no setting, the plugin uses GitHub's default branch, which here is
+#      `main`. Work in this project reaches `main` only through
+#      alpha -> beta -> release-candidate -> main, so the plugin must use
+#      `alpha`.
+#
+#   2. It would have rewritten HANDOFF.md after every task. The plugin's own
+#      handoff is a short card (about 40 lines) that it writes at HANDOFF.md in
+#      the repository ROOT, replacing whatever is there. Since 2026-09-21 the
+#      project's real handoff lives at .claude/HANDOFF.md and the root file is
+#      listed in .gitignore, so the plugin's card is a local scratch file that
+#      an ordinary `git add` will not pick up (never force it in with
+#      `git add -f`). auto-handoff is still switched off below, so the plugin
+#      does not waste effort rewriting it after every task. Until this change is
+#      merged, the root file is still tracked on `alpha`.
+#
+# WHAT THIS FILE CANNOT DO — see .claude/memory/working-rules.md, rule 5:
+#
+#   - The plugin still COMMITS on its own during a run: at every passing stage
+#     checkpoint, after every improvement cycle, and after each documentation
+#     area. `auto-commit: off` only removes the EXTRA commit after each task.
+#     Those commits happen before any cross-system review and carry no issue
+#     number. That is why, for now, this project does not use the plugin's
+#     code-writing skills at all — only its analysis, review, audit and
+#     suggestion skills (working-rules.md, rule 5).
+#   - It still works on a branch of its own (iterate/<date> and so on), cut
+#     from `alpha`; a follow-up run may continue on that same branch. It is not
+#     documented to use the session's working branch; its branch=<name> option
+#     only names its own branch.
+#   - The exception is ci-medic (/dev-team-watch-prs): it commits and pushes
+#     straight onto an open pull request's branch. Run it only with
+#     autofix=off (report only) on this project.
+#   - Review and security FIX AND COMMIT BY DEFAULT, and this file cannot change
+#     that (its `defaults:` section only covers models, gates, cap, cycles and
+#     issues). Always pass remediate=report (review), report-only (security)
+#     and mode=audit (docs) — working-rules.md, rule 5.
+#   - `models: economy` also moves the plugin's reasoning agents from Fable to
+#     Opus. Deep analysis and planning are done outside the plugin, with Fable
+#     agents one after another (working-rules.md, rule 4).
+#   - Autopilot cannot start a fresh run while the tracked, finished
+#     .dev-team/autopilot.json from the June 2026 run is present.
+#
+# The full list of keys and their meanings is in the plugin's
+# skills/dev-team-orchestrator/references/config-and-toggles.md.
+# =============================================================================
+
+version: 1
+
+defaults:
+  # "economy" = the plugin builds and scouts with Sonnet and still checks with
+  # Opus, matching the owner's building and checking rule. The plugin's
+  # code-writing skills are not used on this project for now (working-rules.md,
+  # rule 5), so in practice this only moves its code-reading scouts to Sonnet.
+  # Its catch: it also moves the plugin's own reasoning and "debate" agents from
+  # Fable down to Opus — which is why deep analysis and planning are done
+  # outside the plugin (see above).
+  models: economy
+  # The project files and updates its own GitHub issues by hand, with
+  # plain-English text and code evidence; the plugin's automatic issue export
+  # stays off so it cannot create duplicates.
+  issues: off
+
+git:
+  # Never build a pull request on top of another pull request's branch.
+  stack-prs: false
+  # One open pull request per line of work.
+  single-pr: true
+  # See point 1 above.
+  default-branch: alpha
+
+features:
+  # See point 2 above.
+  auto-handoff: off
+  # Removes the plugin's extra commit after each task, so the project's own
+  # commits (made after the cross-system review loop, naming the issue and the
+  # review rounds) are not interleaved with more unreviewed ones. It does NOT
+  # stop the plugin's checkpoint commits — see "WHAT THIS FILE CANNOT DO".
+  auto-commit: off

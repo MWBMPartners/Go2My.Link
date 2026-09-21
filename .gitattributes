@@ -13,3 +13,18 @@
 *.png binary
 *.ico binary
 *.pdf binary
+
+# The AI assistants' notes are compared byte for byte by
+# scripts/sync-ai-context.sh --check (the Codex copy in .OpenAI/ must match the
+# Claude notes exactly). Git for Windows would otherwise check these out with
+# Windows line endings, and the comparison would then report "out of step"
+# even when nothing is. Always use plain Unix line endings for them. (2026-09-21, #202)
+# Only .md files are named, never whole folders: a folder-wide rule would also
+# apply to any image saved there and would silently alter it (a review proved
+# this with a test image). Shell scripts need the same rule, or a Windows
+# checkout breaks them outright ("set: -: invalid option").
+CLAUDE.md text eol=lf
+AGENTS.md text eol=lf
+.claude/**/*.md text eol=lf
+.OpenAI/**/*.md text eol=lf
+*.sh text eol=lf

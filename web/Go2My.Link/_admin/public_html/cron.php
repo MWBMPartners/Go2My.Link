@@ -14,7 +14,7 @@
  *
  * A token-guarded standalone endpoint any external scheduler can hit —
  * Dreamhost Panel cron `curl`, cron-job.org, GitHub Actions `schedule:` (see
- * HANDOFF.md #178 for the scheduler decision). Reachable at
+ * .claude/HANDOFF.md and issue #178 for the scheduler decision). Reachable at
  * https://admin.go2my.link/cron.php (+ the alpha subdomain equivalent).
  *
  * ----------------------------------------------------------------------------

@@ -3,7 +3,7 @@
 > **Purpose:** the single page to run through **before launching the service**. It captures
 > (a) decisions only the owner (Lance) can make, (b) manual actions outside the codebase
 > (GitHub settings, DNS, credentials, payment providers), and (c) a log of what automation
-> did on your behalf. Companion to `HANDOFF.md` (technical pick-up state), `PROJECT_STATUS.md`,
+> did on your behalf. Companion to `.claude/HANDOFF.md` (technical pick-up state), `PROJECT_STATUS.md`,
 > and `docs/LAUNCH_PLAN_2026-07-09.md`.
 >
 > **Legend:** 🔴 launch-blocking · 🟠 important · 🟢 nice-to-have · ✅ done · ⏳ in progress · ❓ needs your decision
@@ -17,7 +17,7 @@
 | # | Decision | Why it matters | Options / recommendation |
 |---|---|---|---|
 | D1 🔴 | **How does periodic/scheduled work run on Dreamhost shared hosting?** (no assumable cron) — tracked in **#178** | Blocks GDPR **account-deletion execution (#163)** and **data-retention enforcement (#167)** — the privacy policy legally commits to both. Also affects log purging, trial expiry, subscription renewals. | (a) Dreamhost Panel cron; (b) external scheduler (cron-job.org / GitHub Actions `schedule:`) hitting a **token-guarded** `/_cron/run.php` endpoint; (c) run-on-request "lazy cron". **Recommendation: (b)** — portable, testable, provider-agnostic. ⚠️ **Two corrections (2026-09-07):** the endpoint is at `_admin/public_html/cron.php`, **not** `/_cron/run.php` as written here; and it **cannot currently run at all** — its own direct-access guard shuts it down (**#198**). Fix #198 first, then wire the trigger. |
-| D2 🔴 | **When do we promote `alpha → beta → release-candidate → main` for the real production launch?** | `main` is **stale** (legacy engine + #93 credential file — HANDOFF warns *do not merge main*). All real work lives on `alpha` (now ~95 commits ahead). The **`release-candidate`** pre-production tier now exists (cut from `alpha` 2026-08-04). Production go-live = a deliberate promotion + cutover window. | Needs owner sign-off. Dependabot/CI now cover **all four tiers** (main/alpha/beta/release-candidate) so the mechanics are ready. **Do not** let anything merge `main` back down. |
+| D2 🔴 | **When do we promote `alpha → beta → release-candidate → main` for the real production launch?** | `main` is **behind** `alpha`, which holds all the real work. *(Corrected 2026-09-21: this used to say `main` still held the legacy engine and the #93 credential file. That was true of a stale local copy in July; today `main`'s only commits missing from `alpha` are Dependabot and CI changes. The rule "never merge `main` down" stands, because the flow only runs one way.)* (`alpha` was 133 commits ahead of `main` on 2026-09-21.) The **`release-candidate`** pre-production tier now exists (cut from `alpha` 2026-08-04). Production go-live = a deliberate promotion + cutover window. | Needs owner sign-off. Dependabot/CI now cover **all four tiers** (main/alpha/beta/release-candidate) so the mechanics are ready. **Do not** let anything merge `main` back down. |
 | D3 🟠 | **Payment provider** for paid tiers (Stripe / Paddle / **SIGNula**)? | The pricing engine is provider-agnostic (`paymentProvider` column) but integration + webhooks need a concrete choice. Paddle = merchant-of-record (handles UK/EU VAT). SIGNula (your own) is an option — see the cross-project section. | Choose before enabling any paid tier. |
 | D4 🟠 | **Pricing & tier sign-off** — tracked in **#180** | The flexible pricing engine is **built and merged DISABLED** (see below). Final tier names/slugs, **GBP** prices, custom-HTML tier placement, VAT handling, lifetime-deal, and the enable sequence need your approval before the master switch is flipped. | Review **`Pricing_Strategy.md`** (repo root). The engine stays inert until `billing.pricing_engine_enabled='1'`. |
 | D5 🟠 | **`beta` branch drift** — finish aligning it to `alpha`? | `beta` still uses floating action tags (`@v7` for checkout) and lacks the `lint.yml` (actionlint) workflow. Dependabot already opened & I merged **#173** (setup-node 4→7 on beta), but full alignment (SHA-pin + add lint.yml) remains. | Recommend a one-off "align beta CI + SHA-pin actions" PR. Low risk. |
@@ -95,7 +95,7 @@
 
 ---
 
-## 📌 Open backlog highlights (authoritative live list in `HANDOFF.md` + the tracker)
+## 📌 Open backlog highlights (authoritative live list in `.claude/HANDOFF.md` + the tracker)
 
 **Launch-gating, still open:**
 - 🔴 **#183** — `036_pricing_engine.sql` STORED generated column may fail to import on **MariaDB** (our production host); CI only tests `mysql:8`. Fix = explicit `CAST` + add MariaDB to CI. **Recommended next task** (also confirm target DB: MariaDB vs MySQL).
@@ -141,4 +141,4 @@ Possible shared internal-API hub. Worth confirming whether Go2My.Link's API keys
 
 ---
 
-_This file is maintained continuously. If a session ends unexpectedly, start here + `HANDOFF.md`._
+_This file is maintained continuously. If a session ends unexpectedly, start here + `.claude/HANDOFF.md`._
