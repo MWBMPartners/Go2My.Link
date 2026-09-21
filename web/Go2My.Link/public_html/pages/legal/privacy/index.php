@@ -286,18 +286,43 @@ $hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hid
                     <li><?php if (function_exists('__')) { echo __('legal.privacy_s2_shorturl_meta'); } else { echo 'URL metadata (title, description, creation date, expiry settings)'; } ?></li>
                 </ul>
 
-                <!-- 2.4 Cookies & Local Storage -->
+                <?php
+                    /*
+                        Added for #219: this section lists LinksPage data, which the
+                        Service has been collecting since LinksPages launched. Nothing
+                        here is a change in what is collected — it is a change in what
+                        this policy discloses. This note is a PHP comment, not an HTML
+                        comment, because anyone can read a public page's HTML with
+                        View Source, and internal change notes and file names do not
+                        belong there.
+                    */
+                ?>
+                <!-- 2.4 LinksPage Data -->
                 <h3 class="h5 mt-4 mb-2">
-                    2.4 <?php if (function_exists('__')) { echo __('legal.privacy_s2_cookies_title'); } else { echo 'Cookies &amp; Local Storage'; } ?>
+                    2.4 <?php if (function_exists('__')) { echo __('legal.privacy_s2_linkspage_title'); } else { echo 'LinksPage Data'; } ?>
+                </h3>
+                <p>
+                    <?php if (function_exists('__')) { echo __('legal.privacy_s2_linkspage_desc'); } else { echo 'When you create a LinksPage — a public profile page on lnks.page — we collect:'; } ?>
+                </p>
+                <ul>
+                    <li><?php if (function_exists('__')) { echo __('legal.privacy_s2_linkspage_profile'); } else { echo 'Your page title, bio/description, and profile avatar image'; } ?></li>
+                    <li><?php if (function_exists('__')) { echo __('legal.privacy_s2_linkspage_design'); } else { echo 'Your chosen template, theme and background colours, font, any social media links you add, and any custom HTML or CSS you add (where that feature is available on your plan)'; } ?></li>
+                    <li><?php if (function_exists('__')) { echo __('legal.privacy_s2_linkspage_items'); } else { echo 'The links you add to the page, including each one\'s title, destination URL, description, and icon'; } ?></li>
+                    <li><?php if (function_exists('__')) { echo __('legal.privacy_s2_linkspage_public'); } else { echo 'A published LinksPage is a public page: everything on it is visible to anyone who opens its address, not only to you'; } ?></li>
+                </ul>
+
+                <!-- 2.5 Cookies & Local Storage -->
+                <h3 class="h5 mt-4 mb-2">
+                    2.5 <?php if (function_exists('__')) { echo __('legal.privacy_s2_cookies_title'); } else { echo 'Cookies &amp; Local Storage'; } ?>
                 </h3>
                 <p>
                     <?php if (function_exists('__')) { echo __('legal.privacy_s2_cookies_desc'); } else { echo 'We use cookies and browser local storage to provide essential functionality. This includes session management, theme preferences (dark/light mode), and CSRF protection tokens. For full details, see our'; } ?>
                     <a href="/legal/cookies"><?php if (function_exists('__')) { echo __('legal.cookie_policy_link'); } else { echo 'Cookie Policy'; } ?></a>.
                 </p>
 
-                <!-- 2.5 DNT / GPC Signals -->
+                <!-- 2.6 DNT / GPC Signals -->
                 <h3 class="h5 mt-4 mb-2">
-                    2.5 <?php if (function_exists('__')) { echo __('legal.privacy_s2_dnt_title'); } else { echo 'Do Not Track &amp; Global Privacy Control Signals'; } ?>
+                    2.6 <?php if (function_exists('__')) { echo __('legal.privacy_s2_dnt_title'); } else { echo 'Do Not Track &amp; Global Privacy Control Signals'; } ?>
                 </h3>
                 <p>
                     <?php if (function_exists('__')) { echo __('legal.privacy_s2_dnt_desc'); } else { echo 'We respect Do Not Track (DNT) and Global Privacy Control (GPC) signals sent by your browser. When we detect these signals, we limit data collection to what is strictly necessary for the Service to function. See Section 12 for more details.'; } ?>

@@ -200,6 +200,19 @@ foreach ($exportRequests as $req)
                     <li><?php if (function_exists('__')) { echo __('export.includes_links'); } else { echo 'All short URLs you have created (codes, destinations, click counts, dates)'; } ?></li>
                     <li><?php if (function_exists('__')) { echo __('export.includes_consent'); } else { echo 'Cookie consent records (type, decision, method, dates)'; } ?></li>
                     <li><?php if (function_exists('__')) { echo __('export.includes_sessions'); } else { echo 'Login sessions (device info, dates — tokens excluded for security)'; } ?></li>
+                    <?php
+                        /*
+                            Added for #219: the export file gained a linkspages/
+                            linkspage_items section in web/_functions/data_rights.php,
+                            but this list — the page's own description of what the
+                            download contains — had not been updated to say so, so
+                            someone reading this page would not know the file also
+                            includes their LinksPage content. This explanation is a PHP
+                            comment, not an HTML one, so it never reaches the browser of
+                            any signed-in user who views this page's source.
+                        */
+                    ?>
+                    <li><?php if (function_exists('__')) { echo __('export.includes_linkspages'); } else { echo 'Your LinksPages and the links on them (title, bio, avatar address, colours, font, social links, and each link\'s title, address and description)'; } ?></li>
                 </ul>
                 <p class="text-body-secondary small mt-2 mb-0">
                     <i class="fas fa-info-circle" aria-hidden="true"></i>

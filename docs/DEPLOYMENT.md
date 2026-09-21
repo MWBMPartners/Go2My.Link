@@ -276,9 +276,10 @@ key names instead of words:
 |---|---|---|
 | `021_missing_ui_translations.sql` | 5 strings that were used but never translated | The homepage browser tab reads `home.title`; four screen-reader labels read out their key names |
 | `022_help_translations.sql` | Every word of the in-app Help section (367 rows) | All five `/help` pages display key names instead of text |
+| `029_linkspage_privacy_translations.sql` | 8 strings: the Privacy Policy's new "LinksPage Data" subsection, plus one warning line on the Delete Account page and one list item on the Export page (#219) | The Privacy Policy page shows raw key names (e.g. `legal.privacy_s2_linkspage_title`) instead of English in that subsection; the Delete/Export pages show `delete.warning_linkspages`/`export.includes_linkspages` instead of English |
 
-Both are `INSERT IGNORE`, so they are safe to run more than once and safe on a
-database that already has them.
+All three are `INSERT IGNORE`, so they are safe to run more than once and safe
+on a database that already has them.
 
 #### 🧩 Migration `021` — the LinksPage feature registry (needed on an EXISTING database)
 

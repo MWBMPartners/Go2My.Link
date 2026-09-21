@@ -380,6 +380,27 @@ foreach ($allRequests as $req)
                         <i class="fas fa-sign-out-alt text-danger" aria-hidden="true"></i>
                         <?php if (function_exists('__')) { echo __('delete.warning_sessions'); } else { echo 'All active sessions will be terminated across all devices.'; } ?>
                     </li>
+                    <li>
+                        <?php
+                            /*
+                                Added for #219: before this, the warning list said nothing
+                                about LinksPages, so someone could delete their account
+                                without knowing their public page — and any traffic still
+                                arriving at it from social media bios, business cards and
+                                the like — would disappear with it. Deletion removes the
+                                user's LinksPages inside the account-deletion transaction
+                                (see web/_functions/data_rights.php), so the page stops
+                                being reachable at its address the moment deletion
+                                completes. This is a PHP comment, not an HTML one,
+                                because any signed-in user can open this page (for
+                                their own account), so an HTML comment, including the
+                                internal file and function names, would be readable
+                                by anyone with an account.
+                            */
+                        ?>
+                        <i class="fas fa-link-slash text-danger" aria-hidden="true"></i>
+                        <?php if (function_exists('__')) { echo __('delete.warning_linkspages'); } else { echo 'Your LinksPages, and every link on them, will be permanently deleted and will stop being visible at their lnks.page address.'; } ?>
+                    </li>
                 </ul>
 
                 <div class="alert alert-info mb-0" role="note">

@@ -108,6 +108,53 @@ Schema files are located in `web/_sql/schema/`.
 | `tblConsentRecords` | ✅ GDPR/CCPA consent tracking |
 | `tblDataDeletionRequests` | 🗑️ Data subject deletion requests |
 
+> ✅ **LinksPages are covered by data export and erasure (fixed 2026-09-21, issue #219).**
+> `g2ml_requestDataExport()` and `g2ml_anonymiseUserData()`
+> (`web/_functions/data_rights.php`) used to work only against
+> `tblUsers`/`tblShortURLs`/`tblConsentRecords`/`tblUserSessions` — they never
+> touched `tblLinksPages` or `tblLinksPageItems`. That meant a subject-access
+> export left out a person's own LinksPage profile pages entirely (a GDPR
+> Article 20 gap), and deleting an account left their LinksPage published —
+> still showing their real name, bio, avatar and links — because nothing ever
+> removed it (a GDPR Article 17 gap). The export now includes a
+> `linkspages` section (slug, title, bio, avatar, colours, font, social
+> links, published state, and plain `hasCustomHTML`/`hasCustomCSS` flags —
+> the raw custom HTML and CSS columns are left out of the export itself as a
+> size trade-off, since both are content the user wrote but are also capped
+> in size, see `web/_functions/html_sanitiser.php`; whether to include the
+> actual content despite that trade-off is an open follow-up, tracked as
+> **#245**) and a `linkspage_items` section (each
+> link's title, URL, description, icon, age-gate flag and sort order), both
+> scoped to the requesting user's own pages only. Deletion now removes the
+> user's `tblLinksPages` rows inside the same transaction as the rest of the
+> anonymisation; their items go with them through `FK_item_page` (`ON DELETE
+> CASCADE`), and a custom domain that had designated one of those pages as
+> its root has that designation cleared through `FK_short_domain_linkspage`
+> (`ON DELETE SET NULL`). The domain then behaves as if no page had ever been
+> chosen: its bare address redirects to the site's fallback address
+> (`redirect.fallback_url`), and an unknown path gets the not-found page
+> unless the organisation has set its own fallback address (`orgFallbackURL`),
+> in which case the visitor is redirected there — see
+> `web/_sql/schema/032_linkspage.sql`.
+>
+> ✅ **Review round 1 (2026-09-21) also updated the Delete Account and Export
+> pages themselves** — `web/Go2My.Link/_admin/public_html/pages/privacy/
+> delete/index.php` and `.../export/index.php` — to say, in plain words, that
+> LinksPages are part of what gets deleted and part of what gets exported.
+> Before this, the code carried out both correctly but neither page told the
+> person about it, so someone could delete their account without knowing
+> their public lnks.page address would stop working. See seed
+> `029_linkspage_privacy_translations.sql` for the new strings.
+>
+> ⚠️ **Known trade-off, not yet solved (tracked as #244):** deleting a
+> LinksPage frees its slug immediately, so anyone can register the same
+> `lnks.page/<slug>` right away and receive whatever traffic the deleted
+> person's old links still send it. This is not new — deleting a page by
+> hand already does the same thing — and it is tracked as a follow-up rather
+> than fixed here, because holding a freed slug back for a cooling-off
+> period is a product decision (how long, whether it also applies to manual
+> deletes), not a one-line code change.
+
 #### 🌍 Translation
 
 | Table | Purpose |

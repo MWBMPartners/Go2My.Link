@@ -51,7 +51,11 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
  * Gather all user data and create a downloadable JSON export file.
  *
  * Collects data from: tblUsers, tblShortURLs, tblConsentRecords,
- * tblUserSessions, tblActivityLog (user's own entries).
+ * tblUserSessions, tblActivityLog (user's own entries), tblLinksPages and
+ * tblLinksPageItems (the user's own LinksPage profile pages and the links on
+ * them — added for #219; before this, a subject-access export left out a
+ * whole category of the person's own content, which is itself a GDPR
+ * Article 20 gap).
  *
  * @param  int   $userUID  The user requesting the export
  * @return array           ['success' => bool, 'requestUID' => int|null, 'error' => string|null]
@@ -123,6 +127,62 @@ function g2ml_requestDataExport(int $userUID): array
         $stmt->bind_param('i', $userUID);
         $stmt->execute();
         $userData['sessions'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        // Gather LinksPages (#219). A LinksPage is the person's own public
+        // profile page (page title, bio, avatar, colours, font, social
+        // links), so it belongs in a subject-access export exactly like
+        // their short URLs above.
+        //
+        // customHTML and customCSS are deliberately left OUT, and a plain
+        // hasCustomHTML/hasCustomCSS flag stands in for each instead.
+        //
+        // The reason is size, not that the content is unimportant: both are
+        // content the user wrote themselves, and a right-of-access export is
+        // meant to cover exactly that. customHTML is capped at
+        // G2ML_CUSTOM_HTML_MAX_BYTES (100 KB, see
+        // web/_functions/html_sanitiser.php) and customCSS at
+        // G2ML_CUSTOM_CSS_MAX_BYTES (50 KB), and the export is one JSON blob
+        // meant to stay readable at a glance, so including either raw column
+        // would work against that. This is NOT because the content is
+        // "already visible on the rendered page" — that would only be true
+        // while the page is published AND its organisation is currently
+        // allowed the custom-HTML feature, and neither is guaranteed (an
+        // unpublished page's custom HTML is shown to nobody, and the
+        // custom-HTML kill switch ships OFF, so today it is never rendered
+        // for anyone at all).
+        //
+        // Whether the actual content should be added to the export despite
+        // the size trade-off is an open product decision, tracked as #245.
+        // Cite that issue here and in docs/DATABASE.md if this changes.
+        $sql  = "SELECT pageUID, slug, pageTitle, pageDescription, avatarPath,
+                        templateUID, themeColour, backgroundColour, fontFamily,
+                        showSocialIcons, socialLinks, isPublished, isActive,
+                        (customHTML IS NOT NULL) AS hasCustomHTML,
+                        (customCSS IS NOT NULL) AS hasCustomCSS,
+                        createdAt, updatedAt
+                 FROM tblLinksPages WHERE userUID = ?";
+        $stmt = $db->prepare($sql);
+        $stmt->bind_param('i', $userUID);
+        $stmt->execute();
+        $userData['linkspages'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        // Gather LinksPage items (the individual links placed on each of the
+        // user's own pages). Joined through tblLinksPages rather than
+        // filtered by a userUID column of its own — tblLinksPageItems has no
+        // such column, only pageUID — so this stays scoped to the SAME
+        // user's pages only, never anyone else's items.
+        $sql  = "SELECT i.pageUID, i.itemTitle, i.itemURL, i.itemDescription,
+                        i.itemIcon, i.requiresAgeGate, i.sortOrder, i.isActive,
+                        i.createdAt, i.updatedAt
+                 FROM tblLinksPageItems i
+                 INNER JOIN tblLinksPages p ON i.pageUID = p.pageUID
+                 WHERE p.userUID = ?";
+        $stmt = $db->prepare($sql);
+        $stmt->bind_param('i', $userUID);
+        $stmt->execute();
+        $userData['linkspage_items'] = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
         // Write JSON export
@@ -574,10 +634,64 @@ function g2ml_requestDataDeletion(int $userUID, ?string $reason = null): array
 // ============================================================================
 
 /**
- * Replace all PII with anonymised placeholders across all tables.
+ * Anonymise one user's account: a PARTIAL erasure, not a complete one.
  *
- * This is a destructive, irreversible operation. Used after grace period
- * for deletion requests. Wraps all updates in a transaction.
+ * ⚠️ Do not quote this function to a customer, a support ticket or a
+ * regulator as "we erase all your personal data". It changes exactly the
+ * columns listed under "What this function changes" below and NOTHING
+ * else. Personal data also lives in columns and rows this function never
+ * touches (examples below). The full inventory of what erasure leaves
+ * behind, and the fix, is tracked in issue #247. The earlier version of
+ * this comment said "Replace all PII with anonymised placeholders across
+ * all tables", which was never true; review rounds 5 to 8 of #219 kept
+ * finding more that it leaves behind. So this comment now states only what
+ * the code does (which can be checked line by line against the SQL below)
+ * and points to #247 for the rest, rather than attempting a complete list
+ * that would keep going out of date.
+ *
+ * This is a destructive, irreversible operation, used after the grace
+ * period of a deletion request. Everything happens inside ONE transaction,
+ * so a failure partway through rolls every change back rather than leaving
+ * the account half-anonymised.
+ *
+ * What this function changes — exactly, and only this:
+ *   - tblUsers (the person's row): email becomes
+ *     'deleted_<userUID>@anonymised.go2my.link'; firstName, lastName and
+ *     displayName become '[DELETED]';
+ *     passwordHash becomes empty; avatarPath becomes NULL; isActive and
+ *     emailVerified become 0; updatedAt is set to the current time. The
+ *     row is kept.
+ *   - tblUserSessions (the person's rows): isActive becomes 0. Nothing
+ *     else on those rows changes.
+ *   - tblActivityLog (rows with the person's userUID): ipAddress becomes
+ *     '0.0.0.0'. Nothing else on those rows changes.
+ *   - tblConsentRecords (the person's rows): ipAddress becomes '0.0.0.0'
+ *     and userAgent becomes NULL. The rows are kept.
+ *   - tblLinksPages (the person's pages): DELETED outright (added for
+ *     #219; the inline comment at the DELETE below explains why a page is
+ *     deleted rather than edited). Their tblLinksPageItems rows go with
+ *     them through FK_item_page ON DELETE CASCADE, and a custom short
+ *     domain that pointed at one of those pages has that pointer set to
+ *     NULL through FK_short_domain_linkspage ON DELETE SET NULL. The
+ *     domain then behaves as if no page had ever been chosen for it: a
+ *     visit to the bare domain is redirected to the site's fallback address
+ *     (the redirect.fallback_url setting), and an unknown path gets the
+ *     usual not-found page, unless the organisation has set its own
+ *     fallback address (orgFallbackURL), in which case the visitor is
+ *     redirected there.
+ *
+ * Examples of personal data this function LEAVES BEHIND (not a complete
+ * list — see #247): on tblUsers, username (often built from the email
+ * address), lastLoginIP, userNotes and suspendedReason; on sessions, the
+ * IP address, browser string and device details; on the activity log, the
+ * browser string and the details split out of it, paths, referrers,
+ * location, the addresses the person shortened (destinationURL), and
+ * logData — which holds
+ * the person's email address on sign-in and other account events and on
+ * email-sending rows, and LinksPage slugs. Some activity-log rows written
+ * while the person was signed out carry no userUID at all — for example the
+ * row recording that a password-reset email was sent to them, whose logData
+ * holds their email address — so this function cannot find them.
  *
  * @param  int  $userUID  The user to anonymise
  * @return bool           true if anonymisation completed
@@ -625,6 +739,58 @@ function g2ml_anonymiseUserData(int $userUID): bool
 
         // Anonymise consent records (keep structure for legal compliance)
         $sql  = "UPDATE tblConsentRecords SET ipAddress = '0.0.0.0', userAgent = NULL WHERE userUID = ?";
+        $stmt = $db->prepare($sql);
+        $stmt->bind_param('i', $userUID);
+        $stmt->execute();
+        $stmt->close();
+
+        // Delete the user's LinksPages entirely (#219 — right to erasure).
+        //
+        // Everything else in this function updates a row in place rather
+        // than deleting it, and changes only some columns — see the
+        // docblock above for exactly which, and #247 for what is left
+        // behind. Those rows are kept
+        // because they are the historical record the anonymisation is meant
+        // to leave behind. A LinksPage is different: the row itself IS the
+        // person's personal data — a title that is often their name, a bio,
+        // an avatar address, social links and the links they chose to
+        // publish. Erasure has to remove that, and a page emptied of all of
+        // it would be a meaningless shell with no reason to keep. (Merely
+        // unpublishing it would stop it being shown — the renderer returns
+        // nothing for an unpublished page — but would keep the personal data,
+        // which is exactly what erasure must not do.) What deleting CANNOT
+        // do: it does not remove copies already held by search engines or
+        // in visitors' browser caches.
+        //
+        // TRADE-OFF this does not solve: deleting the row also frees its
+        // slug immediately. From the instant this commits, anyone can
+        // register the same lnks.page/<slug> and start receiving whatever
+        // traffic the deleted person's old links still send it — social
+        // media bios, business cards, anywhere they posted the address
+        // outside this app, which nothing here can reach or update. That is
+        // an impersonation risk, not merely a cosmetic one, and it is not
+        // new to this fix — deleting a page by hand through the admin UI
+        // already frees the slug the same way (see linkspage_manage.php's
+        // own delete path). Tracked as a follow-up rather than solved here
+        // (see #244) because holding a freed slug back for a cooling-off
+        // period is a product decision — how long, whether it applies to
+        // manual deletes too — not a one-line code change, and it does not
+        // change what erasure itself must do.
+        //
+        // tblLinksPageItems rows for the deleted page(s) go with them
+        // automatically through FK_item_page (ON DELETE CASCADE — see
+        // web/_sql/schema/032_linkspage.sql). Any custom short domain that
+        // had designated this page as its root fallback clears that
+        // designation to NULL through FK_short_domain_linkspage (ON DELETE
+        // SET NULL). The domain then behaves as if no page had ever been
+        // chosen for it: a visit to the bare domain is redirected to the
+        // site's fallback address (redirect.fallback_url), and an unknown
+        // path gets the usual not-found page — unless the organisation has
+        // set its own fallback address (orgFallbackURL), in which case the
+        // visitor is redirected there. The foreign key does not block
+        // this delete, and it does not delete the domain or change anything
+        // else about it.
+        $sql  = "DELETE FROM tblLinksPages WHERE userUID = ?";
         $stmt = $db->prepare($sql);
         $stmt->bind_param('i', $userUID);
         $stmt->execute();

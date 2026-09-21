@@ -58,6 +58,33 @@
  * log row, no email) rather than pulling in unrelated systems this test does
  * not need.
  *
+ * A second case (#219) covers LinksPages: g2ml_requestDataExport() used to
+ * say nothing at all about a user's LinksPage profile pages or the links on
+ * them (a right-of-access gap), and g2ml_anonymiseUserData() left a
+ * deleted user's page published under their real name, bio and avatar (a
+ * right-to-erasure gap — the page is public content, not a private record).
+ * That case seeds one page and one item via raw INSERTs against the real
+ * schema (mirroring tests/integration/linkspage_manage_test.php's own
+ * fixtures), proves both appear in the exported JSON with the columns the
+ * fix actually SELECTs (and that the large customHTML/customCSS columns are
+ * left out in favour of plain hasCustomHTML/hasCustomCSS flags), then proves
+ * the page row — and its item, via the schema's own FK_item_page ON DELETE
+ * CASCADE — is gone after g2ml_anonymiseUserData() runs.
+ *
+ * Review round 1 on #219 (2026-09-21) found that this case, as first
+ * written, only ever seeded ONE user — so it could not tell the difference
+ * between "the SELECTs are scoped to the right user" and "the SELECTs have
+ * no WHERE clause at all and return everyone's pages". A broken JOIN/WHERE
+ * in either direction would have slipped straight through: an export that
+ * leaked a second user's pages (a privacy leak of its own) or an
+ * anonymisation that deleted every user's pages (data loss on a scale far
+ * past what erasure is supposed to do) would both still have passed. The
+ * case now seeds a SECOND, unrelated user with the SAME fixtures and
+ * asserts, in both directions, that the two accounts never cross: the
+ * second user's page/item are absent from the first user's export, and the
+ * second user's page/item are still there, completely untouched, after the
+ * FIRST user's account is anonymised.
+ *
  * Registration model mirrors auth_register_test.php / activity_log_test.php:
  * this file registers its case at INCLUDE time using the $db handle from
  * run_integration.php's script scope, rather than the
@@ -355,11 +382,136 @@ function g2ml_dataexport_test_insert_session(mysqli $db, int $userUID, string $m
 }
 
 /**
+ * Insert a throwaway LinksPage owned by the given user and return its
+ * pageUID (#219 fixture). A raw INSERT against the real schema, not a call
+ * through web/_functions/linkspage_manage.php — that file pulls in
+ * entitlements.php/security.php/settings.php just to create a page, which
+ * this test does not otherwise need, and mirrors the same "raw insert,
+ * bypass the manage layer" approach linkspage_manage_test.php itself uses
+ * for its own item fixtures.
+ *
+ * customHTML is deliberately left NULL (the default) so the export's
+ * hasCustomHTML flag can be asserted false — a second, dedicated case would
+ * be needed to prove the flag flips true, which is out of scope for #219's
+ * acceptance criteria.
+ *
+ * @param  mysqli $db
+ * @param  int    $userUID
+ * @param  string $marker
+ * @return int
+ */
+function g2ml_dataexport_test_insert_linkspage(mysqli $db, int $userUID, string $marker): int
+{
+    $statement = mysqli_prepare(
+        $db,
+        'INSERT INTO `tblLinksPages` '
+        . '(`userUID`, `slug`, `pageTitle`, `pageDescription`, `avatarPath`, `fontFamily`, `socialLinks`, `isPublished`) '
+        . 'VALUES (?, ?, ?, ?, ?, ?, ?, 1)'
+    );
+
+    $slug            = $marker . '-page';
+    $pageTitle       = 'Data Export Test Page';
+    $pageDescription = 'Seeded for the #219 data export / erasure regression test.';
+    $avatarPath      = '/uploads/avatars/' . $marker . '.png';
+    $fontFamily      = 'Georgia';
+    $socialLinks     = json_encode(['twitter' => 'https://twitter.com/' . $marker]);
+
+    mysqli_stmt_bind_param(
+        $statement,
+        'issssss',
+        $userUID,
+        $slug,
+        $pageTitle,
+        $pageDescription,
+        $avatarPath,
+        $fontFamily,
+        $socialLinks
+    );
+
+    $ok = mysqli_stmt_execute($statement);
+
+    if ($ok === false)
+    {
+        $error = mysqli_stmt_error($statement);
+        mysqli_stmt_close($statement);
+        throw new RuntimeException('Insert (LinksPage) failed: ' . $error);
+    }
+
+    $pageUID = (int) mysqli_stmt_insert_id($statement);
+    mysqli_stmt_close($statement);
+
+    return $pageUID;
+}
+
+/**
+ * Insert a throwaway LinksPage item on the given page and return its
+ * itemUID (#219 fixture). A raw INSERT, for the same reason as
+ * g2ml_dataexport_test_insert_linkspage() above.
+ *
+ * @param  mysqli $db
+ * @param  int    $pageUID
+ * @param  string $marker
+ * @return int
+ */
+function g2ml_dataexport_test_insert_linkspage_item(mysqli $db, int $pageUID, string $marker): int
+{
+    $statement = mysqli_prepare(
+        $db,
+        'INSERT INTO `tblLinksPageItems` (`pageUID`, `itemTitle`, `itemURL`, `itemDescription`, `sortOrder`) '
+        . 'VALUES (?, ?, ?, ?, ?)'
+    );
+
+    $itemTitle       = 'Data Export Test Link';
+    $itemURL         = 'https://example.com/' . $marker;
+    $itemDescription = 'Seeded item for the #219 data export / erasure regression test.';
+    $sortOrder       = 0;
+
+    mysqli_stmt_bind_param($statement, 'isssi', $pageUID, $itemTitle, $itemURL, $itemDescription, $sortOrder);
+    $ok = mysqli_stmt_execute($statement);
+
+    if ($ok === false)
+    {
+        $error = mysqli_stmt_error($statement);
+        mysqli_stmt_close($statement);
+        throw new RuntimeException('Insert (LinksPage item) failed: ' . $error);
+    }
+
+    $itemUID = (int) mysqli_stmt_insert_id($statement);
+    mysqli_stmt_close($statement);
+
+    return $itemUID;
+}
+
+/**
  * Delete every row seeded/written for a userUID, in FK-safe order, plus the
  * export file it wrote (if any). Safe to call even when some rows or the
  * file were never created, so a partially-failed prior run never blocks a
- * fresh one (a fresh random marker per run already prevents any UNIQUE
- * collision regardless).
+ * fresh one — that, and a fresh random marker per run so a leftover row
+ * from an earlier failed run can never collide with a UNIQUE constraint in
+ * this one, is what makes it safe to call at the end of every run.
+ *
+ * The LinksPages delete runs BEFORE the tblUsers delete because
+ * `FK_page_user` (web/_sql/schema/032_linkspage.sql) is ON DELETE SET NULL,
+ * not CASCADE: deleting the user row first would clear the page's userUID
+ * to NULL and leave an ownerless page behind instead of removing it.
+ *
+ * (Corrected in review round 5 of #219 — this comment used to say the
+ * delete was "a no-op" for the case below because the page was "already
+ * gone" by the time cleanup ran. That stopped being true the moment round 1
+ * of #219 added a second user to the case: this call is what removes the
+ * SECOND user's page, which is still there and untouched at this point —
+ * see the comment right before the two cleanup calls at the end of that
+ * case. The first user's own page genuinely is already gone by then,
+ * because that is what the case's own DELETE assertion proves.)
+ *
+ * One more thing worth being honest about: this cleanup only runs at all
+ * if the calling test case's closure reaches its own end without throwing.
+ * test() in tests/bootstrap.php just registers the callback — there is no
+ * try/finally around it — so a failed assert_*() call throws straight out
+ * of the closure and every cleanup call after it, including these, is
+ * skipped. A run that fails partway through can leave rows behind; the
+ * fresh random marker per run is what stops that leftover row from
+ * blocking the NEXT run, not this function.
  *
  * @param  mysqli $db
  * @param  int    $userUID
@@ -367,6 +519,11 @@ function g2ml_dataexport_test_insert_session(mysqli $db, int $userUID, string $m
  */
 function g2ml_dataexport_test_cleanup(mysqli $db, int $userUID): void
 {
+    $deleteLinksPagesStatement = mysqli_prepare($db, 'DELETE FROM `tblLinksPages` WHERE `userUID` = ?');
+    mysqli_stmt_bind_param($deleteLinksPagesStatement, 'i', $userUID);
+    mysqli_stmt_execute($deleteLinksPagesStatement);
+    mysqli_stmt_close($deleteLinksPagesStatement);
+
     $selectStatement = mysqli_prepare(
         $db,
         'SELECT `exportFilePath` FROM `tblDataDeletionRequests` WHERE `userUID` = ? AND `requestType` = \'export\''
@@ -530,4 +687,209 @@ test('g2ml_requestDataExport (#138): succeeds against the real schema and export
 
     // Cleanup — idempotent, safe on rerun (see file docblock).
     g2ml_dataexport_test_cleanup($db, $userUID);
+});
+
+test('g2ml_requestDataExport / g2ml_anonymiseUserData (#219): a user\'s LinksPages are exported, then deleted on erasure', function () use ($db): void
+{
+    // Ensure the [default] org + free tier exist (FK targets for tblUsers).
+    // Idempotent (ON DUPLICATE KEY UPDATE), so repeating this from the case
+    // above is harmless regardless of run order.
+    g2ml_dataexport_test_exec(
+        $db,
+        "INSERT INTO `tblSubscriptionTiers` (`tierID`, `tierName`) "
+        . "VALUES ('free', 'Free') "
+        . "ON DUPLICATE KEY UPDATE `tierName` = VALUES(`tierName`)"
+    );
+
+    g2ml_dataexport_test_exec(
+        $db,
+        "INSERT INTO `tblOrganisations` (`orgHandle`, `orgName`, `orgFallbackURL`, `tierID`, `isActive`) "
+        . "VALUES ('[default]', 'Default Test Org', 'https://go2my.link/fallback', 'free', 1) "
+        . "ON DUPLICATE KEY UPDATE `orgFallbackURL` = VALUES(`orgFallbackURL`)"
+    );
+
+    $marker  = 'dataexport219_' . substr(hash('sha256', (string) microtime(true)), 0, 12);
+    $userUID = g2ml_dataexport_test_insert_user($db, '[default]', $marker);
+    $pageUID = g2ml_dataexport_test_insert_linkspage($db, $userUID, $marker);
+    $itemUID = g2ml_dataexport_test_insert_linkspage_item($db, $pageUID, $marker);
+
+    // A SECOND, unrelated user with their own page and item (review round 1
+    // on #219 — see the file docblock's note on this case). Everything
+    // below that touches $userUID's export or erasure must leave this
+    // second user's rows completely alone; if it does not, that is either a
+    // privacy leak (their page shows up in someone else's export) or data
+    // loss on a scale the fix was never meant to cause (their page gets
+    // deleted by someone else's erasure).
+    $otherMarker  = 'dataexport219other_' . substr(hash('sha256', (string) microtime(true) . 'other'), 0, 12);
+    $otherUserUID = g2ml_dataexport_test_insert_user($db, '[default]', $otherMarker);
+    $otherPageUID = g2ml_dataexport_test_insert_linkspage($db, $otherUserUID, $otherMarker);
+    $otherItemUID = g2ml_dataexport_test_insert_linkspage_item($db, $otherPageUID, $otherMarker);
+
+    // ------------------------------------------------------------------
+    // Right of access (GDPR Art. 20): the export must include the page and
+    // its item.
+    // ------------------------------------------------------------------
+    $result = g2ml_requestDataExport($userUID);
+
+    assert_true($result['success'], 'Export must succeed with a LinksPage present: ' . ($result['error'] ?? ''));
+
+    $requestUID = (int) $result['requestUID'];
+
+    $pathStatement = mysqli_prepare(
+        $db,
+        'SELECT `exportFilePath` FROM `tblDataDeletionRequests` WHERE `requestUID` = ? LIMIT 1'
+    );
+    mysqli_stmt_bind_param($pathStatement, 'i', $requestUID);
+    mysqli_stmt_execute($pathStatement);
+    $requestRow = mysqli_stmt_get_result($pathStatement)->fetch_assoc();
+    mysqli_stmt_close($pathStatement);
+
+    assert_true($requestRow !== null, 'The export request row was written');
+
+    $exportFilePath = $requestRow['exportFilePath'];
+    assert_true(is_string($exportFilePath) && is_file($exportFilePath), 'The export JSON file actually exists on disk');
+
+    $exportData = json_decode((string) file_get_contents($exportFilePath), true);
+    assert_true(is_array($exportData), 'The export file contains valid, decodable JSON');
+
+    // ---- LinksPages section (previously entirely missing — #219). ----
+    assert_true(isset($exportData['data']['linkspages']), 'The export payload has a linkspages section');
+    $linkspages = $exportData['data']['linkspages'];
+    assert_true(is_array($linkspages) && count($linkspages) >= 1, 'The seeded LinksPage appears in the export');
+
+    $matchedPage = null;
+
+    foreach ($linkspages as $pageRow)
+    {
+        if ((int) $pageRow['pageUID'] === $pageUID)
+        {
+            $matchedPage = $pageRow;
+        }
+    }
+
+    assert_true($matchedPage !== null, 'The seeded page is present in the export by pageUID');
+    assert_same($marker . '-page', $matchedPage['slug'], 'The export must carry the page\'s real slug — an acceptance criterion of #219');
+    assert_same('Data Export Test Page', $matchedPage['pageTitle'], 'The export must carry the page\'s real title');
+    assert_same(1, (int) $matchedPage['isPublished'], 'The seeded isPublished value round-trips through the export');
+    assert_false(array_key_exists('customHTML', $matchedPage), 'The raw customHTML column is left out of the export (size trade-off, see g2ml_requestDataExport()); hasCustomHTML stands in for it');
+    assert_true(array_key_exists('hasCustomHTML', $matchedPage), 'A hasCustomHTML flag must stand in for the omitted customHTML column');
+    assert_same(0, (int) $matchedPage['hasCustomHTML'], 'No custom HTML was set on the seeded page, so the flag must read false');
+    assert_false(array_key_exists('customCSS', $matchedPage), 'The raw customCSS column is left out of the export too, for the same size reason as customHTML (see g2ml_requestDataExport())');
+    assert_true(array_key_exists('hasCustomCSS', $matchedPage), 'A hasCustomCSS flag must stand in for the omitted customCSS column (review round 1 — this was missing even though hasCustomHTML existed)');
+    assert_same(0, (int) $matchedPage['hasCustomCSS'], 'No custom CSS was set on the seeded page, so the flag must read false');
+
+    // ---- Isolation (review round 1 — #219): the SECOND user's page must
+    // NEVER appear in the FIRST user's export. If it did, the SELECT that
+    // built $linkspages would have to be missing its WHERE userUID = ?
+    // clause — exactly the kind of fault a single-user test cannot catch.
+    $leakedPage = null;
+
+    foreach ($linkspages as $pageRow)
+    {
+        if ((int) $pageRow['pageUID'] === $otherPageUID)
+        {
+            $leakedPage = $pageRow;
+        }
+    }
+
+    assert_true($leakedPage === null, 'The SECOND user\'s LinksPage must NOT appear in the FIRST user\'s export — a scoping/privacy check, not just a presence check');
+
+    // ---- LinksPage items section (previously entirely missing — #219). ----
+    assert_true(isset($exportData['data']['linkspage_items']), 'The export payload has a linkspage_items section');
+    $items = $exportData['data']['linkspage_items'];
+    assert_true(is_array($items) && count($items) >= 1, 'The seeded item appears in the export');
+
+    $matchedItem = null;
+
+    foreach ($items as $itemRow)
+    {
+        if ((int) $itemRow['pageUID'] === $pageUID)
+        {
+            $matchedItem = $itemRow;
+        }
+    }
+
+    assert_true($matchedItem !== null, 'The seeded item is present in the export by pageUID');
+    assert_same('Data Export Test Link', $matchedItem['itemTitle'], 'The export must carry the item\'s real title — an acceptance criterion of #219');
+    assert_same('https://example.com/' . $marker, $matchedItem['itemURL'], 'The export must carry the item\'s real URL');
+
+    // itemUID itself is not one of the SELECTed export columns (the export
+    // is scoped by pageUID, not itemUID — see g2ml_requestDataExport()), so
+    // this confirms the exported row really is the one this test inserted,
+    // by looking it up directly rather than leaving $itemUID unused.
+    $seededItemLookupStatement = mysqli_prepare($db, 'SELECT `itemTitle` FROM `tblLinksPageItems` WHERE `itemUID` = ?');
+    mysqli_stmt_bind_param($seededItemLookupStatement, 'i', $itemUID);
+    mysqli_stmt_execute($seededItemLookupStatement);
+    $seededItemRow = mysqli_stmt_get_result($seededItemLookupStatement)->fetch_assoc();
+    mysqli_stmt_close($seededItemLookupStatement);
+
+    assert_true($seededItemRow !== null, 'The item this test inserted (looked up by its own itemUID) really exists before erasure');
+    assert_same($matchedItem['itemTitle'], $seededItemRow['itemTitle'], 'The exported item and the item at this itemUID are the same row');
+
+    // ---- Isolation (review round 1 — #219): the SECOND user's item must
+    // NEVER appear in the FIRST user's export.
+    $leakedItem = null;
+
+    foreach ($items as $itemRow)
+    {
+        if ((int) $itemRow['pageUID'] === $otherPageUID)
+        {
+            $leakedItem = $itemRow;
+        }
+    }
+
+    assert_true($leakedItem === null, 'The SECOND user\'s LinksPage item must NOT appear in the FIRST user\'s export');
+
+    // ------------------------------------------------------------------
+    // Right to erasure (GDPR Art. 17): anonymising the account must delete
+    // the LinksPage (and, via FK_item_page ON DELETE CASCADE, its item)
+    // rather than leaving a published page behind under the deleted
+    // account's old details.
+    // ------------------------------------------------------------------
+    $anonymiseResult = g2ml_anonymiseUserData($userUID);
+    assert_true($anonymiseResult, 'Anonymisation must succeed with a LinksPage present');
+
+    $pageLookupStatement = mysqli_prepare($db, 'SELECT `pageUID` FROM `tblLinksPages` WHERE `pageUID` = ?');
+    mysqli_stmt_bind_param($pageLookupStatement, 'i', $pageUID);
+    mysqli_stmt_execute($pageLookupStatement);
+    $pageStillThere = mysqli_stmt_get_result($pageLookupStatement)->fetch_assoc();
+    mysqli_stmt_close($pageLookupStatement);
+
+    assert_true($pageStillThere === null, 'The LinksPage row must be GONE after account deletion — the #219 right-to-erasure gap');
+
+    $itemLookupStatement = mysqli_prepare($db, 'SELECT `itemUID` FROM `tblLinksPageItems` WHERE `pageUID` = ?');
+    mysqli_stmt_bind_param($itemLookupStatement, 'i', $pageUID);
+    mysqli_stmt_execute($itemLookupStatement);
+    $itemStillThere = mysqli_stmt_get_result($itemLookupStatement)->fetch_assoc();
+    mysqli_stmt_close($itemLookupStatement);
+
+    assert_true($itemStillThere === null, 'The item must be gone too, via FK_item_page ON DELETE CASCADE');
+
+    // ---- Isolation (review round 1 — #219): anonymising the FIRST user
+    // must NEVER touch the SECOND user's page or item. If the DELETE in
+    // g2ml_anonymiseUserData() were missing its WHERE userUID = ? clause (or
+    // had the wrong one), this is the check that would catch it — the
+    // single-user version of this test could not, because there was no
+    // other user's data to accidentally destroy.
+    $otherPageLookupStatement = mysqli_prepare($db, 'SELECT `pageUID` FROM `tblLinksPages` WHERE `pageUID` = ?');
+    mysqli_stmt_bind_param($otherPageLookupStatement, 'i', $otherPageUID);
+    mysqli_stmt_execute($otherPageLookupStatement);
+    $otherPageStillThere = mysqli_stmt_get_result($otherPageLookupStatement)->fetch_assoc();
+    mysqli_stmt_close($otherPageLookupStatement);
+
+    assert_true($otherPageStillThere !== null, 'The SECOND user\'s LinksPage must SURVIVE the FIRST user\'s erasure — anonymising one account must never delete another user\'s page');
+
+    $otherItemLookupStatement = mysqli_prepare($db, 'SELECT `itemUID` FROM `tblLinksPageItems` WHERE `itemUID` = ?');
+    mysqli_stmt_bind_param($otherItemLookupStatement, 'i', $otherItemUID);
+    mysqli_stmt_execute($otherItemLookupStatement);
+    $otherItemStillThere = mysqli_stmt_get_result($otherItemLookupStatement)->fetch_assoc();
+    mysqli_stmt_close($otherItemLookupStatement);
+
+    assert_true($otherItemStillThere !== null, 'The SECOND user\'s LinksPage item must SURVIVE the FIRST user\'s erasure too');
+
+    // Cleanup — idempotent, safe on rerun (see file docblock). The first
+    // user's page is already gone by this point; the second user's page is
+    // still there and this removes it along with both users' other rows.
+    g2ml_dataexport_test_cleanup($db, $userUID);
+    g2ml_dataexport_test_cleanup($db, $otherUserUID);
 });
