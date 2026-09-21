@@ -76,6 +76,37 @@ if (function_exists('__')) {
     $pageDesc = 'Edit your LinksPage settings and manage its links.';
 }
 
+// 🌍 #221/#273 (LP-10): these three fields (the avatar field, an existing
+// item's icon field, and the "add a new link" icon field) had NO help text
+// at all before this change — this is new text being added, not an existing
+// hard-coded string being translated. It now goes through __(), seeded in
+// web/_sql/seeds/064_linkspage_avatar_icon_translations.sql. Most other
+// labels and help texts on this page (the slug, title and colour fields, for
+// instance) are still hard-coded English — that full translation pass is
+// #232 (LP-23), not this fix. The wording ("Must start with https://") is a
+// deliberate, matching pair with the server-side checks in
+// web/_functions/linkspage_manage.php
+// (_g2ml_linkspageManageValidateFields() for the avatar, and the itemIcon
+// check duplicated in g2ml_linkspageManageAddItem()/UpdateItem()), which are
+// tightened in this same change to REFUSE an http:// address on save, so
+// the new help text and the new server check land together and always
+// agree (#273 was raised in review against an earlier, uncommitted draft of
+// this fix, where the two disagreed — that draft never reached this
+// repository's history).
+// Computed once here and reused at every formField() call below, since the
+// avatar field appears once and the icon field appears twice (an existing
+// item, and the "add a new link" form) on this one page.
+if (function_exists('__')) {
+    $avatarUrlHelpText = __('linkspage.avatar_url_help');
+} else {
+    $avatarUrlHelpText = 'Must start with https://';
+}
+if (function_exists('__')) {
+    $itemIconHelpText = __('linkspage.item_icon_help');
+} else {
+    $itemIconHelpText = 'Must start with https://';
+}
+
 $currentUser = getCurrentUser();
 $userUID     = $currentUser['userUID'];
 
@@ -631,6 +662,7 @@ if ($pageData !== null)
                                 'type'     => 'url',
                                 'required' => false,
                                 'value'    => g2ml_sanitiseOutput($avatarValue),
+                                'helpText' => $avatarUrlHelpText,
                             ]);
                             ?>
 
@@ -1044,6 +1076,7 @@ if ($pageData !== null)
                                         'type'     => 'url',
                                         'required' => false,
                                         'value'    => g2ml_sanitiseOutput($itemIconValue),
+                                        'helpText' => $itemIconHelpText,
                                     ]);
 
                                     if ($itemRow['urlUID'] === null)
@@ -1175,6 +1208,7 @@ if ($pageData !== null)
                                 'type'     => 'url',
                                 'required' => false,
                                 'value'    => '',
+                                'helpText' => $itemIconHelpText,
                             ]);
                             ?>
 

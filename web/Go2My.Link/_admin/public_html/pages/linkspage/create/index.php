@@ -73,6 +73,26 @@ if (function_exists('__')) {
     $pageDesc = 'Set up a new LinksPage listing page.';
 }
 
+// 🌍 #221/#273 (LP-10): this field's help text used to be the hard-coded
+// English hint "Link to any hosted image — for example your profile
+// picture URL.", which did not mention https at all. It now goes through
+// __(), seeded in web/_sql/seeds/064_linkspage_avatar_icon_translations.sql,
+// with the new wording "Must start with https://". Most other labels and
+// help texts on this page (the slug, title and colour fields, for instance)
+// are still hard-coded English — that full translation pass is #232
+// (LP-23), not this fix. The new wording is a deliberate, matching pair
+// with the server-side check in _g2ml_linkspageManageValidateFields()
+// (web/_functions/linkspage_manage.php), which is tightened in this same
+// change to REFUSE an http:// avatar address on save, so the new text and
+// the new check land together and always agree (#273 was raised in review
+// against an earlier, uncommitted draft of this fix, where the two
+// disagreed — that draft never reached this repository's history).
+if (function_exists('__')) {
+    $avatarUrlHelpText = __('linkspage.avatar_url_help');
+} else {
+    $avatarUrlHelpText = 'Must start with https://';
+}
+
 $currentUser = getCurrentUser();
 $userUID     = $currentUser['userUID'];
 $orgHandle   = $currentUser['orgHandle'];
@@ -280,7 +300,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                                 'required'    => false,
                                 'value'       => g2ml_sanitiseOutput($formAvatarPath),
                                 'placeholder' => 'https://example.com/me.png',
-                                'helpText'    => 'Link to any hosted image — for example your profile picture URL.',
+                                'helpText'    => $avatarUrlHelpText,
                             ]);
                             ?>
 

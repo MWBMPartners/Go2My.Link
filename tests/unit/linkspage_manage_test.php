@@ -522,3 +522,60 @@ test('picker thumbnail: falls back to a placeholder when neither a live render n
     assert_false(str_contains($thumbnailHTML, '<iframe'), 'The placeholder fallback must not attempt a live render');
     assert_false(str_contains($thumbnailHTML, '<img'), 'The placeholder fallback must not reference a missing image');
 });
+
+// ============================================================================
+// 🖼️ _g2ml_linkspageManageValidateFields — avatar address must be https
+//    (#221/#273)
+// ============================================================================
+//
+// Before #221, the public page's CSP blocked every avatar regardless of
+// scheme, so this distinction did not matter. #221 allowed https: images
+// through the CSP, which meant an avatar could finally be seen — but #273
+// then found that this validator still silently ACCEPTED an http:// address,
+// even though the help text on the create/edit forms already said "Must
+// start with https://". An http:// avatar is unreliable on an https page: a
+// modern browser quietly tries it over https:// instead and shows nothing
+// if that server has no https, while an older browser is blocked outright
+// by the CSP (it lists https: alone) — either way the server accepted an
+// address with no error and no way for the creator to know whether it would
+// actually show. These tests pin the fix: http:// is now refused here,
+// https:// is accepted, and a blank address (avatar is optional) still is
+// too.
+// ============================================================================
+
+test('manage fields: an http:// avatar address is refused, not silently accepted', function (): void
+{
+    $result = _g2ml_linkspageManageValidateFields([
+        'slug'       => 'avatar-http-test',
+        'pageTitle'  => 'Avatar HTTP Test',
+        'avatarPath' => 'http://example.com/me.png',
+    ]);
+
+    assert_false($result['ok'], 'An http:// avatar address must be refused now that the CSP only allows https: images');
+    assert_same('validation', $result['errorCode'], 'The rejection must be reported as a validation error');
+    assert_contains('https', $result['error'], 'The error message must tell the creator https is required');
+});
+
+test('manage fields: an https:// avatar address is accepted', function (): void
+{
+    $result = _g2ml_linkspageManageValidateFields([
+        'slug'       => 'avatar-https-test',
+        'pageTitle'  => 'Avatar HTTPS Test',
+        'avatarPath' => 'https://example.com/me.png',
+    ]);
+
+    assert_true($result['ok'], 'An https:// avatar address must be accepted: ' . ($result['error'] ?? ''));
+    assert_same('https://example.com/me.png', $result['fields']['avatarPath'], 'The sanitised https avatar address must be kept unchanged');
+});
+
+test('manage fields: a blank avatar address is still accepted — the avatar is optional', function (): void
+{
+    $result = _g2ml_linkspageManageValidateFields([
+        'slug'       => 'avatar-blank-test',
+        'pageTitle'  => 'Avatar Blank Test',
+        'avatarPath' => '',
+    ]);
+
+    assert_true($result['ok'], 'A blank avatar address must not be treated as a validation error: ' . ($result['error'] ?? ''));
+    assert_same(null, $result['fields']['avatarPath'], 'A blank avatar address must be stored as null, not an empty string');
+});

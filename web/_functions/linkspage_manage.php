@@ -960,11 +960,43 @@ function _g2ml_linkspageManageValidateFields(array $input): array
     {
         $sanitisedAvatar = g2ml_sanitiseURL($avatarRaw);
 
-        if ($sanitisedAvatar === false || mb_strlen($sanitisedAvatar) > 500)
+        // Issue #221 (LP-10) widened the public page's Content-Security-Policy
+        // to allow https: images, so a creator's avatar can finally be SEEN by
+        // a visitor (before, the CSP silently blocked every avatar, no matter
+        // what the creator entered here). Issue #273 then found that this
+        // validation still accepted a plain http:// avatar address, which is
+        // unreliable on an https page: a modern browser (Chrome, Firefox)
+        // quietly tries it over https:// instead, before the CSP is even
+        // checked, and shows nothing if that server has no https; only an
+        // older browser without that automatic upgrade is blocked outright
+        // by the CSP, which lists https: alone. Either way the creator was
+        // never told, and could not tell from their own browser whether it
+        // would work for everyone. Fixed by refusing anything that is not
+        // https here too, so the creator is told straight away on save
+        // instead of guessing from how it looks in their own browser.
+        // g2ml_sanitiseURL() already restricts the scheme to http or https,
+        // so this only has to narrow that further down to https alone.
+        $avatarScheme = false;
+
+        if ($sanitisedAvatar !== false)
         {
+            $avatarScheme = strtolower((string) parse_url($sanitisedAvatar, PHP_URL_SCHEME));
+        }
+
+        if ($sanitisedAvatar === false || mb_strlen($sanitisedAvatar) > 500 || $avatarScheme !== 'https')
+        {
+            if (function_exists('__'))
+            {
+                $avatarInvalidError = __('linkspage.avatar_url_https_error');
+            }
+            else
+            {
+                $avatarInvalidError = 'The avatar must be a valid https:// image URL.';
+            }
+
             return [
                 'ok'        => false,
-                'error'     => 'The avatar must be a valid http:// or https:// image URL.',
+                'error'     => $avatarInvalidError,
                 'errorCode' => 'validation',
             ];
         }
@@ -1849,12 +1881,38 @@ function g2ml_linkspageManageAddItem(int $userUID, int $pageUID, array $input): 
     {
         $sanitisedIcon = g2ml_sanitiseURL($itemIconRaw);
 
-        if ($sanitisedIcon === false || mb_strlen($sanitisedIcon) > 500)
+        // See the matching comment on the avatarPath check in
+        // _g2ml_linkspageManageValidateFields() above (issues #221/#273):
+        // a per-link icon has the same problem as the avatar. An http://
+        // icon is unreliable on the public page, not always blocked — a
+        // modern browser quietly retries it over https:// first, so it can
+        // look fine to the creator while still failing for some visitors
+        // (an older browser, or an image server with no https at all), and
+        // the creator has no way to tell which from their own screen. So
+        // it is refused here on save, the same as the avatar, instead of
+        // being accepted and left to fail quietly for someone else.
+        $iconScheme = false;
+
+        if ($sanitisedIcon !== false)
         {
+            $iconScheme = strtolower((string) parse_url($sanitisedIcon, PHP_URL_SCHEME));
+        }
+
+        if ($sanitisedIcon === false || mb_strlen($sanitisedIcon) > 500 || $iconScheme !== 'https')
+        {
+            if (function_exists('__'))
+            {
+                $iconInvalidError = __('linkspage.item_icon_https_error');
+            }
+            else
+            {
+                $iconInvalidError = 'The icon must be a valid https:// image URL.';
+            }
+
             return [
                 'success' => false,
                 'itemUID' => null,
-                'error'   => 'The icon must be a valid http:// or https:// image URL.',
+                'error'   => $iconInvalidError,
             ];
         }
 
@@ -2022,11 +2080,36 @@ function g2ml_linkspageManageUpdateItem(int $userUID, int $itemUID, array $input
     {
         $sanitisedIcon = g2ml_sanitiseURL($itemIconRaw);
 
-        if ($sanitisedIcon === false || mb_strlen($sanitisedIcon) > 500)
+        // See the matching comment on the avatarPath check in
+        // _g2ml_linkspageManageValidateFields() (issues #221/#273): an
+        // http:// icon is unreliable on the public page (it may show fine
+        // in the creator's own browser, because of the mixed-content
+        // retry a modern browser does before the CSP is even checked, and
+        // still fail for a visitor whose browser or image server does
+        // not), so it is refused on an update just as it is on an add —
+        // the same rule as the avatar — rather than accepted and left to
+        // fail quietly for someone else.
+        $iconScheme = false;
+
+        if ($sanitisedIcon !== false)
         {
+            $iconScheme = strtolower((string) parse_url($sanitisedIcon, PHP_URL_SCHEME));
+        }
+
+        if ($sanitisedIcon === false || mb_strlen($sanitisedIcon) > 500 || $iconScheme !== 'https')
+        {
+            if (function_exists('__'))
+            {
+                $iconInvalidError = __('linkspage.item_icon_https_error');
+            }
+            else
+            {
+                $iconInvalidError = 'The icon must be a valid https:// image URL.';
+            }
+
             return [
                 'success' => false,
-                'error'   => 'The icon must be a valid http:// or https:// image URL.',
+                'error'   => $iconInvalidError,
             ];
         }
 

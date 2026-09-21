@@ -1,0 +1,110 @@
+-- Copyright (c) 2024–2026 MWBM Partners Ltd (MWservices).
+-- All rights reserved.
+--
+-- This source code is proprietary and confidential.
+-- Unauthorised copying, modification, or distribution is strictly prohibited.
+
+-- ============================================================================
+-- 🌍 Go2My.Link — Seed: LinksPage avatar/icon https-only strings (en-GB)
+-- ============================================================================
+--
+-- Issue #221 (LP-10): the public lnks.page page's Content-Security-Policy
+-- used to block every avatar and per-link icon image a creator entered,
+-- because img-src only allowed 'self' and data: URIs. web/Lnks.page/
+-- public_html/.htaccess now also allows img-src https:, so an https: image
+-- finally shows to visitors. A plain http: image is NOT reliably blocked by
+-- the CSP itself: current Chrome and Firefox quietly try it over https:
+-- instead before the policy is even checked (the "mixed-content upgrade"
+-- step in the Fetch standard runs before the CSP-block step), and only show
+-- nothing if that server has no https. Only an older browser without that
+-- upgrade is stopped outright by the CSP, which lists https: alone. So
+-- refusing http:// on save (below) is not "the CSP would have blocked it
+-- anyway" — it is "this address is unreliable across browsers", and telling
+-- the creator immediately beats them finding out by trial and error, on
+-- some visitors' screens and not others. This is a deliberate, temporary
+-- allowance the owner has approved — decision #243, item 11 — pending a
+-- first-party image upload (#231; the narrowing step itself is #264, LP-28).
+--
+-- Issue #273: while an earlier, uncommitted draft of this same LP-10 change
+-- was in review, the new "Must start with https://" help text had been
+-- written before the matching server-side check, so for a short time the
+-- text said "https://" while the server (web/_functions/linkspage_manage.php)
+-- still silently ACCEPTED an http:// address on save. That draft was never
+-- committed, so this mismatch never reached a real database or a real
+-- user — it was caught in review, against LP-10's own working copy, before
+-- either the text or the check reached this repository's history. Because
+-- an http:// image is only unreliable rather than always blocked (see
+-- above), letting the two disagree even briefly would have meant a creator
+-- could save one, see it work fine in their own browser while testing, and
+-- never learn that it might not show for a visitor on an older browser.
+-- The change that actually ships — this seed, plus the PHP in the same
+-- commit — adds the help text and the server-side refusal together, so the
+-- two always agree from the first commit that has either of them:
+--   - The four help texts these two pages show (one avatar field on the
+--     create page; the avatar field, an existing item's icon field, and the
+--     "add a new link" icon field on the edit page) now go through __()
+--     instead of being hard-coded English, using the two "_help" keys
+--     below. Before this change, the edit page's three fields had no help
+--     text at all, and the create page's one field had a hard-coded hint
+--     that did not mention https.
+--   - The server now REFUSES an http:// avatarPath or itemIcon on save
+--     (both create and update), returning one of the "_error" keys below.
+--
+-- ⚠️ IF THIS FILE IS NOT IMPORTED into an EXISTING database: on a real page
+-- (as opposed to the unit tests), web/_includes/page_init.php always loads
+-- web/_functions/i18n.php, so __() does NOT fall back to the plain-English
+-- default written at each call site — it falls back to i18n.php's own last
+-- resort, which returns the key itself unchanged (see the "Return the key
+-- itself as a last resort" comment in that file). That means, on a database
+-- missing this seed, all four fields' help text reads literally
+-- "linkspage.avatar_url_help" / "linkspage.item_icon_help", and a refused
+-- save shows "linkspage.avatar_url_https_error" / "linkspage.item_icon_https_error"
+-- instead of English. That is exactly the raw-translation-key fault already
+-- found and fixed once before, in #164/#199 — the function_exists('__')
+-- fallback at each PHP call site only ever protects the automated tests
+-- (unit and integration), which run without i18n.php loaded. This file
+-- must therefore be applied to every existing database, not only to a
+-- fresh install (see the seed table in docs/DEPLOYMENT.md and the
+-- owner-action row in PRE_LAUNCH_CHECKLIST.md).
+-- It is INSERT IGNORE, so re-running it on a database that already has
+-- these rows changes nothing and is safe.
+--
+-- New keys:
+--   linkspage.avatar_url_help         Avatar field help text (create + edit)
+--   linkspage.item_icon_help          Per-link icon field help text (edit,
+--                                     both the existing-item form and the
+--                                     "add a new link" form)
+--   linkspage.avatar_url_https_error  Save-time validation error when the
+--                                     avatar address is not https://
+--   linkspage.item_icon_https_error   Save-time validation error when a
+--                                     link's icon address is not https://
+--
+-- Numbering note: seed numbers 030-063 are reserved by other programme
+-- items' own plans (issues #248 onward, across the platform/LinksPage/fix
+-- programme — see each item's own plan for exactly which number is whose;
+-- for example issue #251 reserves 030 for its own seed). This file was
+-- first written claiming 030 for itself without checking those plans,
+-- which would have collided with #251's seed the moment that item landed —
+-- caught in LP-10 review round 1. It now takes 064, the next number free
+-- once 030-063 are accounted for.
+--
+-- Dependencies: 035_translations.sql (schema), 005_languages.sql (en-GB
+-- language).
+--
+-- Safe to re-run: every statement is INSERT IGNORE.
+--
+-- @package    Go2My.Link
+-- @subpackage Database
+-- @author     MWBM Partners Ltd (MWservices)
+-- @version    1.0.0
+-- @since      v1.2.0 — Phase 8 (LP-10, #221, #273)
+-- ============================================================================
+
+USE `mwtools_Go2MyLink`;
+
+INSERT IGNORE INTO tblTranslations (localeCode, translationKey, translationValue, context, isVerified)
+VALUES
+('en-GB', 'linkspage.avatar_url_help', 'Must start with https://', 'LinksPage create/edit — avatar image field', 1),
+('en-GB', 'linkspage.item_icon_help', 'Must start with https://', 'LinksPage edit — per-link icon image field', 1),
+('en-GB', 'linkspage.avatar_url_https_error', 'The avatar must be a valid https:// image URL.', 'LinksPage create/edit — avatar save validation', 1),
+('en-GB', 'linkspage.item_icon_https_error', 'The icon must be a valid https:// image URL.', 'LinksPage edit — link icon save validation', 1);

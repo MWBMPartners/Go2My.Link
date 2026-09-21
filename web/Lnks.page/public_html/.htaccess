@@ -50,13 +50,30 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
     # page this component serves (the "coming soon" homepage, the branded
     # 404, and the rendered LinksPage itself) is fully self-contained —
     # no CDN scripts/stylesheets — so the policy below intentionally has NO
-    # third-party origins, unlike the other two components. Theme/background
+    # third-party origins for scripts, stylesheets or fonts; images are the
+    # one exception (see the LP-10 note below). Theme/background
     # colours are injected into a <style> block (never an inline `style=`
     # attribute driven by unvalidated data — see hex validation in
     # linkspage_renderer.php), so 'unsafe-inline' is scoped to style-src only;
     # script-src stays 'self' with no 'unsafe-inline' since this component
     # ships no inline scripts at all. object-src is 'none' (no plugins/embeds
     # of any kind), closing the classic Flash/Java CSP bypass vector.
+    #
+    # Images before 2026-09-21 (issue #221, LP-10): avatar and per-link icon
+    # URLs supplied by the creator were blocked from rendering on the public page
+    # even though they displayed in the admin preview. This was because img-src
+    # only allowed 'self' and data: URIs. Now, img-src allows https: URLs in
+    # addition, meaning any image served over HTTPS can be displayed to visitors.
+    # This will allow a creator's avatars and link icons to show, but it reveals
+    # the visitor's IP to whatever external server hosts the image (the same as
+    # any website embedding an external image). It also means a creator can point
+    # an avatar or icon URL at a server they control, and so learn when the page
+    # is viewed and the viewer's IP address and browser (a "tracking pixel").
+    # Nothing in the code prevents this today: linkspage.tracking_pixels is only
+    # a registered name for a planned feature that has not been built. The owner
+    # decided (#243, item 11) to narrow img-src back to our own server once the
+    # planned image upload exists (LP-16, #231); the narrowing itself is #264
+    # (LP-28). Images cannot run script regardless of origin.
     #
     # 🧨 Component C.6 (#49): `Header setifempty` (NOT `Header set`) so a
     # LinksPage rendering owner-supplied CUSTOM HTML can serve an even STRICTER
@@ -66,7 +83,7 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
     # already set a CSP, so no other page is weakened — the coming-soon
     # homepage, the 404, and system-template pages still receive this baseline.
     # 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
-    Header setifempty Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; object-src 'none'; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+    Header setifempty Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self'; object-src 'none'; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
 
     # HSTS — enforce HTTPS for 1 year
     Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"

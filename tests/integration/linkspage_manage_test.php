@@ -787,3 +787,298 @@ test('linkspage manage (#218): a page already at the 200-item abuse cap rejects 
 
     g2ml_lpm_test_delete_page($db, $pageUID);
 });
+
+// ============================================================================
+// 🖼️ Avatar and per-link icon addresses must be https (#221, #273)
+// ============================================================================
+//
+// #221 (LP-10) allowed https: images through the public page's CSP, so an
+// avatar or icon can finally be SEEN by a visitor. #273 then found that
+// saving an http:// address here still silently succeeded — the help text
+// on the create/edit forms said "Must start with https://" but the server
+// disagreed. An http:// address is unreliable on an https page (a modern
+// browser quietly tries it over https:// instead and shows nothing if that
+// server has none; an older browser is blocked outright by the CSP, which
+// lists https: alone), so a creator who saved one had no way to know
+// whether it would actually show to a visitor. These end-to-end tests
+// exercise the REAL create/update-page/add-item/update-item functions (not
+// just the pure validator, which tests/unit/linkspage_manage_test.php
+// already pins) to prove the full save path refuses http:// and accepts
+// https:// for both fields, on every one of those four ways to write an
+// avatar or icon address.
+// ============================================================================
+
+test('linkspage manage (#221/#273): creating a page with an http:// avatar is rejected', function () use ($db, $g2mlLpmOrgHandle): void
+{
+    $marker  = g2ml_lpm_test_marker('avatarhttp');
+    $userUID = g2ml_lpm_test_insert_user($db, $g2mlLpmOrgHandle, $marker);
+
+    $createResult = g2ml_linkspageManageCreatePage($userUID, $g2mlLpmOrgHandle, [
+        'slug'       => $marker . '-slug',
+        'pageTitle'  => 'Avatar HTTP Test Page',
+        'avatarPath' => 'http://example.com/me.png',
+    ]);
+
+    assert_false($createResult['success'], 'Creating a page with an http:// avatar address must be rejected');
+
+    // Exact message, not a substring match: 'https' also turns up in the
+    // raw translation KEY names (linkspage.avatar_url_https_error) and in
+    // unrelated errors, so a loose assert_contains('https', ...) here would
+    // still pass even if this check were checking the wrong thing, or
+    // nothing at all. __() is not loaded in this test suite (nothing under
+    // tests/ requires web/_functions/i18n.php), so the plain-English
+    // fallback written at the call site is exactly what comes back.
+    assert_same('The avatar must be a valid https:// image URL.', (string) $createResult['error'], 'The rejection message must be the avatar https error, not some other failure');
+
+    $pages = g2ml_linkspageManageListPagesForUser($userUID);
+    assert_same(0, count($pages), 'No page must have been created from the rejected http:// avatar attempt');
+});
+
+test('linkspage manage (#221/#273): creating a page with an https:// avatar succeeds and is read back unchanged', function () use ($db, $g2mlLpmOrgHandle): void
+{
+    $marker  = g2ml_lpm_test_marker('avatarhttps');
+    $userUID = g2ml_lpm_test_insert_user($db, $g2mlLpmOrgHandle, $marker);
+
+    $createResult = g2ml_linkspageManageCreatePage($userUID, $g2mlLpmOrgHandle, [
+        'slug'       => $marker . '-slug',
+        'pageTitle'  => 'Avatar HTTPS Test Page',
+        'avatarPath' => 'https://example.com/me.png',
+    ]);
+
+    assert_true($createResult['success'], 'Creating a page with an https:// avatar address must succeed: ' . ($createResult['error'] ?? ''));
+    $pageUID = $createResult['pageUID'];
+
+    $pageData = g2ml_linkspageManageGetPageForOwner($pageUID, $userUID);
+    assert_same('https://example.com/me.png', $pageData['avatarPath'], 'The https avatar address must be stored and read back unchanged');
+
+    g2ml_lpm_test_delete_page($db, $pageUID);
+});
+
+test('linkspage manage items (#221/#273): adding a link with an http:// icon is rejected', function () use ($db, $g2mlLpmOrgHandle): void
+{
+    $marker  = g2ml_lpm_test_marker('iconhttp');
+    $userUID = g2ml_lpm_test_insert_user($db, $g2mlLpmOrgHandle, $marker);
+
+    $pageResult = g2ml_linkspageManageCreatePage($userUID, $g2mlLpmOrgHandle, [
+        'slug'      => $marker . '-slug',
+        'pageTitle' => 'Icon HTTP Test Page',
+    ]);
+    $pageUID = $pageResult['pageUID'];
+
+    $addResult = g2ml_linkspageManageAddItem($userUID, $pageUID, [
+        'source'    => 'manual',
+        'manualURL' => 'https://example.com/destination',
+        'itemTitle' => 'Icon HTTP Test Link',
+        'itemIcon'  => 'http://example.com/icon.png',
+    ]);
+
+    assert_false($addResult['success'], 'Adding a link with an http:// icon address must be rejected');
+
+    // Exact message, not a substring match — see the comment on the
+    // matching avatar-rejection assertion above for why 'https' alone is
+    // not a safe thing to look for.
+    assert_same('The icon must be a valid https:// image URL.', (string) $addResult['error'], 'The rejection message must be the icon https error, not some other failure');
+
+    $items = g2ml_linkspageManageListItemsForPage($pageUID, $userUID);
+    assert_same(0, count($items), 'No item must have been created from the rejected http:// icon attempt');
+
+    g2ml_lpm_test_delete_page($db, $pageUID);
+});
+
+test('linkspage manage items (#221/#273): adding a link with an https:// icon succeeds and is read back unchanged', function () use ($db, $g2mlLpmOrgHandle): void
+{
+    $marker  = g2ml_lpm_test_marker('iconhttps');
+    $userUID = g2ml_lpm_test_insert_user($db, $g2mlLpmOrgHandle, $marker);
+
+    $pageResult = g2ml_linkspageManageCreatePage($userUID, $g2mlLpmOrgHandle, [
+        'slug'      => $marker . '-slug',
+        'pageTitle' => 'Icon HTTPS Test Page',
+    ]);
+    $pageUID = $pageResult['pageUID'];
+
+    $addResult = g2ml_linkspageManageAddItem($userUID, $pageUID, [
+        'source'    => 'manual',
+        'manualURL' => 'https://example.com/destination',
+        'itemTitle' => 'Icon HTTPS Test Link',
+        'itemIcon'  => 'https://example.com/icon.png',
+    ]);
+
+    assert_true($addResult['success'], 'Adding a link with an https:// icon address must succeed: ' . ($addResult['error'] ?? ''));
+
+    $items = g2ml_linkspageManageListItemsForPage($pageUID, $userUID);
+    assert_same(1, count($items), 'Exactly one item must exist after the add');
+    assert_same('https://example.com/icon.png', $items[0]['itemIcon'], 'The https icon address must be stored and read back unchanged');
+
+    g2ml_lpm_test_delete_page($db, $pageUID);
+});
+
+test('linkspage manage items (#221/#273): updating a link to an http:// icon is rejected and the old value is kept', function () use ($db, $g2mlLpmOrgHandle): void
+{
+    $marker  = g2ml_lpm_test_marker('iconupdatehttp');
+    $userUID = g2ml_lpm_test_insert_user($db, $g2mlLpmOrgHandle, $marker);
+
+    $pageResult = g2ml_linkspageManageCreatePage($userUID, $g2mlLpmOrgHandle, [
+        'slug'      => $marker . '-slug',
+        'pageTitle' => 'Icon Update HTTP Test Page',
+    ]);
+    $pageUID = $pageResult['pageUID'];
+
+    $addResult = g2ml_linkspageManageAddItem($userUID, $pageUID, [
+        'source'    => 'manual',
+        'manualURL' => 'https://example.com/destination',
+        'itemTitle' => 'Icon Update Test Link',
+        'itemIcon'  => 'https://example.com/original-icon.png',
+    ]);
+    $itemUID = $addResult['itemUID'];
+
+    // manualURL is included here, valid and https, for the same reason the
+    // matching success test below includes it. This used to matter for a
+    // different reason than it does now: in review round 3, this test only
+    // checked that the error message CONTAINED the word "https", and with
+    // no manualURL in the request, g2ml_linkspageManageUpdateItem() would
+    // have failed on the missing destination instead ("Please enter a
+    // valid http:// or https:// URL.") — a message that also contains
+    // "https", so the test still passed even with the icon-scheme check
+    // deleted from the function entirely. That was found by deleting the
+    // check and re-running the suite: every test still passed.
+    //
+    // The assert_same() a few lines below now compares the exact icon
+    // message instead of a substring, so that old loophole is closed on
+    // its own — if the icon check were deleted, the update would fail with
+    // the manualURL message instead, and the exact-match assertion would
+    // fail. manualURL is kept here anyway, because the icon check runs
+    // BEFORE the manualURL check inside g2ml_linkspageManageUpdateItem()
+    // in web/_functions/linkspage_manage.php (the icon block comes first,
+    // the "Only a MANUAL item ... may have its destination URL changed"
+    // block after it): supplying a valid manualURL removes the other way
+    // this request could fail, so the icon check is the only thing left
+    // that can refuse the save, and this test proves specifically that
+    // check rather than some other one.
+    $updateResult = g2ml_linkspageManageUpdateItem($userUID, $itemUID, [
+        'itemTitle' => 'Icon Update Test Link',
+        'manualURL' => 'https://example.com/destination',
+        'itemIcon'  => 'http://example.com/new-icon.png',
+    ]);
+
+    assert_false($updateResult['success'], 'Updating a link to an http:// icon address must be rejected');
+
+    // Exact message, not a substring match — see the comment on the
+    // avatar-rejection assertion earlier in this file for why 'https'
+    // alone is not a safe thing to look for.
+    assert_same('The icon must be a valid https:// image URL.', (string) $updateResult['error'], 'The rejection message must be the icon https error, not some other failure');
+
+    $items = g2ml_linkspageManageListItemsForPage($pageUID, $userUID);
+    assert_same('https://example.com/original-icon.png', $items[0]['itemIcon'], 'The rejected update must leave the original https icon address in place');
+
+    g2ml_lpm_test_delete_page($db, $pageUID);
+});
+
+test('linkspage manage items (#221/#273): updating a link to an https:// icon succeeds and is read back unchanged', function () use ($db, $g2mlLpmOrgHandle): void
+{
+    $marker  = g2ml_lpm_test_marker('iconupdatehttps');
+    $userUID = g2ml_lpm_test_insert_user($db, $g2mlLpmOrgHandle, $marker);
+
+    $pageResult = g2ml_linkspageManageCreatePage($userUID, $g2mlLpmOrgHandle, [
+        'slug'      => $marker . '-slug',
+        'pageTitle' => 'Icon Update HTTPS Test Page',
+    ]);
+    $pageUID = $pageResult['pageUID'];
+
+    $addResult = g2ml_linkspageManageAddItem($userUID, $pageUID, [
+        'source'    => 'manual',
+        'manualURL' => 'https://example.com/destination',
+        'itemTitle' => 'Icon Update Test Link',
+        'itemIcon'  => 'https://example.com/original-icon.png',
+    ]);
+    $itemUID = $addResult['itemUID'];
+
+    $updateResult = g2ml_linkspageManageUpdateItem($userUID, $itemUID, [
+        'itemTitle' => 'Icon Update Test Link',
+        'manualURL' => 'https://example.com/destination',
+        'itemIcon'  => 'https://example.com/new-icon.png',
+    ]);
+
+    assert_true($updateResult['success'], 'Updating a link to an https:// icon address must succeed: ' . ($updateResult['error'] ?? ''));
+
+    $items = g2ml_linkspageManageListItemsForPage($pageUID, $userUID);
+    assert_same('https://example.com/new-icon.png', $items[0]['itemIcon'], 'The updated https icon address must be stored and read back unchanged');
+
+    g2ml_lpm_test_delete_page($db, $pageUID);
+});
+
+// ----------------------------------------------------------------------
+// g2ml_linkspageManageUpdatePage() is a SEPARATE code path from create
+// (it reads the existing row first, then re-validates and re-writes it —
+// see the function itself in web/_functions/linkspage_manage.php). The
+// tests above cover create, add-item and update-item; this one covers the
+// fourth way to write an avatar address, an EXISTING page being edited
+// through the admin "edit" form, which is exactly the form #273 was
+// originally filed against.
+// ----------------------------------------------------------------------
+test('linkspage manage (#221/#273): updating a page to an http:// avatar is rejected and the old value is kept', function () use ($db, $g2mlLpmOrgHandle): void
+{
+    $marker  = g2ml_lpm_test_marker('avatarupdatehttp');
+    $userUID = g2ml_lpm_test_insert_user($db, $g2mlLpmOrgHandle, $marker);
+
+    $createResult = g2ml_linkspageManageCreatePage($userUID, $g2mlLpmOrgHandle, [
+        'slug'       => $marker . '-slug',
+        'pageTitle'  => 'Avatar Update HTTP Test Page',
+        'avatarPath' => 'https://example.com/original-me.png',
+    ]);
+    $pageUID = $createResult['pageUID'];
+
+    $updateResult = g2ml_linkspageManageUpdatePage($userUID, $pageUID, [
+        'slug'       => $marker . '-slug',
+        'pageTitle'  => 'Avatar Update HTTP Test Page',
+        'avatarPath' => 'http://example.com/new-me.png',
+    ]);
+
+    assert_false($updateResult['success'], 'Updating a page to an http:// avatar address must be rejected');
+
+    // Exact message, not a substring match — see the comment on the
+    // avatar-creation-rejection assertion earlier in this file for why
+    // 'https' alone is not a safe thing to look for.
+    assert_same('The avatar must be a valid https:// image URL.', (string) $updateResult['error'], 'The rejection message must be the avatar https error, not some other failure');
+
+    $pageData = g2ml_linkspageManageGetPageForOwner($pageUID, $userUID);
+    assert_same('https://example.com/original-me.png', $pageData['avatarPath'], 'The rejected update must leave the original https avatar address in place');
+
+    g2ml_lpm_test_delete_page($db, $pageUID);
+});
+
+// Review round 5 (LP-10) found that this file's header comment claimed https
+// acceptance was proven end to end "on every one of those four ways to write
+// an avatar or icon address" (create page, update page, add item, update
+// item), but only THREE of those four had a matching https-success test —
+// update-page only had the http-rejection test above. https acceptance for
+// update-page was still correct (it runs through the same shared validator,
+// _g2ml_linkspageManageValidateFields(), that tests/unit/linkspage_manage_test.php
+// already proves accepts https — see the "an https:// avatar address is
+// accepted" test there), but nothing at the end-to-end level actually
+// exercised it. This test closes that gap, so the header comment's claim is
+// true of all four paths rather than three of them.
+test('linkspage manage (#221/#273): updating a page to an https:// avatar succeeds and is read back unchanged', function () use ($db, $g2mlLpmOrgHandle): void
+{
+    $marker  = g2ml_lpm_test_marker('avatarupdatehttps');
+    $userUID = g2ml_lpm_test_insert_user($db, $g2mlLpmOrgHandle, $marker);
+
+    $createResult = g2ml_linkspageManageCreatePage($userUID, $g2mlLpmOrgHandle, [
+        'slug'       => $marker . '-slug',
+        'pageTitle'  => 'Avatar Update HTTPS Test Page',
+        'avatarPath' => 'https://example.com/original-me.png',
+    ]);
+    $pageUID = $createResult['pageUID'];
+
+    $updateResult = g2ml_linkspageManageUpdatePage($userUID, $pageUID, [
+        'slug'       => $marker . '-slug',
+        'pageTitle'  => 'Avatar Update HTTPS Test Page',
+        'avatarPath' => 'https://example.com/new-me.png',
+    ]);
+
+    assert_true($updateResult['success'], 'Updating a page to an https:// avatar address must succeed: ' . ($updateResult['error'] ?? ''));
+
+    $pageData = g2ml_linkspageManageGetPageForOwner($pageUID, $userUID);
+    assert_same('https://example.com/new-me.png', $pageData['avatarPath'], 'The updated https avatar address must be stored and read back unchanged');
+
+    g2ml_lpm_test_delete_page($db, $pageUID);
+});
