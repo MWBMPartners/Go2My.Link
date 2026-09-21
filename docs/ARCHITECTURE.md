@@ -151,7 +151,19 @@ User → lnks.page/{slug} → .htaccess → index.php?slug={slug}
 ### 🔑 Authentication
 
 - **Password hashing:** Argon2id (bcrypt fallback for PHP 8.4)
-- **Session management:** PHP native sessions with secure configuration
+- **Session management:** PHP native sessions with secure configuration. The
+  session cookie's Domain attribute is worked out per component by
+  `g2ml_sessionCookieDomain()` (`web/_functions/session.php`, used by
+  `page_init.php` Step 7): in production it is `.go2my.link` only for
+  components that are actually under go2my.link (the main site and
+  admin.go2my.link, so those two keep sharing the login cookie), and
+  host-only (empty Domain) for everything else, including g2my.link and
+  lnks.page. A browser only ever accepts a cookie whose Domain is the
+  page's own host or a real parent of it — go2my.link is not a parent of
+  g2my.link or lnks.page, they are separate registrable domains — so
+  before this was fixed (#217), those two hosts never kept a session in
+  production at all, which broke the LinksPage age-gate's session-backed
+  CSRF check and looped visitors back to the interstitial every time.
 - **2FA:** TOTP with QR provisioning + recovery codes
 - **PassKey:** WebAuthn registration/authentication
 - **Social login:** OAuth 2.0 (Microsoft, Apple, Google, Facebook, Yahoo, Amazon)

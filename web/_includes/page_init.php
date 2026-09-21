@@ -309,12 +309,71 @@ if (session_status() === PHP_SESSION_NONE)
     session_name('G2ML_SESSION');
 
     // Configure session security
-    // Domain is set to .go2my.link in production for cross-subdomain sharing
-    // (go2my.link ↔ admin.go2my.link). In local/dev, left empty.
+    // Domain is '.go2my.link' in production ONLY for components that are
+    // actually under go2my.link (the main site and admin.go2my.link), so
+    // that pair can keep sharing the login cookie. Every other component,
+    // and every non-production environment, gets a host-only cookie
+    // (empty Domain).
+    //
+    // WHAT THIS USED TO DO, AND WHY IT WAS WRONG (#217): this used to be
+    // '.go2my.link' for EVERY component in production, with no regard for
+    // which one was actually running. g2my.link (Component B) and
+    // lnks.page (Component C) are separate registrable domains, not
+    // subdomains of go2my.link, so a browser visiting either of them
+    // refuses a cookie scoped to '.go2my.link' outright. With no cookie,
+    // there was never a session on those two hosts, so every
+    // session-backed check — including the LinksPage age-gate's CSRF
+    // token — always failed, sending the visitor straight back to the
+    // interstitial every single time. It was found by reading the cookie
+    // rules against the code, not by browser-testing production.
+    //
+    // g2ml_sessionCookieDomain() (web/_functions/session.php, loaded above
+    // at line 234, before this step) is the single source of truth for
+    // this decision, and is unit-tested directly
+    // (tests/unit/session_cookie_domain_test.php) rather than only via
+    // this include. The two guards below fail safe, but NOT to the same
+    // thing, so read them separately rather than as one "falls back to
+    // today's behaviour" case (a round-2 review of #217 caught an earlier
+    // version of this comment claiming that, which was wrong):
+    //
+    //   - function_exists() missing means session.php itself is an old
+    //     copy that pre-dates this fix. That really does keep the exact
+    //     pre-#217 behaviour: '.go2my.link' in production, host-only
+    //     everywhere else, decided by the elseif/else below.
+    //
+    //   - defined() missing means session.php is current but THIS entry
+    //     point has not set G2ML_COMPONENT_DOMAIN before including this
+    //     file. $sessionComponentDomain then stays '', and
+    //     g2ml_sessionCookieDomain() reads an unset component the same as
+    //     an unrecognised one: host-only. A browser always accepts a
+    //     host-only cookie, so nothing fails outright — but on go2my.link
+    //     or admin.go2my.link that is the WRONG host-only, because it
+    //     stops the login cookie being shared between those two, which is
+    //     the one pair that still needs it shared. There is no code fix
+    //     for that here; the fix is that every entry point which includes
+    //     page_init.php must define G2ML_COMPONENT_DOMAIN first. All 11
+    //     real entry points already do, so this branch is a safety net
+    //     for a future one that forgets, not a supported permanent state.
     // 📖 Reference: https://www.php.net/manual/en/function.session-set-cookie-params.php
-    if ((G2ML_ENVIRONMENT === 'production')) {
+    $sessionComponentDomain = '';
+
+    if (defined('G2ML_COMPONENT_DOMAIN'))
+    {
+        $sessionComponentDomain = (string) G2ML_COMPONENT_DOMAIN;
+    }
+
+    if (function_exists('g2ml_sessionCookieDomain'))
+    {
+        $sessionDomain = g2ml_sessionCookieDomain((string) G2ML_ENVIRONMENT, $sessionComponentDomain);
+    }
+    elseif (G2ML_ENVIRONMENT === 'production')
+    {
+        // Fallback matching the pre-#217 behaviour, only reachable if
+        // session.php has somehow not been loaded by this point.
         $sessionDomain = '.go2my.link';
-    } else {
+    }
+    else
+    {
         $sessionDomain = '';
     }
 
@@ -324,7 +383,9 @@ if (session_status() === PHP_SESSION_NONE)
     session_set_cookie_params([
         'lifetime' => 0,                                   // Session cookie (expires when browser closes)
         'path'     => '/',
-        'domain'   => $sessionDomain,                      // Cross-subdomain in production
+        'domain'   => $sessionDomain,                      // '.go2my.link' in production for go2my.link and
+                                                            // admin.go2my.link only; host-only everywhere else
+                                                            // (see g2ml_sessionCookieDomain())
         'secure'   => (G2ML_ENVIRONMENT === 'production'), // HTTPS only in production
         'httponly'  => true,                                // Not accessible via JavaScript
         'samesite' => 'Lax',                               // CSRF protection

@@ -48,6 +48,79 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 }
 
 // ============================================================================
+// 🍪 Session Cookie Domain
+// ============================================================================
+
+/**
+ * Work out which Domain attribute (if any) the session cookie should carry.
+ *
+ * WHAT WAS WRONG BEFORE (#217): page_init.php Step 7 used to set the
+ * session cookie's Domain to '.go2my.link' for every component whenever the
+ * environment was production — including g2my.link (Component B) and
+ * lnks.page (Component C). A browser will only accept a cookie whose Domain
+ * attribute is the page's own host or a parent of it (the cookie has to be
+ * scoped to a "registrable domain" the current page is actually under —
+ * see the MDN reference below). go2my.link is NOT a parent of g2my.link or
+ * lnks.page — they are separate registrable domains, not subdomains of
+ * go2my.link — so browsers visiting those two sites silently rejected the
+ * cookie. With no cookie, no session was ever kept there, so anything that
+ * reads $_SESSION (the age-gate's CSRF token check among them) always found
+ * nothing and sent the visitor straight back to the interstitial: an
+ * infinite confirmation loop that only ever showed up in production,
+ * because alpha/beta/local never set a Domain attribute at all.
+ *
+ * THE FIX: only widen the cookie to '.go2my.link' when the component being
+ * served actually lives under go2my.link (the main site or admin.go2my.link
+ * — the one case that still needs the login cookie shared across those two
+ * subdomains). Every other component gets a host-only cookie (empty Domain),
+ * which every browser accepts for the page's own host. This is a pure
+ * function precisely so it can be unit-tested without a running session or a
+ * database — see tests/unit/session_cookie_domain_test.php.
+ *
+ * WHAT THIS FUNCTION DOES NOT DO: it does not decide whether the cookie
+ * itself is issued, nor its Secure/HttpOnly/SameSite/lifetime attributes —
+ * page_init.php Step 7 still sets those. It also does not validate that
+ * $componentDomain is one of the four real component domains; an unrecognised
+ * value simply falls through to the safe (host-only) empty string.
+ *
+ * @param  string $environment      G2ML_ENVIRONMENT ('alpha'/'beta'/'local'/'production').
+ * @param  string $componentDomain  G2ML_COMPONENT_DOMAIN for the running component
+ *                                  (e.g. 'go2my.link', 'admin.go2my.link', 'g2my.link',
+ *                                  'lnks.page').
+ * @return string                   '.go2my.link' when it is safe to share the cookie
+ *                                  across go2my.link and its subdomains; '' (host-only)
+ *                                  otherwise.
+ *
+ * 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#domaindomain-value
+ */
+function g2ml_sessionCookieDomain(string $environment, string $componentDomain): string
+{
+    // Only production widens the cookie at all. Alpha/beta/local have always
+    // been host-only, and stay that way.
+    if ($environment !== 'production')
+    {
+        return '';
+    }
+
+    // Normalise before comparing — the constant is only ever set to a
+    // lowercase literal today, but a stray mixed-case value or surrounding
+    // whitespace must not accidentally take the wider-cookie branch.
+    $normalisedDomain = strtolower(trim($componentDomain));
+
+    if ($normalisedDomain === 'go2my.link' || str_ends_with($normalisedDomain, '.go2my.link'))
+    {
+        // Covers go2my.link itself and every subdomain of it, including
+        // admin.go2my.link — the one pair that still needs the login
+        // cookie shared between them.
+        return '.go2my.link';
+    }
+
+    // g2my.link and lnks.page (and anything else) are NOT under go2my.link,
+    // so a '.go2my.link' cookie would be refused by the browser. Host-only.
+    return '';
+}
+
+// ============================================================================
 // 🆕 Create User Session
 // ============================================================================
 
