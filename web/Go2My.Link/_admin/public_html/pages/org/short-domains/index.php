@@ -239,8 +239,8 @@ $orgPublishedLinksPages = getOrgPublishedLinksPages($orgHandle);
             <i class="fas fa-info-circle" aria-hidden="true"></i>
             Short domains are used in your shortened URLs (e.g., <code>yourdomain.link/abc123</code>).
             A domain only starts routing traffic once its ownership is <strong>verified</strong> below —
-            see the full step-by-step guide in
-            <a href="https://github.com/MWBMPartners/Go2My.Link/blob/main/docs/CUSTOM_DOMAINS.md">docs/CUSTOM_DOMAINS.md</a>.
+            see the full step-by-step guide at
+            <a href="https://go2my.link/help/custom-domains">Help &rarr; Using your own short domain</a>.
         </div>
 
         <?php if ($newDnsRecords !== null) { ?>
@@ -492,9 +492,11 @@ $orgPublishedLinksPages = getOrgPublishedLinksPages($orgHandle);
             <div class="card-body">
                 <?php echo g2ml_dnsProviderHintsHTML(); ?>
                 <p class="text-body-secondary small mb-0">
-                    TLS/HTTPS for custom domains is currently provisioned manually per domain — see
-                    <a href="https://github.com/MWBMPartners/Go2My.Link/blob/main/docs/CUSTOM_DOMAINS.md#tls--https">docs/CUSTOM_DOMAINS.md</a>
-                    for the current manual process and the planned automated (Cloudflare-for-SaaS) path.
+                    HTTPS (the padlock in the address bar) is currently set up by hand for each
+                    domain — see
+                    <a href="https://go2my.link/help/custom-domains#cd-s9">Help &rarr; Using your own short domain</a>,
+                    or <a href="https://go2my.link/contact">get in touch</a> and we will arrange it
+                    with you.
                 </p>
             </div>
         </div>

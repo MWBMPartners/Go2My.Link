@@ -8,7 +8,7 @@
 >
 > **Legend:** 🔴 launch-blocking · 🟠 important · 🟢 nice-to-have · ✅ done · ⏳ in progress · ❓ needs your decision
 >
-> **Last updated:** 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow synced onto `alpha`)
+> **Last updated:** 2026-09-07 (full code-vs-issue audit; three new faults found and filed — #196, #197, #198; in-app Help section added; Swagger UI console added) · earlier: 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow synced onto `alpha`)
 
 ---
 
@@ -16,7 +16,7 @@
 
 | # | Decision | Why it matters | Options / recommendation |
 |---|---|---|---|
-| D1 🔴 | **How does periodic/scheduled work run on Dreamhost shared hosting?** (no assumable cron) — tracked in **#178** | Blocks GDPR **account-deletion execution (#163)** and **data-retention enforcement (#167)** — the privacy policy legally commits to both. Also affects log purging, trial expiry, subscription renewals. | (a) Dreamhost Panel cron; (b) external scheduler (cron-job.org / GitHub Actions `schedule:`) hitting a **token-guarded** `/_cron/run.php` endpoint; (c) run-on-request "lazy cron". **Recommendation: (b)** — portable, testable, provider-agnostic, works today. The *code* can be built now (the endpoint works with any trigger); only wiring the trigger is an owner action. |
+| D1 🔴 | **How does periodic/scheduled work run on Dreamhost shared hosting?** (no assumable cron) — tracked in **#178** | Blocks GDPR **account-deletion execution (#163)** and **data-retention enforcement (#167)** — the privacy policy legally commits to both. Also affects log purging, trial expiry, subscription renewals. | (a) Dreamhost Panel cron; (b) external scheduler (cron-job.org / GitHub Actions `schedule:`) hitting a **token-guarded** `/_cron/run.php` endpoint; (c) run-on-request "lazy cron". **Recommendation: (b)** — portable, testable, provider-agnostic. ⚠️ **Two corrections (2026-09-07):** the endpoint is at `_admin/public_html/cron.php`, **not** `/_cron/run.php` as written here; and it **cannot currently run at all** — its own direct-access guard shuts it down (**#198**). Fix #198 first, then wire the trigger. |
 | D2 🔴 | **When do we promote `alpha → beta → release-candidate → main` for the real production launch?** | `main` is **stale** (legacy engine + #93 credential file — HANDOFF warns *do not merge main*). All real work lives on `alpha` (now ~95 commits ahead). The **`release-candidate`** pre-production tier now exists (cut from `alpha` 2026-08-04). Production go-live = a deliberate promotion + cutover window. | Needs owner sign-off. Dependabot/CI now cover **all four tiers** (main/alpha/beta/release-candidate) so the mechanics are ready. **Do not** let anything merge `main` back down. |
 | D3 🟠 | **Payment provider** for paid tiers (Stripe / Paddle / **SIGNula**)? | The pricing engine is provider-agnostic (`paymentProvider` column) but integration + webhooks need a concrete choice. Paddle = merchant-of-record (handles UK/EU VAT). SIGNula (your own) is an option — see the cross-project section. | Choose before enabling any paid tier. |
 | D4 🟠 | **Pricing & tier sign-off** — tracked in **#180** | The flexible pricing engine is **built and merged DISABLED** (see below). Final tier names/slugs, **GBP** prices, custom-HTML tier placement, VAT handling, lifetime-deal, and the enable sequence need your approval before the master switch is flipped. | Review **`Pricing_Strategy.md`** (repo root). The engine stays inert until `billing.pricing_engine_enabled='1'`. |
@@ -37,6 +37,35 @@
 | A5 🟢 | Provide **MaxMind license/secret** if country-level analytics geolocation (#43) should be enabled (currently gated off, graceful-absent). | ⏳ |
 | A6 🟠 | **Add repo secret `BACKPORT_TOKEN`** (fine-grained PAT: `contents:write` + `pull-requests:write`) so the dependency-backport workflow's cherry-pick PRs run CI and can be reviewed/merged like any PR. Without it the workflow falls back to `GITHUB_TOKEN`, whose pushes **don't trigger CI** on the new backport branch. | ⏳ owner toggle |
 | A7 🟠 | **`main`'s `sftp-deploy.yml` sends an armed `release-candidate` push to PRODUCTION.** `main` lists `release-candidate` in the deploy `push:` branches (via #191) but its channel `case` has no `release-candidate)` arm, so it falls through `*) → public_html`. Before ever setting `SFTP_ENABLED=true`, either add the `release-candidate) TARGET="public_html_dev_rc"` case to `main` (as already done on `alpha`), or drop `release-candidate` from `main`'s deploy `push:` list. If you want RC to auto-deploy at all, first provision `SFTP_BASE_PATH/<Comp>/public_html_dev_rc/` on the server. (Deploy is off by default, so this is not yet live — but fix before arming.) | ⏳ owner action |
+| A8 🔴 | **Check the production database's collation before importing anything.** On Dreamhost the database is created through the control panel, using the host's own default. Ours must be `utf8mb4_unicode_ci`. Run `SELECT DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='mwtools_Go2MyLink';` and, if it is anything else, `ALTER DATABASE ... COLLATE utf8mb4_unicode_ci;` **before** importing. Our own `000_create_database.sql` cannot fix it, because `CREATE DATABASE IF NOT EXISTS` does nothing on a database that already exists. Get this wrong and **every short-link creation fails** with "Failed to generate a unique short code", and nothing in any log says why. Measured: wrong collation = 25 integration tests fail; right collation = all 207 pass. See **#196**, **#197**. | ⏳ owner action |
+| A9 🟠 | **Apply two seed files to the existing database**, not just to a fresh install: `web/_sql/seeds/021_missing_ui_translations.sql` and `022_help_translations.sql`. They carry user-visible text. Without them the homepage browser tab reads `home.title`, four screen-reader labels read out their key names, and all five `/help` pages show key names instead of words. Both are `INSERT IGNORE`, so they are safe to re-run. See **#199**. | ⏳ owner action |
+
+---
+
+## 🤖 Done autonomously (2026-09-07) — full audit, Help section, Swagger console
+
+**Three faults found and filed.** Each was proved by running it, not inferred from reading.
+
+| # | What | Why it matters now |
+|---|---|---|
+| **#198** 🔴 | The scheduled-jobs endpoint can never run a job. `web/_functions/cron.php` opens with the standard "don't run me directly" guard, which compares only file *names*. The endpoint and the library are both called `cron.php`, so the guard mistakes one for the other, redirects to the homepage and stops. | Blocks D1 entirely. Account deletion (#163) and retention (#167) were closed on the strength of this endpoint. Nothing breaks today because the jobs ship off, but they would not work when switched on. |
+| **#196** 🟠 | A quarter of the integration tests have been failing in CI, unseen — the last run on `alpha` says "182 passed, 25 failed" but is marked success, because that job is advisory. Cause: `ci.yml` lets the MySQL container pre-create the database, so our own collation setting is ignored. | Fixing only the collation gives 207 passed / 0 failed. Same risk applies to the live database — see A8. |
+| **#197** 🟠 | `sp_generateShortCode` catches every database error and returns nothing, so a real fault looks like ordinary bad luck. | This is *why* #196 stayed invisible for weeks. On the live server it would turn a fixable problem into an unexplainable one. |
+
+**Two more filed:**
+
+- **#199** — five UI strings showed as raw translation keys, including the homepage title (the browser tab read `home.title`). Four of the five were screen-reader labels. **Fixed** in this branch; needs the seed applying (A9).
+- **#200** — if a content delivery network is unreachable, every page loses its styling. The offline fallback points at `/_libraries/`, which every `.htaccess` forbids and which is not in a web root anyway, so it has never been able to work.
+
+**Built:**
+
+- **An in-app Help section** — `/help` plus four guides (short links, analytics, custom domains, the API), linked from the navigation bar and footer. The product previously had **no help of any kind**: no help page, no guide, no FAQ, not one tooltip. Every word is a translation key (367 rows).
+- **A Swagger UI console** at `/api/docs/swagger/`, self-hosted alongside the existing Redoc manual, both reading the same specification file. Works on shared hosting with no Docker, Composer or Node. It runs under a *stricter* security policy than the Redoc page, which was measured rather than assumed.
+- **The admin interface no longer sends customers to GitHub.** Two links on the custom-domains screen pointed at a public code-hosting page for a repository marked proprietary; both now point into the Help section.
+
+**Verified from scratch, not taken from notes:** full schema + procedures + seeds import (0 failures), 594 unit tests, 207 integration tests, `php -l` across 206 files, PHPStan level 5 clean, and every one of the 1,535 translation keys used anywhere in the code now resolves.
+
+⚠️ **Not verified:** no browser was available, so no page has been looked at. And PHP is not installed on this machine — everything ran in Docker on PHP 8.3, while the live target is 8.4+.
 
 ---
 

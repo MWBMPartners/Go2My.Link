@@ -221,10 +221,62 @@ The application detects its environment from the hostname:
 ### 🆕 New Installation
 
 1. 🗄️ Create the MySQL database: `mwtools_Go2MyLink`
-2. 📋 Import all 15 schema files from `web/_sql/schema/`, in filename order
-3. 🌱 Import all 17 seed files from `web/_sql/seeds/`, in order
+2. 🚨 **Check its collation before importing anything** — see below
+3. 📋 Import all **16** schema files from `web/_sql/schema/`, in filename order
 4. 🔧 Import both stored procedures from `web/_sql/procedures/`
    (`sp_generateShortCode.sql`, `sp_lookupShortURL.sql`)
+5. 🌱 Import all **22** seed files from `web/_sql/seeds/`, in order
+
+> 📝 Counts as at 2026-09-07: 16 schema files, 2 stored procedures, 22 seeds,
+> 19 migrations. Import order is schema → procedures → seeds, which is the
+> order `.github/workflows/ci.yml` uses.
+
+#### 🚨 The collation check — do this first, every time
+
+```sql
+SELECT DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA
+WHERE SCHEMA_NAME = 'mwtools_Go2MyLink';
+```
+
+It must return `utf8mb4_unicode_ci`. If it does not:
+
+```sql
+ALTER DATABASE `mwtools_Go2MyLink`
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+**Why.** `web/_sql/schema/000_create_database.sql` asks for the right collation,
+but it uses `CREATE DATABASE IF NOT EXISTS`. If the database already exists —
+which it will, because on shared hosting you have to create it through the
+control panel first — that statement does nothing at all, and the database
+keeps whatever collation the host chose.
+
+The tables are unaffected: every `CREATE TABLE` names its own collation. The
+**stored procedures** are the problem. A variable declared inside a stored
+procedure inherits the database's collation, so when `sp_generateShortCode`
+compares its candidate code against the `shortCode` column, MySQL refuses with
+"illegal mix of collations". That error is then swallowed by the procedure's own
+error handler, so the only symptom anyone sees is:
+
+> Failed to generate a unique short code. Please try again.
+
+Every attempt to create a short link fails, and nothing is written to any log
+that explains it. This was measured, not guessed: with the wrong collation the
+integration suite scores 182 passed / 25 failed; with the right one, 207 passed
+/ 0 failed. See #196 and #197.
+
+#### 🌱 Seeds that must also be applied to an EXISTING database
+
+These add user-visible text. Without them the affected screens show translation
+key names instead of words:
+
+| Seed | What it adds | Consequence if skipped |
+|---|---|---|
+| `021_missing_ui_translations.sql` | 5 strings that were used but never translated | The homepage browser tab reads `home.title`; four screen-reader labels read out their key names |
+| `022_help_translations.sql` | Every word of the in-app Help section (367 rows) | All five `/help` pages display key names instead of text |
+
+Both are `INSERT IGNORE`, so they are safe to run more than once and safe on a
+database that already has them.
 
 ### 🔄 Migration (from MWlink)
 

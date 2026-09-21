@@ -1,0 +1,469 @@
+/**
+ * Copyright (c) 2024–2026 MWBM Partners Ltd (MWservices).
+ * All rights reserved.
+ *
+ * This source code is proprietary and confidential.
+ * Unauthorised copying, modification, or distribution is strictly prohibited.
+ */
+
+/**
+ * ============================================================================
+ * 🎨 Go2My.Link — Swagger UI page chrome and dark-mode theme
+ * ============================================================================
+ *
+ * Two jobs, in this order:
+ *
+ *   1. The small amount of our own page furniture that sits above Swagger UI —
+ *      the title bar, the links across to the Redoc page and the raw
+ *      specification file, and the keyboard skip link.
+ *   2. A dark-mode palette for Swagger UI itself. Swagger UI ships light
+ *      colours only and has no dark theme of its own, so every surface has to
+ *      be repainted by hand here.
+ *
+ * HOW THE THEME IS CHOSEN
+ *
+ * There are two switches, and both are handled below:
+ *
+ *   - An explicit choice. index.php reads the site's `g2ml_theme` cookie on
+ *     the server and stamps `data-bs-theme="dark"` or `data-bs-theme="light"`
+ *     on the <html> element. An explicit choice always wins.
+ *   - No explicit choice ('auto', or a visitor who has never used the main
+ *     site). Nothing is stamped, and the `prefers-color-scheme` rules below
+ *     follow whatever the visitor's operating system is set to.
+ *
+ * The dark rules are therefore written twice: once inside a
+ * `prefers-color-scheme: dark` block guarded so an explicit *light* choice
+ * overrides the system, and once for an explicit *dark* choice. Every colour
+ * has its light value defined on plain `:root` first, so no colour exists only
+ * inside a media query.
+ *
+ * @package    Go2My.Link
+ * @subpackage API
+ * @author     MWBM Partners Ltd (MWservices)
+ * @version    1.0.0
+ * @since      v1.1.0 — Phase 7
+ *
+ * 📖 References:
+ *     - Bootstrap colour modes: https://getbootstrap.com/docs/5.3/customize/color-modes/
+ *     - WCAG 2.1 AA contrast:   https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum
+ * ============================================================================
+ */
+
+/* ==========================================================================
+   1. Colour tokens — light values live here, on plain :root, so that every
+      colour has a definition that does not depend on a media query.
+   ========================================================================== */
+
+:root
+{
+    --g2ml-docs-bg:            #ffffff;
+    --g2ml-docs-surface:       #f8f9fa;
+    --g2ml-docs-surface-2:     #eef1f4;
+    --g2ml-docs-border:        #dee2e6;
+    --g2ml-docs-text:          #212529;
+    --g2ml-docs-text-muted:    #5c636a;
+    --g2ml-docs-link:          #0a58ca;
+    --g2ml-docs-link-hover:    #084298;
+    --g2ml-docs-header-bg:     #0d6efd;
+    --g2ml-docs-header-text:   #ffffff;
+    --g2ml-docs-focus-ring:    #0d6efd;
+    --g2ml-docs-code-bg:       #f1f3f5;
+    --g2ml-docs-code-text:     #1c2733;
+}
+
+/* ==========================================================================
+   2. Page furniture — our own header, navigation and skip link.
+   ========================================================================== */
+
+html,
+body
+{
+    margin: 0;
+    padding: 0;
+    background-color: var(--g2ml-docs-bg);
+    color: var(--g2ml-docs-text);
+}
+
+body
+{
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* --------------------------------------------------------------------------
+   Skip link — WCAG 2.1 AA, 2.4.1 "Bypass Blocks".
+   Hidden until it receives keyboard focus, then pinned to the top-left so a
+   keyboard user can jump straight past the page header into the API list.
+   It is moved off-screen rather than display:none, because display:none would
+   take it out of the tab order entirely and defeat the point.
+   -------------------------------------------------------------------------- */
+
+.g2ml-skip-link
+{
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 1000;
+    padding: 0.75rem 1.25rem;
+    background-color: var(--g2ml-docs-header-bg);
+    color: var(--g2ml-docs-header-text);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.g2ml-skip-link:focus
+{
+    left: 0;
+    outline: 3px solid var(--g2ml-docs-focus-ring);
+    outline-offset: 2px;
+}
+
+.g2ml-docs-header
+{
+    background-color: var(--g2ml-docs-header-bg);
+    color: var(--g2ml-docs-header-text);
+    padding: 1.5rem 1rem;
+}
+
+.g2ml-docs-header-inner
+{
+    max-width: 1460px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.g2ml-docs-title
+{
+    margin: 0 0 0.35rem 0;
+    font-size: 1.6rem;
+    line-height: 1.25;
+}
+
+.g2ml-docs-subtitle
+{
+    margin: 0 0 0.75rem 0;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    max-width: 70ch;
+}
+
+.g2ml-docs-nav a
+{
+    color: var(--g2ml-docs-header-text);
+    text-decoration: underline;
+    margin-right: 1.25rem;
+    font-size: 0.95rem;
+    display: inline-block;
+    padding: 0.25rem 0;
+}
+
+.g2ml-docs-nav a:hover,
+.g2ml-docs-nav a:focus
+{
+    text-decoration: none;
+}
+
+.g2ml-docs-nav a:focus-visible
+{
+    outline: 3px solid var(--g2ml-docs-header-text);
+    outline-offset: 2px;
+}
+
+#g2ml-swagger-loading
+{
+    padding: 3rem 1rem;
+    text-align: center;
+    color: var(--g2ml-docs-text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   The <main> element carries tabindex="-1" so the skip link can move focus to
+   it. Browsers draw a focus ring on it when that happens, which looks like a
+   bug rather than a feature, so it is removed — the visitor can already see
+   that the page jumped.
+   -------------------------------------------------------------------------- */
+
+#g2ml-swagger-ui:focus
+{
+    outline: none;
+}
+
+/* --------------------------------------------------------------------------
+   Respect a visitor who has asked their system to reduce motion. Swagger UI
+   animates its accordions open and closed; that animation is decorative.
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce)
+{
+    *,
+    *::before,
+    *::after
+    {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ==========================================================================
+   3. Dark mode.
+
+      Written once as a named block of rules and applied from two selectors:
+      the system preference (unless an explicit light choice overrides it) and
+      an explicit dark choice. The rules are duplicated rather than shared via
+      a single selector list because a selector list containing an invalid or
+      unsupported selector is dropped whole by the browser, and
+      :root:not([data-bs-theme="light"]) inside a media query is the fragile
+      part. Duplication here is deliberate and safer.
+   ========================================================================== */
+
+@media (prefers-color-scheme: dark)
+{
+    :root:not([data-bs-theme="light"])
+    {
+        --g2ml-docs-bg:          #14181d;
+        --g2ml-docs-surface:     #1c2127;
+        --g2ml-docs-surface-2:   #252b33;
+        --g2ml-docs-border:      #39414b;
+        --g2ml-docs-text:        #e6e9ed;
+        --g2ml-docs-text-muted:  #a8b1bb;
+        --g2ml-docs-link:        #8ab4f8;
+        --g2ml-docs-link-hover:  #b6d0fb;
+        --g2ml-docs-header-bg:   #0b3d91;
+        --g2ml-docs-header-text: #ffffff;
+        --g2ml-docs-focus-ring:  #8ab4f8;
+        --g2ml-docs-code-bg:     #11151a;
+        --g2ml-docs-code-text:   #e6e9ed;
+    }
+
+    /* Swagger UI's own surfaces. */
+
+    :root:not([data-bs-theme="light"]) .swagger-ui,
+    :root:not([data-bs-theme="light"]) .swagger-ui .info .title,
+    :root:not([data-bs-theme="light"]) .swagger-ui .info li,
+    :root:not([data-bs-theme="light"]) .swagger-ui .info p,
+    :root:not([data-bs-theme="light"]) .swagger-ui .info table,
+    :root:not([data-bs-theme="light"]) .swagger-ui .opblock-tag,
+    :root:not([data-bs-theme="light"]) .swagger-ui .opblock .opblock-summary-operation-id,
+    :root:not([data-bs-theme="light"]) .swagger-ui .opblock .opblock-summary-path,
+    :root:not([data-bs-theme="light"]) .swagger-ui .opblock .opblock-summary-description,
+    :root:not([data-bs-theme="light"]) .swagger-ui .opblock-description-wrapper p,
+    :root:not([data-bs-theme="light"]) .swagger-ui .opblock-external-docs-wrapper p,
+    :root:not([data-bs-theme="light"]) .swagger-ui .opblock-title_normal p,
+    :root:not([data-bs-theme="light"]) .swagger-ui .parameter__name,
+    :root:not([data-bs-theme="light"]) .swagger-ui .parameter__type,
+    :root:not([data-bs-theme="light"]) .swagger-ui .parameter__in,
+    :root:not([data-bs-theme="light"]) .swagger-ui table thead tr td,
+    :root:not([data-bs-theme="light"]) .swagger-ui table thead tr th,
+    :root:not([data-bs-theme="light"]) .swagger-ui .response-col_status,
+    :root:not([data-bs-theme="light"]) .swagger-ui .response-col_links,
+    :root:not([data-bs-theme="light"]) .swagger-ui .responses-inner h4,
+    :root:not([data-bs-theme="light"]) .swagger-ui .responses-inner h5,
+    :root:not([data-bs-theme="light"]) .swagger-ui .model-title,
+    :root:not([data-bs-theme="light"]) .swagger-ui .model,
+    :root:not([data-bs-theme="light"]) .swagger-ui .tab li,
+    :root:not([data-bs-theme="light"]) .swagger-ui label,
+    :root:not([data-bs-theme="light"]) .swagger-ui .scheme-container .schemes > label
+    {
+        color: var(--g2ml-docs-text);
+    }
+
+    :root:not([data-bs-theme="light"]) .swagger-ui .scheme-container,
+    :root:not([data-bs-theme="light"]) .swagger-ui section.models,
+    :root:not([data-bs-theme="light"]) .swagger-ui .model-box,
+    :root:not([data-bs-theme="light"]) .swagger-ui .opblock .opblock-section-header
+    {
+        background-color: var(--g2ml-docs-surface);
+        border-color: var(--g2ml-docs-border);
+        box-shadow: none;
+    }
+
+    :root:not([data-bs-theme="light"]) .swagger-ui .opblock
+    {
+        background-color: var(--g2ml-docs-surface);
+        border-color: var(--g2ml-docs-border);
+    }
+
+    :root:not([data-bs-theme="light"]) .swagger-ui .opblock .opblock-summary
+    {
+        border-color: var(--g2ml-docs-border);
+    }
+
+    :root:not([data-bs-theme="light"]) .swagger-ui .btn,
+    :root:not([data-bs-theme="light"]) .swagger-ui select,
+    :root:not([data-bs-theme="light"]) .swagger-ui input[type="text"],
+    :root:not([data-bs-theme="light"]) .swagger-ui input[type="password"],
+    :root:not([data-bs-theme="light"]) .swagger-ui input[type="email"],
+    :root:not([data-bs-theme="light"]) .swagger-ui input[type="search"],
+    :root:not([data-bs-theme="light"]) .swagger-ui input[type="number"],
+    :root:not([data-bs-theme="light"]) .swagger-ui textarea
+    {
+        background-color: var(--g2ml-docs-surface-2);
+        color: var(--g2ml-docs-text);
+        border-color: var(--g2ml-docs-border);
+    }
+
+    :root:not([data-bs-theme="light"]) .swagger-ui .microlight,
+    :root:not([data-bs-theme="light"]) .swagger-ui .highlight-code > .microlight
+    {
+        background-color: var(--g2ml-docs-code-bg);
+        color: var(--g2ml-docs-code-text);
+    }
+
+    :root:not([data-bs-theme="light"]) .swagger-ui .info a,
+    :root:not([data-bs-theme="light"]) .swagger-ui a.nostyle,
+    :root:not([data-bs-theme="light"]) .swagger-ui a
+    {
+        color: var(--g2ml-docs-link);
+    }
+
+    :root:not([data-bs-theme="light"]) .swagger-ui .dialog-ux .modal-ux
+    {
+        background-color: var(--g2ml-docs-surface);
+        border-color: var(--g2ml-docs-border);
+    }
+
+    :root:not([data-bs-theme="light"]) .swagger-ui .dialog-ux .modal-ux-header h3,
+    :root:not([data-bs-theme="light"]) .swagger-ui .dialog-ux .modal-ux-content h4,
+    :root:not([data-bs-theme="light"]) .swagger-ui .dialog-ux .modal-ux-content p
+    {
+        color: var(--g2ml-docs-text);
+    }
+}
+
+/* --------------------------------------------------------------------------
+   The same palette again, for a visitor who has explicitly chosen dark on the
+   main site. This wins regardless of what the operating system says.
+   -------------------------------------------------------------------------- */
+
+:root[data-bs-theme="dark"]
+{
+    --g2ml-docs-bg:          #14181d;
+    --g2ml-docs-surface:     #1c2127;
+    --g2ml-docs-surface-2:   #252b33;
+    --g2ml-docs-border:      #39414b;
+    --g2ml-docs-text:        #e6e9ed;
+    --g2ml-docs-text-muted:  #a8b1bb;
+    --g2ml-docs-link:        #8ab4f8;
+    --g2ml-docs-link-hover:  #b6d0fb;
+    --g2ml-docs-header-bg:   #0b3d91;
+    --g2ml-docs-header-text: #ffffff;
+    --g2ml-docs-focus-ring:  #8ab4f8;
+    --g2ml-docs-code-bg:     #11151a;
+    --g2ml-docs-code-text:   #e6e9ed;
+}
+
+:root[data-bs-theme="dark"] .swagger-ui,
+:root[data-bs-theme="dark"] .swagger-ui .info .title,
+:root[data-bs-theme="dark"] .swagger-ui .info li,
+:root[data-bs-theme="dark"] .swagger-ui .info p,
+:root[data-bs-theme="dark"] .swagger-ui .info table,
+:root[data-bs-theme="dark"] .swagger-ui .opblock-tag,
+:root[data-bs-theme="dark"] .swagger-ui .opblock .opblock-summary-operation-id,
+:root[data-bs-theme="dark"] .swagger-ui .opblock .opblock-summary-path,
+:root[data-bs-theme="dark"] .swagger-ui .opblock .opblock-summary-description,
+:root[data-bs-theme="dark"] .swagger-ui .opblock-description-wrapper p,
+:root[data-bs-theme="dark"] .swagger-ui .opblock-external-docs-wrapper p,
+:root[data-bs-theme="dark"] .swagger-ui .opblock-title_normal p,
+:root[data-bs-theme="dark"] .swagger-ui .parameter__name,
+:root[data-bs-theme="dark"] .swagger-ui .parameter__type,
+:root[data-bs-theme="dark"] .swagger-ui .parameter__in,
+:root[data-bs-theme="dark"] .swagger-ui table thead tr td,
+:root[data-bs-theme="dark"] .swagger-ui table thead tr th,
+:root[data-bs-theme="dark"] .swagger-ui .response-col_status,
+:root[data-bs-theme="dark"] .swagger-ui .response-col_links,
+:root[data-bs-theme="dark"] .swagger-ui .responses-inner h4,
+:root[data-bs-theme="dark"] .swagger-ui .responses-inner h5,
+:root[data-bs-theme="dark"] .swagger-ui .model-title,
+:root[data-bs-theme="dark"] .swagger-ui .model,
+:root[data-bs-theme="dark"] .swagger-ui .tab li,
+:root[data-bs-theme="dark"] .swagger-ui label,
+:root[data-bs-theme="dark"] .swagger-ui .scheme-container .schemes > label
+{
+    color: var(--g2ml-docs-text);
+}
+
+:root[data-bs-theme="dark"] .swagger-ui .scheme-container,
+:root[data-bs-theme="dark"] .swagger-ui section.models,
+:root[data-bs-theme="dark"] .swagger-ui .model-box,
+:root[data-bs-theme="dark"] .swagger-ui .opblock .opblock-section-header
+{
+    background-color: var(--g2ml-docs-surface);
+    border-color: var(--g2ml-docs-border);
+    box-shadow: none;
+}
+
+:root[data-bs-theme="dark"] .swagger-ui .opblock
+{
+    background-color: var(--g2ml-docs-surface);
+    border-color: var(--g2ml-docs-border);
+}
+
+:root[data-bs-theme="dark"] .swagger-ui .opblock .opblock-summary
+{
+    border-color: var(--g2ml-docs-border);
+}
+
+:root[data-bs-theme="dark"] .swagger-ui .btn,
+:root[data-bs-theme="dark"] .swagger-ui select,
+:root[data-bs-theme="dark"] .swagger-ui input[type="text"],
+:root[data-bs-theme="dark"] .swagger-ui input[type="password"],
+:root[data-bs-theme="dark"] .swagger-ui input[type="email"],
+:root[data-bs-theme="dark"] .swagger-ui input[type="search"],
+:root[data-bs-theme="dark"] .swagger-ui input[type="number"],
+:root[data-bs-theme="dark"] .swagger-ui textarea
+{
+    background-color: var(--g2ml-docs-surface-2);
+    color: var(--g2ml-docs-text);
+    border-color: var(--g2ml-docs-border);
+}
+
+:root[data-bs-theme="dark"] .swagger-ui .microlight,
+:root[data-bs-theme="dark"] .swagger-ui .highlight-code > .microlight
+{
+    background-color: var(--g2ml-docs-code-bg);
+    color: var(--g2ml-docs-code-text);
+}
+
+:root[data-bs-theme="dark"] .swagger-ui .info a,
+:root[data-bs-theme="dark"] .swagger-ui a.nostyle,
+:root[data-bs-theme="dark"] .swagger-ui a
+{
+    color: var(--g2ml-docs-link);
+}
+
+:root[data-bs-theme="dark"] .swagger-ui .dialog-ux .modal-ux
+{
+    background-color: var(--g2ml-docs-surface);
+    border-color: var(--g2ml-docs-border);
+}
+
+:root[data-bs-theme="dark"] .swagger-ui .dialog-ux .modal-ux-header h3,
+:root[data-bs-theme="dark"] .swagger-ui .dialog-ux .modal-ux-content h4,
+:root[data-bs-theme="dark"] .swagger-ui .dialog-ux .modal-ux-content p
+{
+    color: var(--g2ml-docs-text);
+}
+
+/* ==========================================================================
+   4. Forced-colours mode (Windows High Contrast).
+
+      Swagger UI leans heavily on background colour alone to tell the HTTP
+      methods apart — a green block for GET, a blue one for POST and so on. In
+      forced-colours mode those backgrounds are replaced by the user's own
+      palette and the distinction disappears completely. Adding a visible
+      border means each operation is still clearly a separate block.
+   ========================================================================== */
+
+@media (forced-colors: active)
+{
+    .swagger-ui .opblock
+    {
+        border: 1px solid CanvasText;
+    }
+
+    .g2ml-skip-link:focus
+    {
+        outline: 3px solid CanvasText;
+    }
+}

@@ -14,6 +14,101 @@
 
 ## ▶️ START HERE — pick-up point (next session / owner)
 
+### 🔄 2026-09-07 — SESSION IN PROGRESS (read this first)
+
+> **This section is written while the work is still happening.** If the session was cut off,
+> everything below tells you exactly where it got to and what to do next.
+
+**Working branch: `chore/2026-09-07-audit-docs-sweep`**, cut from `alpha` at `9b68393` and
+pushed to GitHub. All of this session's work goes onto that one branch. There is deliberately
+**no pull request yet** — the owner asked for a single pull request at the end rather than
+several open at once, because several open pull requests can clash with each other when they
+merge.
+
+**Repository alignment (done).** `git fetch --all --prune` removed one stale remote-tracking
+entry, `origin/docs/165-done`, whose branch had already been deleted on GitHub. Local `alpha`
+and `main` were already exactly level with their GitHub counterparts (zero commits ahead, zero
+behind). No local branch had a deleted upstream, so nothing local needed removing. Remote
+branches are `main`, `alpha`, `beta` and `release-candidate`; only `alpha` and `main` exist
+locally, which is fine.
+
+**What is running / what is done:**
+
+| Task | State |
+|---|---|
+| Repository re-alignment with GitHub | ✅ done |
+| "Plain, everyday English" standing rule | ✅ done — commit `bd785b6` |
+| Deep audit: code, all 164 issues, docs, new-work ideas | 🔄 running (sequential Fable 5 agents) |
+| Independent second opinion from a different AI (codex) | 🔄 running |
+| Swagger UI browsable API docs | 🔄 files drafted and syntax-checked, not yet placed in the repo |
+| GitHub issue sweep | ⏳ waiting on the audit |
+| Documentation refresh | ⏳ waiting on the audit |
+| Ranked list of proposed new work | ⏳ waiting on the audit |
+
+**Verified independently this session (actually run, not taken from notes):**
+
+| Check | How | Result |
+|---|---|---|
+| Unit test suite | `docker run --rm -v "$PWD":/app -w /app php:8.3-cli php tests/run.php` | **594 passed, 0 failed** |
+| PHP syntax across shipping code | `php -l` on every `.php` outside `_libraries/` and `public_html_legacy/` | **206 files, 0 errors** |
+| #93 leaked credential file | `find web -iname 'dbConfig*'` and `git log --all -- '*dbConfig.php'` | file is **gone from disk and absent from git history**; `.gitignore` guards it at lines 29–30. The credential still needs rotating by the owner — that part of #93 is not code. |
+
+⚠️ **PHP is not installed on this machine.** There is no `php` on the PATH. Everything above was
+run inside a Docker container (`php:8.3-cli`), which is available. The live target is PHP 8.4+,
+so a test that passes here has been proved on 8.3, not on 8.4 — worth knowing before treating a
+green run as complete proof.
+
+### 🔴 Three real faults found and filed this session (all verified by running them)
+
+These were not known before. Each was proved, not inferred — the evidence is in the issue.
+
+| # | What is wrong | How bad |
+|---|---|---|
+| **#198** | **The scheduled-jobs endpoint can never run a job.** `web/_functions/cron.php` opens with the standard "don't run me directly" guard, which compares only file *names*, not folders. The trigger endpoint is `_admin/public_html/cron.php` and the library is `_functions/cron.php` — both named `cron.php`, so the guard mistakes one for the other, redirects to the homepage and stops. Account deletion (#163) and retention (#167) were both closed on the strength of this endpoint. | **Critical.** Nothing breaks today because the jobs ship switched off, but they would not work the moment they are switched on. Deletion has no other route; retention has the slow 1-in-500 fallback. |
+| **#196** | **A quarter of the integration tests have been failing in CI, unseen.** The last run on `alpha` reports "182 passed, 25 failed" and is still marked success, because that job is advisory. The cause is that `ci.yml` lets the MySQL container pre-create the database, so our own `CREATE DATABASE ... COLLATE utf8mb4_unicode_ci` does nothing and the wrong collation sticks. Fixing only the collation gives **207 passed, 0 failed**. | **High.** Also a live risk: if the Dreamhost database ends up with a different collation, every short link creation fails. |
+| **#197** | **`sp_generateShortCode` hides every database error.** Its `EXIT HANDLER FOR SQLEXCEPTION` turns any fault into a plain "no code available", so the user sees "Failed to generate a unique short code. Please try again." and no log anywhere says why. This is exactly why #196 stayed invisible for weeks. | **High.** Turns a diagnosable fault into an unexplainable one, on the core feature. |
+
+**Also confirmed, not yet filed** (they go in the ranked proposals):
+
+- `web/_functions/api_auth.php:373` — the API key expiry check is written as
+  `if ($expiryTimestamp !== false && $expiryTimestamp < time())`. If a stored expiry date cannot
+  be read, `strtotime()` returns `false` and **the whole expiry check is skipped**, so the key
+  never expires. Every comparable check elsewhere fails the safe way round; `data_rights.php:307`
+  shows the correct pattern. The same fail-open copy sits in the API-keys page at
+  `_admin/public_html/pages/api-keys/index.php:361`.
+- `web/_functions/html_sanitiser.php:455` — the CSS cleaning matches literal words
+  (`expression(`, `@import`, `behavior:`, `javascript:`) but browsers also accept them written
+  with backslash escapes, so `e\78pression(` survives. Low exploitability today (the feature is
+  premium-gated, switched off, and served under `script-src 'none'`), but it is a hole in a
+  defence layer on the highest-risk surface in the product.
+- **The admin interface sends users to a public GitHub link** for a repository whose files are
+  marked proprietary — `_admin/public_html/pages/org/short-domains/index.php:243` and `:496` both
+  link to `github.com/MWBMPartners/Go2My.Link/blob/main/docs/CUSTOM_DOMAINS.md`. For a customer
+  that link is a dead end.
+- **There is no in-app help of any kind.** No help, guide, FAQ or onboarding page anywhere; no
+  tooltips; 17 one-line field captions across the whole product; and no Help or Support link in
+  either the navigation or the footer.
+- **Two API permissions can be granted but do nothing**: `domains:read` and `domains:write` are
+  offered on the API-keys page and accepted by the key system, but no route in the API uses them.
+
+### ✅ Independently re-verified this session
+
+| Check | Result |
+|---|---|
+| Full schema + procedures + seeds import, MySQL 8.4.11 | **0 failures** |
+| Integration suite, correct collation | **207 passed, 0 failed** |
+| Integration suite, CI's collation | 182 passed, **25 failed** (reproduces CI exactly) |
+| Unit suite | 594 passed, 0 failed |
+| `php -l`, shipping code | 206 files, 0 errors |
+
+**Swagger UI groundwork already finished (files are in the session scratchpad, not yet in the
+repo):** Swagger UI **5.32.15** (Apache-2.0) downloaded and measured against its own bundle. It
+turns out to need a *stricter* security policy than the Redoc page already in the repo, not a
+looser one — no Web Worker, no CSS-in-JS, no `eval`, and no external font or image host. The
+page, its bootstrap script, its `.htaccess` and a dark-mode stylesheet are written and pass
+syntax checks.
+
+
 ### 🗓️ 2026-08-04 update (four-tier CI/security + release-candidate)
 
 **Branch flow is now `alpha → beta → release-candidate → main`.** The

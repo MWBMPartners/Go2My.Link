@@ -1,5 +1,43 @@
 # 🔧 Go2My.Link — Coding Conventions & Patterns
 
+## 🗣️ Plain, Everyday English (Standing Rule — ALL Projects, ALL Output)
+
+**Write the way you would explain something to a capable colleague who does not work on this
+particular system.** This rule governs *everything* that another human reads: chat replies and
+status updates, code comments, commit messages, pull request and issue text, all `.md`
+documentation, in-app help and guides, error messages, and any string shown to a user.
+
+### What this means in practice
+
+- **Use ordinary words.** Say "a number that only ever counts upward and never resets", not
+  "a monotonically increasing counter". Say "the app checks who you are before letting you
+  in", not "the middleware performs principal authentication".
+- **When a technical term is genuinely needed** — a file name, a function name, a standard
+  such as WCAG — use it, then say in ordinary words what it means and why it matters.
+- **Using more words is fine, and better, if it makes the meaning clearer.** Never compress an
+  explanation into jargon to save space.
+- **Prefer short sentences.** Break a long one into two.
+- **Explain the "why", not just the "what".** "This runs after the save, because before the
+  save the row does not have an identity number yet" is far more useful than "ordering
+  constraint".
+- **Avoid unexplained abbreviations and internal shorthand on first use.** Spell it out once,
+  then the short form is fine.
+- **Avoid filler that sounds impressive and says nothing.**
+
+### Reporting on work
+
+Be direct about what is finished, what is not, what was not checked, and what went wrong.
+Say "I could not test this because there is no database on this machine" rather than wording
+it so it sounds verified. If a test failed, say so and show the output. If a step was skipped,
+say that it was skipped.
+
+### This does not lower the standard of the work
+
+The code, the analysis and the precision stay exactly as rigorous. Only the way it is
+*explained* changes. A clear explanation of a careful piece of work is the goal; a vague
+explanation of a careful piece of work wastes the care.
+
+
 ## 🚫 No Shorthand Notation (ALL Languages — Standing Rule)
 
 **Applies to ALL code in ALL projects.** No shorthand notation for readability by developers/maintainers.

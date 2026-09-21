@@ -79,6 +79,7 @@ if (function_exists('getSetting')) {
                     <li><a href="/about" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('nav.about'); } else { echo 'About'; } ?></a></li>
                     <li><a href="/features" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('nav.features'); } else { echo 'Features'; } ?></a></li>
                     <li><a href="/pricing" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('nav.pricing'); } else { echo 'Pricing'; } ?></a></li>
+                    <li><a href="/help" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.help'); } else { echo 'Help &amp; Guides'; } ?></a></li>
                     <li><a href="/contact" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.contact'); } else { echo 'Contact'; } ?></a></li>
                 </ul>
             </div>
