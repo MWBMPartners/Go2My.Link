@@ -74,7 +74,7 @@ yet; enabling does not add payments (#57–#60 need billing credentials).
 | --- | --- | --- | --- | --- |
 | LP-01 | #216 | Feature-gate foundation (works with the pricing engine off and on) + fix the engine's on/off switch | Opus | ✅ done — Review: 4 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
 | LP-09 | #217 | Session cookie domain: lnks.page and g2my.link sessions work (age gate loops in production) | Sonnet | ✅ done — Review: 3 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
-| LP-02 | #218 | Save bugs: social links lost, font saved as "0", republish "not found", unreachable slugs | Sonnet | ⏳ queued (batch A) |
+| LP-02 | #218 | Save bugs: social links lost, font saved as "0", republish "not found", unreachable slugs | Sonnet | ✅ done — Review: 4 round(s); reviewers by round: claude-opus-fallback, codex, claude-opus-fallback, claude-opus-fallback; last round clean. |
 | LP-11 | #219 | GDPR: LinksPages included in data export and account deletion | Sonnet | ⏳ queued (batch B) |
 | LP-10 | #221 | Avatars and link icons display on the public page (allow https images in its security policy) | Haiku | ⏳ queued (batch B) |
 | LP-12 | #220 | Stop double-escaping form values (ampersands corrupted on re-save) | Sonnet | ⏳ queued (batch B) |

@@ -629,3 +629,161 @@ test('linkspage manage (#146): a tight maxLinksPages tier blocks a new page once
     g2ml_lpm_test_delete_page($db, $firstResult['pageUID']);
     g2ml_clearOrgTierCache($orgHandle);
 });
+
+// ============================================================================
+// 🐛 #218 — social links lost on create, font family saved as '0', re-publish
+//     says "not found", 200-item abuse cap. Each of these tests drives the
+//     REAL function end to end against a real database, because the bug in
+//     each case was a bind-type letter or a row-count comparison that only
+//     shows up once MySQLi actually talks to a server (a MariaDB test server
+//     would not even have shown the create/socialLinks failure — see the
+//     comment above the INSERT in g2ml_linkspageManageCreatePage()).
+// ============================================================================
+
+test('linkspage manage (#218): creating a page with social links and a font family survives — read back matches exactly', function () use ($db, $g2mlLpmOrgHandle): void
+{
+    $marker  = g2ml_lpm_test_marker('social');
+    $userUID = g2ml_lpm_test_insert_user($db, $g2mlLpmOrgHandle, $marker);
+
+    $createResult = g2ml_linkspageManageCreatePage($userUID, $g2mlLpmOrgHandle, [
+        'slug'        => $marker . '-slug',
+        'pageTitle'   => 'Social Links Page',
+        'fontFamily'  => 'Georgia',
+        'socialLinks' => [
+            'twitter' => 'https://twitter.com/example',
+            'github'  => 'https://github.com/example',
+        ],
+    ]);
+
+    assert_true(
+        $createResult['success'],
+        'A create with social links and a font family must succeed — this used to fail outright on MySQL 8 (error 3140, socialLinks bound as an integer): ' . ($createResult['error'] ?? '')
+    );
+
+    $pageUID = $createResult['pageUID'];
+    $fetched = g2ml_linkspageManageGetPageForOwner($pageUID, $userUID);
+
+    assert_same('Georgia', $fetched['fontFamily'], 'The font family must be stored and read back exactly as submitted, not coerced to "0" by a wrong bind type');
+
+    $decodedSocialLinks = json_decode((string) $fetched['socialLinks'], true);
+
+    assert_true(is_array($decodedSocialLinks), 'socialLinks must be stored as valid, readable JSON, not lost or corrupted');
+    assert_same('https://twitter.com/example', $decodedSocialLinks['twitter'] ?? null, 'The twitter social link must survive create');
+    assert_same('https://github.com/example', $decodedSocialLinks['github'] ?? null, 'The github social link must survive create');
+
+    g2ml_lpm_test_delete_page($db, $pageUID);
+});
+
+test('linkspage manage (#218): saving the edit form with a font family survives — not coerced to "0"', function () use ($db, $g2mlLpmOrgHandle): void
+{
+    $marker  = g2ml_lpm_test_marker('font');
+    $userUID = g2ml_lpm_test_insert_user($db, $g2mlLpmOrgHandle, $marker);
+
+    $createResult = g2ml_linkspageManageCreatePage($userUID, $g2mlLpmOrgHandle, [
+        'slug'      => $marker . '-slug',
+        'pageTitle' => 'Font Test Page',
+    ]);
+    $pageUID = $createResult['pageUID'];
+
+    $updateResult = g2ml_linkspageManageUpdatePage($userUID, $pageUID, [
+        'slug'       => $marker . '-slug',
+        'pageTitle'  => 'Font Test Page',
+        'fontFamily' => 'Verdana',
+    ]);
+
+    assert_true($updateResult['success'], 'A valid update carrying a font family must succeed: ' . ($updateResult['error'] ?? ''));
+
+    $fetched = g2ml_linkspageManageGetPageForOwner($pageUID, $userUID);
+    assert_same('Verdana', $fetched['fontFamily'], 'The font family must be stored and read back exactly as submitted after an edit-form save, not coerced to "0" by a wrong bind type');
+
+    g2ml_lpm_test_delete_page($db, $pageUID);
+});
+
+test('linkspage manage (#218): publishing an already-published page succeeds instead of reporting "not found"', function () use ($db, $g2mlLpmOrgHandle): void
+{
+    $marker  = g2ml_lpm_test_marker('republish');
+    $userUID = g2ml_lpm_test_insert_user($db, $g2mlLpmOrgHandle, $marker);
+
+    $createResult = g2ml_linkspageManageCreatePage($userUID, $g2mlLpmOrgHandle, [
+        'slug'      => $marker . '-slug',
+        'pageTitle' => 'Republish Test Page',
+    ]);
+    $pageUID = $createResult['pageUID'];
+
+    $firstPublish = g2ml_linkspageManageSetPublished($userUID, $pageUID, true);
+    assert_true($firstPublish['success'], 'The first publish must succeed: ' . ($firstPublish['error'] ?? ''));
+
+    $secondPublish = g2ml_linkspageManageSetPublished($userUID, $pageUID, true);
+    assert_true(
+        $secondPublish['success'],
+        'Publishing an ALREADY-published page must still succeed — MySQLi reports 0 affected rows when nothing actually changed, and that is not "not found": ' . ($secondPublish['error'] ?? '')
+    );
+
+    $fetched = g2ml_linkspageManageGetPageForOwner($pageUID, $userUID);
+    assert_same(1, (int) $fetched['isPublished'], 'The page must still be published after the redundant second publish call');
+
+    g2ml_lpm_test_delete_page($db, $pageUID);
+});
+
+test('linkspage manage (#218): a page already at the 200-item abuse cap rejects one more add', function () use ($db, $g2mlLpmOrgHandle): void
+{
+    $marker  = g2ml_lpm_test_marker('cap');
+    $userUID = g2ml_lpm_test_insert_user($db, $g2mlLpmOrgHandle, $marker);
+
+    $createResult = g2ml_linkspageManageCreatePage($userUID, $g2mlLpmOrgHandle, [
+        'slug'      => $marker . '-slug',
+        'pageTitle' => 'Cap Test Page',
+    ]);
+    $pageUID = $createResult['pageUID'];
+
+    // Fill the page to EXACTLY the cap via raw inserts, bypassing
+    // g2ml_linkspageManageAddItem() — the function under test — so this
+    // setup does not depend on the very thing being tested.
+    $insertStatement = mysqli_prepare(
+        $db,
+        'INSERT INTO `tblLinksPageItems` (`pageUID`, `itemTitle`, `itemURL`, `sortOrder`) VALUES (?, ?, ?, ?)'
+    );
+
+    for ($fillerIndex = 0; $fillerIndex < G2ML_LINKSPAGE_MAX_ITEMS_PER_PAGE; $fillerIndex++)
+    {
+        $fillerTitle = 'Filler ' . $fillerIndex;
+        $fillerURL   = 'https://example.com/filler-' . $fillerIndex;
+
+        mysqli_stmt_bind_param($insertStatement, 'issi', $pageUID, $fillerTitle, $fillerURL, $fillerIndex);
+        $ok = mysqli_stmt_execute($insertStatement);
+
+        if ($ok === false)
+        {
+            $error = mysqli_stmt_error($insertStatement);
+            mysqli_stmt_close($insertStatement);
+            throw new RuntimeException('Setup: filler item insert failed: ' . $error);
+        }
+    }
+
+    mysqli_stmt_close($insertStatement);
+
+    $confirmCount = dbSelectOne('SELECT COUNT(*) AS itemCount FROM tblLinksPageItems WHERE pageUID = ?', 'i', [$pageUID]);
+    assert_same(
+        G2ML_LINKSPAGE_MAX_ITEMS_PER_PAGE,
+        (int) $confirmCount['itemCount'],
+        'Setup: the page must hold exactly the cap\'s worth of items before the real assertion runs'
+    );
+
+    $addResult = g2ml_linkspageManageAddItem($userUID, $pageUID, [
+        'source'    => 'manual',
+        'manualURL' => 'https://example.com/one-too-many',
+        'itemTitle' => 'One Too Many',
+    ]);
+
+    assert_false($addResult['success'], 'Adding one more item to a page already at the 200-item cap must be rejected');
+    assert_contains((string) G2ML_LINKSPAGE_MAX_ITEMS_PER_PAGE, (string) $addResult['error'], 'The rejection message must mention the cap in plain English, not a generic error');
+
+    $finalCount = dbSelectOne('SELECT COUNT(*) AS itemCount FROM tblLinksPageItems WHERE pageUID = ?', 'i', [$pageUID]);
+    assert_same(
+        G2ML_LINKSPAGE_MAX_ITEMS_PER_PAGE,
+        (int) $finalCount['itemCount'],
+        'The rejected add must not have written a 201st row'
+    );
+
+    g2ml_lpm_test_delete_page($db, $pageUID);
+});

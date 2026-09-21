@@ -105,6 +105,181 @@ test('manage slug: parity — every value accepted here is accepted by the publi
 });
 
 // ============================================================================
+// 🚫 Reserved slugs — #218: some slugs can never be reached on the real
+//     server (see G2ML_LINKSPAGE_RESERVED_SLUGS's docblock in
+//     linkspage_manage.php), so both validators must refuse them.
+//
+// #218 review round 1 fixed a real hole in this suite: both files USED TO
+// define the exact same constant name, G2ML_LINKSPAGE_RESERVED_SLUGS,
+// each behind `if (!defined(...))`. Because this file loads the resolver
+// FIRST (line 51 above) and linkspage_manage.php SECOND (line 58), the
+// resolver's `define()` always ran first and won here — this file's own
+// copy never executed, and BOTH functions below were secretly reading the
+// SAME single array the whole time. Every test that looped over
+// "the reserved list" was really just checking that array against itself
+// twice, which could never catch the two files' lists drifting apart —
+// even though catching exactly that drift was the whole point of a
+// "parity" test. (In PRODUCTION the load order is the other way around —
+// page_init.php requires linkspage_manage.php before this component's own
+// index.php requires the resolver — so the constant that "won" here was
+// not even the one that wins in production. That mismatch was the bug.)
+//
+// The fix: the resolver now defines its OWN, separately-named constant,
+// G2ML_LINKSPAGE_RESOLVER_RESERVED_SLUGS, so both arrays genuinely exist at
+// once regardless of load order, and the test just below directly compares
+// their CONTENTS — the actual parity guarantee this feature needs.
+// ============================================================================
+
+test('manage slug: the management-layer and resolver reserved-word lists have IDENTICAL contents', function (): void
+{
+    // This is the test #218 review round 1 asked for: it does not matter
+    // which order the two constants happen to be defined in, or which file
+    // loads first — this compares the two ARRAYS directly, so a maintainer
+    // who adds a word to only one of them fails this test immediately,
+    // instead of the two loops below silently checking one shared array
+    // against itself.
+    $manageList  = G2ML_LINKSPAGE_RESERVED_SLUGS;
+    $resolverList = G2ML_LINKSPAGE_RESOLVER_RESERVED_SLUGS;
+
+    sort($manageList);
+    sort($resolverList);
+
+    assert_same(
+        $manageList,
+        $resolverList,
+        'linkspage_manage.php\'s G2ML_LINKSPAGE_RESERVED_SLUGS and linkspage_resolver.php\'s G2ML_LINKSPAGE_RESOLVER_RESERVED_SLUGS must contain exactly the same words, or a slug refused in one place can still be saved (or resolved) in the other'
+    );
+});
+
+test('manage slug: every word in the management layer\'s OWN reserved list is rejected by the management-layer validator', function (): void
+{
+    // Deliberately loops over G2ML_LINKSPAGE_RESERVED_SLUGS (this file's
+    // own constant), not the resolver's, so this test still means something
+    // even if the two lists were ever allowed to differ.
+    foreach (G2ML_LINKSPAGE_RESERVED_SLUGS as $reservedSlug)
+    {
+        assert_false(
+            g2ml_linkspageManageIsValidSlug($reservedSlug),
+            'The reserved slug "' . $reservedSlug . '" must be rejected by the management layer as a reserved word — some of these words are already unreachable, others are reserved ahead of time, but every word on this list is refused (see the constant\'s own docblock for which is which)'
+        );
+    }
+});
+
+test('manage slug: every word in the resolver\'s OWN reserved list is rejected by the public resolver\'s validator', function (): void
+{
+    // Deliberately loops over G2ML_LINKSPAGE_RESOLVER_RESERVED_SLUGS (the
+    // resolver's own constant), not the management layer's, for the same
+    // reason as the test above.
+    foreach (G2ML_LINKSPAGE_RESOLVER_RESERVED_SLUGS as $reservedSlug)
+    {
+        assert_false(
+            g2ml_linkspageIsValidSlug($reservedSlug),
+            'The reserved slug "' . $reservedSlug . '" must be rejected by the public resolver as a reserved word — some of these words are already unreachable, others are reserved ahead of time, but every word on this list is refused (see the constant\'s own docblock for which is which)'
+        );
+    }
+});
+
+test('manage slug: a reserved word is rejected case-insensitively (mixed case, upper case)', function (): void
+{
+    assert_false(g2ml_linkspageManageIsValidSlug('Index'), 'Mixed-case "Index" must still be rejected by the management layer — it is just as unreachable as "index"');
+    assert_false(g2ml_linkspageManageIsValidSlug('ADMIN'), 'Upper-case "ADMIN" must still be rejected by the management layer');
+    assert_false(g2ml_linkspageIsValidSlug('Index'), 'Mixed-case "Index" must still be rejected by the public resolver');
+    assert_false(g2ml_linkspageIsValidSlug('ADMIN'), 'Upper-case "ADMIN" must still be rejected by the public resolver');
+});
+
+test('manage slug: an ordinary, non-reserved slug is still accepted by both validators', function (): void
+{
+    assert_true(g2ml_linkspageManageIsValidSlug('jane-doe_92'), 'An ordinary slug must not be caught by the reserved-word check');
+    assert_true(g2ml_linkspageIsValidSlug('jane-doe_92'), 'An ordinary slug must not be caught by the reserved-word check in the public resolver either');
+});
+
+test('manage slug: reserved-word rejection stays in parity between the management layer and the public resolver', function (): void
+{
+    // array_unique() because, now that the two lists live under different
+    // constant names, merging them could otherwise list a shared word
+    // twice — harmless for this loop, but unique keeps the intent clear.
+    $samples = array_unique(array_merge(
+        G2ML_LINKSPAGE_RESERVED_SLUGS,
+        G2ML_LINKSPAGE_RESOLVER_RESERVED_SLUGS,
+        ['Index', 'ADMIN', 'jane-doe_92']
+    ));
+
+    foreach ($samples as $sample)
+    {
+        assert_same(
+            g2ml_linkspageIsValidSlug($sample),
+            g2ml_linkspageManageIsValidSlug($sample),
+            'Reserved-word slug validation must agree between the manage layer and the public resolver for: ' . $sample
+        );
+    }
+});
+
+// ============================================================================
+// 🚫 Leading underscore — #218 review round 1: web/Lnks.page/public_html/
+//     .htaccess 403-blocks _includes, _functions, _libraries, _uploads,
+//     _backups, _sql and _schemas outright, BEFORE the slug-routing rule
+//     ever runs, but the slug charset regex allows a leading underscore
+//     through and none of those seven words was in either reserved-word
+//     list. A page saved under one of them looked successful and then
+//     could never be viewed — the visitor got this component's OWN branded
+//     "forbidden" page instead of the LinksPage they expected (.htaccess
+//     routes a 403 to `ErrorDocument 403 /index.php?http_error=403`, which
+//     index.php then serves as the branded page), not a bare server error
+//     and not the LinksPage. Both validators now refuse ANY leading
+//     underscore, rather than naming each blocked folder individually, so
+//     a folder added to .htaccess later is covered automatically.
+// ============================================================================
+
+test('manage slug: a leading underscore is rejected by both validators, even for a folder name not literally on the reserved list', function (): void
+{
+    $leadingUnderscoreSamples = ['_uploads', '_sql', '_schemas', '_backups', '_includes', '_functions', '_libraries', '_anything'];
+
+    foreach ($leadingUnderscoreSamples as $sample)
+    {
+        assert_false(
+            g2ml_linkspageManageIsValidSlug($sample),
+            'The management layer must reject the leading-underscore slug "' . $sample . '" — web/Lnks.page/public_html/.htaccess 403-blocks any real folder starting with an underscore'
+        );
+        assert_false(
+            g2ml_linkspageIsValidSlug($sample),
+            'The public resolver must reject the leading-underscore slug "' . $sample . '" for the same reason'
+        );
+    }
+});
+
+test('manage slug: an underscore that is NOT leading is still accepted by both validators', function (): void
+{
+    // The bug this closes is specifically a LEADING underscore (it makes
+    // the slug look like one of the 403-blocked folder names). An
+    // underscore elsewhere in the slug is an ordinary, legitimate part of a
+    // handle and must not be caught by this check.
+    assert_true(g2ml_linkspageManageIsValidSlug('jane_doe'), 'A non-leading underscore must still be accepted by the management layer');
+    assert_true(g2ml_linkspageIsValidSlug('jane_doe'), 'A non-leading underscore must still be accepted by the public resolver');
+});
+
+test('manage field validation: creating a page with a leading-underscore slug reports the specific "reserved" message', function (): void
+{
+    $validation = _g2ml_linkspageManageValidateFields([
+        'slug'      => '_uploads',
+        'pageTitle' => 'Should Not Save',
+    ]);
+
+    assert_false($validation['ok'], 'A leading-underscore slug must fail field validation');
+    assert_same('That slug is reserved. Please choose a different one.', $validation['error'], 'The error message must clearly explain the slug is reserved, not just malformed — a leading underscore already satisfies the charset/length shape rule');
+});
+
+test('manage field validation: creating a page with a reserved slug reports the specific "reserved" message', function (): void
+{
+    $validation = _g2ml_linkspageManageValidateFields([
+        'slug'      => 'admin',
+        'pageTitle' => 'Should Not Save',
+    ]);
+
+    assert_false($validation['ok'], 'A reserved slug must fail field validation');
+    assert_same('That slug is reserved. Please choose a different one.', $validation['error'], 'The error message must clearly explain the slug is reserved, not just malformed');
+});
+
+// ============================================================================
 // 🎨 g2ml_linkspageManageValidateHexColour — parity with the public renderer
 // ============================================================================
 

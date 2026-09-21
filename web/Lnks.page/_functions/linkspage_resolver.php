@@ -61,6 +61,42 @@
  *     (_g2ml_linkspageBuildPublicModelFromRow()) so the template-resolution
  *     and items-lookup logic is written once, not duplicated.
  *
+ * 🔗 CORRECTNESS — reserved slugs (#218):
+ *   - g2ml_linkspageIsValidSlug() now also refuses this file's OWN copy of
+ *     the reserved-word list, G2ML_LINKSPAGE_RESOLVER_RESERVED_SLUGS. Six
+ *     of those words ("index", "403", "404", "500", "icons", "img") the
+ *     real web server (web/Lnks.page/public_html/.htaccess) already routes
+ *     to a real file or directory before index.php?slug=... is ever
+ *     reached, so a page saved under one of them could never be viewed by
+ *     anyone — for those six, refusing to resolve one really is a check on
+ *     a row that could never have rendered anyway. The other eleven
+ *     ("robots" through "css") are reserved ahead of time and, until this
+ *     fix, resolved and rendered normally; for those, this function's
+ *     refusal is a genuine change in what gets shown, not a check on an
+ *     already-dead row — see this constant's own docblock below,
+ *     "Consequence worth stating plainly", for what that means for a page
+ *     that already exists under one of those words. Before this fix, the
+ *     management layer (web/_functions/linkspage_manage.php) could still
+ *     SAVE any of the 17 words — it looked like a normal successful
+ *     create.
+ *   - CORRECTED after review round 1: this constant used to share the exact
+ *     NAME "G2ML_LINKSPAGE_RESERVED_SLUGS" with the one in
+ *     linkspage_manage.php, both guarded by `if (!defined(...))`. That is
+ *     wrong when both files load into the SAME PHP process, which is
+ *     exactly what happens in production: page_init.php (loaded by every
+ *     component's index.php, including this one — see its Step 3) requires
+ *     linkspage_manage.php unconditionally, and only afterwards does this
+ *     component's own index.php (Step 4) require THIS file. So in
+ *     production, linkspage_manage.php's `define()` always runs first and
+ *     wins; this file's own `if (!defined(...))` block never executes, and
+ *     this file has been silently reading linkspage_manage.php's array the
+ *     whole time — the two lists could drift apart with nothing to notice,
+ *     because there was really only ever one array in memory. Renaming this
+ *     file's constant gives each file an array that is genuinely its own in
+ *     every load order, and a unit test (tests/unit/linkspage_manage_test.php)
+ *     now asserts the two arrays' CONTENTS stay identical, which is the
+ *     actual parity guarantee this feature needs.
+ *
  * Functions:
  *   - g2ml_linkspageIsValidSlug()                 — charset/length guard for the URL slug
  *   - g2ml_linkspageDefaultTemplateSlug()          — the operator-configured fallback template slug
@@ -80,8 +116,8 @@
  * @package    Go2My.Link
  * @subpackage ComponentC
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.3.0
- * @since      Phase 8 (#45; by-pageUID public resolver added v1.2.0 / #46; age gate v1.2.0 / #50)
+ * @version    0.4.1
+ * @since      Phase 8 (#45; by-pageUID public resolver added v1.2.0 / #46; age gate v1.2.0 / #50; reserved-slug fix v1.2.0 / #218, corrected in #218 review round 1: own constant name, leading-underscore rejection, honest reasons)
  * ============================================================================
  */
 
@@ -101,11 +137,99 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
 // ============================================================================
 
 /**
+ * Slugs that can NEVER resolve to a LinksPage on the real web server, because
+ * web/Lnks.page/public_html/.htaccess serves a real file or directory for
+ * these paths BEFORE its slug-rewrite rule ever runs (the rewrite is guarded
+ * by "RewriteCond %{REQUEST_FILENAME} !-f" / "!-d"), OR because it is
+ * reserved ahead of time to avoid future confusion. Each word's TRUE reason
+ * — corrected after review round 1 found the previous comment overstating
+ * several of them, which the house rule treats as worse than no comment:
+ *
+ *   - 'index', '403', '404', '500' — a REAL .php file with that exact name
+ *     exists in web/Lnks.page/public_html/ (index.php, 403.php, 404.php,
+ *     500.php). The .htaccess "Clean URLs — .php extension removal" rule
+ *     rewrites a request for the bare word straight to that file
+ *     (`RewriteCond %{REQUEST_FILENAME}.php -f` / `RewriteRule ^(.+)$
+ *     $1.php`), so it never reaches the slug-routing rule below it.
+ *   - 'icons', 'img' — REAL, COMMITTED directories in
+ *     web/Lnks.page/public_html/ today (not a folder the component "might
+ *     grow into" — they are already there). Apache's `!-d` guard on the
+ *     slug rewrite refuses to route a request for an existing directory.
+ *   - 'robots', 'sitemap', 'favicon', 'manifest', 'sw', 'api', 'admin',
+ *     'static', 'assets', 'js', 'css' — NOT currently blocked by anything
+ *     on the server. The real static files are robots.txt, sitemap.xml,
+ *     favicon.ico and manifest.json, not files literally named 'robots' or
+ *     'favicon' with no extension, and 'sw' has no matching file at all
+ *     (only sw.js, which the .php-removal rule does not touch). A request
+ *     for lnks.page/robots today falls all the way through to the slug rule
+ *     and resolves as slug "robots", exactly like any other page. These
+ *     words are reserved AHEAD OF TIME — so a future static file, folder or
+ *     management route with one of these names can be added without ever
+ *     colliding with an existing owner's page — not because they are
+ *     already unreachable.
+ *
+ * ⚠️ Consequence worth stating plainly: because 11 of these 17 words
+ * ('robots' through 'css' above) are reserved ahead of time rather than
+ * already unreachable, this function's refusal to RESOLVE one is not a
+ * belt-and-braces check on an already-dead row. If a page had ever been
+ * saved with one of those 11 words as its slug — which was possible before
+ * this fix — this function now hides it from every viewer where it used to
+ * render normally. LinksPage has not launched (the database cutover is
+ * still pending — see the project handoff), so today that risk is
+ * theoretical, but it is a real trade-off, not a formality, and whoever
+ * turns the service on should check for exactly that before doing so.
+ *
+ * A leading underscore ('_uploads', '_sql', and so on) is refused
+ * separately, by g2ml_linkspageIsValidSlug() itself below, rather than
+ * being listed here — see that check's own comment for why.
+ *
+ * 🔗 Cross-reference: this exact list of 17 words is mirrored in
+ * web/_functions/linkspage_manage.php's G2ML_LINKSPAGE_RESERVED_SLUGS — see
+ * that constant's docblock for the save-time half of this story. The two
+ * files are NOT require'd into one another as independent deployable trees
+ * — Component A's admin surface and Component C's public renderer ship
+ * separately — but CORRECTED after review round 1: linkspage_manage.php
+ * lives in the SHARED web/_functions/ folder and IS loaded into every
+ * component, this one included, via page_init.php — linkspage_manage.php's
+ * OWN header says so: "only web/_functions/* is shared across all 3
+ * components". This file keeps its OWN, separately-named constant
+ * (G2ML_LINKSPAGE_RESOLVER_RESERVED_SLUGS, not
+ * G2ML_LINKSPAGE_RESERVED_SLUGS) purely so this file keeps working
+ * correctly when loaded on its own, with no page_init.php and no
+ * linkspage_manage.php anywhere in the process — exactly how
+ * tests/unit/linkspage_render_test.php loads it. Comparisons against it are
+ * always case-INsensitive, the same way the slug REGEX just below already
+ * is (see this file's header, and linkspage_manage.php's "SECURITY —
+ * validation parity with the PUBLIC renderer").
+ */
+if (!defined('G2ML_LINKSPAGE_RESOLVER_RESERVED_SLUGS'))
+{
+    define('G2ML_LINKSPAGE_RESOLVER_RESERVED_SLUGS', [
+        'index', '403', '404', '500', 'icons', 'img', 'robots', 'sitemap',
+        'favicon', 'manifest', 'sw', 'api', 'admin', 'static', 'assets',
+        'js', 'css',
+    ]);
+}
+
+/**
  * Validate a LinksPage slug's shape BEFORE it ever reaches a database query.
  *
  * Deliberately restrictive: URL-safe characters only, 1–100 characters,
- * matching the UNIQUE `slug` column's VARCHAR(100) width. A slug that fails
- * this check is treated as not-found without ever touching the database.
+ * matching the UNIQUE `slug` column's VARCHAR(100) width — and (added
+ * together with G2ML_LINKSPAGE_RESOLVER_RESERVED_SLUGS above) never a
+ * reserved word or a leading underscore. A slug that fails this check is
+ * treated as not-found without ever touching the database.
+ *
+ * 🔗 Leading underscore (#218 review round 1): every folder
+ * web/Lnks.page/public_html/.htaccess 403-blocks under "Block Private
+ * Directories" — _includes, _functions, _libraries, _uploads, _backups,
+ * _sql, _schemas — starts with an underscore, and the slug charset above
+ * allows a leading underscore through. Listing each blocked folder name by
+ * hand would need updating here every time a new one is added there; a slug
+ * cannot legitimately need a leading underscore (it is not part of any
+ * normal handle or word), so refusing the whole shape is the fix that
+ * cannot fail quietly if another such folder is added later without this
+ * file being remembered.
  *
  * @param  string $slug
  * @return bool
@@ -118,6 +242,16 @@ function g2ml_linkspageIsValidSlug(string $slug): bool
     }
 
     if (preg_match('/^[A-Za-z0-9_-]{1,100}$/', $slug) !== 1)
+    {
+        return false;
+    }
+
+    if (str_starts_with($slug, '_'))
+    {
+        return false;
+    }
+
+    if (in_array(strtolower($slug), G2ML_LINKSPAGE_RESOLVER_RESERVED_SLUGS, true))
     {
         return false;
     }

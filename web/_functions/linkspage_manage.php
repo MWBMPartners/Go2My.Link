@@ -137,6 +137,70 @@
  *   - No date of birth or other personal data is collected/stored anywhere
  *     in this file — requiresAgeGate is a single boolean column.
  *
+ * 🐛 CORRECTNESS — bind-type letters and affected-row counting (#218):
+ *   - THE RULE: every mysqli bind_param() type string in this file is one
+ *     letter per bound value, in COLUMN ORDER — 'i' for an integer column
+ *     and 's' for everything else, including a nullable string column
+ *     (MySQLi accepts NULL under any type letter, so nullability never
+ *     changes which letter to use; only the column's own type does).
+ *   - BUG 1 (fixed): g2ml_linkspageManageCreatePage() bound socialLinks (a
+ *     JSON string) as an integer. CORRECTED after #218 review round 1. The
+ *     mechanism is not "a JSON string cannot be coerced to an int" — it
+ *     can: PHP's normal string-to-number rules turn a non-numeric string
+ *     like a JSON object into 0 without complaint, on the CLIENT side,
+ *     before anything is sent to the server. The actual failure happens on
+ *     the OTHER side of that conversion: mysqli sends the resulting bare
+ *     integer 0 to MySQL for a column whose type is JSON, and MySQL 8
+ *     refuses a plain number there outright (error 3140), because it is
+ *     not valid JSON text and was never explicitly CAST(... AS JSON) — so
+ *     a page created with any social link failed to save at all. MariaDB,
+ *     which is more permissive about what it will store in a JSON-typed
+ *     column, accepted the same bare 0 without erroring, so on MariaDB
+ *     this did not fail loudly — it silently wiped the social links the
+ *     owner had just entered, storing 0 in their place with no error at
+ *     all.
+ *   - BUG 2 (fixed): g2ml_linkspageManageUpdatePage() bound fontFamily (a
+ *     plain string) as an integer, which forces PHP/mysqli to convert the
+ *     non-numeric string "Georgia" to 0 on the CLIENT side, before
+ *     anything is sent to the server — the same client-side conversion
+ *     described above for socialLinks, just without a JSON column on the
+ *     other end to refuse the result. So every edit-form save overwrote
+ *     the page's font family with the literal string "0".
+ *   - Both bugs are fixed, with a comment at each bind_param() call
+ *     recording the exact column-by-column mapping, so the next person who
+ *     adds a column has something to check their own type string against.
+ *   - g2ml_linkspageManageSetPublished() used to treat "0 rows affected" by
+ *     its UPDATE as "page not found". mysqli's affected_rows counts rows
+ *     whose VALUE CHANGED, not rows that MATCHED the WHERE clause — so
+ *     publishing an already-published page (nothing to change) always
+ *     failed with a false "not found", even though the page existed and
+ *     belonged to the caller. It now checks ownership/existence with a
+ *     plain read FIRST, and treats the UPDATE's affected-row count as
+ *     informational only.
+ *
+ * 🔗 CORRECTNESS — reserved slugs (#218):
+ *   - g2ml_linkspageManageIsValidSlug() now also refuses the fixed set of
+ *     words in G2ML_LINKSPAGE_RESERVED_SLUGS (see that constant's docblock
+ *     for the full, word-by-word reason). Six of them — "index", "403",
+ *     "404", "500", "icons", "img" — are slugs the real web server can
+ *     never actually route to a LinksPage today, because a real file or
+ *     directory with that name is served first; before this fix, such a
+ *     slug saved successfully and then could never be viewed by anyone,
+ *     with no error anywhere explaining why. The other eleven ("robots"
+ *     through "css") are NOT currently blocked by anything on the server —
+ *     they are reserved ahead of time, so a future static file, folder or
+ *     management route can use one of those names without ever colliding
+ *     with an existing owner's page. Mirrored in the public resolver
+ *     (web/Lnks.page/_functions/linkspage_resolver.php) so a slug refused
+ *     here is also refused there.
+ *
+ * 🚫 ABUSE — per-page item cap (#218):
+ *   - g2ml_linkspageManageAddItem() now refuses to add past
+ *     G2ML_LINKSPAGE_MAX_ITEMS_PER_PAGE items on one page. Nothing enforced
+ *     this before, so a runaway script (or a stuck retry loop) could grow a
+ *     single page to an unbounded number of rows, every one of them
+ *     rendered on every public page view.
+ *
  * Dependencies: db_query.php (dbSelect/dbSelectOne/dbInsert/dbUpdate/dbDelete/
  *               dbBeginTransaction/dbCommit/dbRollback/dbLastErrno), security.php
  *               (g2ml_sanitiseInput/g2ml_sanitiseURL), entitlements.php
@@ -155,8 +219,12 @@
  * @package    Go2My.Link
  * @subpackage Functions
  * @author     MWBM Partners Ltd (MWservices)
- * @version    1.1.0
- * @since      v1.2.0 — Phase 8 (#48; age-gate auto-flag #50)
+ * @version    1.2.1
+ * @since      v1.2.0 — Phase 8 (#48; age-gate auto-flag #50; bind-type,
+ *             re-publish, reserved-slug and item-cap fixes #218; #218
+ *             review round 1: leading-underscore rejection, resolver's
+ *             constant renamed so the two lists can no longer silently
+ *             collapse into one, and corrected comments)
  *
  * 📖 References:
  *     - Schema:          web/_sql/schema/032_linkspage.sql
@@ -215,6 +283,99 @@ if (!defined('G2ML_LINKSPAGE_MANAGE_DESCRIPTION_MAX_LENGTH'))
     define('G2ML_LINKSPAGE_MANAGE_DESCRIPTION_MAX_LENGTH', 2000);
 }
 
+/**
+ * Slugs a LinksPage owner can NEVER claim. Each word's TRUE reason —
+ * corrected after #218 review round 1 found the previous version of this
+ * comment overstating several of them, which the house rule treats as
+ * worse than no comment at all:
+ *
+ *   - 'index', '403', '404', '500' — a REAL .php file with that exact name
+ *     already exists in web/Lnks.page/public_html/ (index.php, 403.php,
+ *     404.php, 500.php). The .htaccess "Clean URLs — .php extension
+ *     removal" rule rewrites a bare-word request straight to that file
+ *     (`RewriteCond %{REQUEST_FILENAME}.php -f` / `RewriteRule ^(.+)$
+ *     $1.php`) before the slug-routing rule below it ever runs.
+ *   - 'icons', 'img' — REAL, COMMITTED directories in
+ *     web/Lnks.page/public_html/ today, not folders the component "might
+ *     grow into". Apache's `!-d` guard on the slug rewrite refuses to route
+ *     a request for a directory that already exists.
+ *   - 'robots', 'sitemap', 'favicon', 'manifest', 'sw', 'api', 'admin',
+ *     'static', 'assets', 'js', 'css' — NOT currently blocked by anything
+ *     on the server. The real static files are robots.txt, sitemap.xml,
+ *     favicon.ico and manifest.json — not files literally named 'robots' or
+ *     'favicon' with no extension — and 'sw' has no matching file at all
+ *     (only sw.js, untouched by the .php-removal rule). A request for
+ *     lnks.page/robots today falls straight through to the slug rule and
+ *     resolves exactly like any other page. These 11 words are reserved
+ *     AHEAD OF TIME, so a future static file, folder or management route
+ *     can use one of these names without ever colliding with an existing
+ *     owner's page — not because a page using one is already unreachable.
+ *     See web/Lnks.page/_functions/linkspage_resolver.php's own copy of
+ *     this list for the consequence that ahead-of-time reservation has for
+ *     an existing page at RENDER time.
+ *
+ * A leading underscore (for example '_uploads' or '_sql') is refused
+ * separately, by g2ml_linkspageManageIsValidSlug() itself below, rather
+ * than being listed here — see that check's own comment for why, and for
+ * the bug this closes (#218 review round 1: those specific words were
+ * missing from this list even though the real server 403-blocks them,
+ * because the plan that first wrote this list did not check .htaccess for
+ * every folder it blocks).
+ *
+ * Before this list existed at all, a page created with one of the SIX
+ * already-blocked words above ("index", "403", "404", "500", "icons",
+ * "img") saved successfully but could NEVER be viewed by anyone — the
+ * clearest possible silent failure, since the owner would see "page
+ * created" and then a 404 forever, with nothing in this codebase telling
+ * them why. The other eleven words ("robots" through "css") carry no such
+ * history — as the bullet above says, they resolve and render like any
+ * other page today — they are reserved so that story can never start for
+ * them either, once something on the server does claim one of those names.
+ *
+ * 🔗 Cross-reference: this exact list of 17 words is mirrored in
+ * web/Lnks.page/_functions/linkspage_resolver.php's OWN, separately-named
+ * constant, G2ML_LINKSPAGE_RESOLVER_RESERVED_SLUGS — see that file's
+ * docblock for why it is a SEPARATE constant name rather than this same
+ * one (#218 review round 1: sharing one name across both files was itself
+ * a bug, because this file's copy of the array is loaded into every
+ * component — including Component C — via page_init.php, so the two
+ * `if (!defined(...))` guards could never both fire in the same request
+ * and one file's list silently overrode the other's). The two arrays'
+ * CONTENTS are still required to match exactly — see
+ * tests/unit/linkspage_manage_test.php's parity test, which loads both
+ * files and compares them directly — the same cross-reference relationship
+ * the slug REGEX already has between the two files (see this file's
+ * header, "SECURITY — validation parity with the PUBLIC renderer").
+ * Comparisons against it are always case-INsensitive (strtolower() first)
+ * since a slug claimed as "Index" would be just as unreachable as "index".
+ */
+if (!defined('G2ML_LINKSPAGE_RESERVED_SLUGS'))
+{
+    define('G2ML_LINKSPAGE_RESERVED_SLUGS', [
+        'index', '403', '404', '500', 'icons', 'img', 'robots', 'sitemap',
+        'favicon', 'manifest', 'sw', 'api', 'admin', 'static', 'assets',
+        'js', 'css',
+    ]);
+}
+
+/**
+ * Hard abuse cap on the number of items (links) a single LinksPage may hold.
+ *
+ * Nothing enforced this before: g2ml_linkspageManageAddItem() would accept
+ * an add request forever, so a runaway script (or a single confused user
+ * double-clicking "Add" in a loop) could grow one page to an unbounded
+ * number of rows — every one of them rendered on every public page view,
+ * so this was also an unmetered cost/performance exposure, not just a data
+ * quality one. 200 is generously above anything a real LinksPage needs
+ * (the whole point of the product is a short, scannable list of links) while
+ * still being small enough that hitting it is a clear signal something is
+ * wrong, not a real use case being blocked.
+ */
+if (!defined('G2ML_LINKSPAGE_MAX_ITEMS_PER_PAGE'))
+{
+    define('G2ML_LINKSPAGE_MAX_ITEMS_PER_PAGE', 200);
+}
+
 // ============================================================================
 // ✅ Validators
 // ============================================================================
@@ -224,7 +385,29 @@ if (!defined('G2ML_LINKSPAGE_MANAGE_DESCRIPTION_MAX_LENGTH'))
  *
  * Mirrors web/Lnks.page/_functions/linkspage_resolver.php's
  * g2ml_linkspageIsValidSlug() exactly: URL-safe characters only, 1–100
- * characters, matching the UNIQUE `slug` column's VARCHAR(100) width.
+ * characters, matching the UNIQUE `slug` column's VARCHAR(100) width — a
+ * leading underscore, AND (added together with G2ML_LINKSPAGE_RESERVED_SLUGS)
+ * the fixed set of words reserved for other reasons — see that constant's
+ * docblock for the full, corrected explanation of each one.
+ *
+ * 🔗 Leading underscore (#218 review round 1): every folder
+ * web/Lnks.page/public_html/.htaccess 403-blocks under "Block Private
+ * Directories" — _includes, _functions, _libraries, _uploads, _backups,
+ * _sql, _schemas — starts with an underscore, and the slug charset above
+ * allows a leading underscore through. Before this check existed, an owner
+ * could save (for example) '_uploads' as their slug: the save itself
+ * succeeded, since nothing here or in the resolver refused it, but every
+ * viewer would get a "forbidden" page instead of the LinksPage they
+ * expected — this component's OWN branded 403 page, not a bare server
+ * error, because .htaccess routes a 403 to
+ * `ErrorDocument 403 /index.php?http_error=403`, which index.php then
+ * serves as the branded page — and the owner would have no way to know
+ * why. Listing each blocked folder name individually would need updating
+ * here every time a new one is added to .htaccess; a slug cannot
+ * legitimately need a leading underscore (it is not part of any normal
+ * handle or word), so refusing the whole shape is the fix that cannot fail
+ * quietly if another such folder is added later without this file being
+ * remembered.
  *
  * @param  string $slug
  * @return bool
@@ -237,6 +420,16 @@ function g2ml_linkspageManageIsValidSlug(string $slug): bool
     }
 
     if (preg_match('/^[A-Za-z0-9_-]{1,100}$/', $slug) !== 1)
+    {
+        return false;
+    }
+
+    if (str_starts_with($slug, '_'))
+    {
+        return false;
+    }
+
+    if (in_array(strtolower($slug), G2ML_LINKSPAGE_RESERVED_SLUGS, true))
     {
         return false;
     }
@@ -665,6 +858,34 @@ function _g2ml_linkspageManageValidateFields(array $input): array
         $slugRaw = trim($input['slug']);
     }
 
+    // Checked SEPARATELY from the general shape check below, purely so the
+    // owner sees the ACCURATE reason their slug was refused. Both checks
+    // ultimately agree — g2ml_linkspageManageIsValidSlug() itself also
+    // refuses a reserved word or a leading underscore (see
+    // G2ML_LINKSPAGE_RESERVED_SLUGS and that function's own leading-
+    // underscore comment) — but a generic "letters, numbers, hyphens,
+    // underscores" message would be actively misleading here, since a word
+    // like "index" (or a slug like "_uploads") already satisfies that shape
+    // rule and the real reason for the rejection is that the word is
+    // reserved, not that its shape is wrong (see the constant's docblock for
+    // why each of the 17 words is reserved — some because a real file or
+    // folder already takes that address today, others reserved ahead of
+    // time for one that might — and g2ml_linkspageManageIsValidSlug()'s
+    // leading-underscore comment for why that shape is refused). A leading
+    // underscore is treated as "reserved" here too, with the same message,
+    // rather than a separate one — from the owner's point of view it is the
+    // same situation: a slug shape that is never allowed, for reasons they
+    // do not need to know the details of.
+    if (in_array(strtolower($slugRaw), G2ML_LINKSPAGE_RESERVED_SLUGS, true)
+        || str_starts_with($slugRaw, '_'))
+    {
+        return [
+            'ok'        => false,
+            'error'     => 'That slug is reserved. Please choose a different one.',
+            'errorCode' => 'validation',
+        ];
+    }
+
     if (!g2ml_linkspageManageIsValidSlug($slugRaw))
     {
         return [
@@ -955,12 +1176,41 @@ function g2ml_linkspageManageCreatePage(int $userUID, string $orgHandle, array $
 
     $fields = $validation['fields'];
 
+    // 🐛 Bind-type mapping, one letter per value IN THE SAME ORDER as the
+    // column list above — 'i' for an integer column (even one that may be
+    // NULL, such as templateUID below; MySQLi binds NULL correctly under
+    // any type letter) and 's' for every string column, including a
+    // nullable one. #218 review round 3 flagged an earlier version of this
+    // comment that said "'s' for everything else (a string, or a value
+    // that is sometimes NULL)" — read plainly, that told the next person
+    // adding a nullable INTEGER column to bind it as 's', which is wrong.
+    // The mapping below has always bound the nullable templateUID column
+    // as 'i', correctly, so this only fixed the wording, not the bindings
+    // themselves. This used to end
+    // '...sssiii' (socialLinks bound as an INTEGER, position 12). CORRECTED
+    // after #218 review round 1 — the failure is not "a JSON-shaped string
+    // cannot be coerced to an int" (it can: PHP converts a non-numeric
+    // string to 0 on the CLIENT side, before anything is sent to MySQL, and
+    // does so without complaint). What actually goes wrong is the OTHER
+    // side of that conversion: mysqli then sends the resulting bare integer
+    // 0 to MySQL for a column typed JSON, and MySQL 8 refuses a plain
+    // number there outright with error 3140, because a JSON column needs
+    // real JSON text (or an explicit CAST(... AS JSON)), not a bare number
+    // — so creating a page with any social link failed completely with
+    // "Could not create the LinksPage". MariaDB, which is more permissive
+    // about what it will store in a JSON-typed column, accepted the same
+    // bare 0 without erroring, so on MariaDB this did not fail loudly — it
+    // silently stored 0 in place of the social links the owner had just
+    // entered, with no error at all. The column-by-column mapping is:
+    //   userUID(i), orgHandle(s), slug(s), pageTitle(s), pageDescription(s),
+    //   avatarPath(s), templateUID(i), themeColour(s), backgroundColour(s),
+    //   fontFamily(s), showSocialIcons(i), socialLinks(s), isPublished(i)
     $insertedPageUID = dbInsert(
         "INSERT INTO tblLinksPages
             (userUID, orgHandle, slug, pageTitle, pageDescription, avatarPath, templateUID,
              themeColour, backgroundColour, fontFamily, showSocialIcons, socialLinks, isPublished)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        'isssssisssiii',
+        'isssssisssisi',
         [
             $userUID,
             $orgHandle,
@@ -1052,13 +1302,33 @@ function g2ml_linkspageManageUpdatePage(int $userUID, int $pageUID, array $input
 
     // 🔒 Ownership enforced again on the UPDATE itself (defence in depth,
     // beyond the pre-check above) via "WHERE pageUID = ? AND userUID = ?".
+    //
+    // 🐛 Bind-type mapping, one letter per value IN THE SAME ORDER as the SET
+    // list above, then the two WHERE values. This used to have TWO letters
+    // swapped: templateUID (position 5, an int-or-null column) was bound as
+    // 's', and fontFamily (position 8, a plain string) was bound as 'i'.
+    // Binding a string like "Georgia" as an integer forces MySQLi to convert
+    // it to a NUMBER before sending it — "Georgia" has no leading digits, so
+    // it converts to 0 — which is exactly the reported bug: every edit-form
+    // save overwrote the page's font family with the literal string "0",
+    // and the public renderer then emitted `font-family: 0, ...`, which
+    // every browser silently ignores. templateUID being bound as 's' rather
+    // than 'i' happened not to break anything visible (MySQL accepts a
+    // numeric string, or NULL, for an INT column regardless of the bound
+    // type letter), but it is still the wrong letter for an integer column
+    // and is corrected here too, per the fixed rule: every string bound as
+    // 's', every integer bound as 'i'. The column-by-column mapping is:
+    //   slug(s), pageTitle(s), pageDescription(s), avatarPath(s),
+    //   templateUID(i), themeColour(s), backgroundColour(s), fontFamily(s),
+    //   showSocialIcons(i), socialLinks(s), isPublished(i), pageUID(i),
+    //   userUID(i)
     $affectedRows = dbUpdate(
         "UPDATE tblLinksPages SET
             slug = ?, pageTitle = ?, pageDescription = ?, avatarPath = ?, templateUID = ?,
             themeColour = ?, backgroundColour = ?, fontFamily = ?, showSocialIcons = ?,
             socialLinks = ?, isPublished = ?
          WHERE pageUID = ? AND userUID = ?",
-        'sssssssiisiii',
+        'ssssisssisiii',
         [
             $fields['slug'],
             $fields['pageTitle'],
@@ -1121,6 +1391,29 @@ function g2ml_linkspageManageUpdatePage(int $userUID, int $pageUID, array $input
  */
 function g2ml_linkspageManageSetPublished(int $userUID, int $pageUID, bool $isPublished): array
 {
+    // 🔒 Ownership + existence are checked HERE, via a plain read, rather
+    // than being inferred from the UPDATE's affected-row count below. This
+    // is deliberate, and replaces a real bug: mysqli's affected_rows counts
+    // rows whose STORED VALUE actually changed, not rows that MATCHED the
+    // WHERE clause. Publishing a page that is already published (isPublished
+    // is already 1) sets a column to the value it already holds, so MySQL
+    // reports 0 affected rows even though the row exists and belongs to the
+    // caller — which the old code treated as "not found", so publishing an
+    // already-published page (or simply clicking Publish twice) always
+    // failed with a false "not found" error. Checking existence and
+    // ownership up front, separately from the write, means the UPDATE's
+    // affected-row count is no longer asked to answer a question it cannot
+    // reliably answer.
+    $existingPage = g2ml_linkspageManageGetPageForOwner($pageUID, $userUID);
+
+    if ($existingPage === null)
+    {
+        return [
+            'success' => false,
+            'error'   => 'LinksPage not found, or you do not have permission to edit it.',
+        ];
+    }
+
     if ($isPublished === true)
     {
         $publishedValue = 1;
@@ -1136,11 +1429,15 @@ function g2ml_linkspageManageSetPublished(int $userUID, int $pageUID, bool $isPu
         [$publishedValue, $pageUID, $userUID]
     );
 
-    if ($affectedRows === false || $affectedRows === 0)
+    // Only a hard database failure is an error from this point on. Zero
+    // affected rows is an EXPECTED, successful outcome whenever the page
+    // already held the requested isPublished value — see the ownership
+    // pre-check above for why that can never mean "the page is missing".
+    if ($affectedRows === false)
     {
         return [
             'success' => false,
-            'error'   => 'LinksPage not found, or you do not have permission to edit it.',
+            'error'   => 'Could not update the LinksPage. Please try again.',
         ];
     }
 
@@ -1370,6 +1667,33 @@ function g2ml_linkspageManageAddItem(int $userUID, int $pageUID, array $input): 
             'success' => false,
             'itemUID' => null,
             'error'   => 'LinksPage not found, or you do not have permission to edit it.',
+        ];
+    }
+
+    // 🚫 Hard abuse cap — see G2ML_LINKSPAGE_MAX_ITEMS_PER_PAGE's docblock.
+    // Checked BEFORE any of the (more expensive) field validation below, so
+    // a page already at the cap fails fast without touching a short URL
+    // lookup or a manual-URL sanitise pass for input that is going to be
+    // rejected regardless.
+    $currentItemCountRow = dbSelectOne(
+        "SELECT COUNT(*) AS itemCount FROM tblLinksPageItems WHERE pageUID = ?",
+        'i',
+        [$pageUID]
+    );
+
+    $currentItemCount = 0;
+
+    if ($currentItemCountRow !== null && $currentItemCountRow !== false && isset($currentItemCountRow['itemCount']))
+    {
+        $currentItemCount = (int) $currentItemCountRow['itemCount'];
+    }
+
+    if ($currentItemCount >= G2ML_LINKSPAGE_MAX_ITEMS_PER_PAGE)
+    {
+        return [
+            'success' => false,
+            'itemUID' => null,
+            'error'   => 'This page already has the maximum of ' . G2ML_LINKSPAGE_MAX_ITEMS_PER_PAGE . ' links.',
         ];
     }
 
