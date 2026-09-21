@@ -119,10 +119,21 @@ yet; enabling does not add payments (#57–#60 need billing credentials).
   restore and copy procedures that each failed review in a new way (six rounds). Moving the handoff
   out of the plugin's way, and not using its code-writing skills here, replaced them.
 
-⚠️ **Codex (the second-opinion reviewer) is out of usage credit until 18:12 today (2026-09-21).**
-Until then, reviews are done by a fresh Claude agent that did not build the change (a different
-agent, same company — less independent than Codex). Every such review is labelled as such in
-its commit message, and **all of it must get a full Codex catch-up review once Codex is back.**
+⚠️ **Codex (the second-opinion reviewer) ran out of usage credit twice today (2026-09-21).** It was
+out until 18:12, came back long enough to do round 2 of LP-02's review, then ran out again — its
+message now says **11:15 PM**. Every other review is done by a fresh Claude Opus agent that did not
+build the change (less independent than Codex), labelled as such in each commit message.
+**Codex catch-up review still owed** — run `codex review --base alpha` over the whole working
+branch once Codex answers, as one body of work: so far that covers `9a49a70` (#202), `7ef2870`
+(LP-01), `f4914bd` (LP-09), `81c9264` (LP-02) and everything built after them.
+
+**Batch A finished 18:40** (workflow `wf_3c6f806e-895`, 25 agents): LP-01 `7ef2870`, LP-09 `f4914bd`,
+LP-02 `81c9264`, all pushed; unit tests now 628, integration 219, all passing. Noteworthy: LP-01
+also fixed a **third** copy of the pricing switch bug (`billing.usage_event_log_enabled`); if any
+live database already has one of the three billing switches set to 1, deploying this turns it on.
+LP-02 found a second wrong bind letter in the LinksPage save routine. None was tried in a browser.
+**Next:** the #183 MariaDB fix (plan on the issue; the fix was verified in Docker — now urgent,
+because after LP-01 every LinksPage extra is denied on MariaDB), then batches B, C, D.
 
 **Two things the last session left behind (found this session):**
 
