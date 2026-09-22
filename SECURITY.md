@@ -18,7 +18,7 @@
 > with a kill switch OFF by default**, pending a dedicated security sign-off before it may be
 > enabled. The API surface has been through its own adversarial security cycle (1 Medium
 > finding fixed; Low residuals tracked in #149, awaiting owner ratification) — see
-> `.claude/HANDOFF.md` for that review's outcome rather than re-deriving it here. Sections below
+> `.github/HANDOFF.md` for that review's outcome rather than re-deriving it here. Sections below
 > that still describe the pre-API/pre-C state are marked inline; a full re-pass of this
 > document (new attack-surface rows for `/api/v1`, Component C's render/sanitiser/upload
 > path, geolocation, and entitlements) has not yet been done and is recommended before the

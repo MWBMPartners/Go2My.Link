@@ -3,7 +3,7 @@
 > **Purpose:** the single page to run through **before launching the service**. It captures
 > (a) decisions only the owner (Lance) can make, (b) manual actions outside the codebase
 > (GitHub settings, DNS, credentials, payment providers), and (c) a log of what automation
-> did on your behalf. Companion to `.claude/HANDOFF.md` (technical pick-up state), `PROJECT_STATUS.md`,
+> did on your behalf. Companion to `.github/HANDOFF.md` (technical pick-up state), `PROJECT_STATUS.md`,
 > and `docs/LAUNCH_PLAN_2026-07-09.md`.
 >
 > **Legend:** 🔴 launch-blocking · 🟠 important · 🟢 nice-to-have · ✅ done · ⏳ in progress · ❓ needs your decision
@@ -98,7 +98,7 @@
 
 ---
 
-## 📌 Open backlog highlights (authoritative live list in `.claude/HANDOFF.md` + the tracker)
+## 📌 Open backlog highlights (authoritative live list in `.github/HANDOFF.md` + the tracker)
 
 **Launch-gating, still open:**
 - 🟠 **#183** — MariaDB portability: the schema fix landed 2026-09-21 (`036_pricing_engine.sql` + migration `020` now use a `TIMESTAMP` literal instead of the `CAST` that MariaDB refused) and imports with 0 errors on a fresh MariaDB 11.4 and a fresh MySQL 8.4. Two things still to do before this can close: (a) watch `.github/workflows/mariadb-import.yml` go green on its first real run on a GitHub-hosted runner — so far it has only been run by hand, against Docker on the lead's own machine; (b) before cutover, check the real Dreamhost database: run `SELECT VERSION();` to see its exact point release, then either import the schema there once, or run migration `020` and confirm `SHOW TABLES LIKE 'tblTierFeatures';` returns a row. See `docs/DATABASE.md` and `docs/DEPLOYMENT.md` for the full detail.
@@ -144,4 +144,4 @@ Possible shared internal-API hub. Worth confirming whether Go2My.Link's API keys
 
 ---
 
-_This file is maintained continuously. If a session ends unexpectedly, start here + `.claude/HANDOFF.md`._
+_This file is maintained continuously. If a session ends unexpectedly, start here + `.github/HANDOFF.md`._

@@ -28,6 +28,14 @@
 # relative path ../HISTORY.md — without the copy, that link would point at
 # nothing when read from .OpenAI/memory/.
 #
+# WHAT THIS DOES NOT COPY: the project's one handoff, .github/HANDOFF.md. It
+# used to live under .claude/ and was still left out of the copy even then,
+# because Codex reads it directly at its own path (AGENTS.md points there) —
+# a second copy would just be one more place for it to go stale. Since
+# 2026-09-22 (owner decision 17, #243) it lives under .github/ instead, well
+# outside the .claude/ tree this script mirrors, so there is even less reason
+# to fold it in here.
+#
 # HOW TO USE IT
 #
 #   sh scripts/sync-ai-context.sh           refresh .OpenAI/ from the Claude side

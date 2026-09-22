@@ -5,7 +5,7 @@
 > [.claude/README.md](../../.claude/README.md) for how it maps to the device-local auto-memory.
 > Last synced: **2026-07-19**.
 
-> 🚨 **2026-07-19 (supersedes everything below — read this first, then [HANDOFF.md](../../.claude/HANDOFF.md)):**
+> 🚨 **2026-07-19 (supersedes everything below — read this first, then [HANDOFF.md](../../.github/HANDOFF.md)):**
 > **A lost-work event and recovery happened.** Work done 2026-07-09→18 lived on an unpushed
 > branch on another device; ~59 issues were closed citing commits that turned out not to
 > exist once the branch was recovered and **rebased** onto the 9 commits the remote had
@@ -50,10 +50,10 @@
 > removed, a DB now has 2 stored procedures, not 3). **Correction:** the leaked legacy
 > `public_html_legacy/dbConfig.php` is already gone from disk (deleted ~2026-07-10, outside
 > tracked work) — **#93 stays open**, the credential still needs actual rotation; do not infer
-> it was rotated. See [HANDOFF.md](../../.claude/HANDOFF.md) for the full close-out detail.
+> it was rotated. See [HANDOFF.md](../../.github/HANDOFF.md) for the full close-out detail.
 
 > 🚀 **[Launch Plan 2026-07-09](../../docs/LAUNCH_PLAN_2026-07-09.md)** — Fable-5 strategic launch & roadmap plan (11 sections: verdict, API arch, CueRCode contract, SIGNula OIDC, custom-domain DNS, tier ladder, Component C, exec backlog P0–P4). **Read this for current direction.**
-> 🤝 **[HANDOFF.md](../../.claude/HANDOFF.md)** — session pick-up point: what's done, in-flight, decisions pending, next steps.
+> 🤝 **[HANDOFF.md](../../.github/HANDOFF.md)** — session pick-up point: what's done, in-flight, decisions pending, next steps.
 > 📑 [Audit 2026-06-04](audit-2026-06-04.md) — full deployment-readiness audit; A+B launchable after fixes, C unbuilt; issues #93–#120 filed.
 > 🗄️ [Installer, schema & CueRCode 2026-06](installer-schema-cuercode-2026-06.md) — web installer + 2 critical schema fixes + CueRCode dynamic-QR integration; issues #121–#128.
 > 🕓 [HISTORY.md](../HISTORY.md) — chronological work log.
@@ -94,7 +94,7 @@
 > is git-ignored, deployed via its own non-`--delete` mirror step so a failed fetch never wipes a
 > working production database). **`analytics.geolocation_enabled` must be turned on manually,
 > post-deploy, only after confirming the database landed.** 502 unit / 171 integration green.
-> See **[HANDOFF.md](../../.claude/HANDOFF.md)** for the live pick-up point. Do **NOT** merge stale local `main`
+> See **[HANDOFF.md](../../.github/HANDOFF.md)** for the live pick-up point. Do **NOT** merge stale local `main`
 > (would resurrect the legacy engine + #93 credential file).
 
 ## 📋 Project Overview
@@ -104,7 +104,7 @@
 - **Tech Stack:** PHP 8.4+/8.5+, MySQL (MySQLi only), Bootstrap 5.3, HTML5/CSS3
 - **Hosting:** Dreamhost shared hosting (no CLI/Composer)
 - **3 Domains:** go2my.link (main, Component A), g2my.link (shortlinks, Component B), lnks.page (LinksPage, Component C)
-- **Current state (2026-07-19):** A + B are code-complete for launch. **C (LinksPage) is BUILT** (6/6, #45–#50) — renderer, custom-domain fallback, templates, management UI, sanitised custom-HTML, age gate; custom-HTML is premium-gated with a kill switch OFF pending security sign-off. Public API v1, analytics/dashboard/CSV export, IP geolocation (gated off), UTM capture/forward (gated off), custom domains, and premium-tier entitlement gating are all BUILT too. Remaining work is owner-blocked (see the banner above and [HANDOFF.md](../../.claude/HANDOFF.md)).
+- **Current state (2026-07-19):** A + B are code-complete for launch. **C (LinksPage) is BUILT** (6/6, #45–#50) — renderer, custom-domain fallback, templates, management UI, sanitised custom-HTML, age gate; custom-HTML is premium-gated with a kill switch OFF pending security sign-off. Public API v1, analytics/dashboard/CSV export, IP geolocation (gated off), UTM capture/forward (gated off), custom domains, and premium-tier entitlement gating are all BUILT too. Remaining work is owner-blocked (see the banner above and [HANDOFF.md](../../.github/HANDOFF.md)).
 
 ## 🏗️ GitHub Project Management
 
@@ -132,7 +132,7 @@
 | 5 | v0.6.0 | Organisation Management | ✅ Complete (1 issue) |
 | **6** | **v0.7.0** | **Compliance, Legal & Pre-Launch** | ✅ Complete (v0.7.0 + v1.0.0-rc tagged) |
 | — | **v1.0.0-rc** | **PRE-RELEASE CANDIDATE** | ✅ Tagged |
-| — | **v1.0.0 — Launch Hardening** | **Audit + schema remediation (#13)** | ✅ Dev-side work complete on `launch-prep/2026-07-09`; remaining items are owner actions (see `.claude/HANDOFF.md`) |
+| — | **v1.0.0 — Launch Hardening** | **Audit + schema remediation (#13)** | ✅ Dev-side work complete on `launch-prep/2026-07-09`; remaining items are owner actions (see `.github/HANDOFF.md`) |
 | 7 | v1.1.0 | API & Analytics | ✅ Complete — API framework/endpoints/keys/docs (#38–40, #75), analytics + dashboard + CSV export (#41/#42/#44), geolocation (#43, gated off), UTM (#92, gated off) |
 | 8 | v1.2.0 | LinksPage | ✅ Complete (6/6, #45–#50) — Component C is BUILT, not scaffolding |
 | 9 | v1.3.0 | Advanced Redirects | 🔜 6 issues (#51–56, post-launch) |
@@ -144,7 +144,7 @@
 ## 🚦 Launch Readiness
 
 > ⚠️ **Historical snapshot below is the 2026-06-04 audit verdict** — superseded by the
-> 2026-07-19 banner at the top of this file and by [HANDOFF.md](../../.claude/HANDOFF.md). Kept for
+> 2026-07-19 banner at the top of this file and by [HANDOFF.md](../../.github/HANDOFF.md). Kept for
 > the record. Current one-liner: **A + B are code-complete for launch; Component C is BUILT**
 > (not "not built" as this snapshot says); the launch-hardening branch was merged (PR #130,
 > then #157 re-aligned `main`/`alpha`); remaining blockers are owner actions (#93 cred
@@ -161,7 +161,7 @@
 - **Credential model:** the 3 components share ONE server-wide `web/_auth_keys/auth_creds.php`; each component's `<Component>/.auth/auth_creds.php` (dot-prefixed, renamed from `_auth_keys/` — see #160 and patterns.md) is a thin `require_once` include of it. The installer writes the shared file and now also `mkdir`s each component's `.auth/` (0700) when absent (#160 — previously a fresh install couldn't bootstrap). The installer's own lock/token files stay at the shared `web/_auth_keys/.installed` / `.install_token` — unaffected by the rename.
 - **GlobalAdmin creation:** `g2ml_hashPassword()` (Argon2id) + INSERT into `tblUsers` (role `GlobalAdmin`, org `[default]`) + `tblUserAccountTypes` (accountTypeID `globaladmin`).
 - Docs: `docs/INSTALL.md`. Runtime files `_auth_keys/.install_token` + `.installed` (shared) and each component's `.auth/auth_creds.php` are gitignored/untracked.
-- ⚠️ **Live-server cutover gap (#160):** the rename has no live-server migration step yet — the production host still has the old `<Component>/_auth_keys/` dirs. The one-off fix is 3 `mv`s (`_auth_keys` → `.auth` per component); see .claude/HANDOFF.md.
+- ⚠️ **Live-server cutover gap (#160):** the rename has no live-server migration step yet — the production host still has the old `<Component>/_auth_keys/` dirs. The one-off fix is 3 `mv`s (`_auth_keys` → `.auth` per component); see .github/HANDOFF.md.
 
 ## 🎨 Dark/Light Mode
 
@@ -189,7 +189,7 @@
 - **Auth changes:** `loginUser()` checks `forcePasswordReset`, stores token in `$_SESSION`
 - **Security audit:** issues #79–#90 created and closed (CRLF injection, path traversal, TOCTOU, transaction wrapping) — re-verified intact by the 2026-06-04 audit
 - **UTM tracking (#92):** ✅ **SHIPPED** (`ea857f1`, 2026-07-10), settings-gated, OFF by default. Capture: `g2ml_extractTrackingParams()`; forward: `g2ml_appendUtmToDestination()` — both in `web/G2My.Link/_functions/redirect_resolver.php` + Component B `public_html/index.php`; settings seed `016_utm_tracking_settings.sql` (`redirect.forward_utm_params`, `analytics.capture_tracking_params`). #92 CLOSED. **Residual:** captured UTM lands in `tblActivityLog.logData` (JSON blob), not yet an indexed analytics dimension or dashboard breakdown — tracked in follow-up **#151**.
-- **API framework (#38/#39):** ✅ **SHIPPED** and CLOSED, along with key-management UI (#40), OpenAPI 3.1 + self-hosted Redoc docs (#75), and CueRCode wiring (#145). See the header block above and [HANDOFF.md](../../.claude/HANDOFF.md) for detail rather than duplicating here.
+- **API framework (#38/#39):** ✅ **SHIPPED** and CLOSED, along with key-management UI (#40), OpenAPI 3.1 + self-hosted Redoc docs (#75), and CueRCode wiring (#145). See the header block above and [HANDOFF.md](../../.github/HANDOFF.md) for detail rather than duplicating here.
 
 ## 🔗 CueRCode Dynamic-QR Integration (2026-06, schema-ready)
 
@@ -282,7 +282,7 @@ These were built in the 2026-07-09/10/18 launch-prep cycle but were missing from
 ## 📌 Standing Practices (Apply Every Session)
 
 > 🧭 **The full standing working rules are in [working-rules.md](working-rules.md)** (revised
-> 2026-09-21): plain English, the handoff kept current as you go, strongest model for planning and
+> 2026-09-22): plain English, the handoff kept current as you go, strongest model for planning and
 > cheapest capable model for building, helper plugins, cross-system review until clean, steps after
 > each task, the documentation sweep, autonomy, progress tables, one branch and one pull request,
 > and what to do when an AI service runs out. The short list below is kept for quick reference.
@@ -297,7 +297,7 @@ These were built in the 2026-07-09/10/18 launch-prep cycle but were missing from
 8. **✅ Issue Closure Protocol** — Check task checkboxes, add closing comment with commit/PR links, update board
 9. **🚫 No Shorthand** — No shorthand notation in ANY language — see [patterns.md](patterns.md)
 10. **🔍 Lint Everything** — Thorough syntax/lint/static analysis on ALL changes; fix all errors/warnings/recommendations
-11. **🤝 Handoff** — Keep [.claude/HANDOFF.md](../../.claude/HANDOFF.md) current as the work happens (the one handoff — never a second copy)
+11. **🤝 Handoff** — Keep [.github/HANDOFF.md](../../.github/HANDOFF.md) current as the work happens (the one handoff — never a second copy)
 12. **🔁 Cross-system review** — Every change reviewed by a different AI system from the builder, until a round is clean; say so plainly when the usual reviewer is unavailable
 
 ## 🔧 Key Conventions

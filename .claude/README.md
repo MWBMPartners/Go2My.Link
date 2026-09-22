@@ -7,9 +7,13 @@ context, and history travel to every machine and platform** that clones the repo
 
 ## What's here
 
+> 🤝 **The project's one session handoff moved out of this folder on 2026-09-22**, to
+> [`.github/HANDOFF.md`](../.github/HANDOFF.md) (owner decision 17, #243 — the same place MeedyaDL
+> keeps its handoff). It had briefly lived here, at `.claude/HANDOFF.md`, since 2026-09-21. It is no
+> longer part of this table because it is no longer a file in this folder.
+
 | Path | What it is |
 |---|---|
-| `HANDOFF.md` | 🤝 **The project's one session handoff** — what is in progress, what was tried and rejected, what to do next. Moved here from the repository root on 2026-09-21 (the root `HANDOFF.md` is now the dev-team plugin's ignored scratch card). |
 | `memory/MEMORY.md` | 🧠 **Portable project memory** — current state, file map, conventions, gotchas, issue ranges. The first thing to read. |
 | `memory/patterns.md` | 🔧 Coding conventions (the no-shorthand rule, DB/frontend/a11y/i18n standards, emoji vocabulary). |
 | `memory/working-rules.md` | 🧭 Standing working rules for every assistant (handoff, planning/building/review, branch and pull-request rules, AI-service fallback). |

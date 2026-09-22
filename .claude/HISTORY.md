@@ -3,14 +3,29 @@
 > Chronological log of significant Claude-assisted work, newest first. Portable
 > (repo-tracked) so the project's working history is available on every machine.
 > Companion to [.claude/memory/MEMORY.md](memory/MEMORY.md) and the live handoff
-> [.claude/HANDOFF.md](HANDOFF.md). Last updated **2026-09-21**.
+> [.github/HANDOFF.md](../.github/HANDOFF.md). Last updated **2026-09-22**.
 
 ---
+
+## 2026-09-22 — Handoff moved to `.github/HANDOFF.md`
+
+Owner decision 17 (#243): the project's one handoff moves from `.claude/HANDOFF.md` to
+`.github/HANDOFF.md`, as it is in the sister project MeedyaDL. Moved with `git mv` so its history
+follows; references to it in this repository (`CLAUDE.md`, `AGENTS.md`, `.claude/README.md`,
+`.claude/memory/*.md`, this file's own header link to the handoff, `scripts/sync-ai-context.sh`,
+`PRE_LAUNCH_CHECKLIST.md`, `PROJECT_STATUS.md`, `SECURITY.md`, and two code comments) were updated in
+the same commit — **except** `.gitignore` and `.dev-team/config.yml`, which still name the old
+`.claude/HANDOFF.md` path on purpose; issue `#249` (a later, separate piece of work that also moves the
+plugin's own files, decision 19) updates both. The same commit also wrote decisions 16, 18 and 19 into
+`.claude/memory/working-rules.md`. Past entries below that mention the handoff's earlier location keep
+the wording they were written with — they describe what was true at the time, not what is true now —
+but the one Markdown link inside the 2026-09-21 entry below was re-pointed to `../.github/HANDOFF.md`
+so it still opens the right file; only that link's address changed, not what the entry says.
 
 ## 2026-09-21 — Issue sweep, LinksPage programme, standing rules in the repo, handoff moved
 
 Branch: **`feat/2026-09-21-linkspage-and-sweep`** (cut from `alpha` at `cd59feb`, pushed; one pull
-request to `alpha` later). Live detail is in [HANDOFF.md](HANDOFF.md); this is the summary.
+request to `alpha` later). Live detail is in [HANDOFF.md](../.github/HANDOFF.md); this is the summary.
 
 - **Repository re-aligned** with GitHub; the merged 2026-09-07 branch deleted locally (safe delete).
 - **Analysis workflow** (9 agents: 2 web researchers on Linktree, Beacons, the influenceflow.io 2026

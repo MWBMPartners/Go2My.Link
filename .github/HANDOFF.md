@@ -1,5 +1,11 @@
 # 🤝 HANDOFF — Go2My.Link
 
+> 📍 **Moved here from `.claude/HANDOFF.md` on 2026-09-22** (owner decision 17, #243) — the owner
+> wanted the handoff at `.github/HANDOFF.md`, as in the sister project MeedyaDL. The note just
+> below is kept as it was written, as the historical record of the *previous* move (from
+> the repository root into `.claude/`, on 2026-09-21); it is not being corrected to describe
+> this second move.
+
 > 📍 **This file moved from the repository root to `.claude/HANDOFF.md` on 2026-09-21** (the owner
 > asked for the handoff in `.claude/`). The root `HANDOFF.md` is now ignored by git: it is only the
 > dev-team plugin's scratch "resume card", which the plugin overwrites and tries to commit during its
@@ -18,6 +24,12 @@
 ---
 
 ## ▶️ START HERE — pick-up point (next session / owner)
+
+### 🏗️ Build queue
+
+| Key | Issue | What | Builder | Status |
+| --- | --- | --- | --- | --- |
+| HK-01 | #248 | Move the handoff to `.github/HANDOFF.md` and record owner decisions 16–19 in the working rules | Sonnet | ✅ done — Review: 4 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback; last round clean. |
 
 ### 🔄 2026-09-21 — SESSION IN PROGRESS (read this first)
 
@@ -98,6 +110,11 @@ yet; enabling does not add payments (#57–#60 need billing credentials).
   `autofix=off` (ci-medic). On its
   `economy` setting it uses Opus instead of Fable for reasoning. `.dev-team/config.yml` (new) points
   it at `alpha` (its default would have been `main`).
+  > **Superseded on 2026-09-22 (decision 18, #243):** the blanket "not its code-writing skills" line
+  > above is no longer the rule — those skills are now allowed on a branch or worktree of the plugin's
+  > own, with anything worth keeping brought across afterwards as one reviewed issue and commit. This
+  > paragraph is left as it was written on 2026-09-21, as the record of that day's finding; the current
+  > policy is `.claude/memory/working-rules.md`, rule 5.
 - **The plugin's safety guard misfires**: it blocked a harmless shell command because the
   command's *text* contained the words "push" and "main". Work-round: write the text to a file
   with the editor (the Write tool — not a shell `echo` or heredoc, whose text the guard still sees)
@@ -424,7 +441,7 @@ post-launch roadmap the owner asked for:
 8. **OpenAPI/Swagger docs** — thorough, once the API endpoints exist (capstone of P1).
 
 **Working preferences (owner):** the full, current list is
-[`.claude/memory/working-rules.md`](memory/working-rules.md). In short: deep planning on
+[`.claude/memory/working-rules.md`](../.claude/memory/working-rules.md). In short: deep planning on
 **Fable** (one agent after another, not in parallel); implementation on **Sonnet/Haiku**, **Opus
 only when necessary**; **one GitHub issue + one commit per piece of work**; **commit and push each
 finished piece to the working branch** (changed 2026-09-21 — it used to be "commit, never push");

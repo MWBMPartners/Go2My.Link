@@ -6,10 +6,13 @@
 > `~/.claude/CLAUDE.md` (which `~/.codex/AGENTS.md` links to), but that file only exists on the
 > owner's own computers. This copy travels with the code, so the rules still apply on a fresh
 > clone, a cloud session, or another tool.
-> **Last revised:** 2026-09-21, from the owner's instructions that day, and corrected the same day
-> after an independent review found a wrong claim about the dev-team plugin and several sub-rules
-> that had been left out. Nothing that was already a standing rule has been removed — the older
-> project rules are listed at the end.
+> **Last revised:** 2026-09-22, for owner decisions 16–19 (#243) — parallel fact-gathering (rule 4),
+> the handoff's move to `.github/HANDOFF.md` (rule 3), the dev-team plugin's code-writing skills
+> allowed on a branch or worktree of their own (rule 5), and the plugin's own files moving to
+> `docs/dev-team/` in a follow-up piece of work (rule 5). Before that: 2026-09-21, from the owner's
+> instructions that day, and corrected the same day after an independent review found a wrong claim
+> about the dev-team plugin and several sub-rules that had been left out. Nothing that was already a
+> standing rule has been removed — the older project rules are listed at the end.
 > **Codex sees this file** through the `.OpenAI/memory/` copy, refreshed by
 > `scripts/sync-ai-context.sh`. Edit this file, never the copy.
 
@@ -42,18 +45,28 @@ a deliberate decision for the owner, never done on the quiet.
 
 ## 3. 🤝 Keep the handoff document current — as you go
 
-The one handoff for this project is **[`.claude/HANDOFF.md`](../../.claude/HANDOFF.md)**. There is exactly one.
-Do not create a second copy anywhere else "for convenience" — two copies drift apart and then nobody
-knows which is true.
+The one handoff for this project is **[`.github/HANDOFF.md`](../../.github/HANDOFF.md)**. There is
+exactly one. Do not create a second copy anywhere else "for convenience" — two copies drift apart and
+then nobody knows which is true.
 
-*Why it lives in `.claude/` and not at the repository root (moved 2026-09-21, as the owner asked):*
-the dev-team plugin writes its own short "resume card" at `HANDOFF.md` in the repository **root**,
-replacing whatever is there, and commits it during its runs. With the project's handoff at the root,
-every plugin run would have wiped it. Now the root `HANDOFF.md` is listed in `.gitignore`, so it is
-only the plugin's scratch file: an ordinary `git add` will not pick it up (only a forced `git add -f`
-would — never do that for it), and the plugin never writes anything under `.claude/`. Until this
-change is merged, the root file is still tracked on `alpha`. **Never write the project handoff at the
-root.**
+*Why it is not at the repository root:* the dev-team plugin writes its own short "resume card" at
+`HANDOFF.md` in the repository **root**, replacing whatever is there, and commits it during its runs.
+With the project's handoff at the root, every plugin run would have wiped it. The root `HANDOFF.md` is
+listed in `.gitignore`, so it is only the plugin's scratch file: an ordinary `git add` will not pick it
+up (only a forced `git add -f` would — never do that for it). The plugin's own handoff card only ever
+goes to that root file; nothing in the plugin writes to `.github/HANDOFF.md`, so a plugin run cannot
+touch the project's real handoff there. **Never write the project handoff at the root.**
+
+*Where it has lived (decision 17, #243):* first at the repository root; moved to `.claude/HANDOFF.md`
+on 2026-09-21 for the reason above; moved again to `.github/HANDOFF.md` on 2026-09-22, as the owner
+asked, so it sits where the sister project MeedyaDL keeps its own handoff. Every pointer to it in this
+repository was updated in the same commit as that second move, **except** `.gitignore` and
+`.dev-team/config.yml`, which still name the old `.claude/HANDOFF.md` path on purpose — issue `#249`
+(a separate, later piece of work that also moves the plugin's own files, see decision 19 below)
+updates both. A few lines describing history — in this file, `.claude/HISTORY.md`, `.claude/README.md`
+and the handoff itself — are left with the path that was true when they were written. They are a
+record of the past, not a current instruction to follow, and read plainly as that: past tense, an
+old date, or both — not every one of them carries its own note saying so.
 
 Update it:
 
@@ -72,10 +85,17 @@ gets.
 - **Think hard first.** The owner's word for this is "ultrathink". Use the planning and
   orchestration features the tool offers (in Claude Code: workflows and agents) — the owner has
   opted in.
+- **Fact-gathering may run in parallel (decision 16, #243).** Reading code, listing issues and
+  collecting other evidence — work that only finds out what is already true — can be split across
+  several agents running at the same time, because none of them is making a judgement the others
+  need to see first.
 - **Deep analysis and deep planning use the strongest reasoning model, one agent at a time, in
   sequence — never several in parallel**, because each planning step should see what the one
-  before it established. Today in Claude Code that is **Fable**; if Fable is unavailable, fall back
-  to **Opus**, say so, and **try Fable again on every later planning run** (limits reset).
+  before it established. This is the part decision 16 leaves unchanged: a judgement call — what a
+  finding means, what to build, in what order — still waits for the previous judgement, even though
+  the fact-gathering that feeds it did not have to. Today in Claude Code that is **Fable**; if Fable
+  is unavailable, fall back to **Opus**, say so, and **try Fable again on every later planning run**
+  (limits reset).
 - **Building uses the cheapest model that can do the job well:** Sonnet or Haiku, whichever fits
   (Haiku for purely mechanical edits). **Opus only when the build is genuinely complex.**
 - **Checking is never done by a weaker model than the building** — in Claude Code, never below
@@ -87,41 +107,48 @@ gets.
 ## 5. 🔌 Use the helper plugins where they fit
 
 Use helper plugins where they fit — to plan, build, review, document and **suggest** further fixes,
-tweaks, enhancements and new features. For the dev-team plugin on this repository that currently means
-analysis, reviews, audits and suggestions only (see below). Anything outside the task in hand is
-raised as a suggestion (an issue, or a line in the report) — not built unless the owner says so.
+tweaks, enhancements and new features. Anything outside the task in hand is raised as a suggestion (an
+issue, or a line in the report) — not built unless the owner says so.
 
 **A helper must not create a second handoff or a competing plan.** Where a helper writes its own
 handoff or plan files, switch that off where it can be, and keep those files out of the repository
 (for example with `.gitignore`), so the project's own handoff stays the only one.
 
-- **Where the dev-team plugin fits here — and where it does not.** Use it for analysis, reviews,
-  audits and suggestions, and record what it finds as issues. Several of those skills **fix and commit
-  by default**, so always give them their report-only setting:
+**The dev-team plugin stays in use here (decision 18, #243).** Two things follow from that decision,
+and they hold regardless of which of the plugin's skills is run:
+
+- **This project's rules win wherever they differ from the plugin's own habits.** The plugin's
+  defaults, its settings file, and what it would normally do on its own are all second to the
+  no-shorthand rule, plain English, the review loop, and everything else in this file.
+- **Its work never lands on the working branch directly, and it never pushes.** That covers its
+  code-writing skills too (orchestrator, iterate, autopilot, migrate) — they are not banned, but
+  whatever they run happens on a branch or worktree of the plugin's own, never on the project's
+  working branch. Bringing a result across is then an ordinary, reviewed piece of work done by the
+  lead: one GitHub issue, one commit, through the same cross-system review loop as anything else
+  (rule 6) — never a wholesale merge of the plugin's own commits, which carry no issue number, no
+  type prefix, and no review of their own. Getting the plugin's commits onto the working branch
+  safely, any other way, took a procedure that kept failing review in new ways (2026-09-21, six
+  review rounds); isolating them to their own branch or worktree is what makes decision 18 safe to
+  follow. **Review, security and docs never write product code here: they only ever run in their
+  report-only setting. Even then, they can still update the plugin's own notes files — see "Before
+  any plugin run" below, a few points down, for what those are and how to handle them. The same care
+  applies to ci-medic and featurefind, neither of which is review, security or docs, but both of which
+  can still touch files here:**
   - review: `remediate=report` (its default is to fix);
   - security: `report-only` (its default is `fix=auto`; it may still create a branch of its own — see
     the "after any plugin run" point below);
-  - docs: `mode=audit` (otherwise it guesses a writing mode);
-  - ci-medic (`/dev-team-watch-prs`): `autofix=off` (its default, `autofix=safe`, pushes);
+  - docs: `mode=audit` only, never a writing mode (left unset, it guesses one and writes files);
+  - ci-medic (`/dev-team-watch-prs`): `autofix=off` (its default, `autofix=safe`, pushes straight onto
+    an open pull request's branch);
   - featurefind has no fix step, but it writes `FEATURES.md` and also updates the "Proposed-Features
     ledger" section of `PROJECT.md`, which exists here — check `git status` afterwards (below).
-
-  **Do not use its code-writing skills on this repository for now** (orchestrator, iterate, autopilot,
-  docs in a writing mode, review or security without the report-only setting, migrate, and ci-medic
-  with fixes switched on). They commit on a branch of their
-  own at every checkpoint — whatever `auto-commit` says — with no issue number, no type prefix and no
-  cross-system review, and ci-medic pushes straight onto an open pull request's branch. Bringing that
-  work onto the working branch safely took a procedure that kept failing review in new ways
-  (2026-09-21, six review rounds), so building is done by the project's own agents instead (rule 4).
-  If a code-writing skill is ever genuinely needed, raise it with the owner first. *(This is a
-  judgement about where the plugin fits, recorded for the owner to confirm or overturn.)*
 - **Its settings file: `.dev-team/config.yml`.** Read it first. It points the plugin at `alpha`
   (without it, the plugin would use GitHub's default branch, `main`), builds with Sonnet and checks
   with Opus, and switches off the plugin's extra per-task handoff rewrite and per-task commit. It
   cannot stop the plugin's checkpoint commits. (Until this change is merged, `alpha` itself does not
   have the file.)
 - **Its handoff card cannot reach the project's handoff.** The plugin's card goes to the root
-  `HANDOFF.md`, which git ignores (rule 3); the project's handoff is `.claude/HANDOFF.md`. If the
+  `HANDOFF.md`, which git ignores (rule 3); the project's handoff is `.github/HANDOFF.md`. If the
   plugin reports that `HANDOFF.md` is ignored, that is expected: never force it in with `git add -f`.
 - **Deep analysis and planning stay outside the plugin.** The `economy` setting, which is the only one
   that builds with Sonnet, also moves the plugin's own reasoning agents from Fable down to Opus, and the
@@ -134,26 +161,33 @@ handoff or plan files, switch that off where it can be, and keep those files out
   `.dev-team/autopilot.json`). Keep those changes deliberately, as a normal reviewed commit, or put a
   file back with `git restore -- <file>` — allowed by rule 12 **only if that file had no uncommitted
   changes before the run** (`git restore` puts back the whole file, and people edit `SECURITY.md` by
-  hand); otherwise undo the plugin's part by hand. If the run made commits or a branch of its own, stop
-  and tell the owner rather than pushing or deleting anything.
+  hand); otherwise undo the plugin's part by hand. A code-writing skill making commits on a branch or
+  worktree of its own is expected under decision 18 (above) — leave that branch alone and bring across
+  only what is worth keeping, the reviewed way. If instead it committed onto the working branch itself,
+  stop and tell the owner rather than pushing or deleting anything.
 - **Autopilot cannot start a fresh run in this repository as it stands.** `.dev-team/autopilot.json`
   (tracked in git) records the June 2026 run as finished, and autopilot reads that file first: when it
   says "finished", autopilot only reports and stops.
 - **The plugin's own plan and state files** — `PROJECT.md`, `FEATURES.md` and `SECURITY.md` at the
   repository root, and `.dev-team/autopilot.json` (its other files, such as `VERIFICATION.md` and
-  `MIGRATION.md`, are not in the repository today) — are tracked in git from earlier runs. Under the
-  rule above they belong outside the repository. Because they hold useful history (`SECURITY.md`
-  especially), *how* to move them out — stop tracking them, or move the useful parts under `docs/` — is
-  being confirmed with the owner (raised 2026-09-21). Until then, `.claude/HANDOFF.md` is the plan
-  of record and those files are only the plugin's working notes. (The `.gitignore` comment that says
-  "autopilot.json IS tracked" will be corrected once that is decided.)
+  `MIGRATION.md`, are not in the repository today) — are tracked in git from earlier runs. They hold
+  useful history (`SECURITY.md` especially), so the owner's decision (decision 19, #243) is not to
+  drop them: they **move to `docs/dev-team/` and stay tracked there**, in a separate piece of work,
+  issue `#249`. Once that move lands, a fresh copy the plugin writes at the repository root afterwards
+  — its habit, unchanged — is ignored by git and is scratch only, the same treatment the root
+  `HANDOFF.md` already gets (rule 3); `#249` is what adds that `.gitignore` line. Until the move lands,
+  `.github/HANDOFF.md` is the plan of record and today's root copies are only the plugin's working
+  notes. (The `.gitignore` comment that says "autopilot.json IS tracked" will be corrected in the same
+  change.)
 - **Its safety guard is always on here, and can misfire.** The plugin's guard checks every shell
   command for pushes to the main branch whenever `.dev-team/autopilot.json` exists — and because that
   file is tracked, it exists in every session, run or no run. It has blocked a harmless command just
   because the command's text contained the words "push" and "main". If that happens, write the text to a
   file with the editor (in Claude Code, the Write tool — not a shell `echo` or heredoc, whose text the
-  guard still sees) and run the file; never switch the guard off to get round it. (Removing the stale
-  `autopilot.json`, part of the owner decision above, would stop the guard running outside real runs.)
+  guard still sees) and run the file; never switch the guard off to get round it. (Moving
+  `.dev-team/autopilot.json` out of `.dev-team/` and into `docs/dev-team/`, part of decision 19 above
+  and done in `#249`, is what stops the guard running outside real runs — the file is not deleted, only
+  relocated.)
 
 ## 6. 🔁 Cross-system code review, until a round comes back clean
 
@@ -191,7 +225,7 @@ One piece of work = one GitHub issue and one commit. When it is finished:
 4. **Update the Codex memory and context** in `.OpenAI/` by running
    `sh scripts/sync-ai-context.sh` (it copies the files across; never edit the copies by hand), and
    update the root `AGENTS.md` if a rule it summarises has changed.
-5. **Update the handoff** ([`.claude/HANDOFF.md`](../../.claude/HANDOFF.md)).
+5. **Update the handoff** ([`.github/HANDOFF.md`](../../.github/HANDOFF.md)).
 6. **Commit and push to the working branch** — the one branch that will later be merged into
    `alpha` by a single pull request. The commit title starts with its type (`feat:`, `fix:`,
    `docs:` …), the message ends with any closing lines the project or tool requires (for example the

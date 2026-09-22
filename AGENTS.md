@@ -10,7 +10,7 @@ only an old chat log.
 
 ## 📋 Read these before doing any work
 
-1. **[`.claude/HANDOFF.md`](.claude/HANDOFF.md)** — the one session handoff (read it where it is; it is
+1. **[`.github/HANDOFF.md`](.github/HANDOFF.md)** — the one session handoff (read it where it is; it is
    deliberately not copied into `.OpenAI/`, because a second copy would drift). Its "START HERE" section says what is in
    progress, what was tried and rejected, and what to do next. Start here.
 2. **[`.OpenAI/CONTEXT.md`](.OpenAI/CONTEXT.md)** — the project entry point (a generated copy of the
@@ -33,17 +33,22 @@ copy is out of step (it warns; `alpha` has no required checks, so it cannot bloc
   commits, issues, docs, in-app text — even to a technical reader. Explain a technical name the
   first time it is unavoidable.
 - **Never write the owner's real name.** Use the GitHub username `Salem874`, everywhere.
-- **One handoff: [`.claude/HANDOFF.md`](.claude/HANDOFF.md).** Update it as the work happens — after
+- **One handoff: [`.github/HANDOFF.md`](.github/HANDOFF.md).** Update it as the work happens — after
   each piece of work, the moment something important is learned, and before anything long-running.
   Never create a second one, and never write it at the repository root: the root `HANDOFF.md` is the
   dev-team plugin's scratch card and is ignored by git.
 - **Strongest model for thinking, cheapest capable model for building; checking is never done by a
   weaker model than the building.** Plan one step at a time, in sequence.
 - **Use helper plugins where they fit**, including to suggest further fixes, tweaks, enhancements and
-  new features — raised as suggestions, not built unless the owner says so. The Claude Code dev-team
-  plugin is used here only for analysis, reviews, audits and suggestions — not its code-writing skills,
-  which commit unreviewed work on branches of their own. Several of its review-style skills fix and
-  commit by default, so give them their report-only setting (working-rules.md, rule 5).
+  new features — raised as suggestions, not built unless the owner says so. **The Claude Code dev-team
+  plugin stays in use here (decision 18, #243).** Where its own habits differ from this project's
+  rules, this project's rules win. Its work never lands on the working branch directly and it never
+  pushes: a code-writing skill (orchestrator, iterate, autopilot, migrate) runs on a branch or worktree
+  of the plugin's own, and any result worth keeping is brought across afterwards as one ordinary
+  GitHub issue and one commit, through the same cross-system review loop as anything else. Review,
+  security and docs never write product code here at all — they run only in their report-only setting
+  (`remediate=report`, `report-only`, `mode=audit`); ci-medic (`/dev-team-watch-prs`) only with
+  `autofix=off` (working-rules.md, rule 5).
 - **Every change is reviewed by the other system until a round finds no real problems.** When Codex
   builds something, Claude Code reviews it with a fresh agent; when Claude Code builds it, Codex
   reviews it (`codex review --uncommitted` before a commit, `codex review --base alpha` for the whole
@@ -54,7 +59,7 @@ copy is out of step (it warns; `alpha` has no required checks, so it cannot bloc
   Docker with the same version as CI — `docker run --rm -v "$PWD":/app -w /app php:8.4-cli php
   tests/run.php`; format only the files you touched; one security read of the diff); the review
   loop; update `.claude/` and then run `sh scripts/sync-ai-context.sh` for `.OpenAI/`; update
-  `.claude/HANDOFF.md`; **commit and push to the working branch**; update that task's GitHub issue; show a
+  `.github/HANDOFF.md`; **commit and push to the working branch**; update that task's GitHub issue; show a
   progress table.
 - **One working branch, one pull request to `alpha` opened later when the owner says so, never
   stacked.** Never force-push, hard-reset or change a remote without an explicit instruction, and no
