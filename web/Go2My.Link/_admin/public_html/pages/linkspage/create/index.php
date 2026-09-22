@@ -258,13 +258,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                             <div class="input-group mb-3">
                                 <span class="input-group-text">lnks.page/</span>
                                 <?php
+                                // 🐛 #220 (LP-12): formField() (web/_includes/accessibility.php)
+                                // already escapes its 'value' with htmlspecialchars() before
+                                // printing it into the HTML attribute. Passing an ALREADY-escaped
+                                // value here used to double-escape it — a title with an apostrophe
+                                // like "Jane's" was stored as "Jane&#039;s" and got worse on every
+                                // save, and a URL containing "&" (common in image links) was
+                                // corrupted the same way. Every formField() call on this page now
+                                // passes the raw, unescaped stored/POSTed value — formField() stays
+                                // the ONE place that escapes. Direct echoes into the HTML OUTSIDE
+                                // formField() (attributes such as the colour inputs, and text such
+                                // as the template-name labels below) still call
+                                // g2ml_sanitiseOutput() themselves, since nothing else escapes
+                                // those — that is the correct single escape, not a second one, and
+                                // must not be removed.
                                 echo formField([
                                     'id'          => 'slug',
                                     'name'        => 'slug',
                                     'label'       => 'URL Slug',
                                     'type'        => 'text',
                                     'required'    => true,
-                                    'value'       => g2ml_sanitiseOutput($formSlug),
+                                    'value'       => $formSlug,
                                     'placeholder' => 'your-name',
                                     'helpText'    => 'Letters, numbers, hyphens, and underscores only (1-100 characters).',
                                     'class'       => 'rounded-start-0',
@@ -279,7 +293,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                                 'label'    => 'Page Title',
                                 'type'     => 'text',
                                 'required' => true,
-                                'value'    => g2ml_sanitiseOutput($formPageTitle),
+                                'value'    => $formPageTitle,
                             ]);
 
                             echo formField([
@@ -289,7 +303,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                                 'type'     => 'textarea',
                                 'rows'     => 3,
                                 'required' => false,
-                                'value'    => g2ml_sanitiseOutput($formPageDescription),
+                                'value'    => $formPageDescription,
                             ]);
 
                             echo formField([
@@ -298,7 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                                 'label'       => 'Avatar Image URL (Optional)',
                                 'type'        => 'url',
                                 'required'    => false,
-                                'value'       => g2ml_sanitiseOutput($formAvatarPath),
+                                'value'       => $formAvatarPath,
                                 'placeholder' => 'https://example.com/me.png',
                                 'helpText'    => $avatarUrlHelpText,
                             ]);
@@ -384,7 +398,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                                 'label'       => 'Font Family (Optional)',
                                 'type'        => 'text',
                                 'required'    => false,
-                                'value'       => g2ml_sanitiseOutput($formFontFamily),
+                                'value'       => $formFontFamily,
                                 'placeholder' => 'e.g. "Segoe UI", Roboto, sans-serif',
                                 'helpText'    => 'Letters, numbers, spaces, commas, hyphens, and quotes only.',
                             ]);
@@ -416,7 +430,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                                             'label'       => $networkLabel,
                                             'type'        => 'url',
                                             'required'    => false,
-                                            'value'       => g2ml_sanitiseOutput($socialValue),
+                                            'value'       => $socialValue,
                                             'placeholder' => 'https://...',
                                         ]);
                                         ?>

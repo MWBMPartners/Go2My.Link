@@ -77,7 +77,7 @@ yet; enabling does not add payments (#57–#60 need billing credentials).
 | LP-02 | #218 | Save bugs: social links lost, font saved as "0", republish "not found", unreachable slugs | Sonnet | ✅ done — Review: 4 round(s); reviewers by round: claude-opus-fallback, codex, claude-opus-fallback, claude-opus-fallback; last round clean. |
 | LP-11 | #219 | GDPR: LinksPages included in data export and account deletion | Sonnet | ✅ done — Review: 11 round(s), all claude-opus-fallback (Codex out of credit); code and tests clean from round 6, rounds 7–11 corrected the erasure comment; follow-ups #244–#247 filed |
 | LP-10 | #221 | Avatars and link icons display on the public page (allow https images in its security policy) | Haiku | ✅ done — Review: 6 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback, claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
-| LP-12 | #220 | Stop double-escaping form values (ampersands corrupted on re-save) | Sonnet | ⏳ queued (batch B) |
+| LP-12 | #220 | Stop double-escaping form values (ampersands corrupted on re-save) | Sonnet | ✅ done — Review: 3 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
 | LP-03 | #222 | Paid plans can hide "Powered by Lnks.page" | Sonnet | ⏳ queued (batch C) |
 | LP-08 | #223 | Real social icons and template styling | Sonnet | ⏳ queued (batch C) |
 | LP-04 | #224 | SEO and sharing controls | Sonnet | ⏳ queued (batch C) |

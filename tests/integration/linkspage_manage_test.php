@@ -1082,3 +1082,75 @@ test('linkspage manage (#221/#273): updating a page to an https:// avatar succee
 
     g2ml_lpm_test_delete_page($db, $pageUID);
 });
+
+// ============================================================================
+// 🐛 #220 (LP-12) — an apostrophe and an ampersand must round-trip unchanged
+// ============================================================================
+// The bug was in the ADMIN FORM PAGES (pages/linkspage/create/index.php and
+// edit/index.php), which used to escape a value with g2ml_sanitiseOutput()
+// BEFORE handing it to formField() — and formField() then escaped it AGAIN
+// on the way out, so the double-escaped text got saved back on the next
+// submit. This manage-layer function, g2ml_linkspageManageCreatePage(), is
+// what those pages actually call to save — it never escapes for HTML
+// output at all; it only strip_tags()-and-trims via g2ml_sanitiseInput()
+// (title/description) and scheme-validates via g2ml_sanitiseURL() (social
+// links), neither of which touches an apostrophe or an ampersand. This test
+// proves that THIS layer was never the problem: an apostrophe in the title
+// and an ampersand in a social-link URL survive completely unchanged. The
+// admin pages' own fix (removing the extra g2ml_sanitiseOutput() call
+// before formField()) is covered by the automated source check in
+// tests/unit/accessibility_formfield_test.php (the "no formField() call
+// pre-escapes its value" tests), and formField()'s own single-escape
+// behaviour is pinned down in the same file. (Review round 2 on LP-12
+// found this comment out of date — it used to say the admin pages' fix was
+// checked only by reading the source in code review, which stopped being
+// true once that automated check was added in round 1.)
+test('linkspage manage (#220): a title with an apostrophe and a social URL with "&" round-trip unchanged', function () use ($db, $g2mlLpmOrgHandle): void
+{
+    $marker  = g2ml_lpm_test_marker('escaping');
+    $userUID = g2ml_lpm_test_insert_user($db, $g2mlLpmOrgHandle, $marker);
+
+    $createResult = g2ml_linkspageManageCreatePage($userUID, $g2mlLpmOrgHandle, [
+        'slug'        => $marker . '-slug',
+        'pageTitle'   => "Jane's & Co",
+        'socialLinks' => [
+            'website' => 'https://example.com/?a=1&b=2',
+        ],
+    ]);
+
+    assert_true($createResult['success'], 'Creating a page with an apostrophe in the title and "&" in a social URL must succeed: ' . ($createResult['error'] ?? ''));
+
+    $pageUID = $createResult['pageUID'];
+    $fetched = g2ml_linkspageManageGetPageForOwner($pageUID, $userUID);
+
+    // Neither the apostrophe nor the ampersand is an HTML entity — the
+    // manage layer must never escape for HTML output, only escaping on the
+    // way OUT (in formField(), exactly once) is correct.
+    assert_same("Jane's & Co", $fetched['pageTitle'], 'The title must be stored and read back with its apostrophe and ampersand exactly as submitted, not HTML-escaped');
+
+    $decodedSocialLinks = json_decode((string) $fetched['socialLinks'], true);
+    assert_true(is_array($decodedSocialLinks), 'socialLinks must be stored as valid, readable JSON');
+    assert_same('https://example.com/?a=1&b=2', $decodedSocialLinks['website'] ?? null, 'The social URL\'s "&" must survive exactly as submitted, not escaped to "&amp;" nor corrupted further');
+
+    // Round-trip through an UPDATE too, since the admin edit page saves via
+    // this same path — a value already corrupted by the old double-escape
+    // bug would compound further here if any escaping crept into this
+    // layer.
+    $updateResult = g2ml_linkspageManageUpdatePage($userUID, $pageUID, [
+        'slug'        => $marker . '-slug',
+        'pageTitle'   => "Jane's & Co",
+        'socialLinks' => [
+            'website' => 'https://example.com/?a=1&b=2',
+        ],
+    ]);
+
+    assert_true($updateResult['success'], 'Updating a page with the same apostrophe/ampersand values must succeed: ' . ($updateResult['error'] ?? ''));
+
+    $refetched = g2ml_linkspageManageGetPageForOwner($pageUID, $userUID);
+    assert_same("Jane's & Co", $refetched['pageTitle'], 'The title must still be unescaped after an update, not compounded by a second escape pass');
+
+    $decodedSocialLinksAfterUpdate = json_decode((string) $refetched['socialLinks'], true);
+    assert_same('https://example.com/?a=1&b=2', $decodedSocialLinksAfterUpdate['website'] ?? null, 'The social URL must still be unescaped after an update');
+
+    g2ml_lpm_test_delete_page($db, $pageUID);
+});

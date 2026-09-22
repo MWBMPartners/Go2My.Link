@@ -609,13 +609,28 @@ if ($pageData !== null)
                             <div class="input-group mb-3">
                                 <span class="input-group-text">lnks.page/</span>
                                 <?php
+                                // 🐛 #220 (LP-12): formField() (web/_includes/accessibility.php)
+                                // already escapes its 'value' with htmlspecialchars() before
+                                // printing it into the HTML attribute. Passing an ALREADY-escaped
+                                // value here used to double-escape it — a title with an apostrophe
+                                // like "Jane's" was stored as "Jane&#039;s" and got worse on every
+                                // save, and a URL containing "&" (common in image and social
+                                // links) was corrupted the same way. Every formField() call on
+                                // this page now passes the raw, unescaped stored/POSTed value —
+                                // formField() stays the ONE place that escapes. Direct echoes into
+                                // the HTML OUTSIDE formField() (attributes such as the public-URL
+                                // link above, the colour inputs, and the move/toggle/delete button
+                                // aria-labels below, and text such as the template-name labels)
+                                // still call g2ml_sanitiseOutput() themselves, since nothing else
+                                // escapes those — that is the correct single escape, not a second
+                                // one, and must not be removed.
                                 echo formField([
                                     'id'       => 'slug',
                                     'name'     => 'slug',
                                     'label'    => 'URL Slug',
                                     'type'     => 'text',
                                     'required' => true,
-                                    'value'    => g2ml_sanitiseOutput($pageData['slug']),
+                                    'value'    => $pageData['slug'],
                                     'helpText' => 'Letters, numbers, hyphens, and underscores only (1-100 characters).',
                                 ]);
                                 ?>
@@ -628,7 +643,7 @@ if ($pageData !== null)
                                 'label'    => 'Page Title',
                                 'type'     => 'text',
                                 'required' => true,
-                                'value'    => g2ml_sanitiseOutput($pageData['pageTitle']),
+                                'value'    => $pageData['pageTitle'],
                             ]);
 
                             $descriptionValue = '';
@@ -645,7 +660,7 @@ if ($pageData !== null)
                                 'type'     => 'textarea',
                                 'rows'     => 3,
                                 'required' => false,
-                                'value'    => g2ml_sanitiseOutput($descriptionValue),
+                                'value'    => $descriptionValue,
                             ]);
 
                             $avatarValue = '';
@@ -661,7 +676,7 @@ if ($pageData !== null)
                                 'label'    => 'Avatar Image URL (Optional)',
                                 'type'     => 'url',
                                 'required' => false,
-                                'value'    => g2ml_sanitiseOutput($avatarValue),
+                                'value'    => $avatarValue,
                                 'helpText' => $avatarUrlHelpText,
                             ]);
                             ?>
@@ -753,7 +768,7 @@ if ($pageData !== null)
                                 'label'    => 'Font Family (Optional)',
                                 'type'     => 'text',
                                 'required' => false,
-                                'value'    => g2ml_sanitiseOutput($fontFamilyValue),
+                                'value'    => $fontFamilyValue,
                                 'helpText' => 'Letters, numbers, spaces, commas, hyphens, and quotes only.',
                             ]);
                             ?>
@@ -784,7 +799,7 @@ if ($pageData !== null)
                                             'label'    => $networkLabel,
                                             'type'     => 'url',
                                             'required' => false,
-                                            'value'    => g2ml_sanitiseOutput($socialValue),
+                                            'value'    => $socialValue,
                                         ]);
                                         ?>
                                     </div>
@@ -1042,7 +1057,7 @@ if ($pageData !== null)
                                         'label'    => 'Title',
                                         'type'     => 'text',
                                         'required' => true,
-                                        'value'    => g2ml_sanitiseOutput($itemRow['itemTitle']),
+                                        'value'    => $itemRow['itemTitle'],
                                     ]);
 
                                     $itemDescriptionValue = '';
@@ -1059,7 +1074,7 @@ if ($pageData !== null)
                                         'type'     => 'textarea',
                                         'rows'     => 2,
                                         'required' => false,
-                                        'value'    => g2ml_sanitiseOutput($itemDescriptionValue),
+                                        'value'    => $itemDescriptionValue,
                                     ]);
 
                                     $itemIconValue = '';
@@ -1075,7 +1090,7 @@ if ($pageData !== null)
                                         'label'    => 'Icon Image URL (Optional)',
                                         'type'     => 'url',
                                         'required' => false,
-                                        'value'    => g2ml_sanitiseOutput($itemIconValue),
+                                        'value'    => $itemIconValue,
                                         'helpText' => $itemIconHelpText,
                                     ]);
 
@@ -1087,7 +1102,7 @@ if ($pageData !== null)
                                             'label'    => 'Destination URL',
                                             'type'     => 'url',
                                             'required' => true,
-                                            'value'    => g2ml_sanitiseOutput($itemRow['itemURL']),
+                                            'value'    => $itemRow['itemURL'],
                                         ]);
                                     }
                                     else
