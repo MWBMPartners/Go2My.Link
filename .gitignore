@@ -39,16 +39,64 @@
 **/.auth/.install_token
 **/.auth/.installed
 
-# dev-team autopilot loop lock (runtime only; state file autopilot.json IS tracked —
-# whether it should stay tracked is an open owner decision, raised 2026-09-21)
+# dev-team autopilot loop lock (runtime only — never committed).
 .dev-team/loop.lock/
+
+# The dev-team plugin's own notes files (issue #249, owner decision 19, #243).
+#
+# The plugin writes four of the files it produces as it works — PROJECT.md,
+# FEATURES.md and SECURITY.md at the repository ROOT, plus
+# .dev-team/autopilot.json — at these fixed paths regardless of which skill is
+# running; a skill that writes one of these files writes it at its original
+# path (it also writes others, such as VERIFICATION.md or MIGRATION.md, which
+# are not covered here — see .claude/memory/working-rules.md, rule 5, for how
+# those other files are handled). The copies it wrote during its June–July
+# 2026 run were tracked in git and held useful history, so instead of just
+# ignoring them, that decision was to KEEP them: they were
+# moved with `git mv` to docs/dev-team/, where they still are, still tracked,
+# with a README explaining what they are. The root HANDOFF.md below is a
+# similar case, not a different one: it held the project's real handoff from
+# 2026-07-09 to 2026-09-21 — 36 commits, `git log -- HANDOFF.md` proves it —
+# and that content was kept the same way — by moving the file, first to
+# .claude/HANDOFF.md and then to .github/HANDOFF.md — rather than by dropping
+# it. (That is a minority of the repository's life, not most of it: the
+# repository's first commit was 2026-02-22, and the history behind this
+# branch runs to 221 commits — not "this branch alone", which would mean
+# only the commits unique to it; the earlier wording here overstated it,
+# corrected again 2026-09-22.)
+# Only the root PATH is scratch-only now, because the plugin keeps writing
+# a throwaway card there; the history that used to live at that path was never
+# lost, it just moved house.
+#
+# A run that writes one of these four files still writes it at its ORIGINAL
+# path — that habit is unchanged — so all four paths are ignored here. Not
+# every run writes all four: only the autopilot loop writes autopilot.json
+# (and the plugin's `/dev-team-approve` command, which edits that same file's
+# gate ledger rather than writing a fresh one), only featurefind writes
+# FEATURES.md, and so on — see the comment above and docs/dev-team/README.md.
+# On the first three, the leading slash means "only the file at
+# the repository root": docs/dev-team/PROJECT.md, docs/dev-team/FEATURES.md
+# and docs/dev-team/SECURITY.md are NOT ignored. .dev-team/autopilot.json
+# needs no leading slash for the same reason a leading slash works on the
+# other three: a gitignore pattern with a slash anywhere in the middle (not
+# just at the start) is already anchored to the directory the .gitignore file
+# itself sits in — the repository root here — rather than matching at any
+# depth. (Checked: `git check-ignore --no-index web/.dev-team/autopilot.json`
+# exits 1 — a copy inside a subfolder is NOT caught by this line.)
+# docs/dev-team/autopilot.json is a different path entirely and is NOT
+# ignored.
+/PROJECT.md
+/FEATURES.md
+/SECURITY.md
+.dev-team/autopilot.json
 
 # The dev-team plugin writes (and tries to commit) its own ~40-line "resume card" at
 # HANDOFF.md in the repository ROOT, replacing whatever is there. The project's real
-# handoff lives at .claude/HANDOFF.md (moved there on 2026-09-21, as the owner asked), so
-# the root file is only the plugin's scratch copy and must never be committed — otherwise
-# it becomes a second, competing handoff (issue #202). The leading slash means "only the
-# root one": .claude/HANDOFF.md is NOT ignored.
+# handoff lives at .github/HANDOFF.md (moved there on 2026-09-22, as the owner asked —
+# it was at .claude/HANDOFF.md briefly before that), so the root file is only the
+# plugin's scratch copy and must never be committed — otherwise it becomes a second,
+# competing handoff (issue #202). The leading slash means "only the root one":
+# .github/HANDOFF.md is NOT ignored.
 /HANDOFF.md
 
 # MaxMind GeoLite2 database (#43) — a large, licensed, frequently-updated

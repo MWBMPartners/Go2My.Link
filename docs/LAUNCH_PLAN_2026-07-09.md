@@ -390,7 +390,7 @@ The autopilot closed 17 findings, but a **fresh adversarial pass** should target
 | **CueRCode create path** | Ensure `createdVia='cuercode'` requests can't set arbitrary `orgHandle` (must be the key's org); `qrCodeExternalUUID` UNIQUE-collision handling. |
 | **Custom-domain resolver** | Unverified-host → default-namespace leak (§5.4); host-header injection into `sp_lookupShortURL`. |
 | **LinksPage #49** | Stored XSS in user-uploaded HTML/WYSIWYG — the single biggest future risk. |
-| **Multi-tenant IDOR end-to-end** | SECURITY.md admits the suite has no `userB`/`GlobalAdmin` fixtures — cross-org IDOR is only manually reviewed, not tested. Build those fixtures. |
+| **Multi-tenant IDOR end-to-end** | `docs/dev-team/SECURITY.md` admits the suite has no `userB`/`GlobalAdmin` fixtures — cross-org IDOR is only manually reviewed, not tested. Build those fixtures. |
 | **Migration data** | Normalise the 480 legacy destinations through `g2ml_sanitiseURL()` (some may be `javascript:`/`data:` from the old engine). |
 | **Session fixation / installer re-run** | Full end-to-end probes (currently manual-read only). |
 

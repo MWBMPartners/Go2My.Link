@@ -9,7 +9,7 @@
 > **Last revised:** 2026-09-22, for owner decisions 16–19 (#243) — parallel fact-gathering (rule 4),
 > the handoff's move to `.github/HANDOFF.md` (rule 3), the dev-team plugin's code-writing skills
 > allowed on a branch or worktree of their own (rule 5), and the plugin's own files moving to
-> `docs/dev-team/` in a follow-up piece of work (rule 5). Before that: 2026-09-21, from the owner's
+> `docs/dev-team/`, done the same day in `#249` (rule 5). Before that: 2026-09-21, from the owner's
 > instructions that day, and corrected the same day after an independent review found a wrong claim
 > about the dev-team plugin and several sub-rules that had been left out. Nothing that was already a
 > standing rule has been removed — the older project rules are listed at the end.
@@ -141,7 +141,8 @@ and they hold regardless of which of the plugin's skills is run:
   - ci-medic (`/dev-team-watch-prs`): `autofix=off` (its default, `autofix=safe`, pushes straight onto
     an open pull request's branch);
   - featurefind has no fix step, but it writes `FEATURES.md` and also updates the "Proposed-Features
-    ledger" section of `PROJECT.md`, which exists here — check `git status` afterwards (below).
+    ledger" section of `PROJECT.md` — both now fresh, root-level, git-ignored scratch files (decision
+    19, below); check `git status --ignored` afterwards, not plain `git status` (below).
 - **Its settings file: `.dev-team/config.yml`.** Read it first. It points the plugin at `alpha`
   (without it, the plugin would use GitHub's default branch, `main`), builds with Sonnet and checks
   with Opus, and switches off the plugin's extra per-task handoff rewrite and per-task commit. It
@@ -156,38 +157,64 @@ and they hold regardless of which of the plugin's skills is run:
   analysis and planning with Fable agents one after another, outside the plugin, and do not use the
   plugin's debate step for planning.
 - **Before any plugin run, commit your own work and check `git status` is clean; after it, look at
-  `git status` and `git log`.** Even its analysis skills may update its own notes files (`PROJECT.md`,
-  `FEATURES.md`, `SECURITY.md`, `VERIFICATION.md`, `verdict.json`, `MIGRATION.md`,
-  `.dev-team/autopilot.json`). Keep those changes deliberately, as a normal reviewed commit, or put a
+  `git status --ignored` and `git log`.** (Plain `git status` is not enough since decision 19, below —
+  four of the plugin's notes files now live at root paths that git ignores, so it no longer lists
+  them.) Even its analysis skills may update its own notes files (`PROJECT.md`, `FEATURES.md`,
+  `SECURITY.md`, `.dev-team/autopilot.json`, and, where the repository has them, `VERIFICATION.md`,
+  `verdict.json`, `MIGRATION.md`). Those four now-ignored root files (`PROJECT.md`, `FEATURES.md`,
+  `SECURITY.md`, `.dev-team/autopilot.json`) are scratch copies, so git is not tracking that path any
+  more: they cannot be committed the normal way, and `git restore` does not apply to them. Never leave
+  such a file in place, and never delete one without reading it first. A fresh copy worth keeping is
+  brought across by hand, as its own reviewed piece of work: into a GitHub issue, the handoff, or a
+  new dated file. It is never copied
+  onto the June–July 2026 copies kept under `docs/dev-team/` (decision 19, below) — those stay a
+  historical record of that one run and are not updated with newer runs' notes (see
+  `docs/dev-team/README.md`). The other files this point covers (`VERIFICATION.md`, `verdict.json`,
+  `MIGRATION.md`, and anything still tracked) are not ignored: keep changes to them deliberately, as
+  a normal reviewed commit, or put a
   file back with `git restore -- <file>` — allowed by rule 12 **only if that file had no uncommitted
-  changes before the run** (`git restore` puts back the whole file, and people edit `SECURITY.md` by
+  changes before the run** (`git restore` puts back the whole file, and people edit some of these by
   hand); otherwise undo the plugin's part by hand. A code-writing skill making commits on a branch or
   worktree of its own is expected under decision 18 (above) — leave that branch alone and bring across
   only what is worth keeping, the reviewed way. If instead it committed onto the working branch itself,
   stop and tell the owner rather than pushing or deleting anything.
-- **Autopilot cannot start a fresh run in this repository as it stands.** `.dev-team/autopilot.json`
-  (tracked in git) records the June 2026 run as finished, and autopilot reads that file first: when it
-  says "finished", autopilot only reports and stops.
-- **The plugin's own plan and state files** — `PROJECT.md`, `FEATURES.md` and `SECURITY.md` at the
-  repository root, and `.dev-team/autopilot.json` (its other files, such as `VERIFICATION.md` and
-  `MIGRATION.md`, are not in the repository today) — are tracked in git from earlier runs. They hold
-  useful history (`SECURITY.md` especially), so the owner's decision (decision 19, #243) is not to
-  drop them: they **move to `docs/dev-team/` and stay tracked there**, in a separate piece of work,
-  issue `#249`. Once that move lands, a fresh copy the plugin writes at the repository root afterwards
-  — its habit, unchanged — is ignored by git and is scratch only, the same treatment the root
-  `HANDOFF.md` already gets (rule 3); `#249` is what adds that `.gitignore` line. Until the move lands,
-  `.github/HANDOFF.md` is the plan of record and today's root copies are only the plugin's working
-  notes. (The `.gitignore` comment that says "autopilot.json IS tracked" will be corrected in the same
-  change.)
-- **Its safety guard is always on here, and can misfire.** The plugin's guard checks every shell
-  command for pushes to the main branch whenever `.dev-team/autopilot.json` exists — and because that
-  file is tracked, it exists in every session, run or no run. It has blocked a harmless command just
-  because the command's text contained the words "push" and "main". If that happens, write the text to a
-  file with the editor (in Claude Code, the Write tool — not a shell `echo` or heredoc, whose text the
-  guard still sees) and run the file; never switch the guard off to get round it. (Moving
-  `.dev-team/autopilot.json` out of `.dev-team/` and into `docs/dev-team/`, part of decision 19 above
-  and done in `#249`, is what stops the guard running outside real runs — the file is not deleted, only
-  relocated.)
+- **The plugin's own plan and state files moved (decision 19, #243, done in `#249`).**
+  `PROJECT.md`, `FEATURES.md` and `SECURITY.md`, which the plugin wrote at the repository root, and
+  `.dev-team/autopilot.json` (its other files, such as `VERIFICATION.md` and `MIGRATION.md`, are not
+  in the repository today) held useful history from earlier runs (`SECURITY.md` especially), so the
+  owner's decision was not to drop them: they were moved with `git mv`, so their history followed, to
+  **[`docs/dev-team/`](../../docs/dev-team/README.md)**, where they stay tracked and a README explains
+  what they are. A fresh copy the plugin writes at those same four original paths afterwards — its
+  habit, unchanged — is now ignored by git and is scratch only, the same treatment the root
+  `HANDOFF.md` already gets (rule 3 above). `docs/dev-team/SECURITY.md` is that old findings register,
+  **not** a vulnerability-reporting policy — that is
+  **[`.github/SECURITY.md`](../../.github/SECURITY.md)**, a new file `#249` also added, naming GitHub's
+  private vulnerability reporting and the in-app report form (`#268`, built separately).
+- **Autopilot starts a fresh run at iteration 0 right after the move above — and needs the same
+  clearing-out done again after every run that follows.** Before the move, `.dev-team/autopilot.json`
+  sitting at that path — tracked in git, recording the June 2026 run as finished — stopped a fresh
+  autopilot run from starting, because autopilot reads that exact path first and a "finished" run
+  there makes it only report and stop. The move cleared that path, so the very next run will start
+  clean. That only lasts until a run finishes: autopilot writes its own `.dev-team/autopilot.json`
+  back to this same path while it works, and — because that path is git-ignored (`.gitignore`, above)
+  — leaves the finished file behind without it ever showing up in `git status`. Left there, it puts
+  the project back in the exact situation this move was meant to end, invisibly: the next run reads a
+  "finished" state and stops. **Once a run has finished and anything worth keeping has been brought
+  across the reviewed way (see "Before any plugin run", above), delete the leftover file**
+  (`rm .dev-team/autopilot.json`) so the next run starts at iteration 0 again.
+- **Its safety guard tracks the same file, not "a run in progress".** The plugin's guard checks every
+  shell command for pushes to the main branch whenever `.dev-team/autopilot.json` exists at that exact
+  path — full stop, whether or not a run is actually running. While the file sat there tracked from
+  the June 2026 run, the guard was active in every session, run or no run, and could misfire — it once
+  blocked a harmless command purely because the command's text contained the words "push" and "main".
+  Deleting the leftover file, as the point above describes, is what switches the guard off between
+  runs — unless a `guard: on` line is added to `.dev-team/config.yml` (which forces it on even with
+  no file present), or the `DEV_TEAM_GUARD` environment variable is set (same effect); neither is
+  set in this repository today, and a `guard: off` line there would switch it off everywhere,
+  file or no file. Leaving the leftover file in place after a run has finished leaves the guard on
+  too, for exactly the same reason it leaves the next run unable to start clean. If a command is ever blocked this way, write its
+  text to a file with the editor (in Claude Code, the Write tool — not a shell `echo` or heredoc, whose
+  text the guard still sees) and run the file; never switch the guard off to get round it.
 
 ## 6. 🔁 Cross-system code review, until a round comes back clean
 

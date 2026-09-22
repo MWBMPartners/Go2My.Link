@@ -22,13 +22,24 @@
 #
 #   2. It would have rewritten HANDOFF.md after every task. The plugin's own
 #      handoff is a short card (about 40 lines) that it writes at HANDOFF.md in
-#      the repository ROOT, replacing whatever is there. Since 2026-09-21 the
-#      project's real handoff lives at .claude/HANDOFF.md and the root file is
-#      listed in .gitignore, so the plugin's card is a local scratch file that
-#      an ordinary `git add` will not pick up (never force it in with
-#      `git add -f`). auto-handoff is still switched off below, so the plugin
-#      does not waste effort rewriting it after every task. Until this change is
-#      merged, the root file is still tracked on `alpha`.
+#      the repository ROOT, replacing whatever is there. The project's real
+#      handoff lives at .github/HANDOFF.md (moved there 2026-09-22, owner
+#      decision 17, #243 — briefly at .claude/HANDOFF.md before that) and the
+#      root file is listed in .gitignore, so the plugin's card is a local
+#      scratch file that an ordinary `git add` will not pick up (never force it
+#      in with `git add -f`). auto-handoff is still switched off below, so the
+#      plugin does not waste effort rewriting it after every task.
+#
+# WHY THE PLUGIN STAYS IN USE — decision 18, #243, restated here in one
+# paragraph; the full rule, with everything that follows from it, is in
+# .claude/memory/working-rules.md, rule 5. The dev-team plugin stays in use on
+# this project. Wherever its own habits differ from this project's rules —
+# how it writes, how it commits, how it comments — this project's rules win.
+# Whatever it builds never lands on the working branch directly and the
+# plugin itself never pushes: a code-writing skill runs on a branch or
+# worktree of its own, and anything worth keeping is brought across
+# afterwards as one ordinary, reviewed piece of work — one GitHub issue, one
+# commit, through the same cross-system review loop as anything else.
 #
 # WHAT THIS FILE CANNOT DO — see .claude/memory/working-rules.md, rule 5:
 #
@@ -36,9 +47,10 @@
 #     checkpoint, after every improvement cycle, and after each documentation
 #     area. `auto-commit: off` only removes the EXTRA commit after each task.
 #     Those commits happen before any cross-system review and carry no issue
-#     number. That is why, for now, this project does not use the plugin's
-#     code-writing skills at all — only its analysis, review, audit and
-#     suggestion skills (working-rules.md, rule 5).
+#     number. That is why, under decision 18, a code-writing skill runs only
+#     on a branch or worktree of its own — nothing of theirs reaches the
+#     working branch except as one reviewed commit with its own issue
+#     (working-rules.md, rule 5).
 #   - It still works on a branch of its own (iterate/<date> and so on), cut
 #     from `alpha`; a follow-up run may continue on that same branch. It is not
 #     documented to use the session's working branch; its branch=<name> option
@@ -53,8 +65,25 @@
 #   - `models: economy` also moves the plugin's reasoning agents from Fable to
 #     Opus. Deep analysis and planning are done outside the plugin, with Fable
 #     agents one after another (working-rules.md, rule 4).
-#   - Autopilot cannot start a fresh run while the tracked, finished
-#     .dev-team/autopilot.json from the June 2026 run is present.
+#   - Autopilot CAN start a fresh run here. Its state file from the June 2026
+#     run, .dev-team/autopilot.json, used to sit at this same path (tracked in
+#     git) and stop a fresh run from starting (autopilot reads that file
+#     first, and a finished run there means it only reports and stops). That
+#     file has since moved to docs/dev-team/autopilot.json (decision 19, #243,
+#     done in #249) — kept there for its history, but no longer at the path
+#     autopilot reads. A run started here writes its OWN autopilot.json back
+#     to this same path while it works, and — because that path is now
+#     git-ignored (see .gitignore) — leaves the finished file behind
+#     invisibly to `git status` once it stops. That leftover file both stops
+#     the NEXT run from starting at iteration 0 and keeps the guard hook
+#     switched on between runs, until it is deleted by hand once anything
+#     worth keeping has been brought across the reviewed way
+#     (working-rules.md, rule 5). Two settings override the file either way,
+#     and only one of them is the exception it sounds like: a `guard: off`
+#     line below switches the guard OFF regardless of the file, but
+#     `guard: on` — or the DEV_TEAM_GUARD environment variable — forces the
+#     guard ON even with no file present, which is the same outcome as the
+#     leftover file, not the opposite. Neither is set here today.
 #
 # The full list of keys and their meanings is in the plugin's
 # skills/dev-team-orchestrator/references/config-and-toggles.md.
@@ -64,12 +93,13 @@ version: 1
 
 defaults:
   # "economy" = the plugin builds and scouts with Sonnet and still checks with
-  # Opus, matching the owner's building and checking rule. The plugin's
-  # code-writing skills are not used on this project for now (working-rules.md,
-  # rule 5), so in practice this only moves its code-reading scouts to Sonnet.
-  # Its catch: it also moves the plugin's own reasoning and "debate" agents from
-  # Fable down to Opus — which is why deep analysis and planning are done
-  # outside the plugin (see above).
+  # Opus, matching the owner's building and checking rule. When a code-writing
+  # skill is run — on a branch or worktree of its own, under decision 18
+  # (working-rules.md, rule 5) — economy means it builds with Sonnet and
+  # checks with Opus; day to day, that mostly means its code-reading scouts
+  # run on Sonnet. Its catch: it also moves the plugin's own reasoning and
+  # "debate" agents from Fable down to Opus — which is why deep analysis and
+  # planning are done outside the plugin (see above).
   models: economy
   # The project files and updates its own GitHub issues by hand, with
   # plain-English text and code evidence; the plugin's automatic issue export

@@ -2,8 +2,12 @@
 
 > Machine-and-human source of truth for the `dev-team-autopilot` run on
 > branch `autopilot/2026-06-05`. The conductor's machine state lives in
-> `.dev-team/autopilot.json`; this file is the human-readable mirror. British
-> English (en-GB) throughout. Emoji headings follow `.claude/memory/patterns.md`.
+> `.dev-team/autopilot.json`; this file is the human-readable mirror. (That
+> path is written again by any fresh `dev-team-autopilot` run and is now a
+> git-ignored scratch file — this run's own copy of the state file was kept
+> and now sits beside this document, at `docs/dev-team/autopilot.json`.)
+> British English (en-GB) throughout. Emoji headings follow
+> `.claude/memory/patterns.md`.
 
 ## 🎯 Goal
 

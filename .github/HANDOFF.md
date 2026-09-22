@@ -118,10 +118,12 @@ yet; enabling does not add payments (#57–#60 need billing credentials).
 - **The plugin's safety guard misfires**: it blocked a harmless shell command because the
   command's *text* contained the words "push" and "main". Work-round: write the text to a file
   with the editor (the Write tool — not a shell `echo` or heredoc, whose text the guard still sees)
-  and run the file. Do not disable the guard. It runs in every session because the finished
-  June 2026 `.dev-team/autopilot.json` is tracked in git (the guard switches on whenever that file
-  exists); that same file also stops autopilot starting a fresh run. Whether to remove it is part
-  of the owner decision on the plugin's files.
+  and run the file. Do not disable the guard. *(Updated 2026-09-22, #249: the guard switches on
+  whenever `.dev-team/autopilot.json` exists. That file has now moved to
+  `docs/dev-team/autopilot.json`, so the guard is off between runs and autopilot can start a fresh
+  run again. If a future run leaves a new `.dev-team/autopilot.json` behind, delete it by hand once
+  anything worth keeping has been carried across — that also re-arms the guard and blocks the next
+  run. Owner decision 19 is done.)*
 - ⚠️ **The owner's real name is already in six tracked, pushed files** (found 2026-09-21, none
   written this session): `.claude/settings.local.json` (12 times, inside file paths — on `alpha`,
   `release-candidate` and this branch), `tests/unit/avatar_test.php` (4 — the owner's email
