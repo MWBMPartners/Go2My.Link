@@ -38,7 +38,7 @@
 
 Everything is **committed and pushed**; the working copy is clean and the local branch matches
 GitHub exactly. The working branch is **`feat/2026-09-21-linkspage-and-sweep`**, cut from `alpha`,
-and the latest commit is **`76ad243`**. There is deliberately **no pull request yet** — one pull
+and the latest commit when this was written was **`3a55fe1`** — `git log -1` is always the truth, and a later commit is expected, because each finished item adds one. There is deliberately **no pull request yet** — one pull
 request to `alpha`, opened when the owner says so. Twelve pieces of work are finished (list below).
 The next item is **CX-01** (a Codex review finding), then batch 2. The whole remaining programme is
 59 items in 18 batches.
@@ -71,6 +71,7 @@ The next item is **CX-01** (a Codex review finding), then batch 2. The whole rem
 | `b4d6b52` | #249 | The dev-team plugin's files moved to `docs/dev-team/` (still tracked); real security policy at `.github/SECURITY.md`; the plugin's command guard no longer runs in every session. |
 | `edc469e` | — | Handoff records the Codex situation and the catch-up list. |
 | `76ad243` | #242 | Sample names instead of the owner's real name and email in tracked files; `docs/HISTORY_REWRITE_PLAN.md` written (describes only, runs nothing). |
+| `3a55fe1` | — | Planning moved to Opus (owner, 2026-09-23); this restart point; the build plan, its schema, the build workflow and the test script moved into `.claude/programme/`, with a unit test that checks the plan against its schema. |
 
 **Test baseline now: 652 unit tests and 229 database tests, all passing** (PHP 8.4 in Docker; MySQL
 8.4 with `utf8mb4_unicode_ci`). Run them with `sh .claude/programme/run-tests.sh all`.
