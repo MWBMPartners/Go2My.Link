@@ -22,6 +22,33 @@ the wording they were written with — they describe what was true at the time, 
 but the one Markdown link inside the 2026-09-21 entry below was re-pointed to `../.github/HANDOFF.md`
 so it still opens the right file; only that link's address changed, not what the entry says.
 
+## 2026-09-23 — Build programme under way; rules moved to Opus for planning; Codex unblocked
+
+Branch: **`feat/2026-09-21-linkspage-and-sweep`** (all pushed; `76ad243` is the tip). Continues the
+2026-09-21 session below. Live detail: [.github/HANDOFF.md](../.github/HANDOFF.md).
+
+- **Six more pieces landed:** avatars and icons display with `http://` refused on save (#221, #273,
+  `5340025`); form values no longer double-escaped (#220, `0255229`); **the handoff moved to
+  `.github/HANDOFF.md`** with owner decisions 16–19 written into the rules (#248, `8302613`); the
+  dev-team plugin's files moved to `docs/dev-team/` with a real security policy at
+  `.github/SECURITY.md` (#249, `b4d6b52`); sample names replace the owner's real name and email in
+  tracked files, with a history-rewrite plan written but not run (#242, `76ad243`).
+- **Codex was not out of credit after all.** It refuses on this machine unless the model is named
+  (`-c model="gpt-6-astra"`); the earlier "unavailable" records were partly this. Its one full
+  catch-up review found untranslated LinksPage error messages (now CX-01), and its review of the
+  history-rewrite plan found two faults four Claude rounds had missed — one would have turned
+  "balanced" into a corrupted word in every commit of a rewritten history.
+- **Rules changed by the owner:** deep analysis and planning now use **Opus**, one agent at a time,
+  not Fable first. Recorded in the project rules, `CLAUDE.md`, `AGENTS.md` and the machine-wide file.
+- **Two safety locks added** after a Haiku builder made seven unreviewed commits: local git hooks
+  refuse any commit or push unless the finaliser allows it for that one command. Haiku is no longer
+  used as a builder here.
+- **The build machinery is now in the repository** (`.claude/programme/`): the plan, its schema, a
+  unit test that checks the plan against the schema, the build workflow and the test script — so a
+  fresh session can carry on without this one's memory.
+
+---
+
 ## 2026-09-21 — Issue sweep, LinksPage programme, standing rules in the repo, handoff moved
 
 Branch: **`feat/2026-09-21-linkspage-and-sweep`** (cut from `alpha` at `cd59feb`, pushed; one pull

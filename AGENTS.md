@@ -37,8 +37,10 @@ copy is out of step (it warns; `alpha` has no required checks, so it cannot bloc
   each piece of work, the moment something important is learned, and before anything long-running.
   Never create a second one, and never write it at the repository root: the root `HANDOFF.md` is the
   dev-team plugin's scratch card and is ignored by git.
-- **Strongest model for thinking, cheapest capable model for building; checking is never done by a
-  weaker model than the building.** Plan one step at a time, in sequence.
+- **Deep analysis and planning: Opus, one agent after another** (changed 2026-09-23; it used to be
+  Fable first). Building: the cheapest capable model (Sonnet, or Haiku for mechanical edits; Opus when
+  genuinely complex). Checking is never done by a weaker model than the building. Fact-gathering may
+  run in parallel; judgements may not.
 - **Use helper plugins where they fit**, including to suggest further fixes, tweaks, enhancements and
   new features — raised as suggestions, not built unless the owner says so. **The Claude Code dev-team
   plugin stays in use here (decision 18, #243).** Where its own habits differ from this project's
@@ -52,7 +54,9 @@ copy is out of step (it warns; `alpha` has no required checks, so it cannot bloc
 - **Every change is reviewed by the other system until a round finds no real problems.** When Codex
   builds something, Claude Code reviews it with a fresh agent; when Claude Code builds it, Codex
   reviews it (`codex review --uncommitted` before a commit, `codex review --base alpha` for the whole
-  branch, `codex exec -s read-only "<what to check>"` for a focused review). Fix the real findings,
+  branch, `codex exec -s read-only "<what to check>"` for a focused review). **On this machine every
+  Codex command needs `-c model="gpt-6-astra"`, or Codex refuses with "The 'gpt-6-sol' model is not
+  supported when using Codex with a ChatGPT account".** Fix the real findings,
   review again, repeat. A finding you are sure is wrong is recorded with the reason, never "fixed" to
   quiet the reviewer. Record the number of rounds.
 - **After each finished piece of work:** verify it yourself (read the real exit codes; PHP runs in

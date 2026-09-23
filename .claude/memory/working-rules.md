@@ -93,11 +93,17 @@ gets.
   sequence — never several in parallel**, because each planning step should see what the one
   before it established. This is the part decision 16 leaves unchanged: a judgement call — what a
   finding means, what to build, in what order — still waits for the previous judgement, even though
-  the fact-gathering that feeds it did not have to. Today in Claude Code that is **Fable**; if Fable
-  is unavailable, fall back to **Opus**, say so, and **try Fable again on every later planning run**
-  (limits reset).
-- **Building uses the cheapest model that can do the job well:** Sonnet or Haiku, whichever fits
-  (Haiku for purely mechanical edits). **Opus only when the build is genuinely complex.**
+  the fact-gathering that feeds it did not have to. **Today in Claude Code that model is Opus** (the
+  `opus` alias, so it always resolves to the current Opus). *(Changed 2026-09-23 by the owner: this
+  used to say Fable first, then Opus as a fallback. The current Opus is cheaper and at least as
+  effective as the current Fable, so Opus is now the first choice for deep analysis and planning, not
+  the fallback.)* If Opus itself is unavailable, use the strongest reasoning model that is available,
+  say plainly which one was used, and try Opus again on the next planning run (limits reset).
+- **Building uses the cheapest model that can do the job well:** Sonnet or Haiku, whichever fits.
+  **Opus only when the build is genuinely complex.** Haiku is for genuinely mechanical edits only —
+  renames, formatting, a find-and-replace. *(Learned 2026-09-23: a Haiku builder given a multi-step
+  brief ignored "do not commit" and made seven unreviewed commits, and failed to fix the same review
+  finding seven rounds running. None reached GitHub, and the work was redone on Sonnet.)*
 - **Checking is never done by a weaker model than the building** — in Claude Code, never below
   Opus.
 - The aim is **GIRFT — Get It Right First Time**: spend effort where judgement is needed and save it
@@ -225,11 +231,32 @@ be the builder.
 - Before a commit: `codex review --uncommitted`. For the whole working branch:
   `codex review --base alpha`. A focused review with custom instructions:
   `codex exec -s read-only "<what to check>"`.
+- ⚠️ **On this machine Codex must be told which model to use, or it refuses outright** (found
+  2026-09-23): it defaults to a model this account cannot use and fails with *"The 'gpt-6-sol' model
+  is not supported when using Codex with a ChatGPT account"*. Add `-c model="gpt-6-astra"` to every
+  Codex command — for example `codex review --uncommitted -c model="gpt-6-astra"`. A Codex refusal is
+  therefore not proof that its credit has run out: read the actual message. A credit message names a
+  reset time ("try again at ...").
+- **Codex's allowance is small** (roughly one review per reset). Spend it where a second opinion is
+  worth most: the whole-branch catch-up review, and anything touching security, privacy, money or
+  data loss. Its first real review on this project found two faults in a history-rewrite plan that
+  four Claude review rounds had missed, so it is worth the queueing.
 - **The loop:** run the review, read every finding, fix the real ones automatically, run the review
   again, and **stop only when a round finds no real problems.** Record how many rounds it took (in
   the commit message and the handoff).
 - A finding you are sure is wrong does not keep the loop going and is never "fixed" just to quiet
   the reviewer — write down why it is wrong and move on.
+- **What counts as a finding, and so blocks a commit:** a statement that is false; a contradiction
+  with another file; a correctness, security or privacy defect; a breach of a house rule (shorthand, a
+  user-facing string not passed through `__()` and seeded, a schema change without its migration, and
+  so on); or an acceptance criterion that is plainly not met. **What does not count:** wording,
+  phrasing, tone, "this could be clearer", or asking for a longer list where the text already says it
+  is not exhaustive. Those are recorded as notes and do not block. *(Added 2026-09-23: without this
+  line a documentation item ran nine review rounds over eight hours, entirely on phrasing, while real
+  work waited.)*
+- **Reviewers run the quick unit tests, not the database suite.** The database run takes minutes with
+  no output, which the runtime mistakes for an agent that has stopped responding, and it kills the
+  run. The builder and the finaliser both run everything before anything is committed.
 - If the usual reviewer is unavailable, see rule 13: say so, use the most independent reviewer
   available, name it, and treat the change as not fully reviewed until the usual reviewer has
   caught up.

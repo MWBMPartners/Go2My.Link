@@ -1,5 +1,33 @@
 # 🧠 Go2My.Link Project Memory
 
+> 🚦 **2026-09-23 — read this first, then [.github/HANDOFF.md](../../.github/HANDOFF.md).**
+> A **59-item build programme** is under way on branch `feat/2026-09-21-linkspage-and-sweep`, agreed
+> with the owner on 2026-09-21/22 after comparing LinksPage with Linktree, Beacons and about twenty
+> other "link in bio" services. **The owner's 45 decisions are GitHub issue #243 and are binding.**
+> The plan, the build order and what is already done are in
+> [.claude/programme/build-plan.json](programme/build-plan.json) (with a schema and a unit test);
+> each item's full plan is posted on its own GitHub issue; `.claude/programme/README.md` says how to
+> run the next batch.
+>
+> **Headline decisions that change the product:** no tier feature is hard-coded any more — tiers,
+> features (yes/no or a number), per-organisation exceptions, prices and coupons are all edited in a
+> new GlobalAdmin screen, and the public pricing page is generated from that data; people without an
+> organisation count as the Free plan and can buy a paid plan in their own name; Free = 50 active
+> links + 30 days of visible statistics; analytics counts are kept for ever while IP addresses are
+> removed after 90 days (configurable, and the privacy policy reads the number from the setting);
+> the pricing engine's switch becomes environment-aware because all three components share ONE
+> database.
+>
+> **Twelve pieces already finished and pushed** — see the handoff for the list with commit IDs. Among
+> them: the pricing engine's on/off switch never worked (it compared a yes/no setting against the
+> text "1"); the schema could not install on MariaDB, which the live host runs; LinksPage save bugs
+> lost social links and stored the font as "0"; avatars and icons could never display; data export
+> and erasure ignored LinksPages entirely. The handoff also lists the GDPR gaps this found
+> (#244–#247) and the traps that cost time.
+>
+> **Deep analysis and planning now use Opus, one agent at a time** (owner, 2026-09-23 — it used to be
+> Fable first). **Codex must be told its model on this machine:** `-c model="gpt-6-astra"`.
+
 > 📦 **Portable copy** — this directory is the repo-tracked mirror of the Claude
 > project memory so it travels to every machine/platform via git. See
 > [.claude/README.md](../../.claude/README.md) for how it maps to the device-local auto-memory.

@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/MWBMPartners/Go2My.Link/.claude/programme/build-plan.schema.json",
+  "title": "Go2My.Link build programme plan",
+  "description": "The machine-readable plan for the build programme agreed on 2026-09-21/22 (owner decisions in GitHub issue #243). One entry per piece of work: each is one GitHub issue and one commit. Every item's plan is ALSO posted as an 'Implementation plan' comment on its own issue, so this file is a convenience copy for tooling, never the only record. Validated by tests/unit/build_plan_schema_test.php.",
+  "type": "object",
+  "required": ["design", "items", "build_order", "issue_of"],
+  "additionalProperties": true,
+  "properties": {
+    "design": {
+      "description": "The binding designs the builders must follow, one per area. Written by the planning agents; a builder reads the part that covers its item.",
+      "type": "object",
+      "required": ["platform", "linkspage", "fixes"],
+      "properties": {
+        "platform": { "type": "string", "description": "Tiers, the plan-and-pricing admin, the environment-aware switch, the feature registry and how features are gated, and how analytics are stored." },
+        "linkspage": { "type": "string", "description": "LinksPage (lnks.page): plan checks, the visitor-facing routine, templates, extras." },
+        "fixes": { "type": "string", "description": "The approved fixes and the housekeeping items." }
+      }
+    },
+    "items": {
+      "description": "Every piece of work, keyed by its short key (for example PF-01, LP-07, SX-198, HK-01, CX-01).",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["key", "builder_tier", "commit_type", "plan", "acceptance_criteria", "shared_files_touched", "depends_on"],
+        "properties": {
+          "key": { "type": "string", "description": "Short unique key. Prefixes: PF platform, LP LinksPage, SX fix, HK housekeeping, SR security reporting, CX review finding." },
+          "title": { "type": "string", "description": "One-line description." },
+          "issue_number": { "type": "integer", "minimum": 0, "description": "The GitHub issue for this item. 0 means an issue still has to be filed; every item in this file has one (see issue_of)." },
+          "new_issue_title": { "type": "string", "description": "Used only when the issue had not been filed when the plan was written." },
+          "new_issue_body": { "type": "string", "description": "As above: the body that was filed." },
+          "labels": { "type": "array", "items": { "type": "string" }, "description": "GitHub labels. Only labels that already exist in the repository." },
+          "issue_comment": { "type": "string", "description": "Text posted on an existing issue to record the updated scope." },
+          "builder_tier": { "type": "string", "enum": ["haiku", "sonnet", "opus"], "description": "The cheapest model that can do this item well. Opus only where the work is genuinely complex. Haiku is no longer used for these items: one Haiku build ignored its instructions and made seven unreviewed commits (2026-09-21)." },
+          "commit_type": { "type": "string", "enum": ["feat", "fix", "docs", "chore", "refactor", "test", "ci"], "description": "The first word of the commit title, which the project's commit style requires." },
+          "scope": { "type": "string", "description": "The bracketed scope word in the commit title, for example linkspage, pricing, admin, analytics, security, database." },
+          "plan": { "type": "string", "description": "The step-by-step build plan: exact files, numbered migrations and seeds, translation keys, security handling, accessibility, the tests to add, and how to verify. Detailed enough for a Sonnet-tier builder to get it right first time." },
+          "acceptance_criteria": { "type": "array", "items": { "type": "string" }, "description": "What must be true before the item is finished. The reviewer checks these." },
+          "shared_files_touched": { "type": "array", "items": { "type": "string" }, "description": "Files other items in the programme also edit. Used to keep two builders off the same file at the same time." },
+          "depends_on": { "type": "array", "items": { "type": "string" }, "description": "Keys that must be built first." },
+          "maxRounds": { "type": "integer", "minimum": 1, "description": "Optional cap on review rounds for this item (documentation items use a lower cap, because review of prose otherwise never converges)." }
+        }
+      }
+    },
+    "build_order": {
+      "description": "The order to build in: batches of three or four items that do not edit the same files at the same time, foundations first.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["batch", "keys", "why"],
+        "properties": {
+          "batch": { "type": "string", "description": "Batch label and a short name." },
+          "keys": { "type": "array", "items": { "type": "string" }, "description": "Item keys in this batch, in build order." },
+          "why": { "type": "string", "description": "Why these items are together and in this order." }
+        }
+      }
+    },
+    "issue_of": {
+      "description": "Item key to GitHub issue number, filled in when the issues were filed.",
+      "type": "object",
+      "additionalProperties": { "type": "integer", "minimum": 1 }
+    },
+    "amended": { "type": "array", "items": { "type": "string" }, "description": "Items whose plan was rewritten after the owner's second set of decisions (#243, decisions 25-45)." },
+    "new": { "type": "array", "items": { "type": "string" }, "description": "Items added by those same decisions." },
+    "extra_issues": {
+      "description": "Follow-up issues filed but deliberately not built in this programme.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["title", "body", "labels"],
+        "properties": {
+          "title": { "type": "string" },
+          "body": { "type": "string" },
+          "labels": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "progress": {
+      "description": "What has already been built, reviewed and pushed. Kept current so a fresh session can pick up without reading the whole history.",
+      "type": "object",
+      "required": ["updated", "branch", "done", "next"],
+      "properties": {
+        "updated": { "type": "string", "description": "The date this section was last true (YYYY-MM-DD)." },
+        "branch": { "type": "string", "description": "The working branch every commit goes to." },
+        "note": { "type": "string" },
+        "done": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["key", "commit", "what"],
+            "properties": {
+              "key": { "type": "string" },
+              "issue": { "type": "integer", "minimum": 0, "description": "0 where the commit has no single issue of its own." },
+              "commit": { "type": "string", "description": "Short commit ID on the working branch." },
+              "what": { "type": "string" }
+            }
+          }
+        },
+        "next": { "type": "array", "items": { "type": "string" }, "description": "The item keys to build next, in order." },
+        "codex_re_review_owed": { "type": "array", "items": { "type": "string" }, "description": "Commits that have had only the stand-in review and still need Codex to look at them." }
+      }
+    }
+  }
+}
