@@ -25,8 +25,8 @@ echo __('nav.login');
 // Output: "Log In"
 
 // With placeholder replacement
-echo __('welcome', ['name' => 'Lance']);
-// Output: "Welcome, Lance!"
+echo __('welcome', ['name' => 'Jane']);
+// Output: "Welcome, Jane!"
 
 // HTML-safe output (escapes special characters)
 echo _e('button.delete');
@@ -110,7 +110,7 @@ translationValue: Welcome back, {name}!
 
 ```php
 echo __('welcome', ['name' => $user['firstName']]);
-// Output: "Welcome back, Lance!"
+// Output: "Welcome back, Jane!"
 ```
 
 ### 🔢 Pluralisation

@@ -129,8 +129,8 @@ test('initials: never exceed two characters', function (): void
 test('colour: the same seed always maps to the same colour', function (): void
 {
     assert_same(
-        g2ml_avatarColour('lance@mwmail.me'),
-        g2ml_avatarColour('lance@mwmail.me'),
+        g2ml_avatarColour('jane.doe@example.com'),
+        g2ml_avatarColour('jane.doe@example.com'),
         'Colour selection must be deterministic for a given seed'
     );
 });
@@ -185,8 +185,8 @@ test('colour: every palette entry meets 4.5:1 contrast against white', function 
 
 test('gravatar hash: equals md5 of the trimmed, lower-cased email', function (): void
 {
-    $expected = md5('lance@mwmail.me');
-    assert_same($expected, g2ml_avatarGravatarHash('  Lance@MWMail.me  '), 'Gravatar hash must normalise (trim + lowercase) before md5');
+    $expected = md5('jane.doe@example.com');
+    assert_same($expected, g2ml_avatarGravatarHash('  Jane.Doe@Example.com  '), 'Gravatar hash must normalise (trim + lowercase) before md5');
 });
 
 // ============================================================================

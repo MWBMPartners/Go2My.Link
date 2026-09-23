@@ -239,8 +239,8 @@ function getActiveLanguages(): array
 /**
  * Translate a key to the current locale.
  *
- * Supports {placeholder} syntax: __('greeting', ['name' => 'Lance']) will
- * replace {name} with "Lance" in the translated string.
+ * Supports {placeholder} syntax: __('greeting', ['name' => 'Jane']) will
+ * replace {name} with "Jane" in the translated string.
  *
  * Falls back to the default locale if the key is not found in the current
  * locale. Returns the key itself if no translation exists in any locale.
@@ -252,7 +252,7 @@ function getActiveLanguages(): array
  *
  * Usage example:
  *   echo __('nav.login');               // "Log In"
- *   echo __('welcome', ['name' => $user]); // "Welcome, Lance!"
+ *   echo __('welcome', ['name' => $user]); // "Welcome, Jane!"
  */
 function __(string $key, array $replacements = [], ?string $locale = null): string
 {

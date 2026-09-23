@@ -1,7 +1,7 @@
 # 🚦 Go2My.Link — Pre-Launch Checklist, Owner Decisions & Actions
 
 > **Purpose:** the single page to run through **before launching the service**. It captures
-> (a) decisions only the owner (Lance) can make, (b) manual actions outside the codebase
+> (a) decisions only the owner (Salem874) can make, (b) manual actions outside the codebase
 > (GitHub settings, DNS, credentials, payment providers), and (c) a log of what automation
 > did on your behalf. Companion to `.github/HANDOFF.md` (technical pick-up state), `PROJECT_STATUS.md`,
 > and `docs/LAUNCH_PLAN_2026-07-09.md`.
