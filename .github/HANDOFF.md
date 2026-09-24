@@ -39,13 +39,20 @@
 Nothing happened between 21:10 on 23 September and this session (no commits, no GitHub activity).
 Two things were started, side by side:
 
-1. **The owed Codex catch-up review**, of everything since its last one: `69f4829` up to the commit
-   that added this note. It runs in a separate, throwaway copy of the repository (a git worktree —
-   `git worktree list` shows it) so the build below cannot disturb it. While it runs, a lock file
-   in the session's scratch folder tells the item reviewers to leave Codex alone.
+1. **The owed Codex catch-up review**, of everything since its last one (`69f4829` onward). It runs
+   in a separate, throwaway copy of the repository (a git worktree — `git worktree list` shows it)
+   so the build below cannot disturb it. While it waits and runs, a lock file in the session's
+   scratch folder tells the item reviewers to leave Codex alone.
+   **First attempt, about 00:15: Codex refused with a real credit message** — *"You've hit your
+   usage limit … try again at 4:36 AM"*. No Go2My.Link session had used it since the last reset, so
+   something else on this account did. **It is scheduled to run by itself at 04:40**, over
+   `69f4829` up to whatever the branch tip is by then, so tonight's builds are covered too. Until
+   then, and while it runs, the item reviews are done by the Claude stand-in (a fresh Opus agent
+   that did not build the change), and every commit says so.
    **When it finishes:** check every finding against the code; queue the real ones as fix items
-   *before* any new build work; delete the lock file; remove the worktree with
-   `git worktree remove <path>` (never `--force` without looking at it first).
+   *before* any new build work; make sure the lock file is gone; remove the worktree with
+   `git worktree remove <path>` (never `--force` without looking at it first). If the session
+   ended before 04:40, nothing ran: run the catch-up by hand.
 2. **The build workflow for CX-01, then SX-198** (`.claude/programme/build-workflow.js`). Each item
    commits and pushes itself when its review comes back clean, and adds its own row to the
    "Finished" table below. SX-203 and SX-211 follow in a second run.
