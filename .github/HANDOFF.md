@@ -14,7 +14,7 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-09-23 21:10 (everything pushed; safe restart point — see START HERE) · 2026-09-21/22 (the LinksPage and tiers programme) · earlier: 2026-09-07 (audit + docs sweep, merged as #201) · 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow; per-user analytics #165) · earlier: 2026-07-22 (PR merges, Dependabot 3-tier, pricing) · 2026-07-19 (post-recovery conformance audit) · **Working branch:** `feat/2026-09-21-linkspage-and-sweep` (from `alpha`).
+> **Last updated:** 2026-09-25 00:10 (Codex catch-up review and the CX-01/SX-198 build started — see "Running now") · 2026-09-23 21:10 (everything pushed; safe restart point — see START HERE) · 2026-09-21/22 (the LinksPage and tiers programme) · earlier: 2026-09-07 (audit + docs sweep, merged as #201) · 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow; per-user analytics #165) · earlier: 2026-07-22 (PR merges, Dependabot 3-tier, pricing) · 2026-07-19 (post-recovery conformance audit) · **Working branch:** `feat/2026-09-21-linkspage-and-sweep` (from `alpha`).
 > **Status (2026-09-23):** a 59-item build programme is under way on the working branch, agreed with
 > the owner after a market review of LinksPage against Linktree, Beacons and about twenty other
 > "link in bio" services. Twelve pieces are finished and pushed; the next is CX-01. 652 unit tests
@@ -33,6 +33,33 @@
 > **This section is written so a brand-new session, with no memory of the previous ones, can carry
 > on.** Read it, then `.claude/programme/README.md`, then the `progress` section of
 > `.claude/programme/build-plan.json`. Older dated sections below are history.
+
+### 🔄 Running now (started 2026-09-25, about 00:10)
+
+Nothing happened between 21:10 on 23 September and this session (no commits, no GitHub activity).
+Two things were started, side by side:
+
+1. **The owed Codex catch-up review**, of everything since its last one: `69f4829` up to the commit
+   that added this note. It runs in a separate, throwaway copy of the repository (a git worktree —
+   `git worktree list` shows it) so the build below cannot disturb it. While it runs, a lock file
+   in the session's scratch folder tells the item reviewers to leave Codex alone.
+   **When it finishes:** check every finding against the code; queue the real ones as fix items
+   *before* any new build work; delete the lock file; remove the worktree with
+   `git worktree remove <path>` (never `--force` without looking at it first).
+2. **The build workflow for CX-01, then SX-198** (`.claude/programme/build-workflow.js`). Each item
+   commits and pushes itself when its review comes back clean, and adds its own row to the
+   "Finished" table below. SX-203 and SX-211 follow in a second run.
+
+**If this session is interrupted:** `git log` shows which items landed. Anything uncommitted in the
+working copy belongs to the item that was being built — resume it with `"skipBuild": true` and a
+`"startRound"` (see the programme README). The catch-up review simply needs running again.
+
+**Fixed in the build workflow before starting (this commit):** its reviewer called Codex without
+naming the model (every review would have fallen back to a Claude stand-in); a fixed 23:00–23:45
+"leave Codex alone" window, which only suited one night, is replaced by the lock file; the test
+baseline it quoted was out of date; the finaliser wrote to a "Build queue" table that no longer
+exists; and several `? :` and `||` shortcuts the house rule forbids were written out in full. This
+workflow change was committed before review and is covered by the catch-up review above.
 
 ### 📍 Position in one paragraph
 
@@ -95,7 +122,9 @@ The next item is **CX-01** (a Codex review finding), then batch 2. The whole rem
 - **Codex works, but it must be told which model to use on this machine:** add
   `-c model="gpt-6-astra"` to every `codex` command. Without it, it refuses with *"The 'gpt-6-sol'
   model is not supported when using Codex with a ChatGPT account"* — which looks like an outage but
-  is not. **Read the message: a credit message names a reset time.**
+  is not. **Read the message: a credit message names a reset time.** *(Checked 2026-09-25:
+  `~/.codex/config.toml` now also names `gpt-6-astra`, so a bare `codex` command works on this Mac.
+  Keep the flag anyway — another machine will not have that file.)*
 - **Its allowance is small** (about one review per reset). It last ran out at 20:49 on 2026-09-23;
   **its limit resets 2026-09-24 at 00:09.**
 - **Owed a review:** `5340025`, `0255229`, `8302613`, `b4d6b52`, `edc469e`, `76ad243`. Run

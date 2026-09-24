@@ -18,7 +18,7 @@ without the previous session's memory. Everything here is committed on purpose.
 **The plan is not the only copy.** Every item's plan is also posted as an
 "Implementation plan" comment on its own GitHub issue, and the owner's decisions
 are GitHub issue #243. If this file and an issue ever disagree, the issue and
-#243 win.
+issue #243 win.
 
 ## How to carry on the build
 
@@ -42,6 +42,13 @@ are GitHub issue #243. If this file and an issue ever disagree, the issue and
    Optional per item: `"skipBuild": true` with `"startRound": N` resumes an item
    whose work is already in the working copy (use it after an interrupted run),
    and `"maxRounds": 4` lowers the review-round cap for documentation items.
+
+   Optional for the whole run: `"codexLockFile": "<full path>"`. While that file
+   exists, the item reviewers leave Codex alone and use the Claude stand-in
+   instead. Create it before starting a whole-branch Codex catch-up review and
+   delete it when that review finishes, so the item reviews cannot use up
+   Codex's small allowance half-way through the catch-up. (This replaced a fixed
+   night-time window on 2026-09-25.)
 4. After each run, update `progress` in `build-plan.json` and the handoff.
 
 ## Things that will bite you

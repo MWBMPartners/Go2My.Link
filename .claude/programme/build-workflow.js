@@ -26,8 +26,36 @@ HOUSE RULES THAT BITE (CLAUDE.md and .claude/memory/patterns.md have the full li
 - A local safety lock (.git/hooks/pre-commit and pre-push) refuses every commit and push unless G2ML_ALLOW_COMMIT=1 / G2ML_ALLOW_PUSH=1 is set for that one command. Only the finaliser role may set them. Never use --no-verify, never edit or remove the hooks.
 - The dev-team plugin's guard hook blocks any shell command whose TEXT contains a git push to the main branch. You have no reason to push; if a command is blocked for that reason, write the text to a file with the Write tool and run the file.
 - TESTS: ${TESTS}
-  This runs php -l on changed PHP files, the unit suite on PHP 8.4, and the integration suite against a fresh MySQL 8.4 (utf8mb4_unicode_ci) with PHP 8.4. It prints each result and a final "OVERALL exit=N". Read the real exit codes; never pipe it into grep/tail and rely on &&. The baseline before this batch was 594 unit + 207 integration, all passing.
+  This runs php -l on changed PHP files, the unit suite on PHP 8.4, and the integration suite against a fresh MySQL 8.4 (utf8mb4_unicode_ci) with PHP 8.4. It prints each result and a final "OVERALL exit=N". Read the real exit codes; never pipe it into grep/tail and rely on &&. The baseline on 2026-09-23 was 652 unit + 229 integration, all passing; each finished item adds its own tests on top.
 `
+
+// Codex is told its model by name. Without it, Codex on the owner's Mac
+// defaulted to a model the account cannot use and refused every review with
+// "The 'gpt-6-sol' model is not supported" — which looked like "out of credit"
+// but was not (found 2026-09-23). ~/.codex/config.toml now names the model as
+// well, but a fresh machine or a new login would not have that file, so the
+// flag stays here too.
+const CODEX_REVIEW = 'codex review --uncommitted -c model="gpt-6-astra"'
+
+// Codex's allowance is small (about one review per reset). When a whole-branch
+// catch-up review is running, the item reviewers must leave Codex alone, or
+// they can use up the allowance while the catch-up is half-way through. The
+// lead creates this file before starting a catch-up review and deletes it when
+// the review has finished. This replaced a fixed "23:00 to 23:45" window that
+// only suited one night's reset time and was wrong by the next day.
+// Optional: when args.codexLockFile is not given, reviewers always try Codex.
+let CODEX_LOCK = ''
+if (A.codexLockFile) {
+  CODEX_LOCK = A.codexLockFile
+}
+
+// The extra first step a reviewer runs when a lock file was given: check it,
+// and skip Codex while it exists. Built here with a plain if, because the
+// house rule forbids the "a ? b : c" shorthand in every language.
+let CODEX_LOCK_STEP = ''
+if (CODEX_LOCK) {
+  CODEX_LOCK_STEP = ` EXCEPTION: first run  test -e "${CODEX_LOCK}" && echo CODEX_HELD || echo CODEX_FREE  — if it prints CODEX_HELD, a whole-branch Codex catch-up review is running and has priority for Codex's small allowance: do NOT call Codex; record 'skipped: catch-up review has priority' in codex_status and go to STEP 2B.`
+}
 
 const BUILD_RESULT = {
   type: 'object',
@@ -101,7 +129,11 @@ async function safeAgent(prompt, opts) {
   try {
     return await agent(prompt, opts)
   } catch (err) {
-    log((opts && opts.label ? opts.label : 'agent') + ' failed: ' + String(err).slice(0, 160))
+    let who = 'agent'
+    if (opts && opts.label) {
+      who = opts.label
+    }
+    log(who + ' failed: ' + String(err).slice(0, 160))
     return null
   }
 }
@@ -133,29 +165,45 @@ ${itemBrief(item)}`, { label: 'build ' + item.key, phase: 'Build', model: item.b
   let review = null
   let reviewers = []
   let clean = false
-  const startRound = item.startRound || 0
+  let startRound = 0
+  if (item.startRound) {
+    startRound = item.startRound
+  }
   round = startRound
-  const maxRounds = item.maxRounds || DEFAULT_MAX_ROUNDS
+  let maxRounds = DEFAULT_MAX_ROUNDS
+  if (item.maxRounds) {
+    maxRounds = item.maxRounds
+  }
   while (round < maxRounds + startRound) {
     round = round + 1
     let attempt = 0
     review = null
+    // From round 2 on, remind the reviewer where fixes usually go wrong.
+    let laterRoundNote = ''
+    if (round > 1) {
+      laterRoundNote = 'Earlier rounds found problems that the builder says are now fixed; check those fixes did not introduce new problems (this is where fixes usually go wrong).'
+    }
     while (!review && attempt < 2) {
     attempt = attempt + 1
+    let retryLabel = ''
+    if (attempt > 1) {
+      retryLabel = ' retry'
+    }
     review = await safeAgent(`${COMMON}
 ROLE: independent reviewer, round ${round}. You did not build this change. The change is UNCOMMITTED in the working tree (git status / git diff, plus untracked files). Report only — do not edit anything.
 
-STEP 1 — try Codex first (the owner's rule: Claude Code's work is reviewed by Codex). EXCEPTION: if the local time (date +%H%M) is between 2300 and 2345, do NOT call Codex — a whole-branch Codex catch-up review has priority for its small usage allowance in that window — record 'skipped: catch-up review has priority' in codex_status and go to STEP 2B.
-  Otherwise cd into the repository and run:  codex review --uncommitted
-  Give it up to 10 minutes (Bash timeout 600000). If it prints a usage-limit / credit / rate-limit message or fails to run, record that in codex_status and go to STEP 2B. If it runs, go to STEP 2A.
+STEP 1 — try Codex first (the owner's rule: Claude Code's work is reviewed by Codex).${CODEX_LOCK_STEP}
+  Otherwise cd into the repository and run:  ${CODEX_REVIEW}
+  (The -c model=... part is required on this machine; without it Codex refuses with a "model is not supported" message that is NOT a credit problem.)
+  Give it up to 10 minutes (Bash timeout 600000). If it prints a usage-limit / credit / rate-limit message or fails to run, record that message in codex_status and go to STEP 2B. If it runs, go to STEP 2A.
 STEP 2A — Codex ran: relay every Codex finding in findings. For each, check it against the code; if you are confident it is wrong, keep it but set believed_wrong=true and say why. Also add any acceptance criterion below that is plainly not met. reviewer_used = "codex".
 STEP 2B — Codex unavailable: do the review yourself, as sceptically as a different AI system would. reviewer_used = "claude-opus-fallback". Check: correctness against the acceptance criteria; security (escaping, SQL, CSRF, access control, the page's orgHandle used for gating); the binding gating design; the house rules above (no shorthand, __() strings seeded, migrations + base schema both updated); tests really exercise the change; nothing outside this item changed. Run ONLY the quick unit tests yourself:  sh "${A.testScript}" unit  (NOT 'all' — the builder and the finaliser run the full suite with the database; a long silent database run can make you look stalled). Report the result.
 WHAT COUNTS AS A FINDING (and so blocks the commit): a statement that is FALSE; a contradiction with another file in the repository; a correctness, security or privacy defect; a breach of a house rule (shorthand, a user-facing string not through __() and seeded, a schema change without its migration, and so on); or an acceptance criterion that is plainly not met.
 WHAT DOES NOT COUNT (put these in optional_notes, never in findings): wording, phrasing, tone or sentence structure; "this could be clearer/shorter"; asking for more detail or a longer list where the text already says it is not exhaustive; anything you would not insist on before a commit. For comments and docs, check that every statement is TRUE — do not demand an exhaustive list of everything the code does NOT do, because that never converges.
 Set clean=true when no real finding remains, even if optional_notes is long.
-${round > 1 ? 'Earlier rounds found problems that the builder says are now fixed; check those fixes did not introduce new problems (this is where fixes usually go wrong).' : ''}
+${laterRoundNote}
 
-${itemBrief(item)}`, { label: 'review ' + item.key + ' r' + round + (attempt > 1 ? ' retry' : ''), phase: 'Review', model: 'opus', schema: REVIEW_RESULT })
+${itemBrief(item)}`, { label: 'review ' + item.key + ' r' + round + retryLabel, phase: 'Review', model: 'opus', schema: REVIEW_RESULT })
     if (!review && attempt < 2) {
       log(item.key + ': review round ' + round + ' failed (for example a server overload) — retrying once')
     }
@@ -168,7 +216,9 @@ ${itemBrief(item)}`, { label: 'review ' + item.key + ' r' + round + (attempt > 1
       clean = true
       break
     }
-    const real = review.findings.filter(f => { return !f.believed_wrong })
+    const real = review.findings.filter(function (finding) {
+      return !finding.believed_wrong
+    })
     await agent(`${COMMON}
 ROLE: builder, fixing review round ${round} for ${item.key}. Fix every finding below that is real. If you are sure one is wrong, do not "fix" it to quiet the reviewer — leave it and explain why in deviations_from_plan. Re-run the TESTS until they pass.
 
@@ -186,25 +236,36 @@ ${itemBrief(item)}`, { label: 'fix ' + item.key + ' r' + round, phase: 'Build', 
 
   const usedFallback = reviewers.indexOf('claude-opus-fallback') !== -1
   const reviewLine = 'Review: ' + round + ' round(s); reviewers by round: ' + reviewers.join(', ') + '; last round clean.'
-  const fallbackLine = usedFallback
-    ? 'Codex was unavailable (out of usage credit) for at least one round, so a fresh Claude Opus agent that did not build this reviewed it instead. That is less independent than a Codex review: this change still needs the Codex catch-up review.'
-    : ''
+  // Text that only appears when a Claude stand-in reviewed at least one round,
+  // so the commit message and the issue comment never imply Codex checked it.
+  let fallbackLine = ''
+  let commitFallbackText = ''
+  let issueFallbackText = ''
+  if (usedFallback) {
+    fallbackLine = 'Codex did not review at least one round (out of usage credit, or held back so a whole-branch catch-up review could use its small allowance), so a fresh Claude Opus agent that did not build this reviewed it instead. That is less independent than a Codex review: this change still needs the Codex catch-up review.'
+    commitFallbackText = ' and: "' + fallbackLine + '"'
+    issueFallbackText = ', the Codex-unavailable note'
+  }
+  let commitScope = 'linkspage'
+  if (item.scope) {
+    commitScope = item.scope
+  }
 
   phase('Finalise')
   const fin = await agent(`${COMMON}
 ROLE: finaliser for ${item.key} (issue #${item.issue}). The change is built and has passed review. You now make it permanent. You MAY commit and push in this role, to the working branch only.
 1. Run the TESTS. If OVERALL exit is not 0, STOP: do not commit; report why in notes and set commit_sha to "".
-2. Update the project handoff — .github/HANDOFF.md if it exists, otherwise .claude/HANDOFF.md — in the table under the heading "Build queue": set the status cell of the row for ${item.key} to "✅ done — ${reviewLine}". If that row is missing, add it (Key | Issue | What | Builder | Status). If there is no "Build queue" table at all, add one under the START HERE section. (No commit SHA — it does not exist yet, and everything must land in ONE commit; the SHA goes in the issue comment.)
+2. Update the project handoff, .github/HANDOFF.md: add one row at the bottom of the table under the heading "Finished this programme" (columns: Commit | Issue | What). Commit cell: "(this commit)" — the SHA does not exist yet, and everything must land in ONE commit; the SHA goes in the issue comment. Issue cell: #${item.issue}. What cell: one plain-English sentence on what changed, then "${item.key}. ${reviewLine}". If an EARLIER row in that table still says "(this commit)", replace it with that commit's real short SHA (find it with git log --oneline -15 and the issue number). Change nothing else in the handoff — the lead updates the rest.
 3. git add only this item's files plus the handoff file (check git status; nothing unrelated). Commit with a message written to a file, using the safety-lock permission for this one command: G2ML_ALLOW_COMMIT=1 git commit -F <file>. The message is plain English:
-   - Title: "${item.commit_type}(${item.scope || 'linkspage'}): <short plain description> (#${item.issue})" — under ~72 characters.
-   - Body: what was wrong or missing, what this changes, and why; what the tests prove; what was NOT verified (for example, not tried in a real browser); "${reviewLine}"${usedFallback ? ' and: "' + fallbackLine + '"' : ''}.
+   - Title: "${item.commit_type}(${commitScope}): <short plain description> (#${item.issue})" — under ~72 characters.
+   - Body: what was wrong or missing, what this changes, and why; what the tests prove; what was NOT verified (for example, not tried in a real browser); "${reviewLine}"${commitFallbackText}.
    - Last lines exactly:
      Refs #${item.issue}
 
-     Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+     Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
    - Never write the owner's real name; the GitHub username is Salem874.
 4. Push as its own command, using the safety-lock permission: G2ML_ALLOW_PUSH=1 git push origin ${BRANCH}
-5. Comment on the issue (gh issue comment ${item.issue} --repo MWBMPartners/Go2My.Link --body-file <file>) in plain English: what landed, the commit SHA, test results (unit and integration counts), the review line${usedFallback ? ', the Codex-unavailable note' : ''}, what was not verified, and "Stays open until the working branch is merged into alpha." Do not close the issue.
+5. Comment on the issue (gh issue comment ${item.issue} --repo MWBMPartners/Go2My.Link --body-file <file>) in plain English: what landed, the commit SHA, test results (unit and integration counts), the review line${issueFallbackText}, what was not verified, and "Stays open until the working branch is merged into alpha." Do not close the issue.
 
 ${itemBrief(item)}`, { label: 'finalise ' + item.key, phase: 'Finalise', model: 'sonnet', schema: FINAL_RESULT })
 
