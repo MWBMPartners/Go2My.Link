@@ -14,11 +14,11 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-09-25 09:10 (SX-196 and SX-207 done; Codex catch-up retry set for 09:42 — see "This session") · 2026-09-23 21:10 (everything pushed; safe restart point — see START HERE) · 2026-09-21/22 (the LinksPage and tiers programme) · earlier: 2026-09-07 (audit + docs sweep, merged as #201) · 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow; per-user analytics #165) · earlier: 2026-07-22 (PR merges, Dependabot 3-tier, pricing) · 2026-07-19 (post-recovery conformance audit) · **Working branch:** `feat/2026-09-21-linkspage-and-sweep` (from `alpha`).
+> **Last updated:** 2026-09-25 10:15 (batch 3 done; the Codex catch-up ran and its one real finding is CX-02 — see "This session") · 2026-09-23 21:10 (everything pushed; safe restart point — see START HERE) · 2026-09-21/22 (the LinksPage and tiers programme) · earlier: 2026-09-07 (audit + docs sweep, merged as #201) · 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow; per-user analytics #165) · earlier: 2026-07-22 (PR merges, Dependabot 3-tier, pricing) · 2026-07-19 (post-recovery conformance audit) · **Working branch:** `feat/2026-09-21-linkspage-and-sweep` (from `alpha`).
 > **Status (2026-09-25):** a build programme is under way on the working branch, agreed with
 > the owner after a market review of LinksPage against Linktree, Beacons and about twenty other
-> "link in bio" services. The finished pieces are listed under START HERE; the next are SX-204
-> and SX-210 (the rest of batch 3). 693 unit tests and 233 database tests pass. The programme covers: making every tier feature editable in the
+> "link in bio" services. The finished pieces are listed under START HERE; the next is CX-02 (a
+> Codex finding), then batch 4. 709 unit tests and 233 database tests pass. The programme covers: making every tier feature editable in the
 > database through a new admin screen (no hard-coded tiers), an environment-aware pricing switch,
 > analytics kept for ever as daily counts with IP addresses removed after 90 days, the LinksPage
 > features the market expects, and a queue of approved fixes. The owner's 45 decisions are GitHub
@@ -28,7 +28,7 @@
 
 ---
 
-## ▶️ START HERE — everything a fresh session needs (2026-09-25, 09:10)
+## ▶️ START HERE — everything a fresh session needs (2026-09-25, 10:15)
 
 > **This section is written so a brand-new session, with no memory of the previous ones, can carry
 > on.** Read it, then `.claude/programme/README.md`, then the `progress` section of
@@ -39,31 +39,35 @@
 Nothing happened between 21:10 on 23 September and this session (no commits, no GitHub activity).
 
 **Done and pushed:** CX-01 (`79d6e11`), SX-198 (`64b3ca5`), SX-203 (`1412af2`) and SX-211
-(`eee195b`) — batch 2 is complete — then SX-196 (`cc61e98`) and SX-207 (`47509a7`) from batch 3, plus commits to the build tools and these notes (`9669b25`,
+(`eee195b`) — batch 2 is complete — then SX-196 (`cc61e98`), SX-207 (`47509a7`), SX-204 (`272e69d`)
+and SX-210 (`cbb8a4d`) — batch 3 is complete — plus commits to the build tools and these notes (`9669b25`,
 `2a26601`, `5740c07`, `95a0953`). See the Finished table below. SX-203's new check found one real
 offender on its first run: the analytics page's CSV download link ended in `.php` (now the clean
 address).
 
-**The Codex catch-up review.** The first attempt, at **00:03**, was refused with a real credit
-message: *"You've hit your usage limit … try again at 4:36 AM"*. (The message of `2a26601` says
-"about 00:15"; that time is wrong, and a pushed message cannot be edited.) No Go2My.Link session had
-used Codex since its last reset, so **another project on the same account used the allowance — it
-is shared.** The catch-up **did start at 04:40**, in a separate, throwaway copy of the repository
-(a git worktree — `git worktree list` shows it), but **ran out of credit again after about three
-minutes**, while still reading the whole diff (*"try again at 9:41 AM"*). It produced no findings.
-**A narrower retry is scheduled for 09:42**: product code only (`5340025`, `0255229`, `64b3ca5`,
-`79d6e11`, `47509a7`, `cc61e98`, then `1412af2` and `eee195b` if the allowance lasts), security
-first, with instructions to look at a few of the 54 identical guard changes rather than all of
-them. The notes and build-tool commits stay owed.
-Until it has finished, a lock file in the session's scratch folder makes the item reviewers skip
-Codex. So **everything built tonight was reviewed only by the Claude stand-in** (a fresh Opus agent
-that did not build the change), and every commit says so.
-**When it finishes:** check every finding against the code; queue the real ones as fix items
-*before* new build work; make sure the lock file is gone; remove the worktree with
-`git worktree remove <path>` (never `--force` without looking at it first). If the session ended
-before it ran, run it by hand (see "Codex, and what it is owed" below).
+**The Codex catch-up review — done for the product code.** Two attempts failed for lack of credit
+(00:03, and 04:40 after three minutes of reading); the allowance is shared with the owner's other
+projects. **The third, at 09:42–09:46, ran to the end** with a narrower brief: the product-code
+commits only (`5340025`, `0255229`, `64b3ca5`, `79d6e11`, `47509a7`, `cc61e98`, `1412af2`,
+`eee195b`, `272e69d`). **It found no correctness or security defect.** It raised two house-rule
+points, both on SX-196's installer change (`cc61e98`):
 
-**Next in this session:** SX-204 and SX-210 (the rest of batch 3), then batch 4.
+1. *The installer builds its `ALTER DATABASE` statement as text* (the name is checked first, so it
+   was not exploitable). Codex suggested a prepared, nameless statement instead. **Tested before
+   acting on it:** MySQL 8.4 refuses `ALTER DATABASE` as a prepared statement (error 1295) and
+   MariaDB 11.8 accepts it, so that exact fix would quietly break the correction on MySQL. The fix is
+   **CX-02**: a constant, nameless statement through a plain query, with the reason in a comment.
+2. *The installer's new messages are not translated.* **Not changed:** the installer has never used
+   the translation system (it runs before the database exists and never loads it), so `__()` there
+   would always fall back to English. Whether the installer should be translatable, or be written
+   down as the exception, is owner question **#275**.
+
+The evidence for both is a comment on #196. The review's separate copy of the repository has been
+removed, and the lock file is gone. **Still owed a Codex review:** the notes and build-tool commits,
+and `cbb8a4d` (SX-210) onwards. **Codex's next reset is 14:43**; the item reviewers try it first
+again, and SX-210's last round found it still out of credit.
+
+**Next in this session:** CX-02, then batch 4 (SX-197, SX-147, SX-214, SX-206).
 
 **SX-196 was also checked by hand** (the automated tests cannot do this, because they always create
 MySQL with the right collation): on a database deliberately created with the wrong one, the old
@@ -87,8 +91,8 @@ Everything is **committed and pushed**; the working copy is clean and the local 
 GitHub exactly. The working branch is **`feat/2026-09-21-linkspage-and-sweep`**, cut from `alpha`,
 and `git log -1` is always the truth about the latest commit (each finished item adds one). There
 is deliberately **no pull request yet** — one pull request to `alpha`, opened when the owner says
-so. The finished pieces are listed below. The next items are **SX-204** and **SX-210** (the rest of
-batch 3), then batch 4; `progress.next` in `.claude/programme/build-plan.json` says the same.
+so. The finished pieces are listed below. The next item is **CX-02** (Codex's catch-up finding on
+the installer), then batch 4; `progress.next` in `.claude/programme/build-plan.json` says the same.
 
 ### 🗂️ Where everything lives
 
@@ -119,36 +123,39 @@ batch 3), then batch 4; `progress.next` in `.claude/programme/build-plan.json` s
 | `edc469e` | — | Handoff records the Codex situation and the catch-up list. |
 | `76ad243` | #242 | Sample names instead of the owner's real name and email in tracked files; `docs/HISTORY_REWRITE_PLAN.md` written (describes only, runs nothing). |
 | `3a55fe1` | — | Planning moved to Opus (owner, 2026-09-23); this restart point; the build plan, its schema, the build workflow and the test script moved into `.claude/programme/`, with a unit test that checks the plan against its schema. |
+| `9138f82` | — | Handoff: records `3a55fe1` in the plan; the "latest commit" line made self-correcting. |
 | `9669b25` | — | Build workflow: Codex's model named in reviews; a lock file keeps Codex free for a catch-up review; finaliser writes to this table; shorthand written out. |
 | `2a26601` | — | Handoff: Codex out of credit, catch-up scheduled (its message gives the refusal time as "about 00:15"; it was 00:03). |
 | `5740c07` | — | Test script removes its database volume (each run had left one behind); builders told to keep comments short and true; workflow steps survive an agent that fails to report. |
-| `95a0953` | — | Notes: CX-01 and SX-198 recorded; the shared Codex allowance and the short-comments rule written into the working rules. |
-| `33e1ce3` | — | Notes: batch 2 recorded; the 04:40 Codex attempt ran out of credit; retry scheduled. |
 | `79d6e11` | #218 | Every user-facing error message in `web/_functions/linkspage_manage.php` now goes through the translation system, with a new seed file for the wording. CX-01. Review: 8 round(s); reviewers by round: claude-opus-fallback; last round clean. |
 | `64b3ca5` | #198 | Every direct-access guard under `web/` now compares real resolved file paths instead of bare file names, so an endpoint no longer gets redirected away by a library file that happens to share its name (the scheduled-jobs endpoint was dead this way). SX-198. Review: 4 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
+| `95a0953` | — | Notes: CX-01 and SX-198 recorded; the shared Codex allowance and the short-comments rule written into the working rules. |
 | `1412af2` | #203 | A new automated check now fails the build if any link, form target, redirect or background request in the shipping code points at an address ending in `.php`, and the one place that did (an analytics CSV download link) is now fixed. SX-203. Review: 4 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
 | `eee195b` | #211 | The lnks.page "coming soon" page no longer shows a live email sign-up form that threw away every address typed into it (it posted to "#", and nothing read `$_POST`); the same form, already commented out on the go2my.link landing page, is replaced with an explanatory comment so nobody brings it back by uncommenting. A new test fails the build if any landing page gains a form again. SX-211. Review: 2 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback; last round clean. |
+| `33e1ce3` | — | Notes: batch 2 recorded; the 04:40 Codex attempt ran out of credit; retry scheduled. |
 | `cc61e98` | #196 | CI no longer lets the test database silently pick up the wrong collation, and the integration job is no longer advisory; the web installer now checks and corrects a wrong collation before import, refusing with the exact SQL if it cannot; both stored procedures now state the required collation explicitly on every variable-to-column comparison, as a second safeguard; migration 042 fixes an existing database; and DEV_NOTES.md plus the other developer documents now state the required collation. SX-196. Review: 9 round(s); reviewers by round: claude-opus-fallback; last round clean. |
 | `47509a7` | #207 | The CSS cleaner used in custom LinksPage stylesheets and inline `style` attributes now removes every backslash before its keyword checks run, so an escape such as `\69` (a browser reads this as the letter "i") can no longer hide `@import`, `expression(` or `url(javascript:` from the checks that block them. SX-207. Review: 2 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback; last round clean. |
+| `8f0a710` | — | Notes: SX-196 and SX-207 recorded; SX-196 checked by hand on a wrongly set-up database. |
 | `272e69d` | #204 | The info page now accepts hyphens and underscores in a short code instead of silently stripping them, so a custom code such as "spring-sale" looks up that link instead of a different one (or none). SX-204. Review: 1 round(s); reviewers by round: claude-opus-fallback; last round clean. |
-| (this commit) | #210 | The homepage, features and about pages no longer claim two-factor authentication or SSO, which are not built, and describe geographic data as available where enabled rather than for every visitor; the pricing page no longer lists SSO / SAML; the lnks.page landing page no longer lists Auto Favicons. A new test fails the build if any of those phrases reappears. SX-210. Review: 3 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
+| `cbb8a4d` | #210 | The homepage, features and about pages no longer claim two-factor authentication or SSO, which are not built, and describe geographic data as available where enabled rather than for every visitor; the pricing page no longer lists SSO / SAML; the lnks.page landing page no longer lists Auto Favicons. A new test fails the build if any of those phrases reappears. SX-210. Review: 3 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
 
-**Test baseline now: 693 unit tests and 233 database tests, all passing** (PHP 8.4 in Docker; MySQL
+**Test baseline now: 709 unit tests and 233 database tests, all passing** (PHP 8.4 in Docker; MySQL
 8.4 with `utf8mb4_unicode_ci`). Run them with `sh .claude/programme/run-tests.sh all`.
 
 ### ⏭️ Next actions, in order
 
-1. **The Codex catch-up findings**, if it has run: fix the real ones first, as their own items.
-2. **The rest of batch 3:** SX-204 (#204 — the info page must keep hyphens and underscores in short
-   codes) and SX-210 (#210 — stop advertising features that do not exist). Then batch 4 (SX-197,
-   SX-147, SX-214, SX-206).
+1. **CX-02** (#196) — the installer's collation fix runs a constant `ALTER DATABASE`, not one built
+   from text (Codex's catch-up finding; plan in `build-plan.json`).
+2. **Batch 4:** SX-197 (#197 — the short-code generator stops hiding database errors), SX-147 (#147
+   — per-row form protection on the sessions and members pages), SX-214 (#214 — the timezone), SX-206
+   (#206 — API key expiry fails safe).
 3. **Batches 3 to 18** — the rest: the approved fixes, then the platform work (environment-aware
    pricing switch, the plan-and-pricing admin screens, analytics kept as daily counts), then the
    LinksPage features (hide branding, search and sharing controls, scheduled links, click tracking
    and statistics, password pages, uploads, embeds, templates, email capture, verified badges), then
    the translation pass, caching and the Help page.
 4. **The documentation sweep and the final report to the owner**, after the builds. Already noted
-   for it: `README.md` says there are 17 seed files (there are 26); LP-23's key names need settling
+   for it: `README.md` says there are 17 seed files (there are more); LP-23's key names need settling
    first (comment on #232).
 
 ### 🔁 Codex, and what it is owed
@@ -163,9 +170,9 @@ batch 3), then batch 4; `progress.next` in `.claude/programme/build-plan.json` s
   the owner's account** — on 2026-09-25 it was already used up at 00:03 although no Go2My.Link
   session had touched it. Never assume it is free: try once, read the reset time, schedule the
   catch-up just after it, and hold the item reviewers off Codex with the workflow's `codexLockFile`.
-- **Owed a review: everything after `69f4829`.** The 04:40 attempt on 2026-09-25 produced nothing
-  (out of credit after three minutes). The 09:42 retry covers only the product-code commits; the
-  notes and build-tool commits remain owed after it. Run it in a separate
+- **Owed a review:** the product code up to `272e69d` was reviewed at 09:42 on 2026-09-25 (see "This
+  session"). Still owed: the notes and build-tool commits after `69f4829`, and every commit from
+  `cbb8a4d` onwards. `progress.codex_re_review_owed` in the build plan lists them. Run it in a separate
   worktree so a build in progress cannot interfere. A written brief works better than a bare
   `--base` review: `codex review -c model="gpt-6-astra" - < brief.txt`, where the brief names the
   commit range, puts product code first, and says to skip line-by-line review of
@@ -227,7 +234,12 @@ batch 3), then batch 4; `progress.next` in `.claude/programme/build-plan.json` s
 4. **Two GitHub settings only the owner can change:** make "Tests (Integration) (ubuntu-latest)" a
    required check on `main` once it passes on the pull request, and switch on private vulnerability
    reporting (Settings → Security).
-5. **A question on the handoff's home.** The standing-tasks text says the handoff lives in
+5. **Should the web installer be translatable** (#275)? Recommended: write it down as the one
+   exception to the `__()` rule, because it runs before the database and its translations exist.
+6. **A stopped Docker container named `g2ml-mysql`** (about two weeks old) is on this Mac. It looks
+   like an old throwaway test database, but it was not created in the current session, so it has
+   been left alone. Say if it can be removed (with its data, `docker rm -v g2ml-mysql`).
+7. **A question on the handoff's home.** The standing-tasks text says the handoff lives in
    `.claude/`; the owner's answer on 2026-09-22 (decision 17) moved it to `.github/HANDOFF.md`, which
    is where it is now, and what keeps the dev-team plugin from overwriting it. `.claude/HANDOFF.md` is
    a one-line signpost to it. Say if you would rather it moved back.

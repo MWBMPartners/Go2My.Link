@@ -2323,6 +2323,28 @@
     "web/_functions/linkspage_manage.php"
    ],
    "depends_on": []
+  },
+  "CX-02": {
+   "key": "CX-02",
+   "title": "Installer's collation fix runs a constant ALTER DATABASE, not one built from text (Codex catch-up finding)",
+   "issue_number": 196,
+   "labels": [],
+   "builder_tier": "sonnet",
+   "commit_type": "fix",
+   "scope": "installer",
+   "plan": "SOURCE: Codex's catch-up review (2026-09-25 09:42, the product-code commits on the working branch) found that SX-196's installer collation check (commit cc61e98) builds its correction as text: $db->query('ALTER DATABASE `' . $dbName . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'). The name is checked against /^[A-Za-z0-9_$-]{1,64}$/ first, so it is not exploitable, but the house rule is 'never string-built SQL'. Codex suggested preparing a constant, nameless statement. The lead tested that on 2026-09-25: MySQL 8.4.11 REFUSES ALTER DATABASE as a prepared statement (ERROR 1295 'This command is not supported in the prepared statement protocol yet'; collation unchanged), while MariaDB 11.8.9 accepts it. So a prepared statement would silently break the automatic correction on MySQL. Evidence: comment on #196.\nSTEP 1 - web/Go2My.Link/public_html/install/index.php, the collation check (around lines 370-450): (a) replace the string-built ALTER with the constant, nameless statement $db->query('ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci'); it applies to the connection's selected database, and g2ml_install_connect() passes $creds['name'] as that database (check this before relying on it). (b) Delete the name-validation block (the preg_match on $dbName) and its error message, which exist only to make the name safe to paste into the SQL. (c) Keep the re-check after the ALTER and the existing message for when the correction fails (for example no ALTER privilege). (d) A SHORT comment, every statement checkable: nothing is pasted into this SQL, because the connection already selects the database; it is not a prepared statement because MySQL 8.4 refuses ALTER DATABASE in the prepared-statement protocol (error 1295, checked 2026-09-25; MariaDB accepts it); it contains no user input. (e) Remove any variable left unused. The remaining installer messages stay plain English, like the rest of the installer: whether the installer should be translatable is owner question #275, not part of this item.\nSTEP 2 - test: extend tests/unit/collation_docs_test.php or add a small static test that fails if install/index.php again builds an ALTER DATABASE statement by joining text (for example a match on ALTER DATABASE followed by a backtick-quote-dot, or any ALTER DATABASE string that is concatenated), and that passes on the constant statement. Keep it simple and explain the rule in one or two lines.\nSTEP 3 - docs: grep docs/, DEV_NOTES.md, PRE_LAUNCH_CHECKLIST.md and README.md for the removed message ('contains a character this installer will not place') or for text saying the installer validates the database name; update anything that is no longer true. Change nothing else.\nVERIFY: php -l on the changed file; the TESTS; and a manual check in a throwaway container (docker run --rm, named after this item, for example cx02-mysql) that a PHP mysqli connection with the database selected, running the constant statement through query(), really changes a utf8mb4_general_ci database to utf8mb4_unicode_ci on mysql:8.4 (and on mariadb:11 if it is quick). Confirm afterwards that no container of that name remains and docker volume ls -q -f dangling=true is empty. Say in deviations_from_plan what was and was not checked.",
+   "acceptance_criteria": [
+    "The installer's ALTER DATABASE statement is a constant string: no database name or other value is joined into it, and the name-validation block and its message are gone.",
+    "A short comment says why the statement is nameless and why it is not a prepared statement (MySQL 8.4 error 1295).",
+    "A unit test fails if a text-built ALTER DATABASE statement returns to the installer.",
+    "The automatic correction is shown to still work on MySQL 8.4 in a throwaway container (MariaDB too if quick), with the container and its data removed afterwards; tests pass."
+   ],
+   "shared_files_touched": [
+    "web/Go2My.Link/public_html/install/index.php"
+   ],
+   "depends_on": [
+    "SX-196"
+   ]
   }
  },
  "build_order": [
@@ -2360,6 +2382,13 @@
     "SX-210"
    ],
    "why": "SX-196 (CI workflows, installer, both procedures, migration 042, and the collation docs from decision 32) is the foundation for trusting the integration suite from here on. SX-207 (CSS cleaner), SX-204 (info page and main .htaccess) and SX-210 (seed 058, marketing pages, pricing stop-gap, lnks landing line after SX-211) touch separate code files. SX-196's many documentation edits run last under the docs-last rule."
+  },
+  {
+   "batch": "B3b \u2014 the Codex catch-up finding on the installer",
+   "keys": [
+    "CX-02"
+   ],
+   "why": "Codex's catch-up review (2026-09-25) found that SX-196's installer builds its ALTER DATABASE statement as text. A review finding is fixed before new work, so this goes straight after batch 3 and before batch 4. It touches only the installer, which nothing in batch 4 changes."
   },
   {
    "batch": "B4 \u2014 Error visibility, per-row CSRF, timezone, key expiry",
@@ -2620,7 +2649,8 @@
   "LP-30": 269,
   "LP-10": 221,
   "LP-12": 220,
-  "CX-01": 218
+  "CX-01": 218,
+  "CX-02": 196
  },
  "progress": {
   "updated": "2026-09-25",
@@ -2770,19 +2800,35 @@
     "issue": 207,
     "commit": "47509a7",
     "what": "CSS cleaner removes every backslash before its keyword checks; 2 review rounds, all by the Claude stand-in"
+   },
+   {
+    "key": "HANDOFF",
+    "issue": 0,
+    "commit": "8f0a710",
+    "what": "notes: SX-196 and SX-207 recorded; SX-196 checked by hand on a wrongly set-up database"
+   },
+   {
+    "key": "SX-204",
+    "issue": 204,
+    "commit": "272e69d",
+    "what": "info page keeps hyphens and underscores in short codes (rejects, never strips); 1 review round, Claude stand-in"
+   },
+   {
+    "key": "SX-210",
+    "issue": 210,
+    "commit": "cbb8a4d",
+    "what": "public pages stop claiming 2FA, SSO/SAML and Auto Favicons; seed 058; 3 review rounds, Claude stand-in (Codex tried in round 3, out of credit)"
    }
   ],
   "next": [
-   "SX-204",
-   "SX-210",
+   "CX-02",
    "SX-197",
    "SX-147",
    "SX-214",
-   "SX-206"
+   "SX-206",
+   "SX-208"
   ],
   "codex_re_review_owed": [
-   "5340025",
-   "0255229",
    "8302613",
    "b4d6b52",
    "edc469e",
@@ -2792,14 +2838,10 @@
    "9669b25",
    "2a26601",
    "5740c07",
-   "79d6e11",
-   "64b3ca5",
    "95a0953",
-   "1412af2",
-   "eee195b",
    "33e1ce3",
-   "cc61e98",
-   "47509a7"
+   "8f0a710",
+   "cbb8a4d"
   ]
  }
 }
