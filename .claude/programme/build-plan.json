@@ -2752,15 +2752,33 @@
     "issue": 211,
     "commit": "eee195b",
     "what": "lnks.page Notify Me form removed; test fails if any landing page gains a form; 2 review rounds, all by the Claude stand-in"
+   },
+   {
+    "key": "HANDOFF",
+    "issue": 0,
+    "commit": "33e1ce3",
+    "what": "notes: batch 2 recorded; the 04:40 Codex catch-up ran out of credit; narrower retry scheduled"
+   },
+   {
+    "key": "SX-196",
+    "issue": 196,
+    "commit": "cc61e98",
+    "what": "database collation fixed in CI, installer check, collation-proof procedures, migration 042, developer docs; 9 review rounds, all by the Claude stand-in; checked by hand on a wrongly set-up database (comment on #196)"
+   },
+   {
+    "key": "SX-207",
+    "issue": 207,
+    "commit": "47509a7",
+    "what": "CSS cleaner removes every backslash before its keyword checks; 2 review rounds, all by the Claude stand-in"
    }
   ],
   "next": [
-   "SX-196",
-   "SX-207",
    "SX-204",
    "SX-210",
    "SX-197",
-   "SX-147"
+   "SX-147",
+   "SX-214",
+   "SX-206"
   ],
   "codex_re_review_owed": [
    "5340025",
@@ -2778,7 +2796,10 @@
    "64b3ca5",
    "95a0953",
    "1412af2",
-   "eee195b"
+   "eee195b",
+   "33e1ce3",
+   "cc61e98",
+   "47509a7"
   ]
  }
 }
