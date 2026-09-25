@@ -250,21 +250,23 @@ The application detects its environment from the hostname:
 3. 📋 Import all **16** schema files from `web/_sql/schema/`, in filename order
 4. 🔧 Import both stored procedures from `web/_sql/procedures/`
    (`sp_generateShortCode.sql`, `sp_lookupShortURL.sql`)
-5. 🌱 Import all **27** seed files from `web/_sql/seeds/`, in order — the
+5. 🌱 Import all **28** seed files from `web/_sql/seeds/`, in order — the
    numbering is not continuous: `001` through `023` run in sequence, then
-   four later additions sit outside that run, `029_linkspage_privacy_translations.sql`,
+   five later additions sit outside that run, `029_linkspage_privacy_translations.sql`,
    `058_truthful_marketing_translations.sql`,
-   `064_linkspage_avatar_icon_translations.sql` and
-   `065_linkspage_manage_error_translations.sql` (see the table below for
+   `064_linkspage_avatar_icon_translations.sql`,
+   `065_linkspage_manage_error_translations.sql` and
+   `066_org_members_unknown_action_translation.sql` (see the table below for
    what each one adds). Importing "in order" means by filename, so a plain
-   `for f in web/_sql/seeds/*.sql` loop picks up all 27 without needing to
+   `for f in web/_sql/seeds/*.sql` loop picks up all 28 without needing to
    know about the gap in the numbers.
 
-> 📝 Counts as at 2026-09-25: 16 schema files, 2 stored procedures, 27 seeds,
+> 📝 Counts as at 2026-09-25: 16 schema files, 2 stored procedures, 28 seeds,
 > 21 migrations. Import order is schema → procedures → seeds, which is the
 > order `.github/workflows/ci.yml` uses. (Seed `023` and migration `021`, the
 > LinksPage feature registry, were added on 2026-09-21; seeds `029`, `058`,
-> `064` and `065` were added later still, outside the 001-023 run — see below.)
+> `064`, `065` and `066` were added later still, outside the 001-023 run —
+> see below.)
 
 #### 🚨 The collation check — do this first, every time
 
@@ -342,8 +344,9 @@ key names instead of words:
 | `058_truthful_marketing_translations.sql` | 6 strings: corrected wording for the homepage, features and about pages' security and analytics descriptions, so they no longer promise two-factor authentication or SSO and describe geographic data as available "where enabled" rather than for every visitor (#210) | The homepage, features page and about page show `home.feature_secure_desc_v2` and the other five new key names instead of English |
 | `064_linkspage_avatar_icon_translations.sql` | 4 strings: the avatar and per-link icon fields' help text on the LinksPage create/edit pages, plus the two save-time error messages shown when one of those addresses is not https:// (#221, #273) | The two help texts show `linkspage.avatar_url_help`/`linkspage.item_icon_help` instead of English, and a refused save shows `linkspage.avatar_url_https_error`/`linkspage.item_icon_https_error` instead of a readable error |
 | `065_linkspage_manage_error_translations.sql` | 41 strings: every OTHER error message the LinksPage admin dashboard's create/edit/delete/reorder/upload backend (`web/_functions/linkspage_manage.php`) can show — reserved/invalid slugs, page and item field validation, the per-plan page limit, the per-page item cap, ownership/not-found checks, and the custom-HTML editor's save/upload errors (CX-01, #218). The two save-time "must be https://" errors for the avatar and per-link icon fields are NOT in this seed — they are in `064` above, since they were already translated before CX-01 | Every one of those messages shows its raw `linkspage.error.*` key name (e.g. `linkspage.error.slug_reserved`) instead of readable English |
+| `066_org_members_unknown_action_translation.sql` | 1 string: the Organisation Members page's "Unknown action." message, shown when a posted `action_type` matches none of the CSRF form names the page knows how to build — a branch the #147 fix added, which the page did not have before (#147 review round 2) | The Organisation Members page shows the raw key name `org.members_error_unknown_action` instead of "Unknown action." when this happens |
 
-All six are `INSERT IGNORE`, so they are safe to run more than once and safe
+All seven are `INSERT IGNORE`, so they are safe to run more than once and safe
 on a database that already has them.
 
 #### 🧩 Migration `021` — the LinksPage feature registry (needed on an EXISTING database)

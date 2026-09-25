@@ -45,10 +45,43 @@ $actionError   = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
-    $csrfToken = $_POST['_csrf_token'] ?? '';
-    $action    = $_POST['action'] ?? '';
+    $csrfToken  = $_POST['_csrf_token'] ?? '';
+    $action     = $_POST['action'] ?? '';
+    $sessionUID = (int) ($_POST['session_uid'] ?? 0);
 
-    if (!g2ml_validateCSRFToken($csrfToken, 'sessions_form'))
+    // ========================================================================
+    // 🔒 #147 — CSRF form-name namespacing
+    // ========================================================================
+    // "Revoke" is rendered once PER ROW (one form per session), so its CSRF
+    // token must be namespaced by the row's own sessionUID. Otherwise
+    // g2ml_generateCSRFToken() (single-slot-per-form-name, see security.php)
+    // overwrites the previous row's token every time the loop renders the
+    // next row's form, and only the LAST-rendered row's action would still
+    // validate — which also meant "Sign Out All Others" (rendered above the
+    // list) always failed as soon as the list below it rendered any session
+    // row, because that row's token silently replaced its own. "Sign Out
+    // All Others" now keeps its own distinct, stable form name instead of
+    // sharing one with every row.
+    // ========================================================================
+
+    if ($action === 'revoke_one')
+    {
+        $csrfFormName = 'session_revoke_' . $sessionUID;
+    }
+    elseif ($action === 'revoke_all_others')
+    {
+        $csrfFormName = 'sessions_revoke_all_others';
+    }
+    else
+    {
+        $csrfFormName = '';
+    }
+
+    if ($csrfFormName === '')
+    {
+        $actionError = 'Unknown action.';
+    }
+    elseif (!g2ml_validateCSRFToken($csrfToken, $csrfFormName))
     {
         $actionError = 'Session expired. Please try again.';
     }
@@ -59,8 +92,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         // --------------------------------------------------------------------
         if ($action === 'revoke_one')
         {
-            $sessionUID = (int) ($_POST['session_uid'] ?? 0);
-
+            // $sessionUID was already parsed above to build the namespaced
+            // CSRF form name for this row; reused here unchanged.
             if ($sessionUID <= 0)
             {
                 $actionError = 'Invalid session.';
@@ -112,10 +145,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                 ]);
             }
         }
-        else
-        {
-            $actionError = 'Unknown action.';
-        }
     }
 }
 
@@ -150,7 +179,7 @@ $sessions = listUserSessions($userUID);
             <!-- Revoke All Others button -->
             <form action="/profile/sessions" method="POST" class="d-inline"
                   onsubmit="return confirm('Sign out of all other devices? You will remain signed in on this device.');">
-                <?php echo g2ml_csrfField('sessions_form'); ?>
+                <?php echo g2ml_csrfField('sessions_revoke_all_others'); ?>
                 <input type="hidden" name="action" value="revoke_all_others">
                 <button type="submit" class="btn btn-outline-danger btn-sm">
                     <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Sign Out All Others
@@ -287,7 +316,7 @@ $sessions = listUserSessions($userUID);
                                 <?php } else { ?>
                                 <form action="/profile/sessions" method="POST" class="d-inline"
                                       onsubmit="return confirm('Revoke this session? The device will be signed out.');">
-                                    <?php echo g2ml_csrfField('sessions_form'); ?>
+                                    <?php echo g2ml_csrfField('session_revoke_' . (int) $session['sessionUID']); ?>
                                     <input type="hidden" name="action" value="revoke_one">
                                     <input type="hidden" name="session_uid" value="<?php echo (int) $session['sessionUID']; ?>">
                                     <button type="submit" class="btn btn-outline-danger btn-sm">

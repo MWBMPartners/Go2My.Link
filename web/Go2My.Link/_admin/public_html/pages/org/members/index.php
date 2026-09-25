@@ -56,8 +56,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
     $csrfToken  = $_POST['_csrf_token'] ?? '';
     $actionType = $_POST['action_type'] ?? '';
+    $targetUID  = (int) ($_POST['user_uid'] ?? 0);
+    $invUID     = (int) ($_POST['invitation_uid'] ?? 0);
 
-    if (!g2ml_validateCSRFToken($csrfToken, 'org_members_form'))
+    // ========================================================================
+    // 🔒 #147 — CSRF form-name namespacing
+    // ========================================================================
+    // change_role, remove_member and cancel_invitation are each rendered
+    // once PER ROW (one form per member, or per invitation for "cancel"),
+    // so each row's CSRF token must be namespaced by the row's own id.
+    // Otherwise g2ml_generateCSRFToken() (single-slot-per-form-name, see
+    // security.php) overwrites the previous row's token every time the loop
+    // renders the next row's form, and only the LAST-rendered row's action
+    // would still validate. add_account_type and remove_account_type have
+    // no form on this page yet, but are namespaced the same way now so a
+    // future form for them is safe by default.
+    // ========================================================================
+
+    if ($actionType === 'change_role')
+    {
+        $csrfFormName = 'org_member_change_role_' . $targetUID;
+    }
+    elseif ($actionType === 'remove_member')
+    {
+        $csrfFormName = 'org_member_remove_' . $targetUID;
+    }
+    elseif ($actionType === 'cancel_invitation')
+    {
+        $csrfFormName = 'org_invite_cancel_' . $invUID;
+    }
+    elseif ($actionType === 'add_account_type')
+    {
+        $csrfFormName = 'org_member_add_account_type_' . $targetUID;
+    }
+    elseif ($actionType === 'remove_account_type')
+    {
+        $csrfFormName = 'org_member_remove_account_type_' . $targetUID;
+    }
+    else
+    {
+        $csrfFormName = '';
+    }
+
+    if ($csrfFormName === '')
+    {
+        // #147: this branch is new (the switch below used to have no
+        // default, so an unknown action_type fell through silently
+        // instead of showing this message) — new user-facing text must go
+        // through __(), same as $pageTitle/$pageDesc above on this page.
+        if (function_exists('__'))
+        {
+            $actionError = __('org.members_error_unknown_action');
+        }
+        else
+        {
+            $actionError = 'Unknown action.';
+        }
+    }
+    elseif (!g2ml_validateCSRFToken($csrfToken, $csrfFormName))
     {
         $actionError = 'Session expired. Please try again.';
     }
@@ -66,29 +122,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         switch ($actionType)
         {
             case 'change_role':
-                $targetUID = (int) ($_POST['user_uid'] ?? 0);
-                $newRole   = $_POST['new_role'] ?? '';
-                $result    = changeMemberRole($orgHandle, $targetUID, $newRole);
+                // $targetUID was already parsed above to build the
+                // namespaced CSRF form name for this row; reused here
+                // unchanged.
+                $newRole = $_POST['new_role'] ?? '';
+                $result  = changeMemberRole($orgHandle, $targetUID, $newRole);
                 if ($result['success']) { $actionSuccess = 'Member role updated.'; }
                 else { $actionError = $result['error']; }
                 break;
 
             case 'remove_member':
-                $targetUID = (int) ($_POST['user_uid'] ?? 0);
-                $result    = removeMember($orgHandle, $targetUID);
+                // $targetUID was already parsed above; reused here
+                // unchanged.
+                $result = removeMember($orgHandle, $targetUID);
                 if ($result['success']) { $actionSuccess = 'Member removed from organisation.'; }
                 else { $actionError = $result['error']; }
                 break;
 
             case 'cancel_invitation':
-                $invUID = (int) ($_POST['invitation_uid'] ?? 0);
+                // $invUID was already parsed above; reused here unchanged.
                 $result = cancelInvitation($invUID, $orgHandle);
                 if ($result['success']) { $actionSuccess = 'Invitation cancelled.'; }
                 else { $actionError = $result['error']; }
                 break;
 
             case 'add_account_type':
-                $targetUID = (int) ($_POST['user_uid'] ?? 0);
+                // $targetUID was already parsed above; reused here
+                // unchanged.
                 $addTypeID = $_POST['account_type_id'] ?? '';
 
                 if ($addTypeID !== '' && function_exists('assignAccountType'))
@@ -174,7 +234,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                 break;
 
             case 'remove_account_type':
-                $targetUID    = (int) ($_POST['user_uid'] ?? 0);
+                // $targetUID was already parsed above; reused here
+                // unchanged.
                 $removeTypeID = $_POST['account_type_id'] ?? '';
 
                 if ($removeTypeID !== '' && function_exists('revokeAccountType'))
@@ -393,7 +454,7 @@ $invitations = getPendingInvitations($orgHandle);
                                 <div class="d-flex gap-1">
                                     <!-- Role Change -->
                                     <form action="/org/members" method="POST" class="d-inline">
-                                        <?php echo g2ml_csrfField('org_members_form'); ?>
+                                        <?php echo g2ml_csrfField('org_member_change_role_' . (int) $member['userUID']); ?>
                                         <input type="hidden" name="action_type" value="change_role">
                                         <input type="hidden" name="user_uid" value="<?php echo (int) $member['userUID']; ?>">
                                         <select name="new_role" class="form-select form-select-sm d-inline-block" style="width:auto;"
@@ -406,7 +467,7 @@ $invitations = getPendingInvitations($orgHandle);
                                     <!-- Remove -->
                                     <form action="/org/members" method="POST" class="d-inline"
                                           onsubmit="return confirm('Remove this member from the organisation?');">
-                                        <?php echo g2ml_csrfField('org_members_form'); ?>
+                                        <?php echo g2ml_csrfField('org_member_remove_' . (int) $member['userUID']); ?>
                                         <input type="hidden" name="action_type" value="remove_member">
                                         <input type="hidden" name="user_uid" value="<?php echo (int) $member['userUID']; ?>">
                                         <button type="submit" class="btn btn-outline-danger btn-sm"
@@ -469,7 +530,7 @@ $invitations = getPendingInvitations($orgHandle);
                             <td>
                                 <form action="/org/members" method="POST" class="d-inline"
                                       onsubmit="return confirm('Cancel this invitation?');">
-                                    <?php echo g2ml_csrfField('org_members_form'); ?>
+                                    <?php echo g2ml_csrfField('org_invite_cancel_' . (int) $inv['invitationUID']); ?>
                                     <input type="hidden" name="action_type" value="cancel_invitation">
                                     <input type="hidden" name="invitation_uid" value="<?php echo (int) $inv['invitationUID']; ?>">
                                     <button type="submit" class="btn btn-outline-secondary btn-sm">
