@@ -36,6 +36,24 @@ if (function_exists('__')) {
 $currentUser = getCurrentUser();
 $userUID     = $currentUser['userUID'];
 
+// Load shorturl_create.php if not already loaded — this page does not
+// normally need it, but SAVING a change now runs the same shared destination
+// check createShortURL() uses (#205), so g2ml_validateLinkDestination() must
+// be available.
+//
+// pages/links/create/index.php has the same-looking line but with
+// dirname(__DIR__, 4), which resolves to .../Go2My.Link/_admin/_functions/
+// shorturl_create.php — a path that does not exist, so that page's own
+// require silently never runs. The correct depth is 5, the same one
+// pages/linkspage/edit/index.php already uses correctly for a
+// pages/<X>/<Y>/index.php file at this same nesting.
+$shorturlPath = dirname(__DIR__, 5) . DIRECTORY_SEPARATOR . '_functions' . DIRECTORY_SEPARATOR . 'shorturl_create.php';
+
+if (file_exists($shorturlPath) && !function_exists('g2ml_validateLinkDestination'))
+{
+    require_once $shorturlPath;
+}
+
 // ============================================================================
 // Load the link
 // ============================================================================
@@ -109,15 +127,33 @@ if ($linkData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
             $isActive = 0;
         }
 
-        // Validate destination URL
-        $sanitisedURL = g2ml_sanitiseURL($destinationURL);
+        // Validate destination URL — the shared check (#205): sanitise it,
+        // refuse it if it points at one of our own short domains (or a
+        // subdomain of one), and refuse it if it points at an internal or
+        // cloud-metadata host. Before #205 this page ran only the first of
+        // those checks, so an existing link could be EDITED to point
+        // somewhere its own CREATION would have refused — see
+        // g2ml_validateLinkDestination() in shorturl_create.php.
+        $destinationCheck = g2ml_validateLinkDestination($destinationURL);
 
-        if ($sanitisedURL === false)
+        if ($destinationCheck['ok'] === false)
         {
-            $formError = 'Invalid URL format. Please enter a valid HTTP or HTTPS URL.';
+            // errorCode is always one of 'invalid_url', 'own_domain' or
+            // 'blocked_destination' here (never '', which only comes back on
+            // success) — seed 059 carries a links.error_destination_<code>
+            // translation for each. __() itself falls back to the English
+            // text on a locale gap; this fallback is only for a CLI/test
+            // context where the translation layer is not loaded at all.
+            if (function_exists('__')) {
+                $formError = __('links.error_destination_' . $destinationCheck['errorCode']);
+            } else {
+                $formError = $destinationCheck['error'];
+            }
         }
         else
         {
+            $sanitisedURL = $destinationCheck['url'];
+
             if ($title !== '') {
                 $titleVal = $title;
             } else {

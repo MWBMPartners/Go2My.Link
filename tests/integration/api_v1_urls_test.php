@@ -660,6 +660,42 @@ test('urlsUpdate: re-applies the SSRF/scheme guard — a private destination is 
     g2ml_apiurls_test_delete_code($db, 'apissrf1');
 });
 
+test('urlsUpdate: re-applies the own-domain check — a link cannot be edited to point at g2my.link (#205)', function () use ($g2mlApiUrlsKeyAFull, $db): void
+{
+    // Before #205 this handler ran the SSRF guard but NOT the own-domain
+    // check, so a PUT could point an existing link back at one of our own
+    // short domains even though POSTing that same destination to CREATE a
+    // link would have been refused (createShortURL()'s Step 2). This test
+    // proves the update path now refuses it too, with the same 422 the
+    // create path has always returned for this destination.
+    g2ml_apiurls_test_delete_code($db, 'apiowndomain1');
+    g2ml_apiHandleUrlsCreate($g2mlApiUrlsKeyAFull, g2ml_apiurls_test_context(['destination_url' => 'https://example.com/safe-before-loop', 'custom_code' => 'apiowndomain1']));
+
+    $threw      = false;
+    $statusCode = null;
+    $message    = null;
+
+    try
+    {
+        g2ml_apiHandleUrlsUpdate($g2mlApiUrlsKeyAFull, g2ml_apiurls_test_context(['destination_url' => 'https://g2my.link/abc'], ['code' => 'apiowndomain1']));
+    }
+    catch (G2mlApiHandlerException $ownDomainException)
+    {
+        $threw      = true;
+        $statusCode = $ownDomainException->getHttpStatusCode();
+        $message    = $ownDomainException->getMessage();
+    }
+
+    assert_true($threw, 'A destination on one of our own short domains must be rejected by the same check used on create');
+    assert_same(422, $statusCode, 'An own-domain destination on update must map to 422, exactly like on create');
+    assert_same('Cannot shorten URLs that point to this service.', $message, 'The message must match createShortURL()\'s own message for this failure (#205)');
+
+    $unchangedRow = dbSelectOne('SELECT destinationURL FROM tblShortURLs WHERE shortCode = ? AND orgHandle = ?', 'ss', ['apiowndomain1', '[default]']);
+    assert_same('https://example.com/safe-before-loop', $unchangedRow['destinationURL'], 'A rejected update must never mutate the stored destination');
+
+    g2ml_apiurls_test_delete_code($db, 'apiowndomain1');
+});
+
 test('urlsUpdate: BOLA guard — org A gets 404 for org B\'s code, and org B\'s data is untouched', function () use ($g2mlApiUrlsKeyAFull, $g2mlApiUrlsKeyBFull, $db): void
 {
     g2ml_apiurls_test_delete_code($db, 'apibola2');

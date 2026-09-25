@@ -525,11 +525,12 @@ paths:
       description: |
         Requires the `urls:write` scope. At least one of `destination_url`,
         `title`, or `tags` must be supplied. A replacement
-        `destination_url` is re-validated with the same sanitisation and
-        SSRF/scheme allow-list checks used at create time before it is
-        ever written. Supplying `title` as an empty string clears the
-        stored title to `NULL`. A code that exists but belongs to a
-        different organisation 404s exactly like `GET`/`DELETE` — the
+        `destination_url` is re-validated with the SAME shared check used
+        at create time — well-formed http/https, not one of our own short
+        domains, and not an internal/metadata host (SSRF/scheme guard) —
+        before it is ever written. Supplying `title` as an empty string
+        clears the stored title to `NULL`. A code that exists but belongs
+        to a different organisation 404s exactly like `GET`/`DELETE` — the
         update is never partially applied to another tenant's link.
       x-required-scope: urls:write
       requestBody:

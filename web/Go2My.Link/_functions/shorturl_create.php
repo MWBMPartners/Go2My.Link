@@ -376,6 +376,172 @@ function g2ml_attachTagsToShortURL(int $urlUID, string $orgHandle, string|array 
 }
 
 // ============================================================================
+// 🛡️ g2ml_validateLinkDestination — the one shared destination check (#205)
+// ============================================================================
+// Before #205, createShortURL() ran three checks on a destination URL
+// (well-formed http/https, not one of our own short domains, not an
+// internal/metadata host) but the dashboard's edit-link page ran only the
+// first of the three, and the API's PUT handler ran the first and third but
+// not the second. That meant a signed-in user could create a link to an
+// ordinary site, then EDIT it to point at 127.0.0.1, at a cloud-metadata
+// address, or — through the dashboard or the API — at one of our own short
+// domains, none of which CREATING a link would have allowed (#205). This
+// function now holds all three checks; every place that writes a
+// destinationURL calls it instead of running any of the checks itself.
+//
+// The three checks, in the same order createShortURL always ran them:
+//   1. g2ml_sanitiseURL() — must be a well-formed http/https URL.
+//   2. Not one of our own short domains (the three built-in ones, or a
+//      registered custom short domain), and not a SUBDOMAIN of one of the
+//      three built-in domains (admin.go2my.link, for example) — a link back
+//      to our own service is never a legitimate destination and could create
+//      a redirect loop. This subdomain widening is deliberately scoped to
+//      the built-in domains only: a registered custom short domain belongs
+//      to a customer, and only the exact host they registered is ours to
+//      refuse — a subdomain of THEIR domain is theirs to decide about, not
+//      ours.
+//   3. g2ml_destinationHostIsAllowed() — the anti-SSRF guard (#100): rejects
+//      loopback, link-local/metadata, userinfo (user:pass@), and (by
+//      default) private hosts.
+//
+// Test seam: unit tests run DB-free (see tests/run.php), so this
+// function cannot query tblOrgShortDomains from there. Setting
+// $GLOBALS['g2ml_link_destination_custom_domains_override'] to an array of
+// extra short-domain hostnames makes this function use that array in place
+// of the database read — unset (the normal runtime case) means "query
+// tblOrgShortDomains as usual". This mirrors the existing
+// $GLOBALS['g2ml_dns_txt_lookup_override'] idiom (web/_functions/org.php).
+//
+// 📖 Reference: web/_functions/security.php — g2ml_sanitiseURL(), g2ml_destinationHostIsAllowed()
+// 📖 Reference: https://www.php.net/manual/en/function.parse-url.php
+//
+// @param  string $rawURL  The destination URL as submitted, untrimmed.
+// @return array  ['ok' => bool, 'url' => ?string, 'errorCode' => string,
+//                 'error' => string] — on success 'url' is the sanitised
+//                 destination, 'errorCode' is '' and 'error' is ''; on
+//                 failure 'url' is null and 'errorCode' is one of
+//                 'invalid_url', 'own_domain', 'blocked_destination'.
+// ============================================================================
+function g2ml_validateLinkDestination(string $rawURL): array
+{
+    $rawURL = trim($rawURL);
+
+    // Check 1: well-formed http/https URL.
+    $sanitisedURL = g2ml_sanitiseURL($rawURL);
+
+    if ($sanitisedURL === false)
+    {
+        return [
+            'ok'        => false,
+            'url'       => null,
+            'errorCode' => 'invalid_url',
+            'error'     => 'Invalid URL format. Please enter a valid HTTP or HTTPS URL.',
+        ];
+    }
+
+    // Check 2: not one of our own short domains, and not a subdomain of one
+    // of the three built-in domains.
+    $parsed  = parse_url($sanitisedURL);
+    $urlHost = strtolower($parsed['host'] ?? '');
+
+    // Strip a trailing dot — "g2my.link." resolves to the same address as
+    // "g2my.link", but as a PHP string it equals neither 'g2my.link' nor
+    // '.g2my.link', so without this a link could be typed with a trailing
+    // dot to slip past the own-domain check below while still reaching us
+    // (#205).
+    $urlHost = rtrim($urlHost, '.');
+
+    // Strip www. prefix for comparison — so www.lnks.page matches lnks.page.
+    if (strpos($urlHost, 'www.') === 0)
+    {
+        $urlHost = substr($urlHost, 4);
+    }
+
+    $builtInDomains = ['g2my.link', 'go2my.link', 'lnks.page'];
+    $blockedDomains = $builtInDomains;
+
+    if (isset($GLOBALS['g2ml_link_destination_custom_domains_override'])
+        && is_array($GLOBALS['g2ml_link_destination_custom_domains_override']))
+    {
+        // Test seam — see the doc block above. No database read happens here.
+        foreach ($GLOBALS['g2ml_link_destination_custom_domains_override'] as $overrideDomain)
+        {
+            $blockedDomains[] = strtolower((string) $overrideDomain);
+        }
+    }
+    else
+    {
+        $customDomains = dbSelect(
+            "SELECT shortDomain FROM tblOrgShortDomains WHERE isActive = 1",
+            '',
+            []
+        );
+
+        // dbSelect() only ever returns array|false, so once false is
+        // eliminated the remaining value is guaranteed to be an array — no
+        // separate is_array() check is needed. A read failure here keeps
+        // today's behaviour (the built-in list only) rather than blocking
+        // every destination check outright; logged once so a real database
+        // problem is not silent.
+        if ($customDomains === false)
+        {
+            error_log('[Go2My.Link] WARNING: g2ml_validateLinkDestination could not read tblOrgShortDomains; checking against the built-in short domains only.');
+        }
+        else
+        {
+            foreach ($customDomains as $row)
+            {
+                $blockedDomains[] = strtolower($row['shortDomain']);
+            }
+        }
+    }
+
+    $isOwnDomain = in_array($urlHost, $blockedDomains, true);
+
+    if ($isOwnDomain === false)
+    {
+        // Subdomain widening (#205) — built-in domains only; see the doc
+        // block above for why a custom domain's subdomains are NOT covered.
+        foreach ($builtInDomains as $builtInDomain)
+        {
+            if (str_ends_with($urlHost, '.' . $builtInDomain))
+            {
+                $isOwnDomain = true;
+                break;
+            }
+        }
+    }
+
+    if ($isOwnDomain)
+    {
+        return [
+            'ok'        => false,
+            'url'       => null,
+            'errorCode' => 'own_domain',
+            'error'     => 'Cannot shorten URLs that point to this service.',
+        ];
+    }
+
+    // Check 3: anti-SSRF host guard (#100).
+    if (g2ml_destinationHostIsAllowed($sanitisedURL) === false)
+    {
+        return [
+            'ok'        => false,
+            'url'       => null,
+            'errorCode' => 'blocked_destination',
+            'error'     => 'That destination is not permitted. Please enter a public HTTP or HTTPS URL.',
+        ];
+    }
+
+    return [
+        'ok'        => true,
+        'url'       => $sanitisedURL,
+        'errorCode' => '',
+        'error'     => '',
+    ];
+}
+
+// ============================================================================
 // ✨ createShortURL — Create a new short URL
 // ============================================================================
 // Creates a new short URL record in tblShortURLs. Generates a unique random
@@ -442,18 +608,18 @@ function g2ml_attachTagsToShortURL(int $urlUID, string $orgHandle, string|array 
 //                 'qrUuidTaken' => ?bool, 'errorCode' => ?string] —
 //                 qrUuidTaken is only present and true when the failure was
 //                 a qrCodeExternalUUID collision (#145); absent for every
-//                 other outcome. errorCode is only present when
-//                 sp_generateShortCode itself failed — 'code_generation_failed'
-//                 either way, whether the cause was a real database error or
-//                 simply running out of random codes to try (#197); absent
-//                 for every other outcome, including success.
+//                 other outcome. errorCode is present only for the three
+//                 destination-check failures from g2ml_validateLinkDestination()
+//                 (#205) — 'invalid_url', 'own_domain', 'blocked_destination'
+//                 — and for 'code_generation_failed' when sp_generateShortCode
+//                 itself failed (#197); absent on every other failure and on
+//                 success.
 // ============================================================================
 function createShortURL(string $longURL, array $options = []): array
 {
     // ========================================================================
-    // 📋 Step 1: Validate and sanitise the URL
+    // 📋 Step 1: Require a non-empty URL
     // ========================================================================
-    // 📖 Reference: web/_functions/security.php — g2ml_sanitiseURL()
     $longURL = trim($longURL);
 
     if ($longURL === '')
@@ -466,88 +632,28 @@ function createShortURL(string $longURL, array $options = []): array
         ];
     }
 
-    // Validate URL format (must be http:// or https://)
-    $sanitisedURL = g2ml_sanitiseURL($longURL);
+    // ========================================================================
+    // 🛡️ Step 2: The shared destination check (#205)
+    // ========================================================================
+    // Sanitise, refuse our own short domains, refuse internal/metadata hosts
+    // — see g2ml_validateLinkDestination() above in this file for the full
+    // policy and why this now lives in one place shared with the dashboard
+    // edit page and the API's PUT handler.
+    // ========================================================================
+    $destinationCheck = g2ml_validateLinkDestination($longURL);
 
-    if ($sanitisedURL === false)
+    if ($destinationCheck['ok'] === false)
     {
         return [
             'success'   => false,
             'shortCode' => null,
             'shortURL'  => null,
-            'error'     => 'Invalid URL format. Please enter a valid HTTP or HTTPS URL.',
+            'error'     => $destinationCheck['error'],
+            'errorCode' => $destinationCheck['errorCode'],
         ];
     }
 
-    // ========================================================================
-    // 🛡️ Step 2: Block self-referencing URLs
-    // ========================================================================
-    // Prevent users from shortening URLs that point to our own short domains,
-    // which would create redirect loops.
-    //
-    // 📖 Reference: https://www.php.net/manual/en/function.parse-url.php
-    // ========================================================================
-    $parsed = parse_url($sanitisedURL);
-    $urlHost = strtolower($parsed['host'] ?? '');
-
-    // Strip www. prefix for comparison
-    if (strpos($urlHost, 'www.') === 0)
-    {
-        $urlHost = substr($urlHost, 4);
-    }
-
-    // Built-in blocked domains
-    $blockedDomains = ['g2my.link', 'go2my.link', 'lnks.page'];
-
-    // Also check registered custom short domains from the database
-    $customDomains = dbSelect(
-        "SELECT shortDomain FROM tblOrgShortDomains WHERE isActive = 1",
-        '',
-        []
-    );
-
-    // dbSelect() only ever returns array|false, so once false is
-    // eliminated the remaining value is guaranteed to be an array — no
-    // separate is_array() check is needed.
-    if ($customDomains !== false)
-    {
-        foreach ($customDomains as $row)
-        {
-            $blockedDomains[] = strtolower($row['shortDomain']);
-        }
-    }
-
-    if (in_array($urlHost, $blockedDomains, true))
-    {
-        return [
-            'success'   => false,
-            'shortCode' => null,
-            'shortURL'  => null,
-            'error'     => 'Cannot shorten URLs that point to this service.',
-        ];
-    }
-
-    // ========================================================================
-    // 🛡️ Step 2b: Block internal / metadata / userinfo destinations (SSRF)
-    // ========================================================================
-    // F-005 / #100: a short URL whose destination resolves to a loopback,
-    // link-local, cloud-metadata, or (by default) private host turns the
-    // redirect engine into an SSRF pivot. Reject creation up front so no row
-    // is ever written. The shared guard also rejects userinfo (user:pass@)
-    // URLs. Private destinations stay blocked unless the operator opts in via
-    // redirect.allow_private_destinations.
-    //
-    // 📖 Reference: web/_functions/security.php — g2ml_destinationHostIsAllowed()
-    // ========================================================================
-    if (g2ml_destinationHostIsAllowed($sanitisedURL) === false)
-    {
-        return [
-            'success'   => false,
-            'shortCode' => null,
-            'shortURL'  => null,
-            'error'     => 'That destination is not permitted. Please enter a public HTTP or HTTPS URL.',
-        ];
-    }
+    $sanitisedURL = $destinationCheck['url'];
 
     // ========================================================================
     // 📋 Step 3: Extract options

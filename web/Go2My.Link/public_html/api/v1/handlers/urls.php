@@ -48,7 +48,7 @@
  * 📖 References:
  *     - web/Go2My.Link/_functions/shorturl_create.php — createShortURL(), g2ml_attachTagsToShortURL(), g2ml_slugifyTag()
  *     - web/_sql/schema/020_shorturls_categories_tags.sql — tblShortURLs column names
- *     - web/_functions/security.php — g2ml_sanitiseURL(), g2ml_destinationHostIsAllowed()
+ *     - web/Go2My.Link/_functions/shorturl_create.php — g2ml_validateLinkDestination() (#205)
  * ============================================================================
  */
 
@@ -664,11 +664,15 @@ function g2ml_apiHandleUrlsGet(array $keyRow, array $context): array
 /**
  * Handle PUT /api/v1/urls/{code}.
  *
- * Re-applies the SAME destination validation as create — g2ml_sanitiseURL()
- * then g2ml_destinationHostIsAllowed() (SSRF/scheme guard) — before the new
- * destination is ever bound into an UPDATE. Org-scoped throughout: the
- * existence check, the UPDATE's WHERE clause, and the reload all bind
- * orgHandle from the verified key row.
+ * Re-applies the SAME shared destination check as create and the dashboard
+ * edit page — g2ml_validateLinkDestination() (#205) — before the new
+ * destination is ever bound into an UPDATE. Before #205 this handler ran
+ * g2ml_sanitiseURL() and g2ml_destinationHostIsAllowed() directly but SKIPPED
+ * the own-short-domain check, so a PUT could point an existing link at one of
+ * our own short domains even though POSTing that same destination to create
+ * a link would have been refused. Org-scoped throughout: the existence
+ * check, the UPDATE's WHERE clause, and the reload all bind orgHandle from
+ * the verified key row.
  *
  * @param  array $keyRow
  * @param  array $context  Carries routeParams.code and the decoded body.
@@ -704,17 +708,19 @@ function g2ml_apiHandleUrlsUpdate(array $keyRow, array $context): array
             throw new G2mlApiHandlerException(422, 'destination_url must be a non-empty string.', 'destination_url');
         }
 
-        $sanitisedDestination = g2ml_sanitiseURL(trim($body['destination_url']));
+        $destinationCheck = g2ml_validateLinkDestination(trim($body['destination_url']));
 
-        if ($sanitisedDestination === false)
+        if ($destinationCheck['ok'] === false)
         {
-            throw new G2mlApiHandlerException(422, 'Invalid URL format. Please supply a valid HTTP or HTTPS URL.', 'destination_url');
+            // The API is not translated, so the plain-English message
+            // g2ml_validateLinkDestination() returns is used directly — the
+            // SAME message create returns for the same failure, including
+            // for an own-short-domain destination, which this handler used
+            // to accept.
+            throw new G2mlApiHandlerException(422, $destinationCheck['error'], 'destination_url');
         }
 
-        if (g2ml_destinationHostIsAllowed($sanitisedDestination) === false)
-        {
-            throw new G2mlApiHandlerException(422, 'That destination is not permitted.', 'destination_url');
-        }
+        $sanitisedDestination = $destinationCheck['url'];
 
         $setClauses[] = 'destinationURL = ?';
         $setTypes    .= 's';
