@@ -168,68 +168,6 @@
             }
         }
 
-        /* Email form */
-        .notify-section {
-            margin-bottom: 2rem;
-        }
-
-        .notify-section p {
-            font-size: 1rem;
-            color: var(--text-secondary);
-            margin-bottom: 1rem;
-        }
-
-        .email-form {
-            display: flex;
-            gap: 0.5rem;
-            max-width: 400px;
-            margin: 0 auto;
-        }
-
-        .email-form input[type="email"] {
-            flex: 1;
-            padding: 0.75rem 1rem;
-            font-size: 1rem;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            outline: none;
-            transition: border-color 0.2s;
-            font-family: inherit;
-        }
-
-        .email-form input[type="email"]:focus {
-            border-color: var(--brand-green);
-            box-shadow: 0 0 0 3px rgba(67, 160, 71, 0.15);
-        }
-
-        .email-form button {
-            padding: 0.75rem 1.5rem;
-            font-size: 1rem;
-            font-weight: 600;
-            color: #ffffff;
-            background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: transform 0.15s, box-shadow 0.15s;
-            font-family: inherit;
-            white-space: nowrap;
-        }
-
-        .email-form button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(67, 160, 71, 0.3);
-        }
-
-        .email-form button:focus-visible {
-            outline: 3px solid var(--brand-green-light);
-            outline-offset: 2px;
-        }
-
-        .email-form button:active {
-            transform: translateY(0);
-        }
-
         /* Footer — pinned to bottom */
         footer {
             margin-top: auto;
@@ -260,27 +198,6 @@
             .logo img {
                 width: 240px;
             }
-
-            .email-form {
-                flex-direction: column;
-            }
-
-            .email-form button {
-                width: 100%;
-            }
-        }
-
-        /* Visually hidden — accessible label for screen readers */
-        .visually-hidden {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip-path: inset(50%);
-            white-space: nowrap;
-            border: 0;
         }
 
         /* Countdown ring — bottom-right, large screens only */
@@ -348,23 +265,7 @@
             <span class="feature">Auto Favicons</span>
         </div>
 
-        <!-- Email capture -->
-        <section class="notify-section" aria-label="Email notification signup">
-            <p>Get notified when we launch.</p>
-            <form class="email-form" action="#" method="post" aria-label="Notification signup form">
-                <label for="email" class="visually-hidden">Email address</label>
-                <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    placeholder="you@example.com"
-                    required
-                    autocomplete="email"
-                    aria-label="Your email address"
-                >
-                <button type="submit">Notify Me</button>
-            </form>
-        </section>
+        <!-- A sign-up form used to be here. It posted to "#" and every address typed in was lost (#211). Add it back only with a real handler that stores the address with consent wording, CSRF protection and a rate limit. -->
     </main>
 
     <footer>

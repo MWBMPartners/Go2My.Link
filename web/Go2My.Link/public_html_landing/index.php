@@ -352,23 +352,7 @@ $siteName = 'Go2My.link';
             echo "</div>";
         ?>
 
-        <!-- Email capture -->
-        <!--<section class="notify-section" aria-label="Email notification signup">
-            <p>Be the first to know when we launch.</p>
-            <form class="email-form" action="#" method="post" aria-label="Notification signup form">
-                <label for="email" class="visually-hidden">Email address</label>
-                <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    placeholder="you@example.com"
-                    required
-                    autocomplete="email"
-                    aria-label="Your email address"
-                >
-                <button type="submit">Notify Me</button>
-            </form>
-        </section>-->
+        <!-- A sign-up form used to be here. It posted to "#" and every address typed in was lost (#211). Add it back only with a real handler that stores the address with consent wording, CSRF protection and a rate limit. -->
     </main>
 
     <footer>
