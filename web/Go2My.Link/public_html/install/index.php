@@ -44,6 +44,22 @@
 
 declare(strict_types=1);
 
+// ============================================================================
+// 🕐 Force UTC Timezone
+// ============================================================================
+// The installer writes its own lock-file and finished-key timestamps using
+// PHP's explicitly-UTC clock call, so nothing here was actually wrong
+// before. This line is added anyway so the installer matches page_init.php
+// (web/_includes/page_init.php), which the application's entry points load
+// and which the installer does not — the two are kept in step so a later
+// change to either one cannot quietly stop matching the other (#214). A
+// few static pages skip page_init.php too, but none of them reads the
+// clock, so they need no such line of their own.
+// 📖 Reference: https://www.php.net/manual/en/function.date-default-timezone-set.php
+// ============================================================================
+
+date_default_timezone_set('UTC');
+
 // Harden the session cookie before the session starts.
 $g2mlSecureCookie = false;
 if (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')

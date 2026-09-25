@@ -107,6 +107,33 @@ RewriteRule ^_libraries/ - [F,L]
 | 🎭 Icons | Font Awesome 6 | CDN with local fallback |
 | 🚢 Hosting | Dreamhost Shared Hosting | No CLI/Composer |
 
+### 🕐 Time Zone
+
+Both halves of the stack run in UTC: the database session (`web/_functions/db_connect.php`
+sends `SET time_zone = '+00:00'` right after connecting — see
+[DATABASE.md](DATABASE.md)) and PHP itself, whose default zone
+`web/_includes/page_init.php` forces to UTC near the start of that file,
+before anything in it reads the clock (`web/Go2My.Link/public_html/install/index.php`
+does the same, independently, since the installer does not load
+`page_init.php`). Before this (#214), PHP followed whatever zone php.ini
+named, which on shared hosting is usually the host's own local zone rather
+than UTC — a value written under one zone and read back, or compared,
+under the other could then disagree by however far the server clock sat
+from UTC. Two examples of what made this a security bug rather than a
+display quirk: the breach-response cooldown (written with `gmdate()`, read
+back with `strtotime()`) and session expiry (written with `date()`,
+checked against `NOW()` in SQL). Every timestamp that PHP's own clock
+functions or MySQL's `NOW()` write from now on is UTC as a result — this
+does not reach values already stored before this change under a
+different host zone, or dates a user typed in directly (a link's start
+and end dates are saved exactly as entered, with no zone conversion).
+A database time read back and re-formatted still prints
+the same digits as before; a time formatted straight from PHP's own
+clock — the footer's copyright year, the debug panel's query times, the
+"at" times in security emails — now prints in UTC instead of the host's
+previous local zone, until per-user time zone display is built (a
+separate, not-yet-built piece of work).
+
 ## 🔀 Request Flow
 
 ### 🔗 URL Shortening (Component A)

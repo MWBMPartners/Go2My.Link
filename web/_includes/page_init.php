@@ -16,6 +16,7 @@
  * auth_creds.php has been loaded. It bootstraps the entire application:
  *
  *   1. Direct access guard
+ *   1.5. Force the PHP default time zone to UTC (#214)
  *   2. Define path constants
  *   3. Environment detection (alpha/beta/local/production)
  *   4. Debug mode detection
@@ -78,6 +79,45 @@ function g2ml_getComponent(): string
 
     return 'A';
 }
+
+// ============================================================================
+// 🕐 Step 1.5: Force UTC Timezone
+// ============================================================================
+// The database session already runs in UTC (db_connect.php sends "SET
+// time_zone" right after connecting), but PHP's own clock-reading calls
+// default to whatever the server's php.ini says, which on shared hosting is
+// usually the host's own local zone, not UTC. A value written under one
+// zone and read back, or compared, under the other could then disagree by
+// however far the server clock sat from UTC, which is what made this a
+// security bug rather than a display quirk (#214).
+//
+// This line must run before anything else in this file reads the clock. A
+// static test (tests/unit/timezone_default_test.php) checks that ordering
+// by scanning this file's own source text — which is why the examples
+// below, naming actual clock functions, sit AFTER the call rather than
+// above it.
+//
+// web/Go2My.Link/public_html/install/index.php sets the same thing on its
+// own, since the installer never loads this file.
+// 📖 Reference: https://www.php.net/manual/en/function.date-default-timezone-set.php
+// ============================================================================
+
+date_default_timezone_set('UTC');
+
+// Two examples of what this fixed: the breach-response cooldown (written
+// with gmdate(), read back with strtotime()) and session expiry (written
+// with date(), checked against NOW() in SQL).
+//
+// A value read back out of the database and re-formatted with
+// date(strtotime($dbValue)) still shows the same wall-clock digits as
+// before, because date() and strtotime() use the same PHP zone as each
+// other on both sides of that round trip, whatever the zone is set to —
+// this line does not change that.
+// What DOES change: anything formatted straight from PHP's own clock — the
+// debug panel's query times, the footer's copyright year, and the "at"
+// times in the security emails — now prints in UTC instead of the server's
+// previous local zone, until per-user time zone display is built (a
+// separate follow-up, not this one).
 
 // ============================================================================
 // ⏱️ Step 10 (early): Record start time and memory for debug panel

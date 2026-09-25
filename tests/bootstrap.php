@@ -34,6 +34,20 @@
 declare(strict_types=1);
 
 // ============================================================================
+// 🕐 Force UTC Timezone
+// ============================================================================
+// Production sets this in web/_includes/page_init.php (and the installer
+// sets it on its own too). Nothing in the test suites loads page_init.php,
+// so the test run sets it here instead. Without this line the tests would
+// run under whatever zone the CLI's php.ini happens to name, which would
+// let a test pass here and fail against the real request path, or the
+// other way round (#214).
+// 📖 Reference: https://www.php.net/manual/en/function.date-default-timezone-set.php
+// ============================================================================
+
+date_default_timezone_set('UTC');
+
+// ============================================================================
 // 🧾 Assertion failure exception
 // ============================================================================
 
