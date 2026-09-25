@@ -528,7 +528,14 @@ function g2ml_apiKeyHasScope(array $keyRow, string $scope): bool
  * web/Go2My.Link/_admin/public_html/pages/api-keys/index.php) when rendering
  * the scope checkboxes. A new scope should be added here first, then wired
  * into the handler under public_html/api/v1/handlers/ that actually enforces
- * it.
+ * it — tests/unit/api_scopes_used_test.php fails the build if a scope is
+ * added here without a route or handler checking for it.
+ *
+ * domains:read and domains:write were removed (#208): they were offered on
+ * the keys page and accepted into a key's stored permissions, but no route
+ * or handler checked for either one, so ticking them did nothing. Add them
+ * back together with the domain endpoints themselves (the #91 follow-up),
+ * not before.
  *
  * @return array<int, string>
  */
@@ -539,8 +546,6 @@ function g2ml_apiValidScopesList(): array
         'urls:write',
         'urls:delete',
         'analytics:read',
-        'domains:read',
-        'domains:write',
         'org:read',
         'account:read',
         'qr:link',

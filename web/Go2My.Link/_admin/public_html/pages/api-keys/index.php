@@ -87,13 +87,15 @@ $createdKeyName      = null;
 // labels are local to this page.
 // ============================================================================
 
+// domains:read and domains:write had labels here until #208 removed them
+// from g2ml_apiValidScopesList() — no route or handler enforced either one,
+// so a key ticking them got nothing. $availableScopes below no longer
+// includes them, so this array simply has no entry to offer for them.
 $scopeLabels = [
     'urls:read'      => 'View short links',
     'urls:write'     => 'Create & edit short links',
     'urls:delete'    => 'Delete short links',
     'analytics:read' => 'View analytics',
-    'domains:read'   => 'View custom domains',
-    'domains:write'  => 'Manage custom domains',
     'org:read'       => 'View organisation details',
     'account:read'   => 'View account details',
     'qr:link'        => 'Link dynamic QR codes (CueRCode)',

@@ -69,13 +69,9 @@ one. Grant a key only what the program using it actually needs.
 | `urls:delete` | Remove links |
 | `analytics:read` | Read click figures |
 | `qr:link` | Attach a link to a QR code managed elsewhere (the CueRCode integration) |
-| `domains:read` | — |
-| `domains:write` | — |
 
-> ⚠️ **`domains:read` and `domains:write` do nothing yet.** They can be granted on the API-keys
-> page and the key system accepts them, but no route in the API looks at them, because the
-> custom-domain routes have not been built. Granting them neither helps nor harms; it just has
-> no effect.
+Custom-domain scopes (`domains:read`, `domains:write`) are not offered yet. They will be added
+back once the custom-domain routes themselves exist (#91).
 
 ### ⏱️ How often you can call it
 

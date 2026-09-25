@@ -40,15 +40,16 @@ require_once dirname(__DIR__, 2) . '/web/_functions/api_auth.php';
 // 📋 g2ml_apiValidScopesList — canonical whitelist
 // ============================================================================
 
-test('validScopesList: contains exactly the 9 documented scopes', function (): void
+test('validScopesList: contains exactly the 7 documented scopes', function (): void
 {
+    // domains:read and domains:write are deliberately absent (#208) — no
+    // route or handler enforced either one, so they are removed until the
+    // domain endpoints exist to enforce them (the #91 follow-up).
     $expectedScopes = [
         'urls:read',
         'urls:write',
         'urls:delete',
         'analytics:read',
-        'domains:read',
-        'domains:write',
         'org:read',
         'account:read',
         'qr:link',
@@ -56,7 +57,7 @@ test('validScopesList: contains exactly the 9 documented scopes', function (): v
 
     $actualScopes = g2ml_apiValidScopesList();
 
-    assert_same(count($expectedScopes), count($actualScopes), 'The whitelist must have exactly 9 entries');
+    assert_same(count($expectedScopes), count($actualScopes), 'The whitelist must have exactly 7 entries');
 
     foreach ($expectedScopes as $expectedScope)
     {

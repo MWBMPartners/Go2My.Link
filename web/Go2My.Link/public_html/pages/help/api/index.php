@@ -204,24 +204,6 @@ if (function_exists('__')) {
                             <?php if (function_exists('__')) { echo __('help.api.s4_analytics_read_desc'); } else { echo 'read click counts and reports for your links.'; } ?>
                         </li>
                         <li class="mb-2">
-                            <strong><?php if (function_exists('__')) { echo __('help.api.s4_domains_read_label'); } else { echo 'View custom domains'; } ?></strong>
-                            <code>domains:read</code>
-                            <span class="badge bg-secondary ms-1">
-                                <?php if (function_exists('__')) { echo __('help.api.s4_not_used_badge'); } else { echo 'Not used yet'; } ?>
-                            </span>
-                            —
-                            <?php if (function_exists('__')) { echo __('help.api.s4_domains_read_desc'); } else { echo 'not used by anything in the API yet. You can tick it when creating a key, but it currently has no effect.'; } ?>
-                        </li>
-                        <li class="mb-2">
-                            <strong><?php if (function_exists('__')) { echo __('help.api.s4_domains_write_label'); } else { echo 'Manage custom domains'; } ?></strong>
-                            <code>domains:write</code>
-                            <span class="badge bg-secondary ms-1">
-                                <?php if (function_exists('__')) { echo __('help.api.s4_not_used_badge'); } else { echo 'Not used yet'; } ?>
-                            </span>
-                            —
-                            <?php if (function_exists('__')) { echo __('help.api.s4_domains_write_desc'); } else { echo 'not used by anything in the API yet. You can tick it when creating a key, but it currently has no effect.'; } ?>
-                        </li>
-                        <li class="mb-2">
                             <strong><?php if (function_exists('__')) { echo __('help.api.s4_org_read_label'); } else { echo 'View organisation details'; } ?></strong>
                             <code>org:read</code> —
                             <?php if (function_exists('__')) { echo __('help.api.s4_org_read_desc'); } else { echo 'read your organisation\'s basic information.'; } ?>
