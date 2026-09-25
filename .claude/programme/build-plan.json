@@ -2623,7 +2623,7 @@
   "CX-01": 218
  },
  "progress": {
-  "updated": "2026-09-23",
+  "updated": "2026-09-25",
   "branch": "feat/2026-09-21-linkspage-and-sweep",
   "note": "Items already built, reviewed and pushed. Everything else in build_order is still to do, in that order. Each item's full plan is also posted as an 'Implementation plan' comment on its GitHub issue, so this file is a convenience, not the only copy.",
   "done": [
@@ -2704,13 +2704,45 @@
     "issue": 0,
     "commit": "3a55fe1",
     "what": "planning moved to Opus; restart point in the handoff; this plan, its schema, the workflow and the test script committed under .claude/programme/"
+   },
+   {
+    "key": "TOOLS-2026-09-25a",
+    "issue": 0,
+    "commit": "9669b25",
+    "what": "build workflow: Codex model named in reviews; lock file keeps Codex free for a catch-up review; finaliser writes to the handoff's Finished table; shorthand written out"
+   },
+   {
+    "key": "HANDOFF",
+    "issue": 0,
+    "commit": "2a26601",
+    "what": "handoff: Codex out of credit, catch-up scheduled for 04:40 (message says 'about 00:15'; the refusal was at 00:03)"
+   },
+   {
+    "key": "TOOLS-2026-09-25b",
+    "issue": 0,
+    "commit": "5740c07",
+    "what": "test script removes its database volume; builders told to keep comments short and true; every workflow step survives an agent that fails to report"
+   },
+   {
+    "key": "CX-01",
+    "issue": 218,
+    "commit": "79d6e11",
+    "what": "every error message in linkspage_manage.php goes through __(); seed 065; 8 review rounds, all by the Claude stand-in"
+   },
+   {
+    "key": "SX-198",
+    "issue": 198,
+    "commit": "64b3ca5",
+    "what": "all 54 direct-access guards compare real file paths, so the scheduled-jobs endpoint can run; 4 review rounds, all by the Claude stand-in"
    }
   ],
   "next": [
-   "CX-01",
-   "SX-198",
    "SX-203",
-   "SX-211"
+   "SX-211",
+   "SX-196",
+   "SX-207",
+   "SX-204",
+   "SX-210"
   ],
   "codex_re_review_owed": [
    "5340025",
@@ -2718,7 +2750,14 @@
    "8302613",
    "b4d6b52",
    "edc469e",
-   "76ad243"
+   "76ad243",
+   "3a55fe1",
+   "9138f82",
+   "9669b25",
+   "2a26601",
+   "5740c07",
+   "79d6e11",
+   "64b3ca5"
   ]
  }
 }

@@ -3,9 +3,32 @@
 > Chronological log of significant Claude-assisted work, newest first. Portable
 > (repo-tracked) so the project's working history is available on every machine.
 > Companion to [.claude/memory/MEMORY.md](memory/MEMORY.md) and the live handoff
-> [.github/HANDOFF.md](../.github/HANDOFF.md). Last updated **2026-09-22**.
+> [.github/HANDOFF.md](../.github/HANDOFF.md). Last updated **2026-09-25**.
 
 ---
+
+## 2026-09-25 — CX-01 and SX-198 built; Codex's allowance turns out to be shared
+
+Branch: **`feat/2026-09-21-linkspage-and-sweep`** (all pushed). Live detail:
+[.github/HANDOFF.md](../.github/HANDOFF.md).
+
+- **CX-01 (#218, `79d6e11`):** every error message LinksPage's save code returns now goes through the
+  translation system, with the English in a new seed (065). **SX-198 (#198, `64b3ca5`):** all 54
+  "do not open this file directly" guards compare real file paths, so the scheduled-jobs endpoint,
+  which shares its file name with a library, is no longer redirected away before it runs.
+- **Codex was out of credit at 00:03** although no Go2My.Link session had used it since its reset:
+  the allowance is shared with the owner's other projects. The catch-up review was scheduled for
+  04:40, and a lock file kept the item reviewers off Codex meanwhile, so both items were reviewed
+  only by a fresh Claude Opus agent. Both still need the Codex catch-up.
+- **CX-01 took eight review rounds** although its code was right from the first: each fix
+  lengthened the comments and the next round found a new false statement in them. The build
+  workflow now tells builders to keep comments short enough to be certainly true, and never to
+  write review-round history into code (`5740c07`).
+- **The test script had been leaving a whole test database behind on every run** (a MySQL data
+  volume that `docker rm -f` without `-v` does not remove). Seven were found and removed; the script
+  now removes them itself (`5740c07`).
+- Also fixed in the build workflow (`9669b25`): the reviewer now names Codex's model, and the
+  finaliser writes to the handoff's Finished table.
 
 ## 2026-09-22 — Handoff moved to `.github/HANDOFF.md`
 

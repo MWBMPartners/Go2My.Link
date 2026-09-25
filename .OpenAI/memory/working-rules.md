@@ -239,13 +239,22 @@ be the builder.
   reset time ("try again at ...").
 - **Codex's allowance is small** (roughly one review per reset). Spend it where a second opinion is
   worth most: the whole-branch catch-up review, and anything touching security, privacy, money or
-  data loss. Its first real review on this project found two faults in a history-rewrite plan that
+  data loss. **The allowance is shared with the owner's other projects** (found 2026-09-25: it was
+  used up at the start of a session although no Go2My.Link session had touched it). So try it once
+  at the start, read the reset time from the refusal, schedule the catch-up for just after it, and
+  keep the item reviewers off Codex meanwhile with the build workflow's `codexLockFile` (see
+  `.claude/programme/README.md`). Its first real review on this project found two faults in a history-rewrite plan that
   four Claude review rounds had missed, so it is worth the queueing.
 - **The loop:** run the review, read every finding, fix the real ones automatically, run the review
   again, and **stop only when a round finds no real problems.** Record how many rounds it took (in
   the commit message and the handoff).
 - A finding you are sure is wrong does not keep the loop going and is never "fixed" just to quiet
   the reviewer — write down why it is wrong and move on.
+- **When a comment is found to be false, make it shorter and true** — usually by deleting the claim,
+  not by adding a paragraph that explains the correction. Review-round history belongs in the commit
+  message, never in code or data files. *(Added 2026-09-25: one item's code was right from the first
+  round, but it took eight rounds because each fix lengthened its comments and the next round found a
+  new false statement in them.)*
 - **What counts as a finding, and so blocks a commit:** a statement that is false; a contradiction
   with another file; a correctness, security or privacy defect; a breach of a house rule (shorthand, a
   user-facing string not passed through `__()` and seeded, a schema change without its migration, and
