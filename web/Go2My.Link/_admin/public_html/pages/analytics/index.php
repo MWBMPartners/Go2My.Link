@@ -191,13 +191,17 @@ function _analyticsPageURL(?string $shortCode, array $extraArgs): string
 }
 
 /**
- * Build a URL to the standalone CSV export endpoint
- * (analytics-export.php, #44) for a given export ?type=, preserving the
- * CURRENTLY ACTIVE date-range (and, where relevant, the ?code= drill-down) —
- * mirrors _analyticsPageURL()'s own query-arg construction so a download
- * always reflects exactly what the visitor is looking at. That endpoint
- * re-resolves the org from the session itself (never from a URL parameter),
- * so nothing here needs to (or should) pass orgHandle explicitly.
+ * Build the clean address for the standalone CSV export endpoint (#44) for
+ * a given export ?type=, preserving the CURRENTLY ACTIVE date-range (and,
+ * where relevant, the ?code= drill-down) — mirrors _analyticsPageURL()'s
+ * own query-arg construction so a download always reflects exactly what
+ * the visitor is looking at. The address carries no ".php": the admin's
+ * .htaccess "Clean URLs" rule serves it from analytics-export.php on disk
+ * with an internal rewrite (no redirect), and because that rewrite target
+ * has no query string of its own, the query string built here reaches the
+ * file untouched. That endpoint re-resolves the org from the session
+ * itself (never from a URL parameter), so nothing here needs to (or
+ * should) pass orgHandle explicitly.
  *
  * @param  string|null           $shortCode
  * @param  array                 $range      The resolved range from g2ml_analyticsDashboardResolveRange().
@@ -214,7 +218,7 @@ function _analyticsExportURL(?string $shortCode, array $range, string $type, arr
         $args['code'] = $shortCode;
     }
 
-    return '/analytics-export.php?' . http_build_query($args);
+    return '/analytics-export?' . http_build_query($args);
 }
 
 /**

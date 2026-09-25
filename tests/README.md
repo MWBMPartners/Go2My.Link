@@ -15,6 +15,7 @@
 | `tests/run_integration.php` | Discovers and runs every `tests/integration/*.php` against a MySQL server from environment variables. **Skips cleanly (exit 0) when no DB is reachable.** |
 | `tests/unit/` | DB-free characterization tests for `web/_functions/security.php`. |
 | `tests/unit/direct_access_guard_test.php` | Regression test for #198 — proves a library's direct-access guard now tells apart two files that merely share a name, by requiring the library in a real child PHP process with `SCRIPT_FILENAME` set the way Apache would set it. |
+| `tests/unit/no_php_in_urls_test.php` | Check for #203 — fails the build when it finds a link, form target, redirect or JavaScript request in the shipping code under `web/` that points at an address ending in `.php`. See "No .php in web addresses" below. |
 | `tests/integration/` | DB-backed characterization smoke tests for the redirect hot path (`sp_lookupShortURL`). |
 
 ## 🧩 Assertion helpers
@@ -113,6 +114,45 @@ Every PHP file under `tests/` passes `php -l`:
 ```bash
 find tests -name '*.php' -print0 | xargs -0 -n1 php -l
 ```
+
+## 🔒 No .php in web addresses
+
+The owner's standing rule: no link, form target, redirect or background
+request anywhere in the product may point at an address ending in `.php`.
+It must use the clean address the router registers instead (for example
+`/help/api`, never `/help/api/index.php`). Two reasons: it tells a stranger
+what the site is built with, and it is often simply broken — many hosting
+setups answer "page not found" for any address ending in `.php`, and the
+page the link sits on looks completely normal, so nobody notices until
+someone clicks it.
+
+`tests/unit/no_php_in_urls_test.php` (#203) checks this automatically, as
+part of the normal `php tests/run.php` run and therefore of CI. It reads
+every `.php`, `.js`, `.html`, `.htm` and `.htaccess` file under `web/`
+(skipping the vendored-library, backup and upload folders, and the top-level
+SQL and JSON-Schema folders, none of which are web pages) and looks for five
+things: an `href`/`action`/`src`/`formaction` attribute, a PHP
+`header('Location: ...')` redirect, a JavaScript `fetch`/`open`/`location`
+call, a quoted string starting with `/` and ending in `.php` (a helper
+function's own `return` value, say), and an *external* `.htaccess` redirect
+(a `RewriteRule` carrying an `R` flag, or a `Redirect`/`RedirectMatch`
+line). A plain `RewriteRule` with no `R` flag is an internal, server-side
+rewrite the browser never sees (`index.php` behind a clean URL, say) and is
+deliberately not flagged, and neither is a quoted `require`/`include` file
+path.
+
+**Reading a failure.** Each failing line is printed as `path:line: <address>`
+— for example `web/Go2My.Link/public_html/some-page.php:42: /old/page.php`
+(a made-up example, not a real finding). Fix it by pointing the link, form,
+redirect or request at the clean address the router already registers for
+that page, the same way every other link on that page does.
+
+**Adding an allow-list entry.** Occasionally a matched value is not actually
+a web address — a code example inside a string literal, say. Add one entry
+to the array returned by `_g2mlNoPhpTestAllowList()` in the test file, with
+the exact file path, the exact matched text, and a plain-English reason. An
+entry covers every occurrence of that exact text in that one file, and
+nothing else.
 
 ## 🏠 House rules
 
