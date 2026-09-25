@@ -35,11 +35,18 @@
 // ============================================================================
 // 🛡️ Direct Access Guard
 // ============================================================================
-if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
+// Compares the real resolved paths, not just the file names. Comparing names
+// wrongly fired when a different file with the same name (for example the
+// admin cron.php endpoint loading the shared cron.php library) was the script
+// being run, which redirected before the endpoint's jobs could run (#198).
+// realpath('') returns the current folder, hence the empty check.
+$g2mlGuardScriptPath = (string) ($_SERVER['SCRIPT_FILENAME'] ?? '');
+if ($g2mlGuardScriptPath !== '' && realpath($g2mlGuardScriptPath) === realpath(__FILE__))
 {
     header('Location: https://go2my.link');
     exit;
 }
+unset($g2mlGuardScriptPath);
 
 // ============================================================================
 // 🔤 Custom short-code (alias) constraints — shared in one place (FG-001)

@@ -14,6 +14,7 @@
 | `tests/run.php` | Discovers and runs every `tests/unit/*.php` (**DB-free**). Exits non-zero on any failure so CI can gate. |
 | `tests/run_integration.php` | Discovers and runs every `tests/integration/*.php` against a MySQL server from environment variables. **Skips cleanly (exit 0) when no DB is reachable.** |
 | `tests/unit/` | DB-free characterization tests for `web/_functions/security.php`. |
+| `tests/unit/direct_access_guard_test.php` | Regression test for #198 — proves a library's direct-access guard now tells apart two files that merely share a name, by requiring the library in a real child PHP process with `SCRIPT_FILENAME` set the way Apache would set it. |
 | `tests/integration/` | DB-backed characterization smoke tests for the redirect hot path (`sp_lookupShortURL`). |
 
 ## 🧩 Assertion helpers

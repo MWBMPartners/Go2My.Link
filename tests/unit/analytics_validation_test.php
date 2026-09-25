@@ -28,10 +28,10 @@
  * covered by tests/integration/analytics_test.php against a real schema.
  *
  * Requiring the handler file here is safe under the test harness: its
- * direct-access guard compares $_SERVER['SCRIPT_FILENAME'] (the CLI runner,
- * tests/run.php) against basename(__FILE__) (analytics.php) — they never
- * match under the CLI SAPI, mirroring every other handler file included by
- * this suite's tests.
+ * direct-access guard compares the real path of $_SERVER['SCRIPT_FILENAME']
+ * (the CLI runner, tests/run.php) with the handler's own real path — the two
+ * never match under the CLI SAPI, mirroring every other handler file
+ * included by this suite's tests.
  *
  * @package    Go2My.Link
  * @subpackage Tests

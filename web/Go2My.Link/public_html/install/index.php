@@ -389,11 +389,18 @@ function g2ml_install_render_creds(array $creds, string $salt, string $secondary
  */
 
 // 🛡️ Direct access guard
-if (basename(\$_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
+// Compares the real resolved paths, not just the file names. Comparing names
+// wrongly fired when a different file with the same name (for example the
+// admin cron.php endpoint loading the shared cron.php library) was the script
+// being run, which redirected before the endpoint's jobs could run (#198).
+// realpath('') returns the current folder, hence the empty check.
+\$g2mlGuardScriptPath = (string) (\$_SERVER['SCRIPT_FILENAME'] ?? '');
+if (\$g2mlGuardScriptPath !== '' && realpath(\$g2mlGuardScriptPath) === realpath(__FILE__))
 {
     header('Location: https://go2my.link');
     exit;
 }
+unset(\$g2mlGuardScriptPath);
 
 // 🗄️ Database connection credentials
 if (!defined('DB_HOST'))
@@ -513,11 +520,18 @@ function g2ml_install_render_component_include(string $componentName): string
  * Define DB_* constants ABOVE the include to override per-component.
  */
 
-if (basename(\$_SERVER['SCRIPT_FILENAME'] ?? '') === basename(__FILE__))
+// Compares the real resolved paths, not just the file names. Comparing names
+// wrongly fired when a different file with the same name (for example the
+// admin cron.php endpoint loading the shared cron.php library) was the script
+// being run, which redirected before the endpoint's jobs could run (#198).
+// realpath('') returns the current folder, hence the empty check.
+\$g2mlGuardScriptPath = (string) (\$_SERVER['SCRIPT_FILENAME'] ?? '');
+if (\$g2mlGuardScriptPath !== '' && realpath(\$g2mlGuardScriptPath) === realpath(__FILE__))
 {
     header('Location: https://go2my.link');
     exit;
 }
+unset(\$g2mlGuardScriptPath);
 
 \$serverWideAuthPath = dirname(__DIR__, 2)
     . DIRECTORY_SEPARATOR . '_auth_keys'

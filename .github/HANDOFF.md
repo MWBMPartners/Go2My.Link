@@ -106,7 +106,8 @@ The next item is **CX-01** (a Codex review finding), then batch 2. The whole rem
 | `edc469e` | — | Handoff records the Codex situation and the catch-up list. |
 | `76ad243` | #242 | Sample names instead of the owner's real name and email in tracked files; `docs/HISTORY_REWRITE_PLAN.md` written (describes only, runs nothing). |
 | `3a55fe1` | — | Planning moved to Opus (owner, 2026-09-23); this restart point; the build plan, its schema, the build workflow and the test script moved into `.claude/programme/`, with a unit test that checks the plan against its schema. |
-| (this commit) | #218 | Every user-facing error message in `web/_functions/linkspage_manage.php` now goes through the translation system, with a new seed file for the wording. CX-01. Review: 8 round(s); reviewers by round: claude-opus-fallback; last round clean. |
+| `79d6e11` | #218 | Every user-facing error message in `web/_functions/linkspage_manage.php` now goes through the translation system, with a new seed file for the wording. CX-01. Review: 8 round(s); reviewers by round: claude-opus-fallback; last round clean. |
+| (this commit) | #198 | Every direct-access guard under `web/` now compares real resolved file paths instead of bare file names, so an endpoint no longer gets redirected away by a library file that happens to share its name (the scheduled-jobs endpoint was dead this way). SX-198. Review: 4 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
 
 **Test baseline now: 652 unit tests and 229 database tests, all passing** (PHP 8.4 in Docker; MySQL
 8.4 with `utf8mb4_unicode_ci`). Run them with `sh .claude/programme/run-tests.sh all`.

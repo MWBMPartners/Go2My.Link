@@ -503,6 +503,25 @@ Header set Permissions-Policy "camera=(), microphone=(), geolocation=()"
 
 Content Security Policy (CSP) is configured per-component to allow required CDN sources.
 
+## ⏰ Scheduled Jobs (GDPR Deletion + Retention)
+
+The account-deletion (#163) and data-retention (#167) jobs run from a
+token-guarded endpoint, `https://admin.go2my.link/cron`
+(`web/Go2My.Link/_admin/public_html/cron.php`), meant to be hit by an
+external scheduler — Dreamhost Panel's own cron, cron-job.org, or a GitHub
+Actions `schedule:` job. Until #198 was fixed, that endpoint could never run
+anything: its shared library (`web/_functions/cron.php`) has the same file
+name as the endpoint, and the library's direct-access guard compared file
+names only, so the guard mistook the endpoint's own request for someone
+opening the library directly and redirected before any job code ran. Every
+direct-access guard in the codebase now compares real, resolved file paths
+instead, which tells the two files apart.
+
+The endpoint itself still ships switched off (`cron.enabled` and
+`cron.dispatch_token` both default to off/empty in
+`web/_sql/seeds/020_cron_gdpr_settings.sql`), so this fix alone does not turn
+anything on. Choosing and wiring the actual external scheduler is #178.
+
 ## 📊 Monitoring
 
 - 🐛 **PHP errors:** Logged to `tblErrorLog` (custom error handler)
