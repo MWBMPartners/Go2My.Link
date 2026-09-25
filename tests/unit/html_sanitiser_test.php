@@ -354,6 +354,66 @@ test('css: null and empty return empty', function (): void
     assert_same('', g2ml_sanitiseUserCSS(''), 'empty -> empty');
 });
 
+// ----------------------------------------------------------------------------
+// #207 — a CSS backslash escape (a browser decodes \69 as 'i' before parsing)
+// used to hide a keyword from the checks above. The fix removes every
+// backslash before those checks run, which also breaks the escape a browser
+// would need to decode it back — so the browser never sees the real keyword
+// either. For @import and expression(), that leaves a broken, unrecognised
+// token (e.g. 'e78pression('), inert either way, so the tests below check
+// for the ABSENCE of the real keyword, not for a specific replacement.
+// ----------------------------------------------------------------------------
+
+test('css: a backslash-escaped @import (#207) does not survive as @import', function (): void
+{
+    $out = g2ml_sanitiseUserCSS('@\69mport url(\'https://evil.example/x.css\');');
+    g2ml_san_assert_not_contains_ci('@import', $out, 'No @import survives the escape');
+    assert_false(str_contains($out, '\\'), 'No backslash survives');
+});
+
+test('css: a backslash-escaped expression() (#207) does not survive as a working call', function (): void
+{
+    $out = g2ml_sanitiseUserCSS('width: e\78pression(alert(1));');
+    g2ml_san_assert_not_contains_ci('expression(', $out, 'No expression( survives the escape');
+    assert_false(str_contains($out, '\\'), 'No backslash survives');
+});
+
+test('css: a backslash-escaped url(javascript:) (#207) is neutralised', function (): void
+{
+    // The javascript:/vbscript: check matches the scheme text anywhere in the
+    // string, so it still catches this even though 'u\72l(' is not 'url('.
+    $out = g2ml_sanitiseUserCSS('background: u\72l(javascript:alert(1));');
+    g2ml_san_assert_not_contains_ci('javascript:', $out, 'No javascript: scheme survives');
+    assert_contains('blocked:', $out, 'The javascript: scheme is neutralised in place');
+    assert_false(str_contains($out, '\\'), 'No backslash survives');
+});
+
+test('css: an entity-encoded backslash in an inline style attribute (#207) is caught', function (): void
+{
+    // &#92; is decoded to a literal backslash by the DOM parser before the
+    // style attribute value ever reaches the CSS cleaner, so it is removed
+    // exactly like a literal backslash typed directly.
+    $out = g2ml_sanitiseUserHTML('<p style="background:u&#92;72l(javascript:alert(1))">x</p>');
+    g2ml_san_assert_not_contains_ci('javascript:', $out, 'No javascript: scheme survives in the inline style');
+    assert_false(str_contains($out, '\\'), 'No backslash survives in the inline style');
+});
+
+test('css: cleaning a backslash-escaped payload twice gives the same result (#207)', function (): void
+{
+    $payloads = [
+        '@\69mport url(\'https://evil.example/x.css\');',
+        'width: e\78pression(alert(1));',
+        'background: u\72l(javascript:alert(1));',
+    ];
+
+    foreach ($payloads as $payload)
+    {
+        $once  = g2ml_sanitiseUserCSS($payload);
+        $twice = g2ml_sanitiseUserCSS($once);
+        assert_same($once, $twice, 'Cleaning the cleaned CSS again must not change it: ' . $payload);
+    }
+});
+
 // ============================================================================
 // 🛡️ The strict CSP backstop
 // ============================================================================

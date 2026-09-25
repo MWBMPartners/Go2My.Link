@@ -47,9 +47,11 @@
  *       allowlist — `data:image/svg+xml` is rejected because SVG can carry
  *       script.
  *     - inline `style` is run through the same CSS cleaner as the stylesheet
- *       (strips expression(), url(javascript:), @import, behavior, -moz-binding
- *       and any url() that is not a data:image or same-origin reference; and
- *       strips `<` so a value can never break out of the <style> element).
+ *       (removes every backslash so a CSS escape such as \69 cannot hide a
+ *       keyword from the checks that follow, #207; strips expression(),
+ *       url(javascript:), @import, behavior, -moz-binding and any url() that
+ *       is not a data:image or same-origin reference; and strips `<` so a
+ *       value can never break out of the <style> element).
  *   Why DOM and not a vendored library (e.g. HTML Purifier)? No Composer on the
  *   host; HTML Purifier is a large multi-file dependency that also writes a
  *   serialiser cache to disk — a poor fit for Dreamhost shared hosting. A
@@ -434,6 +436,19 @@ function _g2ml_htmlSanitiserCleanCssTokens(string $css): string
         return '';
     }
 
+    // Remove every backslash BEFORE the keyword checks below. A browser
+    // decodes a CSS backslash escape (\69 = 'i', \78 = 'x', \72 = 'r') before
+    // parsing, so '@\69mport', 'e\78pression(' and 'u\72l(' are real CSS to
+    // the browser but do not match the literal keyword checks that follow
+    // (#207). Stripping rather than decoding: decoding CSS escapes correctly
+    // is fiddly, and a decoding mistake would silently re-open this hole.
+    // Legitimate custom-page CSS almost never needs a backslash — the known
+    // cost is that a content: "\201C"-style escape stops working; the
+    // character itself can be typed instead. There are no backslashes left
+    // after this line runs, so this step changes nothing when the CSS is
+    // cleaned again.
+    $clean = str_replace('\\', '', $clean);
+
     // Strip CSS comments FIRST so a keyword cannot be hidden as expr/**/ession.
     $clean = preg_replace('#/\*.*?\*/#s', '', $clean);
 
@@ -508,7 +523,8 @@ function _g2ml_htmlSanitiserCleanCssTokens(string $css): string
 
 /**
  * Sanitise a full user-supplied CSS stylesheet for safe injection into a
- * scoped <style> block. Byte-capped, comment-stripped, dangerous-construct
+ * scoped <style> block. Byte-capped, backslash-stripped (#207 — defeats CSS
+ * escape smuggling such as \69mport), comment-stripped, dangerous-construct
  * neutralised, url()-validated, and `<`-stripped.
  *
  * @param  string|null $css
