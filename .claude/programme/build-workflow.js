@@ -150,6 +150,12 @@ for (const item of A.items) {
   phase('Build')
   log(item.key + ' (#' + item.issue + '): building on ' + item.builder_tier)
   let build = null
+  // The latest report from the builder, or from the last fixer that reported
+  // back. The finaliser is given it, because on 2026-09-25 a finaliser that
+  // had not seen the builder's report wrote "this was not re-run in a
+  // container" into a pushed commit message (CX-02, ade7c02) when the builder
+  // had in fact done exactly that check.
+  let latestReport = null
   if (item.skipBuild) {
     log(item.key + ': work already in the working tree from an earlier run — going straight to review')
     build = { overall_exit: 0, summary: 'Resumed: built and partly reviewed in an earlier run; changes are already in the working tree.', not_verified: '', deviations_from_plan: '' }
@@ -161,6 +167,9 @@ Then read every file the plan names before changing it. Build the item completel
 ${itemBrief(item)}`, { label: 'build ' + item.key, phase: 'Build', model: item.builder_tier, schema: BUILD_RESULT })
   }
 
+  if (build && !item.skipBuild) {
+    latestReport = build
+  }
   if (!build || build.overall_exit !== 0) {
     log(item.key + ': build did not finish with passing tests — stopping the batch here')
     results.push({ key: item.key, status: 'build_failed', build })
@@ -232,6 +241,9 @@ FINDINGS:
 ${JSON.stringify(real, null, 1)}
 
 ${itemBrief(item)}`, { label: 'fix ' + item.key + ' r' + round, phase: 'Build', model: item.builder_tier, schema: BUILD_RESULT })
+    if (fixResult) {
+      latestReport = fixResult
+    }
     if (!fixResult) {
       // The fixer may still have made its edits before failing to report.
       // The next review round reads the working tree, so it will see them.
@@ -262,9 +274,21 @@ ${itemBrief(item)}`, { label: 'fix ' + item.key + ' r' + round, phase: 'Build', 
     commitScope = item.scope
   }
 
+  // What the builder and fixers said they did and did not check, for the
+  // finaliser's commit message. Empty when the item was resumed from an
+  // earlier run and no fixer reported in this one.
+  let reportForFinaliser = 'No builder report is available in this run (the item was resumed from an earlier run). Say only what you checked yourself, and do not claim that something was NOT checked unless you know that.'
+  if (latestReport) {
+    reportForFinaliser = 'BUILDER / LAST FIXER REPORT — use it for what was and was not verified, and do not contradict it:\n'
+      + 'Summary: ' + String(latestReport.summary) + '\n'
+      + 'Not verified: ' + String(latestReport.not_verified) + '\n'
+      + 'Deviations from the plan: ' + String(latestReport.deviations_from_plan)
+  }
   phase('Finalise')
   const fin = await safeAgent(`${COMMON}
 ROLE: finaliser for ${item.key} (issue #${item.issue}). The change is built and has passed review. You now make it permanent. You MAY commit and push in this role, to the working branch only.
+${reportForFinaliser}
+
 1. Run the TESTS. If OVERALL exit is not 0, STOP: do not commit; report why in notes and set commit_sha to "".
 2. Update the project handoff, .github/HANDOFF.md: add one row at the bottom of the table under the heading "Finished this programme" (columns: Commit | Issue | What). Commit cell: "(this commit)" — the SHA does not exist yet, and everything must land in ONE commit; the SHA goes in the issue comment. Issue cell: #${item.issue}. What cell: one plain-English sentence on what changed, then "${item.key}. ${reviewLine}". If an EARLIER row in that table still says "(this commit)", replace it with that commit's real short SHA (find it with git log --oneline -15 and the issue number). Change nothing else in the handoff — the lead updates the rest.
 3. git add only this item's files plus the handoff file (check git status; nothing unrelated). Commit with a message written to a file, using the safety-lock permission for this one command: G2ML_ALLOW_COMMIT=1 git commit -F <file>. The message is plain English:

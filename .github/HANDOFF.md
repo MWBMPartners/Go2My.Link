@@ -14,11 +14,11 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-09-25 10:15 (batch 3 done; the Codex catch-up ran and its one real finding is CX-02 — see "This session") · 2026-09-23 21:10 (everything pushed; safe restart point — see START HERE) · 2026-09-21/22 (the LinksPage and tiers programme) · earlier: 2026-09-07 (audit + docs sweep, merged as #201) · 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow; per-user analytics #165) · earlier: 2026-07-22 (PR merges, Dependabot 3-tier, pricing) · 2026-07-19 (post-recovery conformance audit) · **Working branch:** `feat/2026-09-21-linkspage-and-sweep` (from `alpha`).
+> **Last updated:** 2026-09-25 12:05 (CX-02 and SX-197 done; batch 4 continues — see "This session") · 2026-09-23 21:10 (everything pushed; safe restart point — see START HERE) · 2026-09-21/22 (the LinksPage and tiers programme) · earlier: 2026-09-07 (audit + docs sweep, merged as #201) · 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow; per-user analytics #165) · earlier: 2026-07-22 (PR merges, Dependabot 3-tier, pricing) · 2026-07-19 (post-recovery conformance audit) · **Working branch:** `feat/2026-09-21-linkspage-and-sweep` (from `alpha`).
 > **Status (2026-09-25):** a build programme is under way on the working branch, agreed with
 > the owner after a market review of LinksPage against Linktree, Beacons and about twenty other
-> "link in bio" services. The finished pieces are listed under START HERE; the next is CX-02 (a
-> Codex finding), then batch 4. 709 unit tests and 233 database tests pass. The programme covers: making every tier feature editable in the
+> "link in bio" services. The finished pieces are listed under START HERE; the next are SX-147,
+> SX-214 and SX-206 (the rest of batch 4). 715 unit tests and 234 database tests pass. The programme covers: making every tier feature editable in the
 > database through a new admin screen (no hard-coded tiers), an environment-aware pricing switch,
 > analytics kept for ever as daily counts with IP addresses removed after 90 days, the LinksPage
 > features the market expects, and a queue of approved fixes. The owner's 45 decisions are GitHub
@@ -28,7 +28,7 @@
 
 ---
 
-## ▶️ START HERE — everything a fresh session needs (2026-09-25, 10:15)
+## ▶️ START HERE — everything a fresh session needs (2026-09-25, 12:05)
 
 > **This section is written so a brand-new session, with no memory of the previous ones, can carry
 > on.** Read it, then `.claude/programme/README.md`, then the `progress` section of
@@ -40,7 +40,8 @@ Nothing happened between 21:10 on 23 September and this session (no commits, no 
 
 **Done and pushed:** CX-01 (`79d6e11`), SX-198 (`64b3ca5`), SX-203 (`1412af2`) and SX-211
 (`eee195b`) — batch 2 is complete — then SX-196 (`cc61e98`), SX-207 (`47509a7`), SX-204 (`272e69d`)
-and SX-210 (`cbb8a4d`) — batch 3 is complete — plus commits to the build tools and these notes (`9669b25`,
+and SX-210 (`cbb8a4d`) — batch 3 is complete — then CX-02 (`ade7c02`, Codex's finding) and SX-197
+(`b59ef73`) from batch 4, plus commits to the build tools and these notes (`9669b25`,
 `2a26601`, `5740c07`, `95a0953`). See the Finished table below. SX-203's new check found one real
 offender on its first run: the analytics page's CSV download link ended in `.php` (now the clean
 address).
@@ -67,7 +68,19 @@ removed, and the lock file is gone. **Still owed a Codex review:** the notes and
 and `cbb8a4d` (SX-210) onwards. **Codex's next reset is 14:43**; the item reviewers try it first
 again, and SX-210's last round found it still out of credit.
 
-**Next in this session:** CX-02, then batch 4 (SX-197, SX-147, SX-214, SX-206).
+**Next in this session:** SX-147 and SX-214, then SX-206 (the rest of batch 4).
+
+**A correction about CX-02 (`ade7c02`).** Its commit message says the fix "was not re-run against a
+live MySQL or MariaDB container". It was: the builder checked it on MySQL 8.4 and MariaDB 11.8, and
+the lead repeated the MySQL check independently (the exact statement in the installer changed a
+wrongly set-up database to `utf8mb4_unicode_ci`). The finishing step had not seen the builder's
+report. The correction is a comment on #196, and the workflow now gives the finisher the builder's
+report (see Traps).
+
+**SX-197 (`b59ef73`) touches the redirect path**, which every short-link click goes through. The lead
+checked by reading the code: a database error inside the lookup is caught in `dbCallProcedure()`,
+logged, and returned as `false`, and `redirect_resolver.php` turns `false` into status `error`, the
+same result as before. The difference is that the log now says why.
 
 **SX-196 was also checked by hand** (the automated tests cannot do this, because they always create
 MySQL with the right collation): on a database deliberately created with the wrong one, the old
@@ -91,8 +104,8 @@ Everything is **committed and pushed**; the working copy is clean and the local 
 GitHub exactly. The working branch is **`feat/2026-09-21-linkspage-and-sweep`**, cut from `alpha`,
 and `git log -1` is always the truth about the latest commit (each finished item adds one). There
 is deliberately **no pull request yet** — one pull request to `alpha`, opened when the owner says
-so. The finished pieces are listed below. The next item is **CX-02** (Codex's catch-up finding on
-the installer), then batch 4; `progress.next` in `.claude/programme/build-plan.json` says the same.
+so. The finished pieces are listed below. The next items are **SX-147**, **SX-214** and **SX-206**
+(the rest of batch 4); `progress.next` in `.claude/programme/build-plan.json` says the same.
 
 ### 🗂️ Where everything lives
 
@@ -138,19 +151,18 @@ the installer), then batch 4; `progress.next` in `.claude/programme/build-plan.j
 | `8f0a710` | — | Notes: SX-196 and SX-207 recorded; SX-196 checked by hand on a wrongly set-up database. |
 | `272e69d` | #204 | The info page now accepts hyphens and underscores in a short code instead of silently stripping them, so a custom code such as "spring-sale" looks up that link instead of a different one (or none). SX-204. Review: 1 round(s); reviewers by round: claude-opus-fallback; last round clean. |
 | `cbb8a4d` | #210 | The homepage, features and about pages no longer claim two-factor authentication or SSO, which are not built, and describe geographic data as available where enabled rather than for every visitor; the pricing page no longer lists SSO / SAML; the lnks.page landing page no longer lists Auto Favicons. A new test fails the build if any of those phrases reappears. SX-210. Review: 3 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
+| `208dcc4` | — | Notes: batch 3 recorded; the Codex catch-up result; CX-02 planned; owner question #275. |
 | `ade7c02` | #196 | The installer's automatic database-collation fix now runs a fixed, nameless ALTER DATABASE statement instead of building the SQL text by joining in the entered database name, and the name-validation block that existed only to make that joining safe is removed. CX-02. Review: 2 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback; last round clean. |
-| (this commit) | #197 | Both stored procedures (`sp_generateShortCode`, `sp_lookupShortURL`) no longer catch every database error and quietly turn it into an ordinary outcome; a real fault now reaches `dbCallProcedure()`, which logs the actual MySQL message, so a wrong collation, a missing table or a permissions problem is no longer indistinguishable from ordinary bad luck. SX-197. Review: 4 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
+| `b59ef73` | #197 | Both stored procedures (`sp_generateShortCode`, `sp_lookupShortURL`) no longer catch every database error and quietly turn it into an ordinary outcome; a real fault now reaches `dbCallProcedure()`, which logs the actual MySQL message, so a wrong collation, a missing table or a permissions problem is no longer indistinguishable from ordinary bad luck. SX-197. Review: 4 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
 
-**Test baseline now: 709 unit tests and 233 database tests, all passing** (PHP 8.4 in Docker; MySQL
+**Test baseline now: 715 unit tests and 234 database tests, all passing** (PHP 8.4 in Docker; MySQL
 8.4 with `utf8mb4_unicode_ci`). Run them with `sh .claude/programme/run-tests.sh all`.
 
 ### ⏭️ Next actions, in order
 
-1. **CX-02** (#196) — the installer's collation fix runs a constant `ALTER DATABASE`, not one built
-   from text (Codex's catch-up finding; plan in `build-plan.json`).
-2. **Batch 4:** SX-197 (#197 — the short-code generator stops hiding database errors), SX-147 (#147
-   — per-row form protection on the sessions and members pages), SX-214 (#214 — the timezone), SX-206
-   (#206 — API key expiry fails safe).
+1. **The rest of batch 4:** SX-147 (#147 — per-row form protection on the sessions and members
+   pages), SX-214 (#214 — the timezone), SX-206 (#206 — API key expiry fails safe).
+2. **Batch 5:** SX-208, SX-205, SX-212, PF-13.
 3. **Batches 3 to 18** — the rest: the approved fixes, then the platform work (environment-aware
    pricing switch, the plan-and-pricing admin screens, analytics kept as daily counts), then the
    LinksPage features (hide branding, search and sharing controls, scheduled links, click tracking
@@ -174,7 +186,9 @@ the installer), then batch 4; `progress.next` in `.claude/programme/build-plan.j
   catch-up just after it, and hold the item reviewers off Codex with the workflow's `codexLockFile`.
 - **Owed a review:** the product code up to `272e69d` was reviewed at 09:42 on 2026-09-25 (see "This
   session"). Still owed: the notes and build-tool commits after `69f4829`, and every commit from
-  `cbb8a4d` onwards. `progress.codex_re_review_owed` in the build plan lists them. Run it in a separate
+  `cbb8a4d` onwards (including CX-02 and SX-197). `progress.codex_re_review_owed` in the build plan
+  lists them. Every item review in run 9 tried Codex first and found it out of credit; it resets at
+  14:43. Run it in a separate
   worktree so a build in progress cannot interfere. A written brief works better than a bare
   `--base` review: `codex review -c model="gpt-6-astra" - < brief.txt`, where the brief names the
   commit range, puts product code first, and says to skip line-by-line review of
@@ -218,6 +232,10 @@ the installer), then batch 4; `progress.next` in `.claude/programme/build-plan.j
   counts, pointers to other files) and the next round found a new false statement in them. Keep
   comments short enough to be certainly true; review-round history belongs in the commit message,
   never in code. The workflow now tells builders this.
+- **The finishing step can contradict the builder about what was checked** (2026-09-25, CX-02): it
+  wrote "not re-run in a container" into a pushed commit message when the builder had done exactly
+  that. Since this commit the workflow hands the finisher the builder's (or last fixer's) own report
+  of what was and was not verified, and tells it not to contradict it.
 - **A throwaway MySQL container leaves its data behind unless removed with `-v`.** Until `5740c07`
   every full test run left a whole test database in an anonymous Docker volume. After any test run,
   `docker volume ls -q -f dangling=true | wc -l` should be 0. A stopped container named `g2ml-mysql`

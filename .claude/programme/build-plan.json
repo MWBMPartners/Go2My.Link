@@ -2818,15 +2818,33 @@
     "issue": 210,
     "commit": "cbb8a4d",
     "what": "public pages stop claiming 2FA, SSO/SAML and Auto Favicons; seed 058; 3 review rounds, Claude stand-in (Codex tried in round 3, out of credit)"
+   },
+   {
+    "key": "HANDOFF",
+    "issue": 0,
+    "commit": "208dcc4",
+    "what": "notes: batch 3 recorded; Codex catch-up result; CX-02 planned; owner question #275"
+   },
+   {
+    "key": "CX-02",
+    "issue": 196,
+    "commit": "ade7c02",
+    "what": "installer runs a constant, nameless ALTER DATABASE (plain query: MySQL 8.4 refuses it prepared); 2 review rounds, Claude stand-in; checked on MySQL 8.4 and MariaDB 11.8 (the commit message wrongly says it was not; corrected on #196)"
+   },
+   {
+    "key": "SX-197",
+    "issue": 197,
+    "commit": "b59ef73",
+    "what": "both stored procedures stop swallowing database errors; failures are logged; 4 review rounds, Claude stand-in (Codex tried every round, out of credit)"
    }
   ],
   "next": [
-   "CX-02",
-   "SX-197",
    "SX-147",
    "SX-214",
    "SX-206",
-   "SX-208"
+   "SX-208",
+   "SX-205",
+   "SX-212"
   ],
   "codex_re_review_owed": [
    "8302613",
@@ -2841,7 +2859,10 @@
    "95a0953",
    "33e1ce3",
    "8f0a710",
-   "cbb8a4d"
+   "cbb8a4d",
+   "208dcc4",
+   "ade7c02",
+   "b59ef73"
   ]
  }
 }
