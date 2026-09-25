@@ -14,11 +14,11 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-09-25 04:15 (CX-01 and SX-198 done; Codex catch-up set for 04:40 — see "This session") · 2026-09-23 21:10 (everything pushed; safe restart point — see START HERE) · 2026-09-21/22 (the LinksPage and tiers programme) · earlier: 2026-09-07 (audit + docs sweep, merged as #201) · 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow; per-user analytics #165) · earlier: 2026-07-22 (PR merges, Dependabot 3-tier, pricing) · 2026-07-19 (post-recovery conformance audit) · **Working branch:** `feat/2026-09-21-linkspage-and-sweep` (from `alpha`).
+> **Last updated:** 2026-09-25 05:50 (batch 2 done; Codex catch-up retry set for 09:42 — see "This session") · 2026-09-23 21:10 (everything pushed; safe restart point — see START HERE) · 2026-09-21/22 (the LinksPage and tiers programme) · earlier: 2026-09-07 (audit + docs sweep, merged as #201) · 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow; per-user analytics #165) · earlier: 2026-07-22 (PR merges, Dependabot 3-tier, pricing) · 2026-07-19 (post-recovery conformance audit) · **Working branch:** `feat/2026-09-21-linkspage-and-sweep` (from `alpha`).
 > **Status (2026-09-25):** a build programme is under way on the working branch, agreed with
 > the owner after a market review of LinksPage against Linktree, Beacons and about twenty other
-> "link in bio" services. The finished pieces are listed under START HERE; the next are SX-203 and
-> SX-211. 658 unit tests and 230 database tests pass. The programme covers: making every tier feature editable in the
+> "link in bio" services. The finished pieces are listed under START HERE; the next is batch 3
+> (SX-196, SX-207, SX-204, SX-210). 677 unit tests and 230 database tests pass. The programme covers: making every tier feature editable in the
 > database through a new admin screen (no hard-coded tiers), an environment-aware pricing switch,
 > analytics kept for ever as daily counts with IP addresses removed after 90 days, the LinksPage
 > features the market expects, and a queue of approved fixes. The owner's 45 decisions are GitHub
@@ -28,7 +28,7 @@
 
 ---
 
-## ▶️ START HERE — everything a fresh session needs (2026-09-25, 04:15)
+## ▶️ START HERE — everything a fresh session needs (2026-09-25, 05:50)
 
 > **This section is written so a brand-new session, with no memory of the previous ones, can carry
 > on.** Read it, then `.claude/programme/README.md`, then the `progress` section of
@@ -38,24 +38,31 @@
 
 Nothing happened between 21:10 on 23 September and this session (no commits, no GitHub activity).
 
-**Done and pushed:** CX-01 (`79d6e11`) and SX-198 (`64b3ca5`), plus three commits to the build
-tools and this handoff (`9669b25`, `2a26601`, `5740c07`). See the Finished table below.
+**Done and pushed:** CX-01 (`79d6e11`), SX-198 (`64b3ca5`), SX-203 (`1412af2`) and SX-211
+(`eee195b`) — batch 2 is complete — plus commits to the build tools and these notes (`9669b25`,
+`2a26601`, `5740c07`, `95a0953`). See the Finished table below. SX-203's new check found one real
+offender on its first run: the analytics page's CSV download link ended in `.php` (now the clean
+address).
 
 **The Codex catch-up review.** The first attempt, at **00:03**, was refused with a real credit
 message: *"You've hit your usage limit … try again at 4:36 AM"*. (The message of `2a26601` says
 "about 00:15"; that time is wrong, and a pushed message cannot be edited.) No Go2My.Link session had
 used Codex since its last reset, so **another project on the same account used the allowance — it
-is shared.** The catch-up is **scheduled to start by itself at 04:40**, in a separate, throwaway copy
-of the repository (a git worktree — `git worktree list` shows it), over `69f4829` up to the branch
-tip at that moment. Until it has finished, a lock file in the session's scratch folder makes the
-item reviewers skip Codex. So **everything built tonight was reviewed only by the Claude stand-in**
-(a fresh Opus agent that did not build the change), and every commit says so.
+is shared.** The catch-up **did start at 04:40**, in a separate, throwaway copy of the repository
+(a git worktree — `git worktree list` shows it), but **ran out of credit again after about three
+minutes**, while still reading the whole diff (*"try again at 9:41 AM"*). It produced no findings.
+**A narrower retry is scheduled for 09:42**: product code only (`5340025`, `0255229`, `64b3ca5`,
+`79d6e11`, and any later commit touching `web/` or `tests/`), with instructions to look at a few of
+the 54 identical guard changes rather than all of them. The notes and build-tool commits stay owed.
+Until it has finished, a lock file in the session's scratch folder makes the item reviewers skip
+Codex. So **everything built tonight was reviewed only by the Claude stand-in** (a fresh Opus agent
+that did not build the change), and every commit says so.
 **When it finishes:** check every finding against the code; queue the real ones as fix items
 *before* new build work; make sure the lock file is gone; remove the worktree with
 `git worktree remove <path>` (never `--force` without looking at it first). If the session ended
 before it ran, run it by hand (see "Codex, and what it is owed" below).
 
-**Next in this session:** SX-203 and SX-211, in one workflow run.
+**Next in this session:** batch 3 — SX-196 and SX-207 in one workflow run, then SX-204 and SX-210.
 
 **If this session is interrupted:** `git log` shows which items landed. Anything uncommitted in the
 working copy belongs to the item that was being built — resume it with `"skipBuild": true` and a
@@ -73,8 +80,8 @@ Everything is **committed and pushed**; the working copy is clean and the local 
 GitHub exactly. The working branch is **`feat/2026-09-21-linkspage-and-sweep`**, cut from `alpha`,
 and `git log -1` is always the truth about the latest commit (each finished item adds one). There
 is deliberately **no pull request yet** — one pull request to `alpha`, opened when the owner says
-so. The finished pieces are listed below. The next items are **SX-203** and **SX-211** (the rest of
-batch 2), then batch 3; `progress.next` in `.claude/programme/build-plan.json` says the same.
+so. The finished pieces are listed below. The next items are batch 3: **SX-196**, **SX-207**,
+**SX-204** and **SX-210**; `progress.next` in `.claude/programme/build-plan.json` says the same.
 
 ### 🗂️ Where everything lives
 
@@ -108,19 +115,23 @@ batch 2), then batch 3; `progress.next` in `.claude/programme/build-plan.json` s
 | `9669b25` | — | Build workflow: Codex's model named in reviews; a lock file keeps Codex free for a catch-up review; finaliser writes to this table; shorthand written out. |
 | `2a26601` | — | Handoff: Codex out of credit, catch-up scheduled (its message gives the refusal time as "about 00:15"; it was 00:03). |
 | `5740c07` | — | Test script removes its database volume (each run had left one behind); builders told to keep comments short and true; workflow steps survive an agent that fails to report. |
+| `95a0953` | — | Notes: CX-01 and SX-198 recorded; the shared Codex allowance and the short-comments rule written into the working rules. |
 | `79d6e11` | #218 | Every user-facing error message in `web/_functions/linkspage_manage.php` now goes through the translation system, with a new seed file for the wording. CX-01. Review: 8 round(s); reviewers by round: claude-opus-fallback; last round clean. |
 | `64b3ca5` | #198 | Every direct-access guard under `web/` now compares real resolved file paths instead of bare file names, so an endpoint no longer gets redirected away by a library file that happens to share its name (the scheduled-jobs endpoint was dead this way). SX-198. Review: 4 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
 | `1412af2` | #203 | A new automated check now fails the build if any link, form target, redirect or background request in the shipping code points at an address ending in `.php`, and the one place that did (an analytics CSV download link) is now fixed. SX-203. Review: 4 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
-| (this commit) | #211 | The lnks.page "coming soon" page no longer shows a live email sign-up form that threw away every address typed into it (it posted to "#", and nothing read `$_POST`); the same form, already commented out on the go2my.link landing page, is replaced with an explanatory comment so nobody brings it back by uncommenting. A new test fails the build if any landing page gains a form again. SX-211. Review: 2 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback; last round clean. |
+| `eee195b` | #211 | The lnks.page "coming soon" page no longer shows a live email sign-up form that threw away every address typed into it (it posted to "#", and nothing read `$_POST`); the same form, already commented out on the go2my.link landing page, is replaced with an explanatory comment so nobody brings it back by uncommenting. A new test fails the build if any landing page gains a form again. SX-211. Review: 2 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback; last round clean. |
 
-**Test baseline now: 658 unit tests and 230 database tests, all passing** (PHP 8.4 in Docker; MySQL
+**Test baseline now: 677 unit tests and 230 database tests, all passing** (PHP 8.4 in Docker; MySQL
 8.4 with `utf8mb4_unicode_ci`). Run them with `sh .claude/programme/run-tests.sh all`.
 
 ### ⏭️ Next actions, in order
 
 1. **The Codex catch-up findings**, if it has run: fix the real ones first, as their own items.
-2. **SX-203** (#203, a unit test that fails when any web address in shipping code ends in `.php`) and
-   **SX-211** (#211, remove the lnks.page "Notify Me" form that throws addresses away).
+2. **Batch 3:** SX-196 (#196 — the database text setting, "collation", fixed in the GitHub checks,
+   the installer and both stored procedures, with a migration and developer notes), SX-207 (#207 —
+   the CSS cleaner must remove backslash escapes before its keyword checks; security), SX-204 (#204
+   — the info page must keep hyphens and underscores in short codes), SX-210 (#210 — stop
+   advertising features that do not exist).
 3. **Batches 3 to 18** — the rest: the approved fixes, then the platform work (environment-aware
    pricing switch, the plan-and-pricing admin screens, analytics kept as daily counts), then the
    LinksPage features (hide branding, search and sharing controls, scheduled links, click tracking
@@ -142,8 +153,9 @@ batch 2), then batch 3; `progress.next` in `.claude/programme/build-plan.json` s
   the owner's account** — on 2026-09-25 it was already used up at 00:03 although no Go2My.Link
   session had touched it. Never assume it is free: try once, read the reset time, schedule the
   catch-up just after it, and hold the item reviewers off Codex with the workflow's `codexLockFile`.
-- **Owed a review: everything after `69f4829`** (the catch-up set for 04:40 on 2026-09-25 covers up
-  to the branch tip at that time; after it runs, only later commits are owed). Run it in a separate
+- **Owed a review: everything after `69f4829`.** The 04:40 attempt on 2026-09-25 produced nothing
+  (out of credit after three minutes). The 09:42 retry covers only the product-code commits; the
+  notes and build-tool commits remain owed after it. Run it in a separate
   worktree so a build in progress cannot interfere. A written brief works better than a bare
   `--base` review: `codex review -c model="gpt-6-astra" - < brief.txt`, where the brief names the
   commit range, puts product code first, and says to skip line-by-line review of

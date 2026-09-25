@@ -2734,15 +2734,33 @@
     "issue": 198,
     "commit": "64b3ca5",
     "what": "all 54 direct-access guards compare real file paths, so the scheduled-jobs endpoint can run; 4 review rounds, all by the Claude stand-in"
+   },
+   {
+    "key": "HANDOFF",
+    "issue": 0,
+    "commit": "95a0953",
+    "what": "notes: CX-01 and SX-198 recorded; shared Codex allowance and the short-comments rule in the working rules"
+   },
+   {
+    "key": "SX-203",
+    "issue": 203,
+    "commit": "1412af2",
+    "what": "unit test fails the build when a web address ends in .php; fixed the one offender (analytics CSV link); 4 review rounds, all by the Claude stand-in"
+   },
+   {
+    "key": "SX-211",
+    "issue": 211,
+    "commit": "eee195b",
+    "what": "lnks.page Notify Me form removed; test fails if any landing page gains a form; 2 review rounds, all by the Claude stand-in"
    }
   ],
   "next": [
-   "SX-203",
-   "SX-211",
    "SX-196",
    "SX-207",
    "SX-204",
-   "SX-210"
+   "SX-210",
+   "SX-197",
+   "SX-147"
   ],
   "codex_re_review_owed": [
    "5340025",
@@ -2757,7 +2775,10 @@
    "2a26601",
    "5740c07",
    "79d6e11",
-   "64b3ca5"
+   "64b3ca5",
+   "95a0953",
+   "1412af2",
+   "eee195b"
   ]
  }
 }
