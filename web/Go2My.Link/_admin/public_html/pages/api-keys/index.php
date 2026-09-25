@@ -354,17 +354,20 @@ $apiKeys = g2ml_apiListKeys($orgHandle);
                         <?php foreach ($apiKeys as $keyRow) { ?>
                         <?php
                         $isRevoked = ((int) $keyRow['isActive']) === 0;
-                        $isExpired = false;
+
+                        // Same fail-safe rule as g2ml_apiVerifyKey() in api_auth.php: an
+                        // expiresAt value strtotime() cannot read shows as Expired here
+                        // too, not Active (#206). Named $rowExpiresAtValue, not
+                        // $expiresAtValue, so it cannot be mistaken for the unrelated
+                        // form-handling variable of that name earlier in this file.
+                        $rowExpiresAtValue = null;
 
                         if ($keyRow['expiresAt'] !== null)
                         {
-                            $expiryTimestamp = strtotime((string) $keyRow['expiresAt']);
-
-                            if ($expiryTimestamp !== false && $expiryTimestamp < time())
-                            {
-                                $isExpired = true;
-                            }
+                            $rowExpiresAtValue = (string) $keyRow['expiresAt'];
                         }
+
+                        $isExpired = g2ml_apiKeyIsExpired($rowExpiresAtValue, time());
 
                         if ($isRevoked)
                         {

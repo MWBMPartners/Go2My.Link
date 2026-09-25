@@ -242,3 +242,40 @@ test('sanitiseRoute: whitespace is rejected', function (): void
 {
     assert_same(null, g2ml_apiSanitiseRoute('account ping'), 'A space is outside the whitelist and must be rejected');
 });
+
+// ============================================================================
+// ⏳ g2ml_apiKeyIsExpired — fail-safe expiry check (#206)
+// ============================================================================
+
+test('keyIsExpired: a null expiry never expires', function (): void
+{
+    assert_false(g2ml_apiKeyIsExpired(null, time()), 'A key with no stored expiry must never be treated as expired');
+});
+
+test('keyIsExpired: an empty-string expiry never expires', function (): void
+{
+    assert_false(g2ml_apiKeyIsExpired('', time()), 'An empty expiresAt is treated the same as null, not as unreadable');
+});
+
+test('keyIsExpired: a past date is expired', function (): void
+{
+    $now = strtotime('2026-06-01 00:00:00');
+    assert_true(g2ml_apiKeyIsExpired('2000-01-01 00:00:00', $now), 'A date well before now must be expired');
+});
+
+test('keyIsExpired: a date one day ahead of now is not expired', function (): void
+{
+    $now    = strtotime('2026-06-01 00:00:00');
+    $future = strtotime('2026-06-02 00:00:00');
+    assert_false(g2ml_apiKeyIsExpired(date('Y-m-d H:i:s', $future), $now), 'A date one day in the future must not be expired');
+});
+
+test('keyIsExpired: an unparsable value is treated as expired, not as never-expiring', function (): void
+{
+    assert_true(g2ml_apiKeyIsExpired('not a date', time()), 'A value strtotime() cannot read must fail safe as expired (#206)');
+});
+
+test('keyIsExpired: a zero date is treated as expired', function (): void
+{
+    assert_true(g2ml_apiKeyIsExpired('0000-00-00 00:00:00', time()), 'strtotime() reads 0000-00-00 as a huge negative timestamp, which is in the past');
+});

@@ -276,6 +276,47 @@ function g2ml_apiExtractBearerToken(?string $authorizationHeader, ?string $apiKe
 }
 
 /**
+ * Decide whether a stored API key expiry must be treated as expired.
+ *
+ * A NULL or empty expiry means the key never expires. A value strtotime()
+ * cannot parse is treated as expired, not as never-expiring, because a
+ * security check must refuse when it is unsure (#206) — the same choice
+ * g2ml_isExportRequestDownloadable() in data_rights.php makes for export
+ * downloads.
+ *
+ * Pure and DB-free: no I/O, so it is safe to unit test directly.
+ *
+ * @param  string|null $expiresAt     The stored expiresAt value, or null
+ *                                     when the key has no expiry.
+ * @param  int         $nowTimestamp  The current time as a Unix timestamp,
+ *                                     passed in so this function stays pure
+ *                                     and testable without mocking time().
+ * @return bool                       True when the key must be treated as
+ *                                     expired.
+ */
+function g2ml_apiKeyIsExpired(?string $expiresAt, int $nowTimestamp): bool
+{
+    if ($expiresAt === null || trim($expiresAt) === '')
+    {
+        return false;
+    }
+
+    $expiryTimestamp = strtotime($expiresAt);
+
+    if ($expiryTimestamp === false)
+    {
+        return true;
+    }
+
+    if ($expiryTimestamp < $nowTimestamp)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+/**
  * Verify a presented API key and return its tblAPIKeys row (with `permissions`
  * decoded to an array) on success, or null on ANY failure.
  *
@@ -375,14 +416,16 @@ function g2ml_apiVerifyKey(string $presented): ?array
         return null;
     }
 
+    $expiresAtValue = null;
+
     if ($row['expiresAt'] !== null)
     {
-        $expiryTimestamp = strtotime((string) $row['expiresAt']);
+        $expiresAtValue = (string) $row['expiresAt'];
+    }
 
-        if ($expiryTimestamp !== false && $expiryTimestamp < time())
-        {
-            return null;
-        }
+    if (g2ml_apiKeyIsExpired($expiresAtValue, time()))
+    {
+        return null;
     }
 
     $ownerRow = dbSelectOne(
