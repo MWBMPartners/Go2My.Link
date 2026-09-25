@@ -1,5 +1,6 @@
 #!/bin/sh
-# Session test helper (not part of the repository).
+# .claude/programme/run-tests.sh — the checks every build-programme item must
+# pass (committed with the programme on 2026-09-23; see the README beside it).
 # Runs, in order, and reports each result with its REAL exit code:
 #   1. php -l on every PHP file changed against alpha (PHP 8.4 in Docker)
 #   2. the unit suite on PHP 8.4 in Docker
@@ -7,7 +8,7 @@
 #      utf8mb4_unicode_ci (NO MYSQL_DATABASE, so the schema's own CREATE DATABASE
 #      decides the collation — the fault behind issue #196), using PHP 8.4 with
 #      the mysqli extension (image built once and cached).
-# Usage: sh run_tests.sh [unit|integration|all]   (default all)
+# Usage: sh .claude/programme/run-tests.sh [unit|integration|all]   (default all)
 set -u
 # The repository this script lives in, worked out from the script's own
 # location, so a clone anywhere on any machine works and no personal path is
@@ -18,6 +19,13 @@ MODE="${1:-all}"
 IMAGE="g2ml-php:8.4-mysqli"
 NET="g2ml-test-net"
 DB="g2ml-test-mysql"
+# The MySQL image keeps its data in a separate storage area (an anonymous
+# Docker volume). A plain "docker rm -f" removes the container but LEAVES that
+# volume behind, holding a whole test database, and nothing on screen says so.
+# Every removal below therefore uses "docker rm -f -v", which takes the volume
+# with it. Found 2026-09-25: one night's builds had left seven such volumes,
+# each holding mwtools_Go2MyLink (the machine-wide rule on throwaway
+# databases in ~/.claude/CLAUDE.md, set 2026-09-24, explains the wider leak).
 OVERALL=0
 cd "${REPO}" || exit 2
 
@@ -56,7 +64,7 @@ if [ "${MODE}" = "integration" ] || [ "${MODE}" = "all" ]; then
     if ! docker image inspect "${IMAGE}" >/dev/null 2>&1; then
         printf 'FROM php:8.4-cli\nRUN docker-php-ext-install mysqli\n' | docker build -q -t "${IMAGE}" - >/dev/null
     fi
-    docker rm -f "${DB}" >/dev/null 2>&1
+    docker rm -f -v "${DB}" >/dev/null 2>&1
     docker network create "${NET}" >/dev/null 2>&1
     docker run -d --name "${DB}" --network "${NET}" -e MYSQL_ALLOW_EMPTY_PASSWORD=yes \
         mysql:8.4 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci >/dev/null
@@ -69,6 +77,9 @@ if [ "${MODE}" = "integration" ] || [ "${MODE}" = "all" ]; then
         TRIES=$((TRIES + 1))
         if [ "${TRIES}" -gt 120 ]; then
             echo "MySQL did not start"
+            # Remove it here too; this exit used to leave the container
+            # (and its volume) running until the next test run.
+            docker rm -f -v "${DB}" >/dev/null 2>&1
             exit 1
         fi
         sleep 2
@@ -99,7 +110,7 @@ if [ "${MODE}" = "integration" ] || [ "${MODE}" = "all" ]; then
     if [ "${INTEG_EXIT}" -ne 0 ]; then
         OVERALL=1
     fi
-    docker rm -f "${DB}" >/dev/null 2>&1
+    docker rm -f -v "${DB}" >/dev/null 2>&1
 fi
 
 echo "=== OVERALL exit=${OVERALL} ==="

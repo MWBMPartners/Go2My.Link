@@ -20,6 +20,7 @@ HOUSE RULES THAT BITE (CLAUDE.md and .claude/memory/patterns.md have the full li
 - No shorthand in any language: no ternary (a ? b : c), no Elvis (?:), no PHP alternative syntax, no short tags, no braceless if, no one-line arrow functions. Full if/else with braces. Allman braces in web/_functions/; match the surrounding file's brace style in templates. ?? only when both sides are simple values.
 - MySQLi prepared statements only. Every UI string through __('key') AND seeded in the translation seed named in the plan. Dark/light mode via existing CSS variables. WCAG 2.1 AA. No ".php" in any web address.
 - Comment properly: explain WHY, record what was wrong before and what was rejected, say what the code cannot do. File headers carry path, description, authorship/licence lines like the neighbouring files. Plain, everyday English in comments, commit messages and issue text.
+- COMMENTS MUST BE SHORT ENOUGH TO BE CERTAINLY TRUE. Every statement in a comment will be checked against the code, and a false one blocks the commit. So: write the reason in as few sentences as it needs; do not quote counts (how many call sites, sentences, files) unless a test checks them; do not point at another file's comment unless you have just read it and it says exactly that; do not retell git history beyond one line naming the issue. NEVER write the history of review rounds into code or data files ("CORRECTED after review round N", "an earlier version of this note said ...") — that belongs in the commit message. When a reviewer says a comment is false, make it shorter and true, usually by deleting the claim, not by adding a paragraph explaining the correction. (Learned 2026-09-25: CX-01 spent five review rounds on false statements in ever-longer comments while its code had been correct since round 1.)
 - Schema changes: edit the base schema/seed (fresh installs) AND add the guarded numbered migration (existing databases), exactly as the plan says — CI imports schema, procedures and seeds but never migrations.
 - The GATING DESIGN below is binding. Do not invent another gating mechanism.
 - Do NOT edit the project handoff (.github/HANDOFF.md, or .claude/HANDOFF.md before it moves), anything in .claude/ or .OpenAI/, the root HANDOFF.md (the dev-team plugin's ignored scratch file) or the dev-team plugin's files — UNLESS your item's plan explicitly says to (the housekeeping items HK-01, HK-02, HK-03 exist to change exactly those). If you change anything in .claude/ or the root CLAUDE.md, run  sh scripts/sync-ai-context.sh  afterwards so .OpenAI/ matches. Do NOT commit, push, stash, reset, rebase or switch branches.
@@ -125,6 +126,11 @@ Items built earlier are already committed on the branch (git log --oneline -25);
 `
 }
 
+// Runs one agent and turns a crash into null, so the caller can stop the batch
+// cleanly (or, for a fix step, let the next review round look at what landed).
+// Every step goes through this. On 2026-09-25 a fix agent that could not hand
+// back its result in the required shape five times running made agent() throw,
+// which ended the whole run with the item's work left uncommitted.
 async function safeAgent(prompt, opts) {
   try {
     return await agent(prompt, opts)
@@ -148,7 +154,7 @@ for (const item of A.items) {
     log(item.key + ': work already in the working tree from an earlier run — going straight to review')
     build = { overall_exit: 0, summary: 'Resumed: built and partly reviewed in an earlier run; changes are already in the working tree.', not_verified: '', deviations_from_plan: '' }
   } else {
-  build = await agent(`${COMMON}
+  build = await safeAgent(`${COMMON}
 ROLE: builder. Read the issue first: gh issue view ${item.issue} --repo MWBMPartners/Go2My.Link
 Then read every file the plan names before changing it. Build the item completely, including its tests. Run the TESTS and make them pass. The working tree must end up containing ONLY this item's changes.
 
@@ -219,13 +225,18 @@ ${itemBrief(item)}`, { label: 'review ' + item.key + ' r' + round + retryLabel, 
     const real = review.findings.filter(function (finding) {
       return !finding.believed_wrong
     })
-    await agent(`${COMMON}
+    const fixResult = await safeAgent(`${COMMON}
 ROLE: builder, fixing review round ${round} for ${item.key}. Fix every finding below that is real. If you are sure one is wrong, do not "fix" it to quiet the reviewer — leave it and explain why in deviations_from_plan. Re-run the TESTS until they pass.
 
 FINDINGS:
 ${JSON.stringify(real, null, 1)}
 
 ${itemBrief(item)}`, { label: 'fix ' + item.key + ' r' + round, phase: 'Build', model: item.builder_tier, schema: BUILD_RESULT })
+    if (!fixResult) {
+      // The fixer may still have made its edits before failing to report.
+      // The next review round reads the working tree, so it will see them.
+      log(item.key + ': fix round ' + round + ' did not report back — the next review round will check what landed')
+    }
   }
 
   if (!clean) {
@@ -252,7 +263,7 @@ ${itemBrief(item)}`, { label: 'fix ' + item.key + ' r' + round, phase: 'Build', 
   }
 
   phase('Finalise')
-  const fin = await agent(`${COMMON}
+  const fin = await safeAgent(`${COMMON}
 ROLE: finaliser for ${item.key} (issue #${item.issue}). The change is built and has passed review. You now make it permanent. You MAY commit and push in this role, to the working branch only.
 1. Run the TESTS. If OVERALL exit is not 0, STOP: do not commit; report why in notes and set commit_sha to "".
 2. Update the project handoff, .github/HANDOFF.md: add one row at the bottom of the table under the heading "Finished this programme" (columns: Commit | Issue | What). Commit cell: "(this commit)" — the SHA does not exist yet, and everything must land in ONE commit; the SHA goes in the issue comment. Issue cell: #${item.issue}. What cell: one plain-English sentence on what changed, then "${item.key}. ${reviewLine}". If an EARLIER row in that table still says "(this commit)", replace it with that commit's real short SHA (find it with git log --oneline -15 and the issue number). Change nothing else in the handoff — the lead updates the rest.
@@ -270,7 +281,7 @@ ROLE: finaliser for ${item.key} (issue #${item.issue}). The change is built and 
 ${itemBrief(item)}`, { label: 'finalise ' + item.key, phase: 'Finalise', model: 'sonnet', schema: FINAL_RESULT })
 
   if (!fin || !fin.commit_sha || !fin.pushed) {
-    log(item.key + ': finalise did not commit and push — stopping the batch')
+    log(item.key + ': finalise did not report a commit and a push — stopping the batch. Check git log and git status: it may have committed before failing')
     results.push({ key: item.key, status: 'finalise_failed', fin })
     break
   }
