@@ -55,7 +55,18 @@ $infoError  = '';
 // Priority 1: ?code= parameter (from .htaccess rewrite or direct)
 if (isset($_GET['code']) && $_GET['code'] !== '')
 {
-    $shortCode = preg_replace('/[^a-zA-Z0-9]/', '', $_GET['code']);
+    // A custom short code may contain '-' and '_' (G2ML_CUSTOM_CODE_PATTERN
+    // in shorturl_create.php). g2ml_infoNormaliseShortCode() REJECTS a code
+    // outside that alphabet instead of stripping it — stripping used to turn
+    // 'spring-sale' into 'springsale', a lookup for a different link (#204).
+    // An invalid code is treated as no code at all: $shortCode stays '' and
+    // the page falls back to its existing "no code given" state below.
+    $normalisedCode = g2ml_infoNormaliseShortCode((string) $_GET['code']);
+
+    if ($normalisedCode !== null)
+    {
+        $shortCode = $normalisedCode;
+    }
 }
 // Priority 2: ?url= parameter (parse code from a pasted short URL)
 elseif (isset($_GET['url']) && $_GET['url'] !== '')
@@ -94,7 +105,19 @@ elseif (isset($_GET['url']) && $_GET['url'] !== '')
             $codePart = substr($inputURL, strlen($domain) + 1);
             // Extract just the code (stop at ? or # or /)
             $codePart = strtok($codePart, '?#/');
-            $shortCode = preg_replace('/[^a-zA-Z0-9]/', '', $codePart);
+
+            // Validate against the same alphabet a custom code is created
+            // with (letters, digits, '-', '_') instead of stripping other
+            // characters out — stripping used to turn 'spring-sale' into
+            // 'springsale', a lookup for a different link (#204). An invalid
+            // code leaves $shortCode at '', which the check just below this
+            // loop already reports as the existing "invalid URL" error.
+            $normalisedCodePart = g2ml_infoNormaliseShortCode($codePart);
+
+            if ($normalisedCodePart !== null)
+            {
+                $shortCode = $normalisedCodePart;
+            }
             break;
         }
     }

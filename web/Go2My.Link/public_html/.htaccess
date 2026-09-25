@@ -135,8 +135,13 @@ RewriteRule ^api/v1/(.+)$ api/v1/index.php?_apiroute=$1 [QSA,L]
 # Info Page — /info/SHORTCODE route
 # Maps /info/abc123 to the router with route=info and code=abc123.
 # Must come before the catch-all route below.
+# A custom short code may contain '-' and '_' as well as letters and digits
+# (G2ML_CUSTOM_CODE_PATTERN in shorturl_create.php), so this pattern must
+# accept the same characters — it used to only match [a-zA-Z0-9], so a code
+# such as 'spring-sale' fell through to the catch-all rule below and 404'd
+# instead of reaching the info page (#204).
 # =============================================================================
-RewriteRule ^info/([a-zA-Z0-9]+)$ index.php?route=info&code=$1 [QSA,L]
+RewriteRule ^info/([A-Za-z0-9_-]{1,50})$ index.php?route=info&code=$1 [QSA,L]
 
 # =============================================================================
 # URL Routing — Route to index.php

@@ -19,16 +19,20 @@ declare(strict_types=1);
  * without a database connection or an active session.
  *
  * Functions:
- *   - g2ml_infoDisplayDestination()  — Decide the destination string to show,
- *                                       masked for anonymous viewers and full
- *                                       for authenticated viewers (FG-003 / #23)
+ *   - g2ml_infoDisplayDestination()   — Decide the destination string to show,
+ *                                        masked for anonymous viewers and full
+ *                                        for authenticated viewers (FG-003 / #23)
+ *   - g2ml_infoNormaliseShortCode()   — Validate a short code entered on the
+ *                                        info page, keeping the same
+ *                                        characters a custom code is allowed
+ *                                        to contain (#204)
  *
  * Dependencies: none (uses only core PHP string / URL functions).
  *
  * @package    Go2My.Link
  * @subpackage ComponentA
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.4.0
+ * @version    0.5.0
  * @since      autopilot COMPLETE (FG-003 / #23)
  * ============================================================================
  */
@@ -136,5 +140,45 @@ if (!function_exists('g2ml_infoDisplayDestination'))
         }
 
         return $host;
+    }
+}
+
+// ============================================================================
+// 🔍 Short-code validation for the info page — #204
+// ============================================================================
+// A custom short code may contain letters, digits, '-' and '_'
+// (G2ML_CUSTOM_CODE_PATTERN in shorturl_create.php). The info page used to
+// STRIP every character outside [A-Za-z0-9] from the code a visitor typed or
+// pasted, which silently turned 'spring-sale' into 'springsale' — a lookup
+// for a different link, or none at all. This function REJECTS an invalid
+// code instead of stripping it, so an invalid code is never silently
+// substituted for a different, valid one.
+// ============================================================================
+
+if (!function_exists('g2ml_infoNormaliseShortCode'))
+{
+    /**
+     * Validate a short code entered on the info page.
+     *
+     * The input is trimmed first (leading/trailing whitespace is not part of
+     * a real short code and is never significant). What remains must match
+     * the short-code alphabet used at creation time — letters, digits, '-'
+     * and '_' — and be 1 to 50 characters long. The minimum is 1 rather than
+     * the 3 enforced at creation time so older, shorter codes that predate
+     * that minimum still resolve.
+     *
+     * @param  string $raw  The code as typed or extracted, before validation.
+     * @return string|null  The trimmed code when valid, otherwise null.
+     */
+    function g2ml_infoNormaliseShortCode(string $raw): ?string
+    {
+        $trimmed = trim($raw);
+
+        if (preg_match('/^[A-Za-z0-9_-]{1,50}$/', $trimmed) === 1)
+        {
+            return $trimmed;
+        }
+
+        return null;
     }
 }
