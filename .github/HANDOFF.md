@@ -14,11 +14,11 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-09-25 12:05 (CX-02 and SX-197 done; batch 4 continues — see "This session") · 2026-09-23 21:10 (everything pushed; safe restart point — see START HERE) · 2026-09-21/22 (the LinksPage and tiers programme) · earlier: 2026-09-07 (audit + docs sweep, merged as #201) · 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow; per-user analytics #165) · earlier: 2026-07-22 (PR merges, Dependabot 3-tier, pricing) · 2026-07-19 (post-recovery conformance audit) · **Working branch:** `feat/2026-09-21-linkspage-and-sweep` (from `alpha`).
+> **Last updated:** 2026-09-25 14:25 (SX-147 and SX-214 done; Codex catch-up set for 14:44 — see "This session") · 2026-09-23 21:10 (everything pushed; safe restart point — see START HERE) · 2026-09-21/22 (the LinksPage and tiers programme) · earlier: 2026-09-07 (audit + docs sweep, merged as #201) · 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow; per-user analytics #165) · earlier: 2026-07-22 (PR merges, Dependabot 3-tier, pricing) · 2026-07-19 (post-recovery conformance audit) · **Working branch:** `feat/2026-09-21-linkspage-and-sweep` (from `alpha`).
 > **Status (2026-09-25):** a build programme is under way on the working branch, agreed with
 > the owner after a market review of LinksPage against Linktree, Beacons and about twenty other
-> "link in bio" services. The finished pieces are listed under START HERE; the next are SX-147,
-> SX-214 and SX-206 (the rest of batch 4). 715 unit tests and 234 database tests pass. The programme covers: making every tier feature editable in the
+> "link in bio" services. The finished pieces are listed under START HERE; the next are SX-206
+> (the last of batch 4), then batch 5. 726 unit tests and 234 database tests pass. The programme covers: making every tier feature editable in the
 > database through a new admin screen (no hard-coded tiers), an environment-aware pricing switch,
 > analytics kept for ever as daily counts with IP addresses removed after 90 days, the LinksPage
 > features the market expects, and a queue of approved fixes. The owner's 45 decisions are GitHub
@@ -28,7 +28,7 @@
 
 ---
 
-## ▶️ START HERE — everything a fresh session needs (2026-09-25, 12:05)
+## ▶️ START HERE — everything a fresh session needs (2026-09-25, 14:25)
 
 > **This section is written so a brand-new session, with no memory of the previous ones, can carry
 > on.** Read it, then `.claude/programme/README.md`, then the `progress` section of
@@ -40,8 +40,8 @@ Nothing happened between 21:10 on 23 September and this session (no commits, no 
 
 **Done and pushed:** CX-01 (`79d6e11`), SX-198 (`64b3ca5`), SX-203 (`1412af2`) and SX-211
 (`eee195b`) — batch 2 is complete — then SX-196 (`cc61e98`), SX-207 (`47509a7`), SX-204 (`272e69d`)
-and SX-210 (`cbb8a4d`) — batch 3 is complete — then CX-02 (`ade7c02`, Codex's finding) and SX-197
-(`b59ef73`) from batch 4, plus commits to the build tools and these notes (`9669b25`,
+and SX-210 (`cbb8a4d`) — batch 3 is complete — then CX-02 (`ade7c02`, Codex's finding), SX-197
+(`b59ef73`), SX-147 (`3562029`) and SX-214 (`8402425`) from batch 4, plus commits to the build tools and these notes (`9669b25`,
 `2a26601`, `5740c07`, `95a0953`). See the Finished table below. SX-203's new check found one real
 offender on its first run: the analytics page's CSV download link ended in `.php` (now the clean
 address).
@@ -68,7 +68,12 @@ removed, and the lock file is gone. **Still owed a Codex review:** the notes and
 and `cbb8a4d` (SX-210) onwards. **Codex's next reset is 14:43**; the item reviewers try it first
 again, and SX-210's last round found it still out of credit.
 
-**Next in this session:** SX-147 and SX-214, then SX-206 (the rest of batch 4).
+**Next in this session:** SX-206 (the last of batch 4) and SX-208, then the rest of batch 5.
+
+**A second Codex catch-up is scheduled for 14:44** (Codex resets at 14:43), over the product code
+built since the first one: `3562029` and `8402425` first (security), then `b59ef73`, `ade7c02`,
+`cbb8a4d`. The lock file is back until it finishes, so item reviews use the Claude stand-in
+meanwhile, and the review copy of the repository (`git worktree list`) was re-created for it.
 
 **A correction about CX-02 (`ade7c02`).** Its commit message says the fix "was not re-run against a
 live MySQL or MariaDB container". It was: the builder checked it on MySQL 8.4 and MariaDB 11.8, and
@@ -104,8 +109,8 @@ Everything is **committed and pushed**; the working copy is clean and the local 
 GitHub exactly. The working branch is **`feat/2026-09-21-linkspage-and-sweep`**, cut from `alpha`,
 and `git log -1` is always the truth about the latest commit (each finished item adds one). There
 is deliberately **no pull request yet** — one pull request to `alpha`, opened when the owner says
-so. The finished pieces are listed below. The next items are **SX-147**, **SX-214** and **SX-206**
-(the rest of batch 4); `progress.next` in `.claude/programme/build-plan.json` says the same.
+so. The finished pieces are listed below. The next items are **SX-206** (the last of batch 4) and
+**SX-208**; `progress.next` in `.claude/programme/build-plan.json` says the same.
 
 ### 🗂️ Where everything lives
 
@@ -154,17 +159,18 @@ so. The finished pieces are listed below. The next items are **SX-147**, **SX-21
 | `208dcc4` | — | Notes: batch 3 recorded; the Codex catch-up result; CX-02 planned; owner question #275. |
 | `ade7c02` | #196 | The installer's automatic database-collation fix now runs a fixed, nameless ALTER DATABASE statement instead of building the SQL text by joining in the entered database name, and the name-validation block that existed only to make that joining safe is removed. CX-02. Review: 2 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback; last round clean. |
 | `b59ef73` | #197 | Both stored procedures (`sp_generateShortCode`, `sp_lookupShortURL`) no longer catch every database error and quietly turn it into an ordinary outcome; a real fault now reaches `dbCallProcedure()`, which logs the actual MySQL message, so a wrong collation, a missing table or a permissions problem is no longer indistinguishable from ordinary bad luck. SX-197. Review: 4 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
+| `60f9586` | — | Build workflow: the finisher is given the builder's report of what was checked; CX-02 and SX-197 recorded, with the correction to `ade7c02`'s message. |
 | `3562029` | #147 | Each row on the Active Sessions and Organisation Members pages now gets its own CSRF token, keyed to that row's action and row id, instead of every row on a page sharing one token that only the last-rendered row could still use; a new automated check fails the build if any page ever renders the same CSRF form name twice. SX-147. Review: 4 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
-| (this commit) | #214 | PHP's own clock is now forced to UTC at the start of every request and in the installer (which loads separately), matching the database session's UTC clock, so a security timer such as the breach-response cooldown or session expiry can no longer disagree with the database by however far the server's local time zone sat from UTC. SX-214. Review: 3 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
+| `8402425` | #214 | PHP's own clock is now forced to UTC at the start of every request and in the installer (which loads separately), matching the database session's UTC clock, so a security timer such as the breach-response cooldown or session expiry can no longer disagree with the database by however far the server's local time zone sat from UTC. SX-214. Review: 3 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
 
-**Test baseline now: 715 unit tests and 234 database tests, all passing** (PHP 8.4 in Docker; MySQL
+**Test baseline now: 726 unit tests and 234 database tests, all passing** (PHP 8.4 in Docker; MySQL
 8.4 with `utf8mb4_unicode_ci`). Run them with `sh .claude/programme/run-tests.sh all`.
 
 ### ⏭️ Next actions, in order
 
-1. **The rest of batch 4:** SX-147 (#147 — per-row form protection on the sessions and members
-   pages), SX-214 (#214 — the timezone), SX-206 (#206 — API key expiry fails safe).
+1. **SX-206** (#206 — API key expiry fails safe), the last of batch 4.
 2. **Batch 5:** SX-208, SX-205, SX-212, PF-13.
+3. **The 14:44 Codex catch-up's findings**, if any: fix the real ones first.
 3. **Batches 3 to 18** — the rest: the approved fixes, then the platform work (environment-aware
    pricing switch, the plan-and-pricing admin screens, analytics kept as daily counts), then the
    LinksPage features (hide branding, search and sharing controls, scheduled links, click tracking

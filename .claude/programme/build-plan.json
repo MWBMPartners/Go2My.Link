@@ -2836,15 +2836,33 @@
     "issue": 197,
     "commit": "b59ef73",
     "what": "both stored procedures stop swallowing database errors; failures are logged; 4 review rounds, Claude stand-in (Codex tried every round, out of credit)"
+   },
+   {
+    "key": "TOOLS-2026-09-25c",
+    "issue": 0,
+    "commit": "60f9586",
+    "what": "build workflow: finisher gets the builder's report of what was checked; notes for CX-02 and SX-197"
+   },
+   {
+    "key": "SX-147",
+    "issue": 147,
+    "commit": "3562029",
+    "what": "per-row CSRF form names on the sessions and members pages; test fails on duplicate literal form names; 4 review rounds, Claude stand-in"
+   },
+   {
+    "key": "SX-214",
+    "issue": 214,
+    "commit": "8402425",
+    "what": "PHP's default time zone forced to UTC to match the database; 3 review rounds, Claude stand-in"
    }
   ],
   "next": [
-   "SX-147",
-   "SX-214",
    "SX-206",
    "SX-208",
    "SX-205",
-   "SX-212"
+   "SX-212",
+   "PF-13",
+   "PF-01"
   ],
   "codex_re_review_owed": [
    "8302613",
@@ -2862,7 +2880,10 @@
    "cbb8a4d",
    "208dcc4",
    "ade7c02",
-   "b59ef73"
+   "b59ef73",
+   "60f9586",
+   "3562029",
+   "8402425"
   ]
  }
 }
