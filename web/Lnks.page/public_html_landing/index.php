@@ -262,7 +262,7 @@
             <span class="feature">Custom Domains</span>
             <span class="feature">WYSIWYG Editor</span>
             <span class="feature">Click Tracking</span>
-            <span class="feature">Auto Favicons</span>
+            <!-- #210: "Auto Favicons" removed — favicon fetching is not built (#45). -->
         </div>
 
         <!-- A sign-up form used to be here. It posted to "#" and every address typed in was lost (#211). Add it back only with a real handler that stores the address with consent wording, CSRF protection and a rate limit. -->

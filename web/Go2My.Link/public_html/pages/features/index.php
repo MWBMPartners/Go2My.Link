@@ -81,8 +81,14 @@ if (function_exists('__')) {
                             <i class="fas fa-chart-bar" aria-hidden="true"></i>
                         </div>
                         <h3 class="h5"><?php if (function_exists('__')) { echo __('features.analytics_title'); } else { echo 'Detailed Analytics'; } ?></h3>
+                        <?php
+                        // #210: "geographic data" is only true when an administrator
+                        // switches on IP geolocation, which is off by default — this key
+                        // says "where enabled" instead. New key, old row left as-is (seed
+                        // 058_truthful_marketing_translations.sql).
+                        ?>
                         <p class="text-body-secondary mb-0">
-                            <?php if (function_exists('__')) { echo __('features.analytics_desc'); } else { echo 'Track clicks, geographic data, device types, referrers, and more with real-time dashboards.'; } ?>
+                            <?php if (function_exists('__')) { echo __('features.analytics_desc_v2'); } else { echo 'Track clicks, device types, referrers and more on a clear dashboard. Country breakdown where enabled.'; } ?>
                         </p>
                     </div>
                 </div>
@@ -141,8 +147,14 @@ if (function_exists('__')) {
                             <i class="fas fa-shield-alt" aria-hidden="true"></i>
                         </div>
                         <h3 class="h5"><?php if (function_exists('__')) { echo __('features.security_title'); } else { echo 'Enterprise Security'; } ?></h3>
+                        <?php
+                        // #210: two-factor authentication and SSO are not built (#34, #36).
+                        // This new key claims only what exists — encryption, role-based
+                        // access, an activity log. New key, old row left as-is (seed
+                        // 058_truthful_marketing_translations.sql).
+                        ?>
                         <p class="text-body-secondary mb-0">
-                            <?php if (function_exists('__')) { echo __('features.security_desc'); } else { echo 'AES-256 encryption, two-factor authentication, SSO support, and comprehensive audit trails.'; } ?>
+                            <?php if (function_exists('__')) { echo __('features.security_desc_v2'); } else { echo 'Sensitive data encrypted with AES-256, role-based access for teams, and an activity log of important actions.'; } ?>
                         </p>
                     </div>
                 </div>

@@ -95,8 +95,14 @@ if (function_exists('__')) {
                             <i class="fas fa-chart-bar text-success" aria-hidden="true"></i>
                             <?php if (function_exists('__')) { echo __('about.offer_analytics'); } else { echo 'Detailed Analytics'; } ?>
                         </h3>
+                        <?php
+                        // #210: "geographic data" is only true when an administrator
+                        // switches on IP geolocation, which is off by default — this key
+                        // says "where enabled" instead. New key, old row left as-is (seed
+                        // 058_truthful_marketing_translations.sql).
+                        ?>
                         <p class="text-body-secondary mb-0">
-                            <?php if (function_exists('__')) { echo __('about.offer_analytics_desc'); } else { echo 'Understand your audience with click tracking, geographic data, device breakdowns, and referrer insights.'; } ?>
+                            <?php if (function_exists('__')) { echo __('about.offer_analytics_desc_v2'); } else { echo 'Understand your audience with click tracking, device breakdowns and referrer insights, plus a country breakdown where enabled.'; } ?>
                         </p>
                     </div>
                 </div>
@@ -121,8 +127,14 @@ if (function_exists('__')) {
                             <i class="fas fa-shield-alt text-danger" aria-hidden="true"></i>
                             <?php if (function_exists('__')) { echo __('about.offer_security'); } else { echo 'Enterprise Security'; } ?>
                         </h3>
+                        <?php
+                        // #210: two-factor authentication and SSO are not built (#34, #36).
+                        // This new key claims only what exists — encryption at rest,
+                        // role-based access, an activity log. New key, old row left as-is
+                        // (seed 058_truthful_marketing_translations.sql).
+                        ?>
                         <p class="text-body-secondary mb-0">
-                            <?php if (function_exists('__')) { echo __('about.offer_security_desc'); } else { echo 'AES-256 encryption at rest, two-factor authentication, SSO integration, and comprehensive audit logging.'; } ?>
+                            <?php if (function_exists('__')) { echo __('about.offer_security_desc_v2'); } else { echo 'Sensitive data encrypted at rest with AES-256, role-based access, and an activity log of important actions.'; } ?>
                         </p>
                     </div>
                 </div>

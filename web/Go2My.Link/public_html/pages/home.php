@@ -245,14 +245,33 @@ else
                 <div class="p-3">
                     <i class="fas fa-chart-bar fa-3x text-success mb-3" aria-hidden="true"></i>
                     <h3 class="h5"><?php if (function_exists('__')) { echo __('home.feature_analytics'); } else { echo 'Detailed Analytics'; } ?></h3>
-                    <p class="text-body-secondary"><?php if (function_exists('__')) { echo __('home.feature_analytics_desc'); } else { echo 'Track clicks, geographic data, devices, and more.'; } ?></p>
+                    <?php
+                    // #210: the old key (home.feature_analytics_desc) named "geographic
+                    // data" as if every visitor gets it. That data only exists when an
+                    // administrator switches on IP geolocation and supplies a GeoIP
+                    // database (see the checklist item covering this), which is off by
+                    // default, so this new key says "where enabled" instead. Translation
+                    // seeds never overwrite an existing row, so the old key's text is left
+                    // as-is in the database, unused from here on; the wording moves to a
+                    // new key rather than editing that row (seed 058_truthful_marketing_translations.sql).
+                    ?>
+                    <p class="text-body-secondary"><?php if (function_exists('__')) { echo __('home.feature_analytics_desc_v2'); } else { echo 'Track clicks, devices, referrers and more. Country breakdown where enabled.'; } ?></p>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="p-3">
                     <i class="fas fa-shield-alt fa-3x text-danger mb-3" aria-hidden="true"></i>
                     <h3 class="h5"><?php if (function_exists('__')) { echo __('home.feature_secure'); } else { echo 'Enterprise Security'; } ?></h3>
-                    <p class="text-body-secondary"><?php if (function_exists('__')) { echo __('home.feature_secure_desc'); } else { echo 'AES-256 encryption, 2FA, SSO, and role-based access.'; } ?></p>
+                    <?php
+                    // #210: the old key (home.feature_secure_desc) promised 2FA and SSO,
+                    // neither of which is built (#34, #36). This new key claims
+                    // only what is actually built today: encryption at rest (g2ml_encrypt,
+                    // web/_functions/security.php), role-based access (hasMinimumRole,
+                    // web/_functions/auth.php) and the activity log (logActivity,
+                    // web/_functions/activity_logger.php). Restore the old wording, or
+                    // something like it, once #34 and #36 ship.
+                    ?>
+                    <p class="text-body-secondary"><?php if (function_exists('__')) { echo __('home.feature_secure_desc_v2'); } else { echo 'Encryption for sensitive data, role-based access and an activity log.'; } ?></p>
                 </div>
             </div>
         </div>

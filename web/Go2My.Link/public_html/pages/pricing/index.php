@@ -116,7 +116,12 @@ if (function_exists('__')) {
                         </p>
                         <ul class="list-unstyled text-start mb-4">
                             <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.enterprise_feature_1'); } else { echo 'Everything in Pro'; } ?></li>
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.enterprise_feature_2'); } else { echo 'SSO / SAML integration'; } ?></li>
+                            <?php
+                            // #210: this line used to list "SSO / SAML integration"
+                            // (pricing.enterprise_feature_2), which is not built (#36). Removed
+                            // rather than reworded because PF-07 rebuilds this whole page from
+                            // the tier admin's own data; this is only the stop-gap until then.
+                            ?>
                             <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.enterprise_feature_3'); } else { echo 'Dedicated support'; } ?></li>
                             <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.enterprise_feature_4'); } else { echo 'Custom SLA'; } ?></li>
                         </ul>
