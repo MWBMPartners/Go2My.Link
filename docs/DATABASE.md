@@ -14,6 +14,17 @@
 | **🔌 Access method** | MySQLi only (no PDO) |
 | **🔒 Connection** | Prepared statements exclusively |
 
+> 🔤 **The collation above is required, not a default to leave alone.** A
+> database created through a hosting panel usually gets the *server's* own
+> default collation instead, and a stored procedure's local variables take
+> their collation from the database, not from the column they are compared
+> against — a different utf8mb4 collation can break short-link creation for
+> a procedure created from files older than #196 (#197). `.github/workflows/ci.yml`
+> and the web installer both check and enforce the database's own collation now; see
+> [DEV_NOTES.md](../DEV_NOTES.md) → "Database collation (required)" for the
+> full explanation, the check query, and how to fix an existing database
+> (`web/_sql/migrations/042_database_collation.sql`).
+
 ## 📦 Legacy Database
 
 The existing `mwtools_mwlink` database (MyISAM, utf8mb4) contains data to be migrated:

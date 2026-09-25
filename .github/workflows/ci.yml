@@ -162,8 +162,7 @@ jobs:
           php phpcs.phar --standard=phpcs.xml --report=summary
 
   # ===========================================================================
-  # Tests (Integration) — mysql:8 service container. ADVISORY, not a required
-  # status check (whole job is continue-on-error: true).
+  # Tests (Integration) — mysql:8 service container.
   #
   # tests/integration/*.php need a database seeded exactly the way a FRESH
   # install is documented to be seeded (docs/INSTALL.md's "Manual / fallback
@@ -179,22 +178,32 @@ jobs:
   # (e.g. migration 014's own docblock: "FRESH INSTALLS DO NOT NEED THIS FILE
   # — already part of the base schema").
   #
-  # tests/run_integration.php itself never hard-fails merely because no test
-  # DB is reachable (it prints "SKIPPED (no test DB)" and exits 0), so this
-  # job would already be safe even without the import below — but a
-  # REACHABLE database whose tests genuinely fail DOES exit non-zero, and
-  # this exact schema+procedures+seeds import sequence has not yet been
-  # proven green against THIS mysql:8 service container/runner combination by
-  # this change (it mirrors a previously-verified MySQL 9.6 import, not an
-  # identical one). Per the house rule "when unsure, make integration
-  # advisory", the whole job is continue-on-error: true so any drift (a new
-  # schema file, a stored-procedure DELIMITER quirk specific to mysql:8)
-  # surfaces as a visible-but-non-blocking failure rather than blocking every
-  # PR. Promote to a required check once it has run green a few times.
+  # 🔤 #196 — the mysql image's own "create me a database on startup"
+  # environment setting is DELIBERATELY not given to the service container
+  # below. Setting it used to make the container create the database itself,
+  # using the SERVER's own default collation (utf8mb4_0900_ai_ci) — before
+  # our own web/_sql/schema/000_create_database.sql ever got to run. That
+  # file's CREATE DATABASE says IF NOT EXISTS, so it found the database
+  # already there and did nothing, and the COLLATE utf8mb4_unicode_ci it asks
+  # for was silently thrown away. A stored procedure's local variables take
+  # their collation from the DATABASE, not from the table they are compared
+  # against, so every such comparison in sp_generateShortCode/sp_lookupShortURL
+  # then failed with "illegal mix of collations" — an error
+  # sp_generateShortCode's own handler swallows, so what actually showed up
+  # was 25 tests failing with no clue why. Leaving that setting out lets our
+  # own schema file create the database with the collation it actually asks
+  # for. The "Check database collation" step below proves that held, rather
+  # than trusting it silently.
+  #
+  # This job, and the "PHP integration tests" step inside it, are no longer
+  # continue-on-error — this is a real gate now, not an advisory one. Making
+  # the check "Tests (Integration) (ubuntu-latest)" itself REQUIRED on the
+  # "Protect main branch" ruleset is a separate GitHub setting only the owner
+  # can change — see docs/DEPLOYMENT.md, "Making the integration tests a
+  # required check (owner action)".
   # ===========================================================================
   tests-integration:
     name: Tests (Integration)
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -232,7 +241,6 @@ jobs:
         image: "mysql:8"
         env:
           MYSQL_ROOT_PASSWORD: "g2ml_ci_root_password"
-          MYSQL_DATABASE: "mwtools_Go2MyLink"
         ports:
           - "3306:3306"
         options: >-
@@ -272,8 +280,25 @@ jobs:
             mysql --host="127.0.0.1" --port="3306" --user="root" < "${sqlFile}"
           done
 
-      - name: PHP integration tests (advisory)
-        continue-on-error: true
+      # 🔤 #196 — proves the fix above actually held, rather than trusting it
+      # silently: fails the build the moment the database's own collation is
+      # anything other than what the stored procedures depend on.
+      - name: Check database collation
+        env:
+          MYSQL_PWD: "g2ml_ci_root_password"
+        run: |
+          set -euo pipefail
+          collation=$(mysql --host="127.0.0.1" --port="3306" --user="root" \
+            --skip-column-names --batch \
+            --execute="SELECT DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = 'mwtools_Go2MyLink'")
+          echo "Database collation: ${collation}"
+          if [ "${collation}" != "utf8mb4_unicode_ci" ]
+          then
+            echo "Expected utf8mb4_unicode_ci, got '${collation}' — see #196."
+            exit 1
+          fi
+
+      - name: PHP integration tests
         env:
           G2ML_TEST_DB_HOST: "127.0.0.1"
           G2ML_TEST_DB_PORT: "3306"

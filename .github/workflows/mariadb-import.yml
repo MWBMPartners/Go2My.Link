@@ -24,8 +24,12 @@
 # then web/_sql/seeds — the exact fresh-install order documented in
 # docs/INSTALL.md and used by ci.yml's own mysql:8 leg — into a throwaway
 # MariaDB 11.4 container, and fails the job the moment any file fails to
-# import. That single question — does the schema go in cleanly on the engine
-# the live site actually runs — is all this workflow checks.
+# import. It then checks the imported database's own collation matches what
+# the schema asked for (#196) — the same check ci.yml's mysql:8 leg runs,
+# repeated here because the container is started differently and could in
+# principle drift from it. Does the schema go in cleanly, with the right
+# collation, on the engine the live site actually runs — that is what this
+# workflow checks.
 #
 # WHAT THIS WORKFLOW CANNOT DO. It does not run the PHP unit or integration
 # test suites (those already run against MySQL 8 in ci.yml); it only proves
@@ -197,6 +201,21 @@ jobs:
               done
           done
           echo "Full schema, procedures and seeds imported with no errors."
+
+      # 🔤 #196 — checks the imported database's collation on MariaDB, the
+      # engine the live site runs, rather than only on the mysql:8 leg in
+      # ci.yml.
+      - name: Check database collation
+        run: |
+          set -euo pipefail
+          COLLATION=$(docker exec mariadb mariadb --user="root" --skip-column-names --batch \
+            --execute="SELECT DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = 'mwtools_Go2MyLink'")
+          echo "Database collation: ${COLLATION}"
+          if [ "${COLLATION}" != "utf8mb4_unicode_ci" ]
+          then
+              echo "Expected utf8mb4_unicode_ci, got '${COLLATION}' — see #196."
+              exit 1
+          fi
 
       - name: Stop MariaDB
         if: always()

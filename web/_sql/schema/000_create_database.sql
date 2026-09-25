@@ -9,6 +9,16 @@
 -- =============================================================================
 -- Creates the new database with InnoDB defaults and utf8mb4 character set.
 --
+-- 🔤 #196 — CREATE DATABASE IF NOT EXISTS only sets the collation below when
+-- IT is the thing creating the database. If the database already exists —
+-- which it will on shared hosting, where you have to create it through the
+-- control panel first — this statement does nothing at all, and the
+-- database keeps whatever collation the host's own default is. See
+-- DEV_NOTES.md ("Database collation (required)") for the check, the fix for
+-- an existing database (web/_sql/migrations/042_database_collation.sql), and
+-- why it matters. The web installer now checks and corrects this itself
+-- before it lets you import anything (web/Go2My.Link/public_html/install/).
+--
 -- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)

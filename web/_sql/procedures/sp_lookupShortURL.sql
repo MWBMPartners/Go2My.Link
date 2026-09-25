@@ -67,10 +67,30 @@
 -- place to catch that drift before it reaches production, not this
 -- procedure.
 --
+-- 🔤 #196 — every comparison below between a local variable/parameter and a
+-- table column (the domain lookup, the org fallback lookup, and the short-
+-- code/org lookup inside the alias-chain loop) wraps the variable side in
+-- CONVERT(... USING utf8mb4) COLLATE utf8mb4_unicode_ci. A stored
+-- procedure's own variables and IN parameters take their character set and
+-- collation from the DATABASE's default, not from the column they are
+-- compared against, so on a database whose default is a different utf8mb4
+-- collation (utf8mb4_0900_ai_ci, say) those comparisons used to fail with
+-- "illegal mix of collations" — swallowed by the EXIT HANDLER below, so
+-- every redirect looked up as an ordinary "error" with no further detail.
+-- COLLATE alone is not enough on a database whose default character set is
+-- not utf8mb4 at all (latin1, say): MySQL rejects utf8mb4_unicode_ci as
+-- invalid for a non-utf8mb4 value (error 1253) before it gets as far as
+-- comparing anything, so CONVERT(... USING utf8mb4) puts the variable into
+-- utf8mb4 first, and the COLLATE that follows then always applies to a
+-- value it is valid for, whatever character set and collation the database
+-- defaults to. The database itself should still be utf8mb4_unicode_ci (see
+-- DEV_NOTES.md); this is a second, independent safeguard, not a replacement
+-- for that.
+--
 -- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
--- @version    0.4.0
+-- @version    0.6.0
 -- @since      Phase 1 (ownership-verification gate added v1.1.0 / #91; UTM
 --             projection added v1.1.0 / #92)
 --
@@ -146,7 +166,7 @@ BEGIN
         SELECT osd.orgHandle, osd.verificationStatus, osd.isActive, 1
         INTO   v_orgHandle, v_domainVerified, v_domainIsActive, v_domainFound
         FROM   tblOrgShortDomains osd
-        WHERE  osd.shortDomain = inputDomain
+        WHERE  osd.shortDomain = CONVERT(inputDomain USING utf8mb4) COLLATE utf8mb4_unicode_ci
         LIMIT  1;
     END IF;
 
@@ -179,7 +199,7 @@ BEGIN
         SELECT o.orgFallbackURL
         INTO   v_orgFallback
         FROM   tblOrganisations o
-        WHERE  o.orgHandle = v_orgHandle
+        WHERE  o.orgHandle = CONVERT(v_orgHandle USING utf8mb4) COLLATE utf8mb4_unicode_ci
         LIMIT  1;
 
         -- =====================================================================
@@ -225,8 +245,8 @@ BEGIN
                 v_utmContent,
                 v_found
             FROM   tblShortURLs s
-            WHERE  s.shortCode = v_currentCode
-               AND s.orgHandle = v_orgHandle
+            WHERE  s.shortCode = CONVERT(v_currentCode USING utf8mb4) COLLATE utf8mb4_unicode_ci
+               AND s.orgHandle = CONVERT(v_orgHandle USING utf8mb4) COLLATE utf8mb4_unicode_ci
             LIMIT  1;
 
             -- Short code not found

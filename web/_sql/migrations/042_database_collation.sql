@@ -1,0 +1,62 @@
+-- Copyright (c) 2024–2026 MWBM Partners Ltd (MWservices).
+-- All rights reserved.
+--
+-- This source code is proprietary and confidential.
+-- Unauthorised copying, modification, or distribution is strictly prohibited.
+
+-- =============================================================================
+-- Go2My.Link — Migration 042: Database collation (#196)
+-- =============================================================================
+-- Sets the CURRENT database's own default character set and collation to
+-- utf8mb4 / utf8mb4_unicode_ci, which is what web/_sql/schema/000_create_
+-- database.sql asks for on a fresh install. Run this against a database that
+-- was created some other way (most often through a hosting panel, which
+-- creates it with the SERVER's own default collation instead).
+--
+-- ⚠️  FRESH INSTALLS DO NOT NEED THIS FILE: a database created by
+--     000_create_database.sql already has the right collation. Run this
+--     migration ONLY to correct an ALREADY-EXISTING database.
+--
+-- NEEDS THE ALTER PRIVILEGE ON THE DATABASE ITSELF. Shared hosting sometimes
+-- scopes a panel-created user to DML only. If this statement is refused,
+-- make the same change in the hosting panel, or ask the host to make it,
+-- instead.
+--
+-- TABLES ARE UNAFFECTED. Every CREATE TABLE in web/_sql/schema/ states its
+-- own ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci, so
+-- this migration changes nothing about how a table's own columns already
+-- compare or sort text — only the database's DEFAULT, which is what a new
+-- table or a routine variable would otherwise inherit.
+--
+-- 🔴 STORED PROCEDURES DO NOT PICK THIS UP AUTOMATICALLY. A stored procedure
+-- keeps the collation that was in effect when it was CREATEd, not the
+-- database's collation at the time it is CALLed. AFTER running this
+-- migration, re-import both procedure files so they are recreated under the
+-- corrected default:
+--
+--     web/_sql/procedures/sp_generateShortCode.sql
+--     web/_sql/procedures/sp_lookupShortURL.sql
+--
+-- (The procedures already stored in an existing database only gain that
+-- COLLATE safeguard once they are re-created from the current files — so
+-- the re-import above is required, not optional, until that has happened.)
+--
+-- IDEMPOTENT. ALTER DATABASE ... CHARACTER SET ... COLLATE ... is a plain
+-- assignment, not an additive change — running it again when the database is
+-- already utf8mb4_unicode_ci does nothing.
+--
+-- No database name is given on the ALTER DATABASE line below: with no name it
+-- applies to whichever database the USE statement above it selected — the
+-- same reliance on USE, rather than repeating the database name on every
+-- statement, that every other file in web/_sql/migrations/ already uses for
+-- its own (unqualified) table names.
+--
+-- @package    Go2My.Link
+-- @subpackage Migrations
+-- @version    1.0.0
+-- @since      v1.0.0 — Launch Hardening (#196)
+-- =============================================================================
+
+USE `mwtools_Go2MyLink`;
+
+ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

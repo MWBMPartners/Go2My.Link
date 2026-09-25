@@ -28,6 +28,75 @@ Dreamhost shared hosting doesn't provide CLI access. All third-party PHP librari
 PDO is not used. All database interactions go through MySQLi with prepared statements exclusively.
 This is both a project requirement and a security measure against SQL injection.
 
+### 🔤 Database collation (required)
+
+The database, every table, and every text column must use character set `utf8mb4`
+with collation **`utf8mb4_unicode_ci`**. This is not a style preference: a
+stored procedure created from files older than #196 can fail short-link
+creation when the database's default is a different utf8mb4 collation
+(see below).
+
+**What a collation is, in plain words:** it is the rule a database uses to
+compare and sort text — whether `"a"` equals `"A"`, whether an accented letter
+sorts next to its plain form, and so on. Comparing two pieces of text that
+carry different collations can be an error: when MySQL cannot tell which
+collation should win, it refuses the comparison.
+
+**Why it matters here (#196, #197).** A stored procedure's own local
+variables take their collation from the *database's* default, not from
+whichever table column they end up compared against. `sp_generateShortCode`
+and `sp_lookupShortURL` both compare a variable (a candidate short code, an
+org handle, a domain) against a table column. If the database's default is
+a different utf8mb4 collation, such as `utf8mb4_0900_ai_ci` — which usually
+happens when a hosting panel creates the database itself, using the
+server's own default, rather than our
+`web/_sql/schema/000_create_database.sql` — that comparison fails with
+"illegal mix of collations". Both procedures' own error handlers swallow
+that error, so the visible symptom is every attempt to create a link with a
+generated short code failing (a custom alias is not affected — it is
+inserted directly and never calls the procedure) with "Failed to generate a
+unique short code. Please try again." — and, on a database that already
+holds links, every redirect lookup failing the same way, with nothing in
+any log explaining why. Both procedures now also convert the variable to
+utf8mb4 and state `COLLATE utf8mb4_unicode_ci` explicitly on every such
+comparison, as a second, independent safeguard — but the database itself
+should still be right; see their own file headers.
+
+**The check:**
+
+```sql
+SELECT DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA
+WHERE SCHEMA_NAME = 'mwtools_Go2MyLink';
+```
+
+It must return `utf8mb4_unicode_ci`.
+
+**Fixing a wrong database:** run `web/_sql/migrations/042_database_collation.sql`,
+or make the same change in the hosting panel:
+
+```sql
+ALTER DATABASE `mwtools_Go2MyLink`
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+Either way, then **re-import both stored procedure files** (a procedure keeps
+the collation that was current when it was created, not the database's
+current one): `web/_sql/procedures/sp_generateShortCode.sql` and
+`web/_sql/procedures/sp_lookupShortURL.sql`.
+
+**What now enforces this:** `.github/workflows/ci.yml`'s integration job
+fails the build if the imported database's collation is wrong; the web
+installer (`web/Go2My.Link/public_html/install/index.php`) checks the
+collation after connecting, corrects it where the database user is allowed
+to, and otherwise refuses to move on to importing anything. Neither of those
+helps the production database on its own — see `PRE_LAUNCH_CHECKLIST.md`,
+item A8, for the manual check before the first import and again before
+launch.
+
+**Every new `CREATE TABLE`** must state
+`ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci` explicitly,
+the same as every existing table in `web/_sql/schema/`.
+
 ### ⚙️ Settings in Database
 
 All configuration (except DB connection credentials) is stored in `tblSettings` with a scope

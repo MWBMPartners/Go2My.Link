@@ -102,6 +102,30 @@ SFTP to Dreamhost). Manual VS Code FTP-Sync is no longer the deployment path.
 | 🚢 `sftp-deploy.yml` | Push to `main`/`alpha`/`beta` touching `web/**`; manual dispatch | SFTP deployment (**gated by `vars.SFTP_ENABLED`**) |
 | 🏷️ `release.yml` | Tag push | Per-component releases |
 
+### 🔒 Making the integration tests a required check (owner action)
+
+Decision 33 (#243). `.github/workflows/ci.yml`'s `tests-integration` job — the
+one that imports the whole schema and runs the integration test suite against
+it — stopped being `continue-on-error: true` when #196 was fixed, so it now
+genuinely fails a pull request when the suite fails. It is **not yet a
+required status check** on the "Protect main branch" ruleset, though — that
+is a repository setting only the owner can change, and it should be done
+**once the check has passed at least once on this branch's pull request**, so
+the first run is not blocking a merge on an untested gate:
+
+1. GitHub → the repository → **Settings** → **Rules** → **Rulesets** →
+   **"Protect main branch"** → **Edit**.
+2. Under **"Require status checks to pass"**, choose **"Add checks"**.
+3. Type `Tests (Integration) (ubuntu-latest)` and select it.
+4. **Save changes.**
+
+The name must match **exactly** — GitHub's own menu labels may differ
+slightly by the time you do this, but the check name will not. It is the
+job's `name: Tests (Integration)` combined with the single-value
+`os: [ubuntu-latest]` matrix (see the comment near the top of `ci.yml`);
+changing either would silently orphan this required check, so do not rename
+the job or drop the matrix without updating the ruleset to match.
+
 ### 🔀 How the mirror maps repo → server
 
 Two phases run against a single remote root (`secrets.SFTP_BASE_PATH`):
@@ -236,7 +260,7 @@ The application detects its environment from the hostname:
    know about the gap in the numbers.
 
 > 📝 Counts as at 2026-09-25: 16 schema files, 2 stored procedures, 26 seeds,
-> 20 migrations. Import order is schema → procedures → seeds, which is the
+> 21 migrations. Import order is schema → procedures → seeds, which is the
 > order `.github/workflows/ci.yml` uses. (Seed `023` and migration `021`, the
 > LinksPage feature registry, were added on 2026-09-21; seeds `029`, `064`
 > and `065` were added later still, outside the 001-023 run — see below.)
@@ -263,17 +287,44 @@ keeps whatever collation the host chose.
 
 The tables are unaffected: every `CREATE TABLE` names its own collation. The
 **stored procedures** are the problem. A variable declared inside a stored
-procedure inherits the database's collation, so when `sp_generateShortCode`
-compares its candidate code against the `shortCode` column, MySQL refuses with
-"illegal mix of collations". That error is then swallowed by the procedure's own
-error handler, so the only symptom anyone sees is:
+procedure inherits the database's collation, so when a procedure created from
+files older than #196 compares its candidate code against the `shortCode`
+column under a different utf8mb4 collation (`utf8mb4_0900_ai_ci`, say),
+MySQL refuses with "illegal mix of collations". That error is then
+swallowed by the procedure's own error handler, so the only symptom anyone
+sees is:
 
 > Failed to generate a unique short code. Please try again.
 
-Every attempt to create a short link fails, and nothing is written to any log
-that explains it. This was measured, not guessed: with the wrong collation the
+Every attempt to create a link with a generated short code fails (a custom
+alias is not affected — it is inserted directly and never calls the
+procedure), and nothing is written to any log that explains it. This was
+measured, not guessed: with the wrong collation the
 integration suite scores 182 passed / 25 failed; with the right one, 207 passed
-/ 0 failed. See #196 and #197.
+/ 0 failed. See #196 and #197. The current procedure files state
+`COLLATE utf8mb4_unicode_ci` explicitly on every comparison that needs it (see
+their own headers), which is why re-importing them below still matters even
+after the database itself is fixed.
+
+**On an EXISTING database**, instead of the `ALTER DATABASE` above, you can
+run `web/_sql/migrations/042_database_collation.sql` — the same statement,
+committed as a migration so it is part of the repeatable upgrade path. Either
+way, **afterwards re-import both stored procedure files**
+(`sp_generateShortCode.sql`, `sp_lookupShortURL.sql`): a stored procedure
+keeps the collation that was current when it was created, not the database's
+current one, so correcting the database alone does not correct a procedure
+already created under the old default.
+
+**Re-import both procedure files on every existing database at least once
+(#196), even one whose collation check above already returns
+`utf8mb4_unicode_ci`.** The files themselves changed, independently of the
+database's collation: every comparison between a variable and a table
+column now states `COLLATE utf8mb4_unicode_ci` explicitly, on the variable
+side, as a second safeguard. A database that has never re-imported these
+two files since #196 does not have that safeguard yet, whatever the
+collation check says — the "If it does not" step above only re-imports
+them as a side effect of fixing a wrong collation, so a database that was
+never wrong needs this done directly.
 
 #### 🌱 Seeds that must also be applied to an EXISTING database
 

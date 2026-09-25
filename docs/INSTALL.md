@@ -12,18 +12,28 @@
   (on Dreamhost: *Goodies → MySQL Databases*). Note its host (e.g.
   `mysql.yourdomain.com`), name, user, and password.
 
-  > 🚨 **Check the database's collation before you go any further.** A collation
-  > is the rule the database uses to compare two pieces of text. Ours must be
+  > 🚨 **The database's collation matters — a lot.** A collation is the rule
+  > the database uses to compare two pieces of text. Ours must be
   > `utf8mb4_unicode_ci`, and hosting panels usually create a database with
   > whatever the server's own default is instead — which is something else.
+  >
+  > **The installer now checks this itself** (#196): at the "test database
+  > connection" step below, it queries the database's own collation and, if
+  > it is wrong, tries to correct it — `ALTER DATABASE ... CHARACTER SET
+  > utf8mb4 COLLATE utf8mb4_unicode_ci`. If your database user cannot do
+  > that (common on shared hosting, where a panel-created user is often
+  > scoped to reading/writing data only, not altering the database itself),
+  > the installer refuses to move on to importing anything and shows you the
+  > exact SQL to run instead. You do not have to check this by hand first —
+  > but if you would rather fix it in the panel before you start, here is the
+  > same check:
   >
   > ```sql
   > SELECT DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA
   > WHERE SCHEMA_NAME = 'your_database_name';
   > ```
   >
-  > If that does not say `utf8mb4_unicode_ci`, fix it **before importing
-  > anything**:
+  > If that does not say `utf8mb4_unicode_ci`:
   >
   > ```sql
   > ALTER DATABASE `your_database_name`
@@ -32,17 +42,23 @@
   >
   > **Why this matters so much.** The tables all state their own collation, so
   > they are fine either way. The two stored procedures are not: a variable
-  > inside a stored procedure takes the *database's* collation, so if the two
-  > disagree, comparing a variable against a column fails with "illegal mix of
-  > collations". `sp_generateShortCode` catches that error and returns nothing,
-  > so what you actually see is every attempt to create a short link failing
-  > with "Failed to generate a unique short code. Please try again." — and
-  > nothing in any log explaining why. See issues #196 and #197.
+  > inside a stored procedure takes the *database's* collation, so a different
+  > utf8mb4 collation (`utf8mb4_0900_ai_ci`, say) makes comparing a variable
+  > against a column fail with "illegal mix of collations".
+  > `sp_generateShortCode` catches that error and returns nothing, so what you
+  > actually see is every attempt to create a link with a generated short
+  > code failing (a custom alias is not affected) with "Failed to generate a
+  > unique short code. Please try again." — and nothing in any log explaining
+  > why. Both stored procedures now also convert the variable to utf8mb4 and
+  > state the collation explicitly on every such comparison, as a second,
+  > independent safeguard — but the database itself should still be right.
+  > See issues #196 and #197, and [DEV_NOTES.md](../DEV_NOTES.md) → "Database
+  > collation (required)".
   >
   > Our own `web/_sql/schema/000_create_database.sql` sets the right collation,
   > but only when it is the thing creating the database. If the panel made it
   > first, `CREATE DATABASE IF NOT EXISTS` does nothing and the wrong collation
-  > stays.
+  > stays — which is exactly the case the installer's own check above catches.
 - The repository deployed so that `web/_auth_keys/` is **writable** by PHP and
   **outside** every public web root (it already sits above each
   `public_html/`).
@@ -107,8 +123,15 @@ step the installer, per component:
 
 If you cannot use the web installer (e.g. you prefer importing SQL via
 phpMyAdmin or the Dreamhost panel), see [`docs/MIGRATION_PLAN.md`](MIGRATION_PLAN.md)
-and [`docs/DATABASE.md`](DATABASE.md). After importing `web/_sql/schema/*`,
-`web/_sql/procedures/*`, and `web/_sql/seeds/*`:
+and [`docs/DATABASE.md`](DATABASE.md).
+
+> 🔤 **This path skips the installer's own collation check.** Check the
+> database's collation yourself, before importing anything — see the box
+> above, or [DEV_NOTES.md](../DEV_NOTES.md) → "Database collation
+> (required)" — because nothing on this path will catch it for you (#196).
+
+After importing `web/_sql/schema/*`, `web/_sql/procedures/*`, and
+`web/_sql/seeds/*`:
 
 1. Copy the template — `auth_creds.php` itself is gitignored and will not
    exist on a fresh deploy:

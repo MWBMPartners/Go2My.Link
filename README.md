@@ -238,6 +238,11 @@ Go2My.Link/
 
 3. Edit `web/_auth_keys/auth_creds.php` with your database credentials.
 
+   > 🔤 **Check the database's collation before importing anything.** It
+   > must be `utf8mb4_unicode_ci`, not whatever your MySQL/MariaDB server's
+   > own default is. See [DEV_NOTES.md](DEV_NOTES.md) → "Database collation
+   > (required)" for the check and the fix (#196).
+
 4. Import the database schema from `web/_sql/schema/` (15 files).
 
 5. Run the seed scripts from `web/_sql/seeds/` (17 files).

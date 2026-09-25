@@ -155,7 +155,16 @@ explanation of a careful piece of work wastes the care.
 
 - MySQLi ONLY (no PDO)
 - Prepared statements for ALL SQL queries
-- InnoDB engine, utf8mb4_unicode_ci collation
+- InnoDB engine, utf8mb4_unicode_ci collation — **required on the database
+  itself, not just on each table** (a stored procedure's own variables take
+  their collation from the database's default, not from the column they are
+  compared against, so a different utf8mb4 collation can break short-link
+  creation for a procedure created from files older than #196). Every new
+  `CREATE TABLE` still states
+  `ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`
+  explicitly. Full explanation, the check query, and the fix for an existing
+  database: [DEV_NOTES.md](../../DEV_NOTES.md) → "Database collation
+  (required)".
 - Sensitive values: AES-256-GCM encrypted with SALT
 - Settings stored in database (not config files), except DB connection creds
 

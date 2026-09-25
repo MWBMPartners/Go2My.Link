@@ -344,6 +344,114 @@ function g2ml_install_connect(array $creds)
 }
 
 /**
+ * Confirm the target database's own default collation is utf8mb4_unicode_ci,
+ * correcting it if the connected user is allowed to and refusing to move on
+ * if it is not.
+ *
+ * WHY THIS MATTERS (#196). A hosting panel usually creates a database using
+ * the SERVER's own default collation, not ours. The tables are fine either
+ * way — every CREATE TABLE states its own collation — but a stored
+ * procedure's local variables take their collation from the DATABASE
+ * instead, so a procedure created from files older than #196 can fail its
+ * variable-to-column comparisons with "illegal mix of collations" when the
+ * database's default is a different utf8mb4 collation. Both stored
+ * procedures' own error handlers swallow that error, so the visible
+ * symptom is creating a link with a generated short code failing with
+ * "Failed to generate a unique short code" (a custom alias is inserted
+ * directly and never calls the procedure, so it is unaffected) — and, on a
+ * database that already holds links, every redirect lookup failing the same
+ * way — with nothing in any log explaining why (#197). The procedure files
+ * this installer imports next already state the collation explicitly on
+ * every such comparison (see their own headers), so this check is a second,
+ * independent safeguard against a database whose collation was never fixed.
+ *
+ * @param  mysqli $db      An already-connected handle to the target database.
+ * @param  string $dbName  The database name, as entered on the previous step.
+ * @return array{ok: bool, error?: string}
+ */
+function g2ml_install_check_collation(mysqli $db, string $dbName): array
+{
+    // Read the collation first, over a bound parameter — safe for any
+    // $dbName, because here it is a query VALUE, not something placed
+    // literally inside a statement. This lets a database that is already
+    // correct pass regardless of what characters are in its name; the name
+    // is only checked below, just before it has to be written literally
+    // into an ALTER DATABASE statement.
+    $readCollation = static function () use ($db, $dbName): ?string
+    {
+        $statement = $db->prepare(
+            'SELECT DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?'
+        );
+
+        if ($statement === false)
+        {
+            return null;
+        }
+
+        $statement->bind_param('s', $dbName);
+        $statement->execute();
+        $statement->bind_result($collationName);
+        $found = $statement->fetch();
+        $statement->close();
+
+        if ($found !== true)
+        {
+            return null;
+        }
+
+        return $collationName;
+    };
+
+    $collation = $readCollation();
+
+    if ($collation === 'utf8mb4_unicode_ci')
+    {
+        return ['ok' => true];
+    }
+
+    // Not yet correct, so an ALTER DATABASE is needed — and that statement
+    // cannot take the name as a bound parameter (an identifier is not a
+    // value), so it is validated by hand before it is ever placed inside a
+    // query string.
+    if (preg_match('/^[A-Za-z0-9_$-]{1,64}$/', $dbName) !== 1)
+    {
+        return [
+            'ok'    => false,
+            'error' => 'Database name "' . $dbName . '" contains a character this installer will not place '
+                . 'inside an ALTER DATABASE statement. Run this yourself in your hosting panel or a MySQL '
+                . 'client, with your actual database name in place of <database name>, then try again: '
+                . 'ALTER DATABASE `<database name>` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; '
+                . 'Go2My.Link requires this collation (#196).',
+        ];
+    }
+
+    // Try to correct it. This can fail quietly (mysqli_report is OFF for the
+    // whole installer, see g2ml_install_connect() above) when the connected
+    // user has no ALTER privilege on the database itself — common on shared
+    // hosting, where a panel-created user is often scoped to DML only. That
+    // is not a bug in this installer; it is outside what it can do, and the
+    // re-check below is what tells the two cases apart.
+    $db->query('ALTER DATABASE `' . $dbName . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+
+    $collation = $readCollation();
+
+    if ($collation === 'utf8mb4_unicode_ci')
+    {
+        return ['ok' => true];
+    }
+
+    return [
+        'ok'    => false,
+        'error' => 'The database "' . $dbName . '" has collation "' . ($collation ?? 'unknown')
+            . '", not utf8mb4_unicode_ci, and this installer could not correct it (the database user '
+            . 'may not have the ALTER privilege on it). Run this in your hosting panel or a MySQL '
+            . 'client with a user that can alter the database, then try again: '
+            . 'ALTER DATABASE `' . $dbName . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; '
+            . 'Go2My.Link requires this collation (#196).',
+    ];
+}
+
+/**
  * Build the full server-wide auth_creds.php file contents.
  */
 function g2ml_install_render_creds(array $creds, string $salt, string $secondaryKey): string
@@ -772,10 +880,25 @@ if (!$alreadyInstalled)
                     }
                     else
                     {
-                        $_SESSION['g2ml_install_db'] = $creds;
+                        // #196: a database created through a hosting panel
+                        // usually gets the SERVER's own default collation,
+                        // not ours — checked (and corrected where allowed)
+                        // here, before the wizard is let through to import
+                        // anything against it.
+                        $collationCheck = g2ml_install_check_collation($connection, $creds['name']);
                         $connection->close();
-                        $notices[] = 'Database connection successful.';
-                        $step      = 2;
+
+                        if (!$collationCheck['ok'])
+                        {
+                            $errors[] = $collationCheck['error'];
+                            $step     = 1;
+                        }
+                        else
+                        {
+                            $_SESSION['g2ml_install_db'] = $creds;
+                            $notices[] = 'Database connection successful.';
+                            $step      = 2;
+                        }
                     }
                 }
             }
