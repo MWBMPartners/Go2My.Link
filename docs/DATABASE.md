@@ -323,6 +323,18 @@ Located in `web/_sql/procedures/`.
 | `sp_logActivity` | 📝 Insert structured activity log entry |
 | `sp_generateShortCode` | 🎲 Generate unique random alphanumeric short code |
 
+🔇 **A database error now propagates (#197).** Both procedures used to
+catch every SQL error inside the procedure itself, and each folded it into
+a different existing outcome: `sp_generateShortCode` turned it into the
+same `NULL` it already returns after running out of attempts, and
+`sp_lookupShortURL` turned it into a bare `status='error'` with no further
+detail. Either way, a wrong collation, a missing table or a permissions
+problem was indistinguishable from ordinary bad luck, and the real MySQL
+message was thrown away. Both procedures now let a genuine error reach
+PHP, where `dbCallProcedure()` (`web/_functions/db_query.php`) logs the
+real MySQL message; their normal, non-error outcomes (`not_found`,
+`expired`, running out of random codes to try, and so on) are unchanged.
+
 ## 🚀 Migration Strategy
 
 Migration scripts are located in `web/_sql/migrations/`.

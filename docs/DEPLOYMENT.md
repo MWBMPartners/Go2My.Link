@@ -291,20 +291,22 @@ The tables are unaffected: every `CREATE TABLE` names its own collation. The
 procedure inherits the database's collation, so when a procedure created from
 files older than #196 compares its candidate code against the `shortCode`
 column under a different utf8mb4 collation (`utf8mb4_0900_ai_ci`, say),
-MySQL refuses with "illegal mix of collations". That error is then
+MySQL refuses with "illegal mix of collations". Before #197, that error was
 swallowed by the procedure's own error handler, so the only symptom anyone
-sees is:
+saw was:
 
 > Failed to generate a unique short code. Please try again.
 
 Every attempt to create a link with a generated short code fails (a custom
 alias is not affected — it is inserted directly and never calls the
-procedure), and nothing is written to any log that explains it. This was
-measured, not guessed: with the wrong collation the
-integration suite scores 182 passed / 25 failed; with the right one, 207 passed
-/ 0 failed. See #196 and #197. The current procedure files state
-`COLLATE utf8mb4_unicode_ci` explicitly on every comparison that needs it (see
-their own headers), which is why re-importing them below still matters even
+procedure). Before #197, nothing was written to any log that explained it;
+both procedures now let a real MySQL error reach `dbCallProcedure()`
+(`web/_functions/db_query.php`), which logs it. This was measured, not
+guessed: with the wrong collation the integration suite scores 182 passed /
+25 failed; with the right one, 207 passed / 0 failed. See #196 and #197. The
+current procedure files state `COLLATE utf8mb4_unicode_ci` explicitly on
+every comparison that needs it (see their own headers) and no longer swallow
+a genuine error, which is why re-importing them below still matters even
 after the database itself is fixed.
 
 **On an EXISTING database**, instead of the `ALTER DATABASE` above, you can

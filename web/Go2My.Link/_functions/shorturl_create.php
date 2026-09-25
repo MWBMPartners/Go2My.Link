@@ -439,9 +439,14 @@ function g2ml_attachTagsToShortURL(int $urlUID, string $orgHandle, string|array 
 //                  column's default) when absent.
 // @return array  ['success' => bool, 'shortCode' => ?string,
 //                 'shortURL' => ?string, 'error' => ?string,
-//                 'qrUuidTaken' => ?bool] — qrUuidTaken is only present and
-//                 true when the failure was a qrCodeExternalUUID collision
-//                 (#145); absent for every other outcome.
+//                 'qrUuidTaken' => ?bool, 'errorCode' => ?string] —
+//                 qrUuidTaken is only present and true when the failure was
+//                 a qrCodeExternalUUID collision (#145); absent for every
+//                 other outcome. errorCode is only present when
+//                 sp_generateShortCode itself failed — 'code_generation_failed'
+//                 either way, whether the cause was a real database error or
+//                 simply running out of random codes to try (#197); absent
+//                 for every other outcome, including success.
 // ============================================================================
 function createShortURL(string $longURL, array $options = []): array
 {
@@ -841,9 +846,21 @@ function createShortURL(string $longURL, array $options = []): array
                 ['@outputCode']
             );
 
-            if ($spResult === false || empty($spResult['@outputCode']))
+            // sp_generateShortCode used to turn a database error into the
+            // same NULL it returns after running out of attempts (#197). The
+            // error now reaches dbCallProcedure(), which returns false, so
+            // the two cases are logged differently; the visitor's message is
+            // unchanged.
+            if ($spResult === false)
             {
-                error_log('[Go2My.Link] ERROR: sp_generateShortCode failed for org: ' . $orgHandle . ' (attempt ' . $attempt . ')');
+                error_log('[Go2My.Link] ERROR: sp_generateShortCode — database error while generating a code for org ' . $orgHandle . ' (the MySQL message is in the dbCallProcedure line just before this one).');
+                $generationFailed = true;
+                break;
+            }
+
+            if (empty($spResult['@outputCode']))
+            {
+                error_log('[Go2My.Link] WARNING: sp_generateShortCode — 20 random codes of length ' . $codeLength . ' were all already in use for org ' . $orgHandle . '; consider longer codes.');
                 $generationFailed = true;
                 break;
             }
@@ -1020,11 +1037,17 @@ function createShortURL(string $longURL, array $options = []): array
 
     if ($generationFailed === true)
     {
+        // The visitor sees the same message whatever the cause. 'errorCode'
+        // lets a caller recognise a code-generation failure without parsing
+        // the error text; the log lines above say which cause it was (#197).
+        // Existing callers ignore an array key they do not read, so this is
+        // additive.
         return [
             'success'   => false,
             'shortCode' => null,
             'shortURL'  => null,
             'error'     => 'Failed to generate a unique short code. Please try again.',
+            'errorCode' => 'code_generation_failed',
         ];
     }
 

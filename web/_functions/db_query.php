@@ -490,7 +490,19 @@ function dbCallProcedure(string $procedureName, array $inParams = [], string $in
             $stmt->bind_param($inTypes, ...$inParams);
         }
 
-        $stmt->execute();
+        // db_connect.php turns on MYSQLI_REPORT_STRICT, so a failed execute()
+        // normally throws mysqli_sql_exception instead of returning false —
+        // that is the path the catch block below handles. This check makes
+        // the non-exception path safe too, in case mysqli's reporting mode
+        // is ever off when this runs, so dbCallProcedure() never silently
+        // treats a failed execute() as a successful one (#197).
+        if ($stmt->execute() === false)
+        {
+            error_log('[Go2My.Link] ERROR: dbCallProcedure execute failed: ' . $stmt->error . ' | CALL: ' . $procedureName);
+            _g2ml_logQuery('CALL ' . $procedureName, $inParams, (microtime(true) - $startTime) * 1000, false);
+            $stmt->close();
+            return false;
+        }
 
         // Free any result sets from the procedure
         // 📖 Reference: https://www.php.net/manual/en/mysqli-stmt.close.php

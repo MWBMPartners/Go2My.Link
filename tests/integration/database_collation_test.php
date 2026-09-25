@@ -175,7 +175,7 @@ test('sp_generateShortCode returns a code for the [default] org (#196)', functio
 
     assert_true(
         $row !== null && $row['code'] !== null && $row['code'] !== '',
-        'sp_generateShortCode returned no code. See #196 (a database/procedure collation mismatch makes '
-            . 'it silently return NULL) and #197 (its own error handler swallows the real cause).'
+        'sp_generateShortCode returned no code (#196). Since #197, NULL means all 20 random attempts '
+            . 'were already taken — a real database error now fails the CALL itself instead.'
     );
 });

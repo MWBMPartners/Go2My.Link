@@ -75,24 +75,34 @@
 -- collation from the DATABASE's default, not from the column they are
 -- compared against, so on a database whose default is a different utf8mb4
 -- collation (utf8mb4_0900_ai_ci, say) those comparisons used to fail with
--- "illegal mix of collations" — swallowed by the EXIT HANDLER below, so
--- every redirect looked up as an ordinary "error" with no further detail.
--- COLLATE alone is not enough on a database whose default character set is
--- not utf8mb4 at all (latin1, say): MySQL rejects utf8mb4_unicode_ci as
--- invalid for a non-utf8mb4 value (error 1253) before it gets as far as
--- comparing anything, so CONVERT(... USING utf8mb4) puts the variable into
--- utf8mb4 first, and the COLLATE that follows then always applies to a
--- value it is valid for, whatever character set and collation the database
--- defaults to. The database itself should still be utf8mb4_unicode_ci (see
--- DEV_NOTES.md); this is a second, independent safeguard, not a replacement
--- for that.
+-- "illegal mix of collations" — before #197, swallowed by an EXIT HANDLER,
+-- so every redirect looked up as an ordinary "error" with no further
+-- detail. COLLATE alone is not enough on a database whose default
+-- character set is not utf8mb4 at all (latin1, say): MySQL rejects
+-- utf8mb4_unicode_ci as invalid for a non-utf8mb4 value (error 1253) before
+-- it gets as far as comparing anything, so CONVERT(... USING utf8mb4) puts
+-- the variable into utf8mb4 first, and the COLLATE that follows then always
+-- applies to a value it is valid for, whatever character set and collation
+-- the database defaults to. The database itself should still be
+-- utf8mb4_unicode_ci (see DEV_NOTES.md); this is a second, independent
+-- safeguard, not a replacement for that.
+--
+-- 🔇 #197 — this used to catch every SQL error and return status 'error'
+-- with no further detail, which made a wrong collation, a missing table or
+-- a permissions problem indistinguishable from any other resolver failure.
+-- Errors now reach PHP, where dbCallProcedure() logs the MySQL message.
+-- Every status this procedure sets on purpose (not_found, expired, and so
+-- on) is unchanged — only the swallowed catch-all is gone, so a caller that
+-- checks the resolver's status set (redirect_resolver.php) sees the same
+-- behaviour it always did.
 --
 -- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
--- @version    0.6.0
+-- @version    0.7.0
 -- @since      Phase 1 (ownership-verification gate added v1.1.0 / #91; UTM
---             projection added v1.1.0 / #92)
+--             projection added v1.1.0 / #92; catch-all error handler
+--             removed #197)
 --
 -- Reference: https://dev.mysql.com/doc/refman/8.0/en/create-procedure.html
 -- =============================================================================
@@ -140,20 +150,6 @@ BEGIN
     DECLARE v_utmCampaign     VARCHAR(255)    DEFAULT NULL;
     DECLARE v_utmTerm         VARCHAR(255)    DEFAULT NULL;
     DECLARE v_utmContent      VARCHAR(255)    DEFAULT NULL;
-
-    -- Exception handler: return error status on any SQL failure
-    -- (declared AFTER the variables above, as MySQL requires)
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        SET outputDestination = NULL;
-        SET outputStatus = 'error';
-        SET outputOrgHandle = NULL;
-        SET outputUtmSource = NULL;
-        SET outputUtmMedium = NULL;
-        SET outputUtmCampaign = NULL;
-        SET outputUtmTerm = NULL;
-        SET outputUtmContent = NULL;
-    END;
 
     -- Ensure UTC timezone for date comparisons
     SET time_zone = '+00:00';

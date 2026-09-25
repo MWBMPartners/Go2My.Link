@@ -51,16 +51,19 @@ a different utf8mb4 collation, such as `utf8mb4_0900_ai_ci` — which usually
 happens when a hosting panel creates the database itself, using the
 server's own default, rather than our
 `web/_sql/schema/000_create_database.sql` — that comparison fails with
-"illegal mix of collations". Both procedures' own error handlers swallow
-that error, so the visible symptom is every attempt to create a link with a
-generated short code failing (a custom alias is not affected — it is
-inserted directly and never calls the procedure) with "Failed to generate a
-unique short code. Please try again." — and, on a database that already
-holds links, every redirect lookup failing the same way, with nothing in
-any log explaining why. Both procedures now also convert the variable to
-utf8mb4 and state `COLLATE utf8mb4_unicode_ci` explicitly on every such
-comparison, as a second, independent safeguard — but the database itself
-should still be right; see their own file headers.
+"illegal mix of collations". The visible symptom is every attempt to create
+a link with a generated short code failing (a custom alias is not affected
+— it is inserted directly and never calls the procedure) with "Failed to
+generate a unique short code. Please try again." — and, on a database that
+already holds links, every redirect lookup failing the same way. A procedure
+imported from files older than #197 still swallows that error, with nothing
+in any log explaining why; the current procedure files removed that
+handler, so the same error now reaches `dbCallProcedure()`
+(`web/_functions/db_query.php`), which logs it — re-import them (see
+docs/DEPLOYMENT.md). Both procedures now also convert the variable to
+utf8mb4 and state `COLLATE utf8mb4_unicode_ci`
+explicitly on every such comparison, as a second, independent safeguard —
+but the database itself should still be right; see their own file headers.
 
 **The check:**
 

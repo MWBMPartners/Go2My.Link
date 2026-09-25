@@ -16,8 +16,8 @@
 -- and collation from the database's default, not from the table column it
 -- is compared against, so on a database whose default is a different
 -- utf8mb4 collation (a hosting panel's own default, say) the comparison
--- used to fail with "illegal mix of collations" — an error this procedure's
--- own handler below swallows, so the only symptom was this procedure
+-- used to fail with "illegal mix of collations" — before #197, an error this
+-- procedure's own handler swallowed, so the only symptom was this procedure
 -- silently returning NULL. COLLATE alone is not enough on a database whose
 -- default character set is not utf8mb4 at all (latin1, say): MySQL rejects
 -- utf8mb4_unicode_ci as invalid for a non-utf8mb4 value (error 1253) before
@@ -28,11 +28,16 @@
 -- utf8mb4_unicode_ci (see DEV_NOTES.md); this is a second, independent
 -- safeguard, not a replacement for that.
 --
+-- 🔇 #197 — this used to catch every SQL error and return NULL, which made a
+-- wrong collation, a missing table or a permissions problem look like bad
+-- luck. Errors now reach PHP, where dbCallProcedure() logs the MySQL
+-- message. NULL now means only "20 random codes were all taken".
+--
 -- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
--- @version    0.4.0
--- @since      Phase 1 (collation safeguard added #196)
+-- @version    0.5.0
+-- @since      Phase 1 (collation safeguard added #196; error handler removed #197)
 -- =============================================================================
 
 USE `mwtools_Go2MyLink`;
@@ -56,12 +61,6 @@ BEGIN
     DECLARE v_chars         VARCHAR(62) DEFAULT 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     DECLARE v_i             INT;
     DECLARE v_len           INT;
-
-    -- Exception handler: return NULL on any SQL error
-    DECLARE EXIT HANDLER FOR SQLEXCEPTION
-    BEGIN
-        SET outputCode = NULL;
-    END;
 
     -- Default length = 7 characters
     SET v_len = IFNULL(inputLength, 7);

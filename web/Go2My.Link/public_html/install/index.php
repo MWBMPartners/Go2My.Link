@@ -354,16 +354,18 @@ function g2ml_install_connect(array $creds)
  * procedure's local variables take their collation from the DATABASE
  * instead, so a procedure created from files older than #196 can fail its
  * variable-to-column comparisons with "illegal mix of collations" when the
- * database's default is a different utf8mb4 collation. Both stored
- * procedures' own error handlers swallow that error, so the visible
- * symptom is creating a link with a generated short code failing with
- * "Failed to generate a unique short code" (a custom alias is inserted
- * directly and never calls the procedure, so it is unaffected) — and, on a
- * database that already holds links, every redirect lookup failing the same
- * way — with nothing in any log explaining why (#197). The procedure files
- * this installer imports next already state the collation explicitly on
- * every such comparison (see their own headers), so this check is a second,
- * independent safeguard against a database whose collation was never fixed.
+ * database's default is a different utf8mb4 collation. The visible symptom
+ * is creating a link with a generated short code failing with "Failed to
+ * generate a unique short code" (a custom alias is inserted directly and
+ * never calls the procedure, so it is unaffected) — and, on a database that
+ * already holds links, every redirect lookup failing the same way. A
+ * procedure imported from files older than #197 still swallows that error,
+ * with nothing in any log explaining why; the procedure files this
+ * installer imports next (below) removed that handler, so the same error
+ * now reaches dbCallProcedure(), which logs it. Those files also state the
+ * collation explicitly on every such comparison (see their own headers),
+ * which is why this check is a second, independent safeguard against a
+ * database whose collation was never fixed.
  *
  * @param  mysqli $db      An already-connected handle to the target database.
  * @param  string $dbName  The database name, as entered on the previous step.

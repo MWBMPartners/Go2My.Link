@@ -44,16 +44,19 @@
   > they are fine either way. The two stored procedures are not: a variable
   > inside a stored procedure takes the *database's* collation, so a different
   > utf8mb4 collation (`utf8mb4_0900_ai_ci`, say) makes comparing a variable
-  > against a column fail with "illegal mix of collations".
-  > `sp_generateShortCode` catches that error and returns nothing, so what you
+  > against a column fail with "illegal mix of collations", and what you
   > actually see is every attempt to create a link with a generated short
   > code failing (a custom alias is not affected) with "Failed to generate a
-  > unique short code. Please try again." — and nothing in any log explaining
-  > why. Both stored procedures now also convert the variable to utf8mb4 and
-  > state the collation explicitly on every such comparison, as a second,
-  > independent safeguard — but the database itself should still be right.
-  > See issues #196 and #197, and [DEV_NOTES.md](../DEV_NOTES.md) → "Database
-  > collation (required)".
+  > unique short code. Please try again." A `sp_generateShortCode` imported
+  > from files older than #197 still catches that error and returns
+  > nothing, with nothing in any log explaining why; the current procedure
+  > file removed that handler, so the same error now reaches
+  > `dbCallProcedure()`, which logs it — re-import it (see
+  > [DEPLOYMENT.md](DEPLOYMENT.md)). Both stored procedures now also convert the variable
+  > to utf8mb4 and state the collation explicitly on every such comparison,
+  > as a second, independent safeguard — but the database itself should
+  > still be right. See issues #196 and #197, and
+  > [DEV_NOTES.md](../DEV_NOTES.md) → "Database collation (required)".
   >
   > Our own `web/_sql/schema/000_create_database.sql` sets the right collation,
   > but only when it is the thing creating the database. If the panel made it
