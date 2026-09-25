@@ -201,6 +201,27 @@
  *     single page to an unbounded number of rows, every one of them
  *     rendered on every public page view.
  *
+ * 🌍 I18N — every user-facing error message is translated (CX-01, #218
+ *    catch-up): every 'error' string this file returns now goes through
+ *    __(), each call guarded by `if (function_exists('__'))` with the
+ *    original English sentence kept as the `else` fallback — the SAME
+ *    shape already used below for the avatar/icon https-only errors
+ *    (#221/#273). The fallback exists because some callers never load
+ *    web/_functions/i18n.php, chiefly the automated tests (unit and
+ *    integration) — see the note near the top of
+ *    tests/unit/linkspage_manage_test.php for why.
+ *  - On a real request, page_init.php always loads i18n.php, so that
+ *    fallback never runs there, and a database MISSING seed 065 shows each
+ *    raw key name (for example "linkspage.error.slug_reserved") instead of
+ *    English — that is __()'s own last-resort behaviour for a missing key
+ *    (see i18n.php). Seed 065 must therefore be applied to every existing
+ *    database, not only a fresh install.
+ *  - The plan-limit message is two keys — ..._with_limit and ..._no_limit —
+ *    one for when the limit is known and one for when it is not, so each is
+ *    a whole sentence a translator can word freely. The two avatar/icon
+ *    errors keep their existing keys from seed 064; every other key here is
+ *    new, seeded in web/_sql/seeds/065_linkspage_manage_error_translations.sql.
+ *
  * Dependencies: db_query.php (dbSelect/dbSelectOne/dbInsert/dbUpdate/dbDelete/
  *               dbBeginTransaction/dbCommit/dbRollback/dbLastErrno), security.php
  *               (g2ml_sanitiseInput/g2ml_sanitiseURL), entitlements.php
@@ -215,16 +236,21 @@
  *               calls web/_functions/adult_content.php's g2ml_isAdultDomain()
  *               when loaded — guarded by function_exists(); page_init.php
  *               already loads adult_content.php application-wide.
+ *               OPTIONAL (CX-01, #218 catch-up): every 'error' message calls
+ *               __() (web/_functions/i18n.php) when loaded — guarded by
+ *               function_exists(), never require()d from this file itself;
+ *               page_init.php already loads i18n.php application-wide.
  *
  * @package    Go2My.Link
  * @subpackage Functions
  * @author     MWBM Partners Ltd (MWservices)
- * @version    1.2.1
+ * @version    1.3.0
  * @since      v1.2.0 — Phase 8 (#48; age-gate auto-flag #50; bind-type,
  *             re-publish, reserved-slug and item-cap fixes #218; #218
  *             review round 1: leading-underscore rejection, resolver's
  *             constant renamed so the two lists can no longer silently
- *             collapse into one, and corrected comments)
+ *             collapse into one, and corrected comments; CX-01 — every
+ *             error message translated, #218 catch-up finding)
  *
  * 📖 References:
  *     - Schema:          web/_sql/schema/032_linkspage.sql
@@ -232,6 +258,7 @@
  *     - Public renderer:  web/Lnks.page/_functions/linkspage_renderer.php (#45)
  *     - Entitlement gate: web/_functions/entitlements.php (#146) — maxLinksPages
  *     - Adult-domain detection / age-gate cookie: web/_functions/adult_content.php (#50)
+ *     - Translation seed: web/_sql/seeds/065_linkspage_manage_error_translations.sql (CX-01)
  * ============================================================================
  */
 
@@ -879,18 +906,38 @@ function _g2ml_linkspageManageValidateFields(array $input): array
     if (in_array(strtolower($slugRaw), G2ML_LINKSPAGE_RESERVED_SLUGS, true)
         || str_starts_with($slugRaw, '_'))
     {
+        // CX-01 (#218 catch-up): see this file's own header comment for why
+        // every 'error' message below goes through __() with a fallback.
+        if (function_exists('__'))
+        {
+            $slugReservedError = __('linkspage.error.slug_reserved');
+        }
+        else
+        {
+            $slugReservedError = 'That slug is reserved. Please choose a different one.';
+        }
+
         return [
             'ok'        => false,
-            'error'     => 'That slug is reserved. Please choose a different one.',
+            'error'     => $slugReservedError,
             'errorCode' => 'validation',
         ];
     }
 
     if (!g2ml_linkspageManageIsValidSlug($slugRaw))
     {
+        if (function_exists('__'))
+        {
+            $slugInvalidError = __('linkspage.error.slug_invalid');
+        }
+        else
+        {
+            $slugInvalidError = 'Please enter a URL slug using only letters, numbers, hyphens, and underscores (1-100 characters).';
+        }
+
         return [
             'ok'        => false,
-            'error'     => 'Please enter a URL slug using only letters, numbers, hyphens, and underscores (1-100 characters).',
+            'error'     => $slugInvalidError,
             'errorCode' => 'validation',
         ];
     }
@@ -904,18 +951,36 @@ function _g2ml_linkspageManageValidateFields(array $input): array
 
     if ($pageTitleRaw === '')
     {
+        if (function_exists('__'))
+        {
+            $pageTitleRequiredError = __('linkspage.error.page_title_required');
+        }
+        else
+        {
+            $pageTitleRequiredError = 'Please enter a page title.';
+        }
+
         return [
             'ok'        => false,
-            'error'     => 'Please enter a page title.',
+            'error'     => $pageTitleRequiredError,
             'errorCode' => 'validation',
         ];
     }
 
     if (mb_strlen($pageTitleRaw) > 255)
     {
+        if (function_exists('__'))
+        {
+            $pageTitleTooLongError = __('linkspage.error.page_title_too_long');
+        }
+        else
+        {
+            $pageTitleTooLongError = 'Page title must be 255 characters or fewer.';
+        }
+
         return [
             'ok'        => false,
-            'error'     => 'Page title must be 255 characters or fewer.',
+            'error'     => $pageTitleTooLongError,
             'errorCode' => 'validation',
         ];
     }
@@ -929,9 +994,18 @@ function _g2ml_linkspageManageValidateFields(array $input): array
 
     if (mb_strlen($pageDescriptionRaw) > G2ML_LINKSPAGE_MANAGE_DESCRIPTION_MAX_LENGTH)
     {
+        if (function_exists('__'))
+        {
+            $pageDescriptionTooLongError = __('linkspage.error.page_description_too_long', ['max' => G2ML_LINKSPAGE_MANAGE_DESCRIPTION_MAX_LENGTH]);
+        }
+        else
+        {
+            $pageDescriptionTooLongError = 'Page description must be ' . G2ML_LINKSPAGE_MANAGE_DESCRIPTION_MAX_LENGTH . ' characters or fewer.';
+        }
+
         return [
             'ok'        => false,
-            'error'     => 'Page description must be ' . G2ML_LINKSPAGE_MANAGE_DESCRIPTION_MAX_LENGTH . ' characters or fewer.',
+            'error'     => $pageDescriptionTooLongError,
             'errorCode' => 'validation',
         ];
     }
@@ -1012,9 +1086,18 @@ function _g2ml_linkspageManageValidateFields(array $input): array
 
         if (!g2ml_linkspageManageIsValidSystemTemplate($templateUIDCandidate))
         {
+            if (function_exists('__'))
+            {
+                $templateInvalidError = __('linkspage.error.template_invalid');
+            }
+            else
+            {
+                $templateInvalidError = 'Please choose a valid template.';
+            }
+
             return [
                 'ok'        => false,
-                'error'     => 'Please choose a valid template.',
+                'error'     => $templateInvalidError,
                 'errorCode' => 'validation',
             ];
         }
@@ -1039,9 +1122,18 @@ function _g2ml_linkspageManageValidateFields(array $input): array
 
         if ($validatedThemeColour === false)
         {
+            if (function_exists('__'))
+            {
+                $themeColourInvalidError = __('linkspage.error.theme_colour_invalid');
+            }
+            else
+            {
+                $themeColourInvalidError = 'Theme colour must be a hex value like #1E88E5.';
+            }
+
             return [
                 'ok'        => false,
-                'error'     => 'Theme colour must be a hex value like #1E88E5.',
+                'error'     => $themeColourInvalidError,
                 'errorCode' => 'validation',
             ];
         }
@@ -1066,9 +1158,18 @@ function _g2ml_linkspageManageValidateFields(array $input): array
 
         if ($validatedBackgroundColour === false)
         {
+            if (function_exists('__'))
+            {
+                $backgroundColourInvalidError = __('linkspage.error.background_colour_invalid');
+            }
+            else
+            {
+                $backgroundColourInvalidError = 'Background colour must be a hex value like #FFFFFF.';
+            }
+
             return [
                 'ok'        => false,
-                'error'     => 'Background colour must be a hex value like #FFFFFF.',
+                'error'     => $backgroundColourInvalidError,
                 'errorCode' => 'validation',
             ];
         }
@@ -1093,9 +1194,18 @@ function _g2ml_linkspageManageValidateFields(array $input): array
 
         if ($validatedFontFamily === false)
         {
+            if (function_exists('__'))
+            {
+                $fontFamilyInvalidError = __('linkspage.error.font_family_invalid');
+            }
+            else
+            {
+                $fontFamilyInvalidError = 'Font family may only contain letters, numbers, spaces, commas, hyphens, and quotes.';
+            }
+
             return [
                 'ok'        => false,
-                'error'     => 'Font family may only contain letters, numbers, spaces, commas, hyphens, and quotes.',
+                'error'     => $fontFamilyInvalidError,
                 'errorCode' => 'validation',
             ];
         }
@@ -1189,14 +1299,30 @@ function g2ml_linkspageManageCreatePage(int $userUID, string $orgHandle, array $
 
     if ($limitCheck['allowed'] === false)
     {
-        $limitMessage = 'You have reached your plan\'s LinksPage limit';
-
+        // Two separate keys, not one key with an optional {limit} — see
+        // this file's own header comment for why.
         if ($limitCheck['limit'] !== null)
         {
-            $limitMessage = $limitMessage . ' of ' . $limitCheck['limit'];
+            if (function_exists('__'))
+            {
+                $limitMessage = __('linkspage.error.page_limit_reached_with_limit', ['limit' => $limitCheck['limit']]);
+            }
+            else
+            {
+                $limitMessage = 'You have reached your plan\'s LinksPage limit of ' . $limitCheck['limit'] . '. Please upgrade your plan to create more LinksPages.';
+            }
         }
-
-        $limitMessage = $limitMessage . '. Please upgrade your plan to create more LinksPages.';
+        else
+        {
+            if (function_exists('__'))
+            {
+                $limitMessage = __('linkspage.error.page_limit_reached_no_limit');
+            }
+            else
+            {
+                $limitMessage = 'You have reached your plan\'s LinksPage limit. Please upgrade your plan to create more LinksPages.';
+            }
+        }
 
         return [
             'success'   => false,
@@ -1264,18 +1390,36 @@ function g2ml_linkspageManageCreatePage(int $userUID, string $orgHandle, array $
     {
         if (function_exists('dbLastErrno') && dbLastErrno() === 1062)
         {
+            if (function_exists('__'))
+            {
+                $slugTakenError = __('linkspage.error.slug_taken');
+            }
+            else
+            {
+                $slugTakenError = 'That URL slug is already taken. Please choose a different one.';
+            }
+
             return [
                 'success'   => false,
                 'pageUID'   => null,
-                'error'     => 'That URL slug is already taken. Please choose a different one.',
+                'error'     => $slugTakenError,
                 'errorCode' => 'slug_taken',
             ];
+        }
+
+        if (function_exists('__'))
+        {
+            $createFailedError = __('linkspage.error.create_failed');
+        }
+        else
+        {
+            $createFailedError = 'Could not create the LinksPage. Please try again.';
         }
 
         return [
             'success'   => false,
             'pageUID'   => null,
-            'error'     => 'Could not create the LinksPage. Please try again.',
+            'error'     => $createFailedError,
             'errorCode' => 'server_error',
         ];
     }
@@ -1312,9 +1456,18 @@ function g2ml_linkspageManageUpdatePage(int $userUID, int $pageUID, array $input
 
     if ($existingPage === null)
     {
+        if (function_exists('__'))
+        {
+            $pageNotFoundEditError = __('linkspage.error.page_not_found_edit');
+        }
+        else
+        {
+            $pageNotFoundEditError = 'LinksPage not found, or you do not have permission to edit it.';
+        }
+
         return [
             'success'   => false,
-            'error'     => 'LinksPage not found, or you do not have permission to edit it.',
+            'error'     => $pageNotFoundEditError,
             'errorCode' => 'not_found',
         ];
     }
@@ -1382,16 +1535,34 @@ function g2ml_linkspageManageUpdatePage(int $userUID, int $pageUID, array $input
     {
         if (function_exists('dbLastErrno') && dbLastErrno() === 1062)
         {
+            if (function_exists('__'))
+            {
+                $slugTakenError = __('linkspage.error.slug_taken');
+            }
+            else
+            {
+                $slugTakenError = 'That URL slug is already taken. Please choose a different one.';
+            }
+
             return [
                 'success'   => false,
-                'error'     => 'That URL slug is already taken. Please choose a different one.',
+                'error'     => $slugTakenError,
                 'errorCode' => 'slug_taken',
             ];
         }
 
+        if (function_exists('__'))
+        {
+            $updateFailedError = __('linkspage.error.update_failed');
+        }
+        else
+        {
+            $updateFailedError = 'Could not update the LinksPage. Please try again.';
+        }
+
         return [
             'success'   => false,
-            'error'     => 'Could not update the LinksPage. Please try again.',
+            'error'     => $updateFailedError,
             'errorCode' => 'server_error',
         ];
     }
@@ -1440,9 +1611,18 @@ function g2ml_linkspageManageSetPublished(int $userUID, int $pageUID, bool $isPu
 
     if ($existingPage === null)
     {
+        if (function_exists('__'))
+        {
+            $pageNotFoundEditError = __('linkspage.error.page_not_found_edit');
+        }
+        else
+        {
+            $pageNotFoundEditError = 'LinksPage not found, or you do not have permission to edit it.';
+        }
+
         return [
             'success' => false,
-            'error'   => 'LinksPage not found, or you do not have permission to edit it.',
+            'error'   => $pageNotFoundEditError,
         ];
     }
 
@@ -1467,9 +1647,18 @@ function g2ml_linkspageManageSetPublished(int $userUID, int $pageUID, bool $isPu
     // pre-check above for why that can never mean "the page is missing".
     if ($affectedRows === false)
     {
+        if (function_exists('__'))
+        {
+            $updateFailedError = __('linkspage.error.update_failed');
+        }
+        else
+        {
+            $updateFailedError = 'Could not update the LinksPage. Please try again.';
+        }
+
         return [
             'success' => false,
-            'error'   => 'Could not update the LinksPage. Please try again.',
+            'error'   => $updateFailedError,
         ];
     }
 
@@ -1505,9 +1694,18 @@ function g2ml_linkspageManageDeletePage(int $userUID, int $pageUID): array
 
     if ($deletedRows === false || $deletedRows === 0)
     {
+        if (function_exists('__'))
+        {
+            $pageNotFoundDeleteError = __('linkspage.error.page_not_found_delete');
+        }
+        else
+        {
+            $pageNotFoundDeleteError = 'LinksPage not found, or you do not have permission to delete it.';
+        }
+
         return [
             'success' => false,
-            'error'   => 'LinksPage not found, or you do not have permission to delete it.',
+            'error'   => $pageNotFoundDeleteError,
         ];
     }
 
@@ -1695,10 +1893,19 @@ function g2ml_linkspageManageAddItem(int $userUID, int $pageUID, array $input): 
 
     if ($ownedPage === null)
     {
+        if (function_exists('__'))
+        {
+            $pageNotFoundEditError = __('linkspage.error.page_not_found_edit');
+        }
+        else
+        {
+            $pageNotFoundEditError = 'LinksPage not found, or you do not have permission to edit it.';
+        }
+
         return [
             'success' => false,
             'itemUID' => null,
-            'error'   => 'LinksPage not found, or you do not have permission to edit it.',
+            'error'   => $pageNotFoundEditError,
         ];
     }
 
@@ -1722,10 +1929,19 @@ function g2ml_linkspageManageAddItem(int $userUID, int $pageUID, array $input): 
 
     if ($currentItemCount >= G2ML_LINKSPAGE_MAX_ITEMS_PER_PAGE)
     {
+        if (function_exists('__'))
+        {
+            $itemsMaxError = __('linkspage.error.items_max', ['max' => G2ML_LINKSPAGE_MAX_ITEMS_PER_PAGE]);
+        }
+        else
+        {
+            $itemsMaxError = 'This page already has the maximum of ' . G2ML_LINKSPAGE_MAX_ITEMS_PER_PAGE . ' links.';
+        }
+
         return [
             'success' => false,
             'itemUID' => null,
-            'error'   => 'This page already has the maximum of ' . G2ML_LINKSPAGE_MAX_ITEMS_PER_PAGE . ' links.',
+            'error'   => $itemsMaxError,
         ];
     }
 
@@ -1750,10 +1966,19 @@ function g2ml_linkspageManageAddItem(int $userUID, int $pageUID, array $input): 
 
         if ($urlUIDCandidate <= 0)
         {
+            if (function_exists('__'))
+            {
+                $shortURLRequiredError = __('linkspage.error.shorturl_required');
+            }
+            else
+            {
+                $shortURLRequiredError = 'Please choose one of your short URLs.';
+            }
+
             return [
                 'success' => false,
                 'itemUID' => null,
-                'error'   => 'Please choose one of your short URLs.',
+                'error'   => $shortURLRequiredError,
             ];
         }
 
@@ -1767,10 +1992,19 @@ function g2ml_linkspageManageAddItem(int $userUID, int $pageUID, array $input): 
 
         if ($ownedShortURL === null || $ownedShortURL === false)
         {
+            if (function_exists('__'))
+            {
+                $shortURLNotFoundError = __('linkspage.error.shorturl_not_found');
+            }
+            else
+            {
+                $shortURLNotFoundError = 'That short URL was not found, or you do not have permission to use it.';
+            }
+
             return [
                 'success' => false,
                 'itemUID' => null,
-                'error'   => 'That short URL was not found, or you do not have permission to use it.',
+                'error'   => $shortURLNotFoundError,
             ];
         }
 
@@ -1797,10 +2031,19 @@ function g2ml_linkspageManageAddItem(int $userUID, int $pageUID, array $input): 
 
         if ($sanitisedManualURL === false)
         {
+            if (function_exists('__'))
+            {
+                $urlInvalidError = __('linkspage.error.url_invalid');
+            }
+            else
+            {
+                $urlInvalidError = 'Please enter a valid http:// or https:// URL.';
+            }
+
             return [
                 'success' => false,
                 'itemUID' => null,
-                'error'   => 'Please enter a valid http:// or https:// URL.',
+                'error'   => $urlInvalidError,
             ];
         }
 
@@ -1809,10 +2052,19 @@ function g2ml_linkspageManageAddItem(int $userUID, int $pageUID, array $input): 
     }
     else
     {
+        if (function_exists('__'))
+        {
+            $sourceRequiredError = __('linkspage.error.source_required');
+        }
+        else
+        {
+            $sourceRequiredError = 'Please choose a link source.';
+        }
+
         return [
             'success' => false,
             'itemUID' => null,
-            'error'   => 'Please choose a link source.',
+            'error'   => $sourceRequiredError,
         ];
     }
 
@@ -1825,19 +2077,37 @@ function g2ml_linkspageManageAddItem(int $userUID, int $pageUID, array $input): 
 
     if ($itemTitleRaw === '')
     {
+        if (function_exists('__'))
+        {
+            $itemTitleRequiredError = __('linkspage.error.item_title_required');
+        }
+        else
+        {
+            $itemTitleRequiredError = 'Please enter a title for this link.';
+        }
+
         return [
             'success' => false,
             'itemUID' => null,
-            'error'   => 'Please enter a title for this link.',
+            'error'   => $itemTitleRequiredError,
         ];
     }
 
     if (mb_strlen($itemTitleRaw) > 255)
     {
+        if (function_exists('__'))
+        {
+            $itemTitleTooLongError = __('linkspage.error.item_title_too_long');
+        }
+        else
+        {
+            $itemTitleTooLongError = 'The link title must be 255 characters or fewer.';
+        }
+
         return [
             'success' => false,
             'itemUID' => null,
-            'error'   => 'The link title must be 255 characters or fewer.',
+            'error'   => $itemTitleTooLongError,
         ];
     }
 
@@ -1850,10 +2120,19 @@ function g2ml_linkspageManageAddItem(int $userUID, int $pageUID, array $input): 
 
     if (mb_strlen($itemDescriptionRaw) > G2ML_LINKSPAGE_MANAGE_DESCRIPTION_MAX_LENGTH)
     {
+        if (function_exists('__'))
+        {
+            $itemDescriptionTooLongError = __('linkspage.error.item_description_too_long', ['max' => G2ML_LINKSPAGE_MANAGE_DESCRIPTION_MAX_LENGTH]);
+        }
+        else
+        {
+            $itemDescriptionTooLongError = 'The link description must be ' . G2ML_LINKSPAGE_MANAGE_DESCRIPTION_MAX_LENGTH . ' characters or fewer.';
+        }
+
         return [
             'success' => false,
             'itemUID' => null,
-            'error'   => 'The link description must be ' . G2ML_LINKSPAGE_MANAGE_DESCRIPTION_MAX_LENGTH . ' characters or fewer.',
+            'error'   => $itemDescriptionTooLongError,
         ];
     }
 
@@ -1964,10 +2243,19 @@ function g2ml_linkspageManageAddItem(int $userUID, int $pageUID, array $input): 
 
     if ($insertedItemUID === false)
     {
+        if (function_exists('__'))
+        {
+            $itemAddFailedError = __('linkspage.error.item_add_failed');
+        }
+        else
+        {
+            $itemAddFailedError = 'Could not add the link. Please try again.';
+        }
+
         return [
             'success' => false,
             'itemUID' => null,
-            'error'   => 'Could not add the link. Please try again.',
+            'error'   => $itemAddFailedError,
         ];
     }
 
@@ -2012,9 +2300,18 @@ function g2ml_linkspageManageUpdateItem(int $userUID, int $itemUID, array $input
 
     if ($existingItem === null)
     {
+        if (function_exists('__'))
+        {
+            $itemNotFoundEditError = __('linkspage.error.item_not_found_edit');
+        }
+        else
+        {
+            $itemNotFoundEditError = 'Link not found, or you do not have permission to edit it.';
+        }
+
         return [
             'success' => false,
-            'error'   => 'Link not found, or you do not have permission to edit it.',
+            'error'   => $itemNotFoundEditError,
         ];
     }
 
@@ -2027,17 +2324,35 @@ function g2ml_linkspageManageUpdateItem(int $userUID, int $itemUID, array $input
 
     if ($itemTitleRaw === '')
     {
+        if (function_exists('__'))
+        {
+            $itemTitleRequiredError = __('linkspage.error.item_title_required');
+        }
+        else
+        {
+            $itemTitleRequiredError = 'Please enter a title for this link.';
+        }
+
         return [
             'success' => false,
-            'error'   => 'Please enter a title for this link.',
+            'error'   => $itemTitleRequiredError,
         ];
     }
 
     if (mb_strlen($itemTitleRaw) > 255)
     {
+        if (function_exists('__'))
+        {
+            $itemTitleTooLongError = __('linkspage.error.item_title_too_long');
+        }
+        else
+        {
+            $itemTitleTooLongError = 'The link title must be 255 characters or fewer.';
+        }
+
         return [
             'success' => false,
-            'error'   => 'The link title must be 255 characters or fewer.',
+            'error'   => $itemTitleTooLongError,
         ];
     }
 
@@ -2050,9 +2365,18 @@ function g2ml_linkspageManageUpdateItem(int $userUID, int $itemUID, array $input
 
     if (mb_strlen($itemDescriptionRaw) > G2ML_LINKSPAGE_MANAGE_DESCRIPTION_MAX_LENGTH)
     {
+        if (function_exists('__'))
+        {
+            $itemDescriptionTooLongError = __('linkspage.error.item_description_too_long', ['max' => G2ML_LINKSPAGE_MANAGE_DESCRIPTION_MAX_LENGTH]);
+        }
+        else
+        {
+            $itemDescriptionTooLongError = 'The link description must be ' . G2ML_LINKSPAGE_MANAGE_DESCRIPTION_MAX_LENGTH . ' characters or fewer.';
+        }
+
         return [
             'success' => false,
-            'error'   => 'The link description must be ' . G2ML_LINKSPAGE_MANAGE_DESCRIPTION_MAX_LENGTH . ' characters or fewer.',
+            'error'   => $itemDescriptionTooLongError,
         ];
     }
 
@@ -2131,9 +2455,18 @@ function g2ml_linkspageManageUpdateItem(int $userUID, int $itemUID, array $input
 
         if ($sanitisedManualURL === false)
         {
+            if (function_exists('__'))
+            {
+                $urlInvalidError = __('linkspage.error.url_invalid');
+            }
+            else
+            {
+                $urlInvalidError = 'Please enter a valid http:// or https:// URL.';
+            }
+
             return [
                 'success' => false,
-                'error'   => 'Please enter a valid http:// or https:// URL.',
+                'error'   => $urlInvalidError,
             ];
         }
 
@@ -2175,9 +2508,18 @@ function g2ml_linkspageManageUpdateItem(int $userUID, int $itemUID, array $input
 
     if ($affectedRows === false)
     {
+        if (function_exists('__'))
+        {
+            $itemUpdateFailedError = __('linkspage.error.item_update_failed');
+        }
+        else
+        {
+            $itemUpdateFailedError = 'Could not update the link. Please try again.';
+        }
+
         return [
             'success' => false,
-            'error'   => 'Could not update the link. Please try again.',
+            'error'   => $itemUpdateFailedError,
         ];
     }
 
@@ -2214,9 +2556,18 @@ function g2ml_linkspageManageDeleteItem(int $userUID, int $itemUID): array
 
     if ($deletedRows === false || $deletedRows === 0)
     {
+        if (function_exists('__'))
+        {
+            $itemNotFoundDeleteError = __('linkspage.error.item_not_found_delete');
+        }
+        else
+        {
+            $itemNotFoundDeleteError = 'Link not found, or you do not have permission to delete it.';
+        }
+
         return [
             'success' => false,
-            'error'   => 'Link not found, or you do not have permission to delete it.',
+            'error'   => $itemNotFoundDeleteError,
         ];
     }
 
@@ -2247,10 +2598,19 @@ function g2ml_linkspageManageToggleItemActive(int $userUID, int $itemUID): array
 
     if ($existingItem === null)
     {
+        if (function_exists('__'))
+        {
+            $itemNotFoundEditError = __('linkspage.error.item_not_found_edit');
+        }
+        else
+        {
+            $itemNotFoundEditError = 'Link not found, or you do not have permission to edit it.';
+        }
+
         return [
             'success'  => false,
             'isActive' => null,
-            'error'    => 'Link not found, or you do not have permission to edit it.',
+            'error'    => $itemNotFoundEditError,
         ];
     }
 
@@ -2272,10 +2632,19 @@ function g2ml_linkspageManageToggleItemActive(int $userUID, int $itemUID): array
 
     if ($affectedRows === false)
     {
+        if (function_exists('__'))
+        {
+            $itemUpdateFailedError = __('linkspage.error.item_update_failed');
+        }
+        else
+        {
+            $itemUpdateFailedError = 'Could not update the link. Please try again.';
+        }
+
         return [
             'success'  => false,
             'isActive' => null,
-            'error'    => 'Could not update the link. Please try again.',
+            'error'    => $itemUpdateFailedError,
         ];
     }
 
@@ -2308,10 +2677,19 @@ function g2ml_linkspageManageMoveItem(int $userUID, int $itemUID, string $direct
 {
     if ($direction !== 'up' && $direction !== 'down')
     {
+        if (function_exists('__'))
+        {
+            $moveDirectionInvalidError = __('linkspage.error.move_direction_invalid');
+        }
+        else
+        {
+            $moveDirectionInvalidError = 'Invalid move direction.';
+        }
+
         return [
             'success' => false,
             'moved'   => false,
-            'error'   => 'Invalid move direction.',
+            'error'   => $moveDirectionInvalidError,
         ];
     }
 
@@ -2319,10 +2697,19 @@ function g2ml_linkspageManageMoveItem(int $userUID, int $itemUID, string $direct
 
     if ($existingItem === null)
     {
+        if (function_exists('__'))
+        {
+            $itemNotFoundEditError = __('linkspage.error.item_not_found_edit');
+        }
+        else
+        {
+            $itemNotFoundEditError = 'Link not found, or you do not have permission to edit it.';
+        }
+
         return [
             'success' => false,
             'moved'   => false,
-            'error'   => 'Link not found, or you do not have permission to edit it.',
+            'error'   => $itemNotFoundEditError,
         ];
     }
 
@@ -2383,10 +2770,19 @@ function g2ml_linkspageManageMoveItem(int $userUID, int $itemUID, string $direct
     {
         dbRollback();
 
+        if (function_exists('__'))
+        {
+            $reorderFailedError = __('linkspage.error.reorder_failed');
+        }
+        else
+        {
+            $reorderFailedError = 'Could not reorder the links. Please try again.';
+        }
+
         return [
             'success' => false,
             'moved'   => false,
-            'error'   => 'Could not reorder the links. Please try again.',
+            'error'   => $reorderFailedError,
         ];
     }
 
@@ -2436,9 +2832,18 @@ function _g2ml_linkspageManageStoreSanitisedCustom(int $userUID, int $pageUID, s
 
     if ($ownedPage === null)
     {
+        if (function_exists('__'))
+        {
+            $pageNotFoundEditError = __('linkspage.error.page_not_found_edit');
+        }
+        else
+        {
+            $pageNotFoundEditError = 'LinksPage not found, or you do not have permission to edit it.';
+        }
+
         return [
             'success'    => false,
-            'error'      => 'LinksPage not found, or you do not have permission to edit it.',
+            'error'      => $pageNotFoundEditError,
             'errorCode'  => 'not_found',
             'customHTML' => null,
             'customCSS'  => null,
@@ -2472,9 +2877,18 @@ function _g2ml_linkspageManageStoreSanitisedCustom(int $userUID, int $pageUID, s
 
         if ($allowed !== true)
         {
+            if (function_exists('__'))
+            {
+                $customHTMLUnavailableError = __('linkspage.error.custom_html_unavailable');
+            }
+            else
+            {
+                $customHTMLUnavailableError = 'Custom HTML is not available on your current plan, or has been disabled by the administrator.';
+            }
+
             return [
                 'success'    => false,
-                'error'      => 'Custom HTML is not available on your current plan, or has been disabled by the administrator.',
+                'error'      => $customHTMLUnavailableError,
                 'errorCode'  => 'feature_unavailable',
                 'customHTML' => null,
                 'customCSS'  => null,
@@ -2486,9 +2900,18 @@ function _g2ml_linkspageManageStoreSanitisedCustom(int $userUID, int $pageUID, s
     // input outright rather than silently truncating.
     if (defined('G2ML_CUSTOM_HTML_MAX_BYTES') && strlen($customHTMLRaw) > G2ML_CUSTOM_HTML_MAX_BYTES)
     {
+        if (function_exists('__'))
+        {
+            $customHTMLTooLargeError = __('linkspage.error.custom_html_too_large', ['max' => (int) (G2ML_CUSTOM_HTML_MAX_BYTES / 1000)]);
+        }
+        else
+        {
+            $customHTMLTooLargeError = 'The custom HTML is too large. Please keep it under ' . (int) (G2ML_CUSTOM_HTML_MAX_BYTES / 1000) . ' KB.';
+        }
+
         return [
             'success'    => false,
-            'error'      => 'The custom HTML is too large. Please keep it under ' . (int) (G2ML_CUSTOM_HTML_MAX_BYTES / 1000) . ' KB.',
+            'error'      => $customHTMLTooLargeError,
             'errorCode'  => 'too_large',
             'customHTML' => null,
             'customCSS'  => null,
@@ -2497,9 +2920,18 @@ function _g2ml_linkspageManageStoreSanitisedCustom(int $userUID, int $pageUID, s
 
     if (defined('G2ML_CUSTOM_CSS_MAX_BYTES') && strlen($customCSSRaw) > G2ML_CUSTOM_CSS_MAX_BYTES)
     {
+        if (function_exists('__'))
+        {
+            $customCSSTooLargeError = __('linkspage.error.custom_css_too_large', ['max' => (int) (G2ML_CUSTOM_CSS_MAX_BYTES / 1000)]);
+        }
+        else
+        {
+            $customCSSTooLargeError = 'The custom CSS is too large. Please keep it under ' . (int) (G2ML_CUSTOM_CSS_MAX_BYTES / 1000) . ' KB.';
+        }
+
         return [
             'success'    => false,
-            'error'      => 'The custom CSS is too large. Please keep it under ' . (int) (G2ML_CUSTOM_CSS_MAX_BYTES / 1000) . ' KB.',
+            'error'      => $customCSSTooLargeError,
             'errorCode'  => 'too_large',
             'customHTML' => null,
             'customCSS'  => null,
@@ -2515,9 +2947,18 @@ function _g2ml_linkspageManageStoreSanitisedCustom(int $userUID, int $pageUID, s
     {
         // Fail closed: with no sanitiser available, refuse the write entirely
         // rather than store un-sanitised HTML.
+        if (function_exists('__'))
+        {
+            $sanitiserUnavailableError = __('linkspage.error.custom_html_sanitiser_unavailable');
+        }
+        else
+        {
+            $sanitiserUnavailableError = 'The custom HTML editor is temporarily unavailable. Please try again later.';
+        }
+
         return [
             'success'    => false,
-            'error'      => 'The custom HTML editor is temporarily unavailable. Please try again later.',
+            'error'      => $sanitiserUnavailableError,
             'errorCode'  => 'sanitiser_unavailable',
             'customHTML' => null,
             'customCSS'  => null,
@@ -2561,9 +3002,18 @@ function _g2ml_linkspageManageStoreSanitisedCustom(int $userUID, int $pageUID, s
 
     if ($affectedRows === false)
     {
+        if (function_exists('__'))
+        {
+            $customHTMLSaveFailedError = __('linkspage.error.custom_html_save_failed');
+        }
+        else
+        {
+            $customHTMLSaveFailedError = 'Could not save the custom HTML. Please try again.';
+        }
+
         return [
             'success'    => false,
-            'error'      => 'Could not save the custom HTML. Please try again.',
+            'error'      => $customHTMLSaveFailedError,
             'errorCode'  => 'server_error',
             'customHTML' => null,
             'customCSS'  => null,
@@ -2632,9 +3082,18 @@ function g2ml_linkspageManageSaveCustomHTMLFromUpload(int $userUID, int $pageUID
 
     if ($uploadError === UPLOAD_ERR_NO_FILE)
     {
+        if (function_exists('__'))
+        {
+            $uploadNoFileError = __('linkspage.error.upload_no_file');
+        }
+        else
+        {
+            $uploadNoFileError = 'Please choose an HTML file to upload.';
+        }
+
         return [
             'success'    => false,
-            'error'      => 'Please choose an HTML file to upload.',
+            'error'      => $uploadNoFileError,
             'errorCode'  => 'no_file',
             'customHTML' => null,
             'customCSS'  => null,
@@ -2643,9 +3102,18 @@ function g2ml_linkspageManageSaveCustomHTMLFromUpload(int $userUID, int $pageUID
 
     if ($uploadError !== UPLOAD_ERR_OK)
     {
+        if (function_exists('__'))
+        {
+            $uploadIncompleteError = __('linkspage.error.upload_incomplete');
+        }
+        else
+        {
+            $uploadIncompleteError = 'The file upload did not complete. Please try again.';
+        }
+
         return [
             'success'    => false,
-            'error'      => 'The file upload did not complete. Please try again.',
+            'error'      => $uploadIncompleteError,
             'errorCode'  => 'upload_error',
             'customHTML' => null,
             'customCSS'  => null,
@@ -2668,9 +3136,18 @@ function g2ml_linkspageManageSaveCustomHTMLFromUpload(int $userUID, int $pageUID
 
     if ($fileSize <= 0 || $fileSize > $maxBytes)
     {
+        if (function_exists('__'))
+        {
+            $uploadSizeRangeError = __('linkspage.error.upload_size_range', ['max' => (int) ($maxBytes / 1000)]);
+        }
+        else
+        {
+            $uploadSizeRangeError = 'The HTML file must be between 1 byte and ' . (int) ($maxBytes / 1000) . ' KB.';
+        }
+
         return [
             'success'    => false,
-            'error'      => 'The HTML file must be between 1 byte and ' . (int) ($maxBytes / 1000) . ' KB.',
+            'error'      => $uploadSizeRangeError,
             'errorCode'  => 'too_large',
             'customHTML' => null,
             'customCSS'  => null,
@@ -2690,9 +3167,18 @@ function g2ml_linkspageManageSaveCustomHTMLFromUpload(int $userUID, int $pageUID
 
     if ($extension !== 'html' && $extension !== 'htm')
     {
+        if (function_exists('__'))
+        {
+            $uploadWrongTypeError = __('linkspage.error.upload_wrong_type');
+        }
+        else
+        {
+            $uploadWrongTypeError = 'Only .html files are accepted.';
+        }
+
         return [
             'success'    => false,
-            'error'      => 'Only .html files are accepted.',
+            'error'      => $uploadWrongTypeError,
             'errorCode'  => 'wrong_type',
             'customHTML' => null,
             'customCSS'  => null,
@@ -2713,9 +3199,18 @@ function g2ml_linkspageManageSaveCustomHTMLFromUpload(int $userUID, int $pageUID
 
     if ($isRealUpload === false && !isset($GLOBALS['g2ml_linkspage_test_allow_plain_upload']))
     {
+        if (function_exists('__'))
+        {
+            $uploadUnreadableError = __('linkspage.error.upload_unreadable');
+        }
+        else
+        {
+            $uploadUnreadableError = 'The uploaded file could not be read. Please try again.';
+        }
+
         return [
             'success'    => false,
-            'error'      => 'The uploaded file could not be read. Please try again.',
+            'error'      => $uploadUnreadableError,
             'errorCode'  => 'not_uploaded_file',
             'customHTML' => null,
             'customCSS'  => null,
@@ -2724,9 +3219,18 @@ function g2ml_linkspageManageSaveCustomHTMLFromUpload(int $userUID, int $pageUID
 
     if ($tmpName === '' || !is_readable($tmpName))
     {
+        if (function_exists('__'))
+        {
+            $uploadUnreadableError = __('linkspage.error.upload_unreadable');
+        }
+        else
+        {
+            $uploadUnreadableError = 'The uploaded file could not be read. Please try again.';
+        }
+
         return [
             'success'    => false,
-            'error'      => 'The uploaded file could not be read. Please try again.',
+            'error'      => $uploadUnreadableError,
             'errorCode'  => 'unreadable',
             'customHTML' => null,
             'customCSS'  => null,
@@ -2737,9 +3241,18 @@ function g2ml_linkspageManageSaveCustomHTMLFromUpload(int $userUID, int $pageUID
 
     if ($contents === false)
     {
+        if (function_exists('__'))
+        {
+            $uploadUnreadableError = __('linkspage.error.upload_unreadable');
+        }
+        else
+        {
+            $uploadUnreadableError = 'The uploaded file could not be read. Please try again.';
+        }
+
         return [
             'success'    => false,
-            'error'      => 'The uploaded file could not be read. Please try again.',
+            'error'      => $uploadUnreadableError,
             'errorCode'  => 'unreadable',
             'customHTML' => null,
             'customCSS'  => null,
@@ -2748,9 +3261,18 @@ function g2ml_linkspageManageSaveCustomHTMLFromUpload(int $userUID, int $pageUID
 
     if (strlen($contents) > $maxBytes)
     {
+        if (function_exists('__'))
+        {
+            $uploadTooLargeError = __('linkspage.error.upload_too_large', ['max' => (int) ($maxBytes / 1000)]);
+        }
+        else
+        {
+            $uploadTooLargeError = 'The HTML file is too large. Please keep it under ' . (int) ($maxBytes / 1000) . ' KB.';
+        }
+
         return [
             'success'    => false,
-            'error'      => 'The HTML file is too large. Please keep it under ' . (int) ($maxBytes / 1000) . ' KB.',
+            'error'      => $uploadTooLargeError,
             'errorCode'  => 'too_large',
             'customHTML' => null,
             'customCSS'  => null,

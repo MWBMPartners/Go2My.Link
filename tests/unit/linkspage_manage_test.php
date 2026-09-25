@@ -58,6 +58,20 @@ require_once dirname(__DIR__, 2) . '/web/Lnks.page/_functions/linkspage_renderer
 require_once dirname(__DIR__, 2) . '/web/_functions/linkspage_manage.php';
 
 // ============================================================================
+// 🌍 Why this file never requires web/_functions/i18n.php (CX-01, #218
+//     catch-up):
+//
+// _g2ml_linkspageManageValidateFields() (called directly by several tests
+// below, for example the reserved-slug tests) DOES call __() for some of
+// its error messages, each call guarded by `if (function_exists('__'))`.
+// Because this file never loads i18n.php, every one of those calls takes
+// the `else` branch here, so a test that pins one of those fallback English
+// sentences is really testing the untranslated fallback text, not a
+// translation. The `if` branch is proven separately, in a child process —
+// see the CX-01 test block below for why.
+// ============================================================================
+
+// ============================================================================
 // 🔤 g2ml_linkspageManageIsValidSlug — parity with the public resolver
 // ============================================================================
 
@@ -277,6 +291,115 @@ test('manage field validation: creating a page with a reserved slug reports the 
 
     assert_false($validation['ok'], 'A reserved slug must fail field validation');
     assert_same('That slug is reserved. Please choose a different one.', $validation['error'], 'The error message must clearly explain the slug is reserved, not just malformed');
+});
+
+// ============================================================================
+// 🌍 CX-01 (#218 catch-up) — every error message this file returns must go
+//     through __() when the translation layer is available.
+//
+// The two tests just above prove the plain-English fallback (they run with
+// __() undefined, so they exercise the `else` branch). This test proves the
+// `if` branch — that __() is actually called, with the right key — in an
+// ISOLATED CHILD PHP PROCESS, because tests/run.php loads every unit test
+// file into ONE shared process: a real `function __() {...}` declared here
+// would stay defined for the rest of the run, flipping every OTHER
+// function_exists('__') guard from "absent" to "present" and breaking any
+// test that pins the untranslated fallback text — for example this file's
+// own reserved-slug tests above, and linkspage_agegate_test.php's
+// renderAgeGateInterstitial test. tests/unit/security_clientip_test.php's
+// g2ml_clientip_child() uses the same child-process technique, for the
+// same reason (a PHP `define()` cannot be undone within one process).
+// ============================================================================
+
+/**
+ * Run a short PHP script in a clean child process and return its trimmed
+ * stdout. Used to prove a __()-guarded call site actually calls __() with
+ * the expected key, without ever defining __() in THIS shared test process
+ * — see the comment block above for why that matters.
+ *
+ * @param  string $scriptBody  PHP code (no opening "<?php" tag) to run.
+ * @return string              Trimmed stdout, or '' if the child could not
+ *                              be started or produced no output.
+ */
+function g2ml_lpm_test_translation_child(string $scriptBody): string
+{
+    $script = '<?php' . "\n" . 'declare(strict_types=1);' . "\n" . $scriptBody;
+
+    $tempFile = tempnam(sys_get_temp_dir(), 'g2ml_lpm_translation_');
+
+    if ($tempFile === false)
+    {
+        return '';
+    }
+
+    file_put_contents($tempFile, $script);
+
+    $command = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($tempFile) . ' 2>/dev/null';
+    $output  = shell_exec($command);
+
+    unlink($tempFile);
+
+    if ($output === null || $output === false)
+    {
+        return '';
+    }
+
+    return trim($output);
+}
+
+test('manage field validation (CX-01): reserved-slug rejection calls __() with the correct key when the translation layer is available', function (): void
+{
+    $securityPath = dirname(__DIR__, 1) . '/../web/_functions/security.php';
+    $managePath   = dirname(__DIR__, 1) . '/../web/_functions/linkspage_manage.php';
+
+    $scriptBody = <<<'PHP'
+// Test double for __() — deliberately NOT a real translation. It echoes
+// the KEY it was called with (after applying the SAME {placeholder}
+// substitution the real i18n.php performs — a plain str_replace(), see
+// web/_functions/i18n.php), so this test can prove exactly which key the
+// call site under test passed, rather than merely proving SOME string
+// came back.
+function __(string $key, array $replacements = []): string
+{
+    $value = $key;
+
+    foreach ($replacements as $placeholder => $replacement)
+    {
+        $value = str_replace('{' . $placeholder . '}', (string) $replacement, $value);
+    }
+
+    return $value;
+}
+PHP;
+
+    $scriptBody .= "\n" . 'require ' . var_export($securityPath, true) . ';' . "\n";
+    $scriptBody .= 'require ' . var_export($managePath, true) . ';' . "\n";
+    $scriptBody .= '$validation = _g2ml_linkspageManageValidateFields(["slug" => "admin", "pageTitle" => "Child Process Test"]);' . "\n";
+    $scriptBody .= 'echo $validation["error"];' . "\n";
+
+    $output = g2ml_lpm_test_translation_child($scriptBody);
+
+    assert_same(
+        'linkspage.error.slug_reserved',
+        $output,
+        'With __() available, the reserved-slug rejection must call __(\'linkspage.error.slug_reserved\') — got: ' . $output
+    );
+});
+
+test('manage field validation (CX-01): a scan of the source finds no remaining hard-coded literal error message', function (): void
+{
+    $managePath = dirname(__DIR__, 1) . '/../web/_functions/linkspage_manage.php';
+    $source     = file_get_contents($managePath);
+
+    assert_true(is_string($source) && $source !== '', 'linkspage_manage.php must be readable for this scan');
+
+    // Every 'error' => ... must assign a VARIABLE, never a literal string
+    // straight after the arrow — a literal there is exactly the fault
+    // CX-01 fixes, and this guards against it creeping back in on a future
+    // edit that adds a new validation without the __() guard.
+    $matchCount = preg_match_all("/'error'\\s*=>\\s*'/", $source, $literalMatches);
+
+    assert_same(0, $matchCount, 'Found ' . $matchCount . ' hard-coded literal error string(s) — every user-facing error must be assigned via the function_exists(\'__\') guard, not a literal (CX-01, #218 catch-up)');
 });
 
 // ============================================================================

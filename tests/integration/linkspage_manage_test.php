@@ -789,6 +789,162 @@ test('linkspage manage (#218): a page already at the 200-item abuse cap rejects 
 });
 
 // ============================================================================
+// 🌍 CX-01 (#218 catch-up) — the item-cap message must call __() with the
+//     right key when the translation layer is available.
+//
+// The test just above proves the plain-English fallback (nothing under
+// tests/ requires web/_functions/i18n.php, so it exercises the `else`
+// branch). This test proves the `if` branch — that __() is actually
+// called, with the right key — in an ISOLATED CHILD PHP PROCESS, for the
+// same reason tests/unit/linkspage_manage_test.php's own CX-01 test uses
+// one: this runner loads every tests/integration/*.php file into ONE
+// shared process, so a real `function __() {...}` declared here would stay
+// defined for the rest of the run, breaking tests that pin the
+// untranslated fallback text — for example the avatar/icon https-error
+// tests just below. The child process opens its OWN database connection
+// (the same G2ML_TEST_DB_* environment variables this runner already
+// resolved) rather than requiring this file directly, which would also
+// need bootstrap.php loaded and would re-run every test(...) registration
+// in this file just to reuse a couple of small helper functions.
+// ============================================================================
+
+/**
+ * Run a short PHP script in a clean child process, connected to the SAME
+ * test database as this file's own $db, and return the script's trimmed
+ * stdout. See the comment block above for why this runs in a child process
+ * rather than inline.
+ *
+ * @param  string $scriptBody  PHP code (no opening "<?php" tag) to run.
+ * @return string              Trimmed stdout, or '' if the child could not
+ *                              be started or produced no output.
+ */
+function g2ml_lpm_test_translation_child(string $scriptBody): string
+{
+    $script = '<?php' . "\n" . 'declare(strict_types=1);' . "\n" . $scriptBody;
+
+    $tempFile = tempnam(sys_get_temp_dir(), 'g2ml_lpm_translation_');
+
+    if ($tempFile === false)
+    {
+        return '';
+    }
+
+    file_put_contents($tempFile, $script);
+
+    $command = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($tempFile) . ' 2>/dev/null';
+    $output  = shell_exec($command);
+
+    unlink($tempFile);
+
+    if ($output === null || $output === false)
+    {
+        return '';
+    }
+
+    return trim($output);
+}
+
+test('linkspage manage (CX-01): the item-cap rejection calls __() with the correct key when the translation layer is available', function () use ($g2mlLpmOrgHandle): void
+{
+    // The child process needs the SAME database connection parameters this
+    // file used to open $db, but as raw values it can var_export() into its
+    // own script (a child process cannot reach a variable that lives only
+    // in THIS process's memory). It reads the DB_HOST / DB_PORT / DB_USER /
+    // DB_PASS / DB_NAME constants this file already defines near its top,
+    // rather than re-reading the G2ML_TEST_DB_* environment variables a
+    // second time — those constants already hold the resolved values, with
+    // every fallback applied, by the time any test's callback body runs.
+    $functionsDir = dirname(__DIR__, 2) . '/web/_functions/';
+    $marker       = 'cx01_' . substr(hash('sha256', (string) microtime(true)), 0, 10);
+
+    $scriptBody  = <<<'PHP'
+// Test double for __() — deliberately NOT a real translation. It echoes
+// the KEY it was called with (after applying the SAME {placeholder}
+// substitution the real i18n.php performs — a plain str_replace(), see
+// web/_functions/i18n.php), so this test can prove exactly which key the
+// call site under test passed, rather than merely proving SOME string
+// came back.
+function __(string $key, array $replacements = []): string
+{
+    $value = $key;
+
+    foreach ($replacements as $placeholder => $replacement)
+    {
+        $value = str_replace('{' . $placeholder . '}', (string) $replacement, $value);
+    }
+
+    return $value;
+}
+PHP;
+
+    $scriptBody .= "\n";
+    $scriptBody .= 'define("DB_HOST", ' . var_export(DB_HOST, true) . ');' . "\n";
+    $scriptBody .= 'define("DB_PORT", ' . var_export(DB_PORT, true) . ');' . "\n";
+    $scriptBody .= 'define("DB_USER", ' . var_export(DB_USER, true) . ');' . "\n";
+    $scriptBody .= 'define("DB_PASS", ' . var_export(DB_PASS, true) . ');' . "\n";
+    $scriptBody .= 'define("DB_NAME", ' . var_export(DB_NAME, true) . ');' . "\n";
+    $scriptBody .= 'define("DB_CHARSET", "utf8mb4");' . "\n";
+    $scriptBody .= 'require ' . var_export($functionsDir . 'db_connect.php', true) . ';' . "\n";
+    $scriptBody .= 'require ' . var_export($functionsDir . 'db_query.php', true) . ';' . "\n";
+    $scriptBody .= 'require ' . var_export($functionsDir . 'security.php', true) . ';' . "\n";
+    $scriptBody .= 'require ' . var_export($functionsDir . 'settings.php', true) . ';' . "\n";
+    $scriptBody .= 'require ' . var_export($functionsDir . 'activity_logger.php', true) . ';' . "\n";
+    $scriptBody .= 'require ' . var_export($functionsDir . 'entitlements.php', true) . ';' . "\n";
+    $scriptBody .= 'require ' . var_export($functionsDir . 'linkspage_manage.php', true) . ';' . "\n";
+    $scriptBody .= '$childDb = getDB();' . "\n";
+    $scriptBody .= 'if ($childDb === null) { fwrite(STDERR, "no db"); exit(1); }' . "\n";
+
+    // A throwaway user owned by the same [default] org the rest of this
+    // file's fixtures use (created once, above, before any test body runs
+    // — including this one).
+    $scriptBody .= '$orgHandle = ' . var_export($g2mlLpmOrgHandle, true) . ';' . "\n";
+    $scriptBody .= '$marker    = ' . var_export($marker, true) . ';' . "\n";
+    $scriptBody .= '$userStatement = mysqli_prepare($childDb, "INSERT INTO `tblUsers` (`orgHandle`, `username`, `email`, `passwordHash`, `isActive`) VALUES (?, ?, ?, ?, 1)");' . "\n";
+    $scriptBody .= '$username = $marker; $email = $marker . "@lpm48.test"; $passwordHash = "x";' . "\n";
+    $scriptBody .= 'mysqli_stmt_bind_param($userStatement, "ssss", $orgHandle, $username, $email, $passwordHash);' . "\n";
+    $scriptBody .= 'mysqli_stmt_execute($userStatement);' . "\n";
+    $scriptBody .= '$userUID = (int) mysqli_stmt_insert_id($userStatement);' . "\n";
+    $scriptBody .= 'mysqli_stmt_close($userStatement);' . "\n";
+
+    $scriptBody .= '$createResult = g2ml_linkspageManageCreatePage($userUID, $orgHandle, ["slug" => $marker . "-slug", "pageTitle" => "CX-01 Child Cap Test"]);' . "\n";
+    $scriptBody .= '$pageUID = $createResult["pageUID"];' . "\n";
+
+    // Fill to EXACTLY the cap via raw inserts, the same technique the
+    // inline test above uses, so this setup does not depend on
+    // g2ml_linkspageManageAddItem() (the function under test).
+    $scriptBody .= '$insertStatement = mysqli_prepare($childDb, "INSERT INTO `tblLinksPageItems` (`pageUID`, `itemTitle`, `itemURL`, `sortOrder`) VALUES (?, ?, ?, ?)");' . "\n";
+    $scriptBody .= 'for ($fillerIndex = 0; $fillerIndex < G2ML_LINKSPAGE_MAX_ITEMS_PER_PAGE; $fillerIndex++) {' . "\n";
+    $scriptBody .= '    $fillerTitle = "Filler " . $fillerIndex;' . "\n";
+    $scriptBody .= '    $fillerURL   = "https://example.com/filler-" . $fillerIndex;' . "\n";
+    $scriptBody .= '    mysqli_stmt_bind_param($insertStatement, "issi", $pageUID, $fillerTitle, $fillerURL, $fillerIndex);' . "\n";
+    $scriptBody .= '    mysqli_stmt_execute($insertStatement);' . "\n";
+    $scriptBody .= '}' . "\n";
+    $scriptBody .= 'mysqli_stmt_close($insertStatement);' . "\n";
+
+    $scriptBody .= '$addResult = g2ml_linkspageManageAddItem($userUID, $pageUID, ["source" => "manual", "manualURL" => "https://example.com/one-too-many", "itemTitle" => "One Too Many"]);' . "\n";
+    $scriptBody .= 'echo $addResult["error"];' . "\n";
+
+    // Teardown — a page delete cascades to its items (FK_item_page ON
+    // DELETE CASCADE, 032_linkspage.sql), same as g2ml_lpm_test_delete_page().
+    $scriptBody .= '$pageDeleteStatement = mysqli_prepare($childDb, "DELETE FROM `tblLinksPages` WHERE `pageUID` = ?");' . "\n";
+    $scriptBody .= 'mysqli_stmt_bind_param($pageDeleteStatement, "i", $pageUID);' . "\n";
+    $scriptBody .= 'mysqli_stmt_execute($pageDeleteStatement);' . "\n";
+    $scriptBody .= 'mysqli_stmt_close($pageDeleteStatement);' . "\n";
+    $scriptBody .= '$userDeleteStatement = mysqli_prepare($childDb, "DELETE FROM `tblUsers` WHERE `userUID` = ?");' . "\n";
+    $scriptBody .= 'mysqli_stmt_bind_param($userDeleteStatement, "i", $userUID);' . "\n";
+    $scriptBody .= 'mysqli_stmt_execute($userDeleteStatement);' . "\n";
+    $scriptBody .= 'mysqli_stmt_close($userDeleteStatement);' . "\n";
+
+    $output = g2ml_lpm_test_translation_child($scriptBody);
+
+    assert_same(
+        'linkspage.error.items_max',
+        $output,
+        'With __() available, the item-cap rejection must call __(\'linkspage.error.items_max\', [\'max\' => ...]) — got: ' . $output
+    );
+});
+
+// ============================================================================
 // 🖼️ Avatar and per-link icon addresses must be https (#221, #273)
 // ============================================================================
 //
