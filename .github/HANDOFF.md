@@ -259,6 +259,12 @@ rest of batch 5); `progress.next` in `.claude/programme/build-plan.json` says th
   from about two weeks earlier is still on this Mac; it was not created tonight and has been left
   alone until the owner says it can go.
 
+### 🔗 Cross-project: CueRCode will use Go2My.Link's short links for its dynamic QR codes (2026-09-25, from the CueRCode session)
+- The owner approved building **dynamic QR** and **dual-function QR** in CueRCode (alpha test group first; public only once anti-abuse protections are in place). The owner's requirement: CueRCode's dynamic QR must **use Go2My.Link's short-link system**, but on our own **`QRmy.Link`** address.
+- That builds on what already exists here: the CueRCode wiring (**#145**: create through `/api/v1` with a `qr:link` key, re-point, scan attribution), custom domains, and the shared destination check (**#205**).
+- The owner's link-safety choice (on the CueRCode side): **Google Web Risk first, Google Safe Browsing as a fallback, and a pluggable list of other providers** (e.g. Microsoft's). Worth deciding whether that lives in #205's shared check so both products are protected in one place.
+- Everything to agree between the two projects is listed in **#276**. No Go2My.Link code was changed by the CueRCode session. CueRCode plans this in its next session (CueRCode `.claude/HANDOFF.md` §0, task 7j).
+
 ### 🧑‍✈️ Waiting on the owner (nothing is blocked on these; they are choices)
 
 1. **Codex credit.** It manages roughly one review per reset, so most items only ever get the
