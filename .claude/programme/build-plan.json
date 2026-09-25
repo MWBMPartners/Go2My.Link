@@ -2854,15 +2854,33 @@
     "issue": 214,
     "commit": "8402425",
     "what": "PHP's default time zone forced to UTC to match the database; 3 review rounds, Claude stand-in"
+   },
+   {
+    "key": "HANDOFF",
+    "issue": 0,
+    "commit": "1637f9d",
+    "what": "notes: SX-147 and SX-214 recorded; second Codex catch-up scheduled"
+   },
+   {
+    "key": "SX-206",
+    "issue": 206,
+    "commit": "a173c8a",
+    "what": "an unreadable API key expiry counts as expired; one shared check for the API and the admin page; 1 review round, Claude stand-in"
+   },
+   {
+    "key": "SX-208",
+    "issue": 208,
+    "commit": "a37dfd1",
+    "what": "unused domains:read / domains:write API scopes removed; test that every offered scope is enforced; 2 review rounds, the second by Codex (clean)"
    }
   ],
   "next": [
-   "SX-206",
-   "SX-208",
    "SX-205",
    "SX-212",
    "PF-13",
-   "PF-01"
+   "PF-01",
+   "LP-27",
+   "PF-12"
   ],
   "codex_re_review_owed": [
    "8302613",
@@ -2877,13 +2895,10 @@
    "95a0953",
    "33e1ce3",
    "8f0a710",
-   "cbb8a4d",
    "208dcc4",
-   "ade7c02",
-   "b59ef73",
    "60f9586",
-   "3562029",
-   "8402425"
+   "1637f9d",
+   "a173c8a"
   ]
  }
 }
