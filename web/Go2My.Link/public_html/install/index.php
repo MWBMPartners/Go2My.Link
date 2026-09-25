@@ -373,10 +373,7 @@ function g2ml_install_check_collation(mysqli $db, string $dbName): array
 {
     // Read the collation first, over a bound parameter — safe for any
     // $dbName, because here it is a query VALUE, not something placed
-    // literally inside a statement. This lets a database that is already
-    // correct pass regardless of what characters are in its name; the name
-    // is only checked below, just before it has to be written literally
-    // into an ALTER DATABASE statement.
+    // literally inside a statement.
     $readCollation = static function () use ($db, $dbName): ?string
     {
         $statement = $db->prepare(
@@ -409,29 +406,24 @@ function g2ml_install_check_collation(mysqli $db, string $dbName): array
         return ['ok' => true];
     }
 
-    // Not yet correct, so an ALTER DATABASE is needed — and that statement
-    // cannot take the name as a bound parameter (an identifier is not a
-    // value), so it is validated by hand before it is ever placed inside a
-    // query string.
-    if (preg_match('/^[A-Za-z0-9_$-]{1,64}$/', $dbName) !== 1)
-    {
-        return [
-            'ok'    => false,
-            'error' => 'Database name "' . $dbName . '" contains a character this installer will not place '
-                . 'inside an ALTER DATABASE statement. Run this yourself in your hosting panel or a MySQL '
-                . 'client, with your actual database name in place of <database name>, then try again: '
-                . 'ALTER DATABASE `<database name>` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; '
-                . 'Go2My.Link requires this collation (#196).',
-        ];
-    }
-
-    // Try to correct it. This can fail quietly (mysqli_report is OFF for the
-    // whole installer, see g2ml_install_connect() above) when the connected
-    // user has no ALTER privilege on the database itself — common on shared
-    // hosting, where a panel-created user is often scoped to DML only. That
-    // is not a bug in this installer; it is outside what it can do, and the
-    // re-check below is what tells the two cases apart.
-    $db->query('ALTER DATABASE `' . $dbName . '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
+    // Not yet correct, so try to fix it. The statement below is a fixed
+    // constant — no database name or any other value is joined into it —
+    // because $db was connected with the target database already selected
+    // (g2ml_install_connect() passes $creds['name'] to the mysqli
+    // constructor), so a nameless ALTER DATABASE applies to it directly.
+    // It is run as a plain query rather than a prepared one because MySQL
+    // 8.4.11 refuses to prepare ALTER DATABASE at all — error 1295, "This
+    // command is not supported in the prepared statement protocol yet"
+    // (checked 2026-09-25); MariaDB 11.8.9 accepts the prepared form, so
+    // preparing it would silently stop the automatic correction working on
+    // MySQL. Either way there is no user input in this statement to
+    // validate or escape. This can still fail quietly (mysqli_report is OFF
+    // for the whole installer, see g2ml_install_connect() above) when the
+    // connected user has no ALTER privilege on the database itself —
+    // common on shared hosting, where a panel-created user is often scoped
+    // to DML only. That is not a bug in this installer; it is outside what
+    // it can do, and the re-check below is what tells the two cases apart.
+    $db->query('ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci');
 
     $collation = $readCollation();
 
