@@ -277,21 +277,11 @@ function g2ml_requestDataExport(int $userUID): array
 //
 // The admin dashboard page pages/privacy/export/index.php links to (and
 // g2ml_requestDataExport()'s own email above sends) a download URL of the
-// form /privacy/export?download=<requestUID> — but the file-based router
-// (web/Go2My.Link/_admin/public_html/index.php) ALWAYS requires header.php +
-// nav.php (which echo real HTML — there is no output buffering anywhere in
-// this app) BEFORE it ever requires the resolved page file. By the time a
-// page file's own code runs, a header() call for Content-Type/
-// Content-Disposition/Location would silently fail ("headers already sent")
-// — the exact constraint pages/analytics/index.php's own docblock documents,
-// and the reason analytics-export.php (#44) exists as a second, standalone
-// entry point in public_html/ rather than a pages/ file.
-//
-// g2ml_handleDataExportDownloadRequest() below is the equivalent fix for this
-// route, but dispatched from the ROUTER itself — see index.php's Step 5 —
-// BEFORE header.php is required, rather than as a second public_html file.
-// This keeps the download reachable at the SAME URL the page links to and
-// the emailed downloadURL already promises, with no change to either.
+// form /privacy/export?download=<requestUID>. The router
+// (web/Go2My.Link/_admin/public_html/index.php, Step 5b) calls
+// g2ml_handleDataExportDownloadRequest() below for it before any page HTML is
+// produced, so the file is sent with its own headers at the same URL the page
+// and the email promise.
 // ============================================================================
 
 /**
@@ -395,10 +385,9 @@ function g2ml_isExportRequestDownloadable(array|null|false $requestRow): bool
  * so the response can never be used as an oracle for whether a given
  * requestUID exists or who owns it (#162 IDOR guard).
  *
- * Safe to call here specifically because g2ml_handleDataExportDownloadRequest()
- * is only ever invoked from the router BEFORE header.php is required (see
- * this file's own section docblock above) — a plain header('Location: ...')
- * would fail everywhere else in this app.
+ * Called from g2ml_handleDataExportDownloadRequest() and
+ * g2ml_streamExportDownload(), which only ever run from the router's Step 5b,
+ * before any page HTML is produced.
  *
  * @return void  Always exits — never returns.
  */
@@ -487,9 +476,9 @@ function g2ml_streamExportDownload(array $requestRow, int $userUID): void
  * Handle a GET ?download=<requestUID> request against the /privacy/export
  * route (#162).
  *
- * MUST be called from the router BEFORE header.php is required (see
- * web/Go2My.Link/_admin/public_html/index.php, Step 5) — see this file's own
- * section docblock above for why.
+ * Called from the router (web/Go2My.Link/_admin/public_html/index.php,
+ * Step 5b) before any page HTML is produced, because it sends its own
+ * headers and the file, then exits.
  *
  * Reuses the page's own requireAuth() guard, then re-verifies ownership by
  * matching BOTH requestUID and the session's userUID in the SAME prepared

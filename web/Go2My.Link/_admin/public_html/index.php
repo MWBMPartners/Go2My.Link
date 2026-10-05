@@ -90,17 +90,10 @@ $resolved = resolveRoute($route, $pagesDir);
 // ============================================================================
 // 📥 Step 5b: GDPR Data Export Download (#162)
 // ============================================================================
-// A GET ?download=<requestUID> request against /privacy/export must send its
-// own Content-Type/Content-Disposition headers and exit — but Step 6 below
-// ALWAYS requires header.php + nav.php (which echo real HTML; there is no
-// output buffering anywhere in this app) before the resolved page file ever
-// runs. By that point a header() call would silently fail ("headers already
-// sent"), exactly as documented in pages/analytics/index.php's own docblock
-// and the reason analytics-export.php (#44) is a standalone entry point
-// rather than a pages/ file. Intercepting here — BEFORE Step 6 — is the
-// equivalent fix for this route, without needing a second entry point or a
-// different URL: see web/_functions/data_rights.php's own section docblock
-// for the full rationale.
+// A GET ?download=<requestUID> request against /privacy/export sends the
+// file, or a redirect, with its own headers, then exits, so it is handled
+// here, before any page HTML is produced. See
+// web/_functions/data_rights.php's section docblock for the rationale.
 // ============================================================================
 
 if ($resolved['segments'] === ['privacy', 'export'] && isset($_GET['download']))
@@ -115,9 +108,16 @@ if ($resolved['segments'] === ['privacy', 'export'] && isset($_GET['download']))
 
 if ($resolved['file'] !== null)
 {
+    // The page runs FIRST, into a buffer, and the header is printed after
+    // it, so a page's own title, description, status code and redirects
+    // take effect (#278).
+    ob_start();
+    require $resolved['file'];
+    $pageHtml = ob_get_clean();
+
     require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'header.php';
     require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'nav.php';
-    require $resolved['file'];
+    echo $pageHtml;
     require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'footer.php';
 }
 else
@@ -125,10 +125,14 @@ else
     // 404 or show admin dashboard home
     if ($route === '')
     {
-        // No route — render the dashboard home page
+        // No route — render the dashboard home page (buffered first, #278)
+        ob_start();
+        require __DIR__ . DIRECTORY_SEPARATOR . 'pages' . DIRECTORY_SEPARATOR . 'home.php';
+        $pageHtml = ob_get_clean();
+
         require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'header.php';
         require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'nav.php';
-        require __DIR__ . DIRECTORY_SEPARATOR . 'pages' . DIRECTORY_SEPARATOR . 'home.php';
+        echo $pageHtml;
         require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'footer.php';
     }
     else

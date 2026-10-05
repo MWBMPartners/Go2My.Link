@@ -19,15 +19,11 @@
  * ----------------------------------------------------------------------------
  * Why this is a standalone script, not a pages/analytics/* route
  * ----------------------------------------------------------------------------
- * Every route the file-based router (index.php's Step 5/6) resolves is
- * required AFTER header.php + nav.php have ALREADY been required — and, by
- * the time a page file runs, header.php has already echoed the HTML
- * doctype/<head>/opening <body> tag. A page file therefore cannot send its
- * own Content-Type/Content-Disposition headers (see pages/analytics/
- * index.php's own docblock, which documents the same "headers already sent"
- * trap for a plain header('Location: ...') redirect).
+ * The router (index.php) wraps every page in the site header, navigation and
+ * footer. A CSV export needs none of that: it sends its own Content-Type and
+ * Content-Disposition headers and the file, then stops.
  *
- * This file is instead a second, independent entry point placed directly in
+ * This file is therefore a second, independent entry point placed directly in
  * public_html — exactly like favicon.php in Component B
  * (web/G2My.Link/public_html/favicon.php) — which the .htaccess "Clean URLs"
  * rule serves directly (RewriteCond %{REQUEST_FILENAME} !-f) without ever

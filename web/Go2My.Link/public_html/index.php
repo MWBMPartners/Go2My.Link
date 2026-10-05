@@ -113,10 +113,18 @@ $resolved = resolveRoute($route, $pagesDir);
 
 if ($resolved['file'] !== null)
 {
-    // Page found — render with header/nav/footer
+    // Page found. The page runs FIRST, into a buffer, and the header is
+    // printed after it. A page sets its own title, description and status
+    // code, or redirects, and none of that works once the header's HTML has
+    // been sent: every page used to show the site name as its title, and
+    // /logout left a blank page instead of redirecting (#278).
+    ob_start();
+    require $resolved['file'];
+    $pageHtml = ob_get_clean();
+
     require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'header.php';
     require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'nav.php';
-    require $resolved['file'];
+    echo $pageHtml;
     require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'footer.php';
 }
 else
@@ -138,13 +146,13 @@ else
         $pageTitle = '404 — Page Not Found';
     }
 
-    require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'header.php';
-    require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'nav.php';
-
     // Check for the branded 404 page (pages/errors/404/index.php — same
     // directory + index.php convention as the 400/403/500 siblings, and the
     // same file the ErrorDocument 404 directive resolves to via the router).
+    // Buffered before the header, like a normal page (#278).
     $custom404 = $pagesDir . DIRECTORY_SEPARATOR . 'errors' . DIRECTORY_SEPARATOR . '404' . DIRECTORY_SEPARATOR . 'index.php';
+
+    ob_start();
 
     if (file_exists($custom404))
     {
@@ -160,5 +168,10 @@ else
         echo '</div>';
     }
 
+    $pageHtml = ob_get_clean();
+
+    require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'header.php';
+    require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'nav.php';
+    echo $pageHtml;
     require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'footer.php';
 }

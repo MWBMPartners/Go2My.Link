@@ -65,16 +65,9 @@
  * (g2ml_apiHandleAnalyticsGet()) achieves via an HTTP redirect.
  *
  * This page renders the fallback IN PLACE rather than issuing an HTTP
- * redirect: by the time a page file runs, the router
- * (web/Go2My.Link/_admin/public_html/index.php) has already required
- * header.php + nav.php, which have already written HTML — there is no
- * output buffering in this app, so a header('Location: ...') call here
- * would fail with "headers already sent" (the router's own 404 branch only
- * gets away with http_response_code(404) because it calls it BEFORE
- * requiring header.php). Falling back silently avoids that trap entirely
- * and matches the tolerant-degradation style already used by
- * links/index.php's own ?filter= handling (an unrecognised value there
- * doesn't redirect either — it just doesn't filter).
+ * redirect, matching the tolerant style of links/index.php's own ?filter=
+ * handling (an unrecognised value there doesn't redirect either — it just
+ * doesn't filter).
  *
  * ----------------------------------------------------------------------------
  * Chart rendering (CSP-safe)

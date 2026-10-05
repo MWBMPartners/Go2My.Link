@@ -20,11 +20,11 @@
  * ----------------------------------------------------------------------------
  * Why this is a standalone script, not a pages/* route
  * ----------------------------------------------------------------------------
- * Identical reasoning to analytics-export.php (#44) — this file is the
- * template it was copied from. Every route the file-based router resolves is
- * required AFTER header.php has ALREADY echoed HTML; a route file cannot
- * therefore send its own JSON Content-Type/404/405 status codes. This file is
- * instead a second, independent entry point in public_html/, served directly
+ * The router (index.php) wraps every page in the site's HTML header,
+ * navigation and footer and requires a signed-in user; a scheduler's request
+ * needs neither, and gets a short plain-text or JSON answer with its own
+ * status code. This
+ * file is therefore a second, independent entry point in public_html/, served directly
  * by the existing `.htaccess` clean-URL rule (RewriteCond
  * %{REQUEST_FILENAME} !-f) — because cron.php IS a real file, that rule never
  * routes it through index.php at all.
