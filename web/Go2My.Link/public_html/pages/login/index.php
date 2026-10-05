@@ -91,28 +91,14 @@ $formError  = '';
 $isLocked   = false;
 $lockSeconds = 0;
 
-// Get redirect URL from query string (for post-login redirect)
-$rawRedirectParam = '';
+// Get redirect URL from query string (for post-login redirect). The safety
+// rules live in g2ml_safePostLoginRedirect() (web/_functions/security.php),
+// shared with the check after sign-in below.
+$redirectURL = '';
 
-if (isset($_GET['redirect']))
+if (isset($_GET['redirect']) && is_string($_GET['redirect']))
 {
-    $rawRedirectParam = g2ml_sanitiseInput($_GET['redirect']);
-}
-
-// 🛡️ Reject any redirect value containing ASCII control characters
-// (0x00-0x1F, 0x7F) BEFORE the path check. Browsers strip such characters
-// (e.g. a literal TAB) per the WHATWG URL spec, so a value like
-// "/\t/evil.com" would otherwise slip past a naive path check and become
-// "//evil.com" (protocol-relative open redirect) once reflected back into
-// the page. Only accept a single leading slash not followed by another
-// slash or backslash.
-if ($rawRedirectParam !== '' && preg_match('/[\x00-\x1F\x7F]/', $rawRedirectParam) === 0 && preg_match('/^\/(?!\/|\\\\)/', $rawRedirectParam) === 1)
-{
-    $redirectURL = $rawRedirectParam;
-}
-else
-{
-    $redirectURL = '';
+    $redirectURL = g2ml_safePostLoginRedirect(g2ml_sanitiseInput($_GET['redirect']));
 }
 
 // Flash message from registration or password reset
@@ -195,17 +181,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                 // Determine where to redirect
                 $postLoginRedirect = 'https://admin.go2my.link/';
 
-                $postRedirect = $_POST['redirect'] ?? '';
+                $postRedirect = '';
 
-                // 🛡️ Reject any redirect value containing ASCII control characters
-                // (0x00-0x1F, 0x7F) BEFORE the path check. The previous regex only
-                // inspected character #2, so "/\t/evil.com" (a literal ASCII TAB at
-                // position 2) passed the old check; browsers strip control characters
-                // per the WHATWG URL spec, turning that value into "//evil.com"
-                // (protocol-relative open redirect) once emitted in the Location
-                // header. Only accept a single leading slash not followed by another
-                // slash or backslash.
-                if ($postRedirect !== '' && preg_match('/[\x00-\x1F\x7F]/', $postRedirect) === 0 && preg_match('/^\/(?!\/|\\\\)/', $postRedirect) === 1)
+                if (isset($_POST['redirect']) && is_string($_POST['redirect']))
+                {
+                    $postRedirect = g2ml_safePostLoginRedirect($_POST['redirect']);
+                }
+
+                if ($postRedirect !== '')
                 {
                     $postLoginRedirect = $postRedirect;
                 }

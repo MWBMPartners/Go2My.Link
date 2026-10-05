@@ -20,7 +20,8 @@
  *   - Bot protection verification (Turnstile/reCAPTCHA, conditional)
  *   - IP-based rate limiting
  *   - URL validation and creation
- *   - No-JS fallback (redirect with query params for non-AJAX requests)
+ *   - No-JS fallback (redirect to the homepage with a one-time session
+ *     message for non-AJAX requests, #281)
  *
  * Foundation for Phase 6 public API (will add API key auth as alternative
  * to CSRF tokens).
@@ -77,7 +78,8 @@ require_once $componentFunctionsDir . DIRECTORY_SEPARATOR . 'shorturl_create.php
 // 🔀 Step 2: Determine if this is an AJAX or standard form POST
 // ============================================================================
 // For non-AJAX requests (no-JS fallback), we redirect back to the homepage
-// with the result as query parameters.
+// and hand over the result as a one-time session message (g2ml_flashSet()),
+// never in the address (#281).
 //
 // 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest
 // ============================================================================
@@ -148,7 +150,8 @@ if (!g2ml_validateCSRFToken($csrfToken, 'shorten_url'))
     }
     else
     {
-        header('Location: /?error=' . urlencode($errorMsg), true, 303);
+        g2ml_flashSet('shorten_error', $errorMsg);
+        header('Location: /', true, 303);
     }
     exit;
 }
@@ -181,7 +184,8 @@ if ($turnstileSecretKey !== '')
         }
         else
         {
-            header('Location: /?error=' . urlencode($errorMsg), true, 303);
+            g2ml_flashSet('shorten_error', $errorMsg);
+            header('Location: /', true, 303);
         }
         exit;
     }
@@ -196,7 +200,8 @@ if ($turnstileSecretKey !== '')
         }
         else
         {
-            header('Location: /?error=' . urlencode($errorMsg), true, 303);
+            g2ml_flashSet('shorten_error', $errorMsg);
+            header('Location: /', true, 303);
         }
         exit;
     }
@@ -216,7 +221,8 @@ elseif ($recaptchaSecretKey !== '')
         }
         else
         {
-            header('Location: /?error=' . urlencode($errorMsg), true, 303);
+            g2ml_flashSet('shorten_error', $errorMsg);
+            header('Location: /', true, 303);
         }
         exit;
     }
@@ -231,7 +237,8 @@ elseif ($recaptchaSecretKey !== '')
         }
         else
         {
-            header('Location: /?error=' . urlencode($errorMsg), true, 303);
+            g2ml_flashSet('shorten_error', $errorMsg);
+            header('Location: /', true, 303);
         }
         exit;
     }
@@ -269,7 +276,8 @@ if (!$rateCheck['allowed'])
     }
     else
     {
-        header('Location: /?error=' . urlencode($errorMsg), true, 303);
+        g2ml_flashSet('shorten_error', $errorMsg);
+        header('Location: /', true, 303);
     }
     exit;
 }
@@ -290,7 +298,8 @@ if ($longURL === '')
     }
     else
     {
-        header('Location: /?error=' . urlencode($errorMsg), true, 303);
+        g2ml_flashSet('shorten_error', $errorMsg);
+        header('Location: /', true, 303);
     }
     exit;
 }
@@ -323,7 +332,8 @@ if ($result['success'])
     else
     {
         // No-JS fallback: redirect back to homepage with the created URL
-        header('Location: /?created=' . urlencode($result['shortURL']), true, 303);
+        g2ml_flashSet('shorten_created', $result['shortURL']);
+        header('Location: /', true, 303);
     }
 }
 else
@@ -338,7 +348,8 @@ else
     else
     {
         // No-JS fallback: redirect back with error
-        header('Location: /?error=' . urlencode($result['error']), true, 303);
+        g2ml_flashSet('shorten_error', $result['error']);
+        header('Location: /', true, 303);
     }
 }
 exit;

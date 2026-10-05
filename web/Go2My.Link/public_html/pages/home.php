@@ -47,39 +47,21 @@ elseif ($recaptchaSiteKey !== '')
     $captchaType = 'recaptcha';
 }
 
-// ♿ Check for no-JS fallback results (from API redirect)
+// ♿ No-JS fallback results, handed over by api/create/ as one-time session
+// messages. They are never read from the address: a ?error= or ?created=
+// value there could be written by anyone, which let a link to our own
+// homepage show any text and any link someone chose (#281).
 // 🛡️ $createdURL is rendered into an <a href="..."> attribute below, so it
-// must be scheme-restricted (http/https only) via g2ml_sanitiseURL() BEFORE
-// it ever reaches the attribute — g2ml_sanitiseOutput() alone only entity-
-// encodes and does NOT stop a "javascript:" (or other) scheme from executing
-// on click. Blank the value outright if the scheme guard rejects it.
-if (isset($_GET['created']))
+// is still scheme-restricted (http/https only) via g2ml_sanitiseURL().
+$createdURL        = '';
+$createdURLChecked = g2ml_sanitiseURL(g2ml_flashTake('shorten_created'));
+if ($createdURLChecked !== false)
 {
-    $createdURLInput = g2ml_sanitiseInput($_GET['created']);
-    $createdURLChecked = g2ml_sanitiseURL($createdURLInput);
-    if ($createdURLChecked === false)
-    {
-        $createdURL = '';
-    }
-    else
-    {
-        $createdURL = $createdURLChecked;
-    }
-}
-else
-{
-    $createdURL = '';
+    $createdURL = $createdURLChecked;
 }
 // ℹ️ $errorMsg is rendered as plain text only (never into a URL attribute),
 // so g2ml_sanitiseOutput() entity-encoding at the echo site is sufficient.
-if (isset($_GET['error']))
-{
-    $errorMsg = g2ml_sanitiseInput($_GET['error']);
-}
-else
-{
-    $errorMsg = '';
-}
+$errorMsg = g2ml_flashTake('shorten_error');
 ?>
 
 <!-- ====================================================================== -->

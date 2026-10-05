@@ -623,3 +623,48 @@ function _g2ml_maskIP(string $ip): string
 
     return $ip;
 }
+
+// ============================================================================
+// 📨 One-time messages for the next page (#281)
+// ============================================================================
+// A message carried in the address (for example /?error=...) can be written
+// by anyone, so a link to our own homepage could show any text and any link
+// someone chose. Messages that a redirect hands to the next page are kept in
+// the visitor's session instead, and read once.
+// ============================================================================
+
+/**
+ * Keep a message for the next page this visitor opens.
+ *
+ * @param  string $key    Which message (for example 'shorten_error')
+ * @param  string $value  The message text or address
+ * @return void
+ */
+function g2ml_flashSet(string $key, string $value): void
+{
+    if (!isset($_SESSION['_g2ml_flash']) || !is_array($_SESSION['_g2ml_flash']))
+    {
+        $_SESSION['_g2ml_flash'] = array();
+    }
+
+    $_SESSION['_g2ml_flash'][$key] = $value;
+}
+
+/**
+ * Read a kept message once and forget it. Returns '' when there is none.
+ *
+ * @param  string $key  Which message
+ * @return string       The message, or ''
+ */
+function g2ml_flashTake(string $key): string
+{
+    if (!isset($_SESSION['_g2ml_flash'][$key]) || !is_string($_SESSION['_g2ml_flash'][$key]))
+    {
+        return '';
+    }
+
+    $value = $_SESSION['_g2ml_flash'][$key];
+    unset($_SESSION['_g2ml_flash'][$key]);
+
+    return $value;
+}

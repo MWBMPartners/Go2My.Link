@@ -255,7 +255,7 @@ Login page ──► "Sign in with SIGNula" ──► SIGNula /authorize (code+P
 - **Same verified email** → offer to link (must confirm ownership, e.g. re-enter password or email a confirm link) — never silently merge.
 - **SSO-only signup** → create `tblUsers` with `passwordHash=NULL`, `emailVerified=1` (trust SIGNula's verified email), `orgHandle='[default]'`, `assignAccountType('user')`.
 - **Unlink** guard: refuse to unlink the last remaining auth method if `passwordHash IS NULL`.
-- **Open-redirect safety:** the OAuth `redirect_uri` must be an allowlisted constant, and post-login redirect stays relative-only (the login page already enforces relative-only redirects after the cycle-2 fix).
+- **Open-redirect safety:** the OAuth `redirect_uri` must be an allowlisted constant, and the post-login redirect goes through `g2ml_safePostLoginRedirect()` (`web/_functions/security.php`): a path on go2my.link or an `https://admin.go2my.link/` address, nothing else (#281).
 
 ### 4.4 Relation to Phases 10/11 — thin launch vs full defer
 

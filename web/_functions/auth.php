@@ -742,6 +742,17 @@ function requireAuth(string $minRole = 'User'): void
     if (!isAuthenticated())
     {
         $redirectURL = $_SERVER['REQUEST_URI'] ?? '/';
+
+        // The login page lives on go2my.link, so a dashboard path on its own
+        // (for example /links) would send the person to a main-site page that
+        // does not exist after they sign in. Send the full dashboard address
+        // instead; the login page accepts full addresses only on that host
+        // (#281).
+        if (function_exists('g2ml_getComponent') && g2ml_getComponent() === 'Admin')
+        {
+            $redirectURL = 'https://admin.go2my.link' . $redirectURL;
+        }
+
         header('Location: https://go2my.link/login?redirect=' . urlencode($redirectURL));
         exit;
     }

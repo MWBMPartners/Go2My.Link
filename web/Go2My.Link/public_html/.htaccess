@@ -24,6 +24,14 @@
 # =============================================================================
 RewriteEngine On
 
+# Pass the Authorization header through to PHP, which did not receive it
+# without this rule (seen on a local copy running PHP as an Apache module;
+# CGI/FastCGI set-ups such as shared hosting also need it). API calls sending
+# "Authorization: Bearer <key>", the first method the API documentation
+# lists, were refused as having no key (#281).
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
 # =============================================================================
 # HTTPS Enforcement
 # Redirect all HTTP traffic to HTTPS (301 Permanent)

@@ -436,6 +436,60 @@ function g2ml_postedText(string $name): string
 }
 
 /**
+ * Where to send someone after they sign in, or '' if $value is not safe.
+ *
+ * Two kinds of value are accepted:
+ *   - a path on this site: one leading slash, not followed by another slash
+ *     or a backslash (so "//evil.com" and "/\evil.com" are refused);
+ *   - a full address on the dashboard, starting exactly with
+ *     https://admin.go2my.link/ (the dashboard's sign-in check sends these,
+ *     because a bare dashboard path such as /links would land on a page of
+ *     the main site that does not exist, #281).
+ * Any ASCII control character or backslash anywhere refuses the value:
+ * browsers drop tabs and line breaks from inside an address, which can turn
+ * "/<TAB>/evil.com" into "//evil.com".
+ *
+ * @param  string $value  The requested redirect target
+ * @return string         $value unchanged when safe, otherwise ''
+ */
+function g2ml_safePostLoginRedirect(string $value): string
+{
+    if ($value === '' || preg_match('/[\x00-\x1F\x7F\\\\]/', $value) === 1)
+    {
+        return '';
+    }
+
+    if (preg_match('/^\/(?!\/)/', $value) === 1)
+    {
+        return $value;
+    }
+
+    if (strncmp($value, 'https://admin.go2my.link/', 25) !== 0)
+    {
+        return '';
+    }
+
+    $parts = parse_url($value);
+
+    if (!is_array($parts))
+    {
+        return '';
+    }
+
+    if (($parts['host'] ?? '') !== 'admin.go2my.link')
+    {
+        return '';
+    }
+
+    if (isset($parts['user']) || isset($parts['pass']) || isset($parts['port']))
+    {
+        return '';
+    }
+
+    return $value;
+}
+
+/**
  * Sanitise a string for general use (strip tags, trim whitespace).
  *
  * @param  string|null $input  The raw input string
