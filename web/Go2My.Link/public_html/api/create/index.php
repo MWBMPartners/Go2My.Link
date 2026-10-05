@@ -37,9 +37,12 @@
 // 📦 Step 1: Bootstrap the Application
 // ============================================================================
 // Same auth/bootstrap pattern as the main index.php entry point.
+// This file is four folders below web/ (Go2My.Link/public_html/api/create/),
+// the same depth as api/consent/ and api/v1/, which also use
+// dirname(__DIR__, 4) for web/ (#277).
 // ============================================================================
 
-$componentAuthPath = dirname(__DIR__, 2)
+$componentAuthPath = dirname(__DIR__, 3)
     . DIRECTORY_SEPARATOR . '.auth'
     . DIRECTORY_SEPARATOR . 'auth_creds.php';
 
@@ -60,14 +63,14 @@ else
 define('G2ML_COMPONENT',        'A');
 define('G2ML_COMPONENT_NAME',   'Main Website');
 define('G2ML_COMPONENT_DOMAIN', 'go2my.link');
-define('G2ML_ROOT', dirname(__DIR__, 3));
+define('G2ML_ROOT', dirname(__DIR__, 4));
 
 require_once G2ML_ROOT
     . DIRECTORY_SEPARATOR . '_includes'
     . DIRECTORY_SEPARATOR . 'page_init.php';
 
 // Load the short URL creation functions
-$componentFunctionsDir = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . '_functions';
+$componentFunctionsDir = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . '_functions';
 require_once $componentFunctionsDir . DIRECTORY_SEPARATOR . 'shorturl_create.php';
 
 // ============================================================================

@@ -39,14 +39,7 @@ $userUID     = $currentUser['userUID'];
 // Load shorturl_create.php if not already loaded — this page does not
 // normally need it, but SAVING a change now runs the same shared destination
 // check createShortURL() uses (#205), so g2ml_validateLinkDestination() must
-// be available.
-//
-// pages/links/create/index.php has the same-looking line but with
-// dirname(__DIR__, 4), which resolves to .../Go2My.Link/_admin/_functions/
-// shorturl_create.php — a path that does not exist, so that page's own
-// require silently never runs. The correct depth is 5, the same one
-// pages/linkspage/edit/index.php already uses correctly for a
-// pages/<X>/<Y>/index.php file at this same nesting.
+// be available. Five levels up from this folder is web/Go2My.Link/.
 $shorturlPath = dirname(__DIR__, 5) . DIRECTORY_SEPARATOR . '_functions' . DIRECTORY_SEPARATOR . 'shorturl_create.php';
 
 if (file_exists($shorturlPath) && !function_exists('g2ml_validateLinkDestination'))

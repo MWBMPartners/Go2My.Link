@@ -36,8 +36,10 @@ if (function_exists('__')) {
 
 $currentUser = getCurrentUser();
 
-// Load the shorturl_create.php if not already loaded
-$shorturlPath = dirname(__DIR__, 4) . DIRECTORY_SEPARATOR . '_functions' . DIRECTORY_SEPARATOR . 'shorturl_create.php';
+// Load the shorturl_create.php if not already loaded. Five levels up from
+// this folder is web/Go2My.Link/. Four landed in _admin/, where the file does
+// not exist, so every new link failed with "service unavailable" (#277).
+$shorturlPath = dirname(__DIR__, 5) . DIRECTORY_SEPARATOR . '_functions' . DIRECTORY_SEPARATOR . 'shorturl_create.php';
 
 if (file_exists($shorturlPath) && !function_exists('createShortURL'))
 {
