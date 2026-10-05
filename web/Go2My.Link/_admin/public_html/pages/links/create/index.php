@@ -229,8 +229,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                             <?php echo g2ml_csrfField('create_link_form'); ?>
 
                             <?php
-                                if (isset($_POST['destination_url'])) {
-                                    $fieldValue = g2ml_sanitiseOutput($_POST['destination_url']);
+                                if (isset($_POST['destination_url']) && is_string($_POST['destination_url'])) {
+                                    $fieldValue = $_POST['destination_url'];
                                 } else {
                                     $fieldValue = '';
                                 }
@@ -245,8 +245,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                                 'value' => $fieldValue,
                             ]);
 
-                                if (isset($_POST['title'])) {
-                                    $fieldValue = g2ml_sanitiseOutput($_POST['title']);
+                                if (isset($_POST['title']) && is_string($_POST['title'])) {
+                                    $fieldValue = $_POST['title'];
                                 } else {
                                     $fieldValue = '';
                                 }
@@ -265,8 +265,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                                 // users may pick their own short code instead of
                                 // a random one. Re-display the submitted value on
                                 // error so the user does not have to retype it.
-                                if (isset($_POST['custom_code'])) {
-                                    $fieldValue = g2ml_sanitiseOutput($_POST['custom_code']);
+                                if (isset($_POST['custom_code']) && is_string($_POST['custom_code'])) {
+                                    $fieldValue = $_POST['custom_code'];
                                 } else {
                                     $fieldValue = '';
                                 }
@@ -285,8 +285,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                                 // side normalises, de-duplicates, and caps them
                                 // (see createShortURL). Re-display the submitted
                                 // value on error so the user need not retype it.
-                                if (isset($_POST['tags'])) {
-                                    $fieldValue = g2ml_sanitiseOutput($_POST['tags']);
+                                if (isset($_POST['tags']) && is_string($_POST['tags'])) {
+                                    $fieldValue = $_POST['tags'];
                                 } else {
                                     $fieldValue = '';
                                 }

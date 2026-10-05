@@ -299,7 +299,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                                 } else {
                                     $fieldPlaceholder = 'you@example.com';
                                 }
-                                if (isset($_POST['email'])) {
+                                if (isset($_POST['email']) && is_string($_POST['email'])) {
                                     $fieldValue = $_POST['email'];
                                 } else {
                                     $fieldValue = '';

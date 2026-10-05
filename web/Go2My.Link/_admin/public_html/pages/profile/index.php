@@ -208,7 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
                                         'type'         => 'text',
                                         'required'     => true,
                                         'autocomplete' => 'given-name',
-                                        'value'        => g2ml_sanitiseOutput($userData['firstName']),
+                                        'value'        => $userData['firstName'],
                                     ]);
                                     ?>
                                 </div>
@@ -221,7 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
                                         'type'         => 'text',
                                         'required'     => true,
                                         'autocomplete' => 'family-name',
-                                        'value'        => g2ml_sanitiseOutput($userData['lastName']),
+                                        'value'        => $userData['lastName'],
                                     ]);
                                     ?>
                                 </div>
@@ -235,7 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
                                 'type'     => 'text',
                                 'required' => false,
                                 'helpText' => 'How your name appears to others. Defaults to First + Last name.',
-                                'value'    => g2ml_sanitiseOutput($userData['displayName']),
+                                'value'    => $userData['displayName'],
                             ]);
                             ?>
 

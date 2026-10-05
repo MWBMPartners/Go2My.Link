@@ -310,7 +310,7 @@ if (function_exists('getDefaultShortDomain')) {
                                 'type'        => 'url',
                                 'placeholder' => 'https://example.com/your-long-url',
                                 'required'    => true,
-                                'value'       => g2ml_sanitiseOutput($linkData['destinationURL']),
+                                'value'       => $linkData['destinationURL'],
                             ]);
 
                             echo formField([
@@ -320,7 +320,7 @@ if (function_exists('getDefaultShortDomain')) {
                                 'type'        => 'text',
                                 'placeholder' => 'My Link',
                                 'required'    => false,
-                                'value'       => g2ml_sanitiseOutput($linkData['title'] ?? ''),
+                                'value'       => $linkData['title'] ?? '',
                             ]);
 
                             echo formField([
@@ -331,7 +331,7 @@ if (function_exists('getDefaultShortDomain')) {
                                 'placeholder' => 'Internal notes about this link...',
                                 'required'    => false,
                                 'rows'        => 3,
-                                'value'       => g2ml_sanitiseOutput($linkData['notes'] ?? ''),
+                                'value'       => $linkData['notes'] ?? '',
                             ]);
                             ?>
 

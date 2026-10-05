@@ -214,8 +214,8 @@ elseif ($recaptchaSiteKey !== '')
                                             } else {
                                                 $fieldPlaceholder = 'John';
                                             }
-                                            if (isset($_POST['first_name'])) {
-                                                $fieldValue = g2ml_sanitiseOutput($_POST['first_name']);
+                                            if (isset($_POST['first_name']) && is_string($_POST['first_name'])) {
+                                                $fieldValue = $_POST['first_name'];
                                             } else {
                                                 $fieldValue = '';
                                             }
@@ -243,8 +243,8 @@ elseif ($recaptchaSiteKey !== '')
                                             } else {
                                                 $fieldPlaceholder = 'Doe';
                                             }
-                                            if (isset($_POST['last_name'])) {
-                                                $fieldValue = g2ml_sanitiseOutput($_POST['last_name']);
+                                            if (isset($_POST['last_name']) && is_string($_POST['last_name'])) {
+                                                $fieldValue = $_POST['last_name'];
                                             } else {
                                                 $fieldValue = '';
                                             }
@@ -273,8 +273,8 @@ elseif ($recaptchaSiteKey !== '')
                                     } else {
                                         $fieldPlaceholder = 'you@example.com';
                                     }
-                                    if (isset($_POST['email'])) {
-                                        $fieldValue = g2ml_sanitiseOutput($_POST['email']);
+                                    if (isset($_POST['email']) && is_string($_POST['email'])) {
+                                        $fieldValue = $_POST['email'];
                                     } else {
                                         $fieldValue = '';
                                     }

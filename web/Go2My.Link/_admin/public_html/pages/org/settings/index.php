@@ -247,7 +247,7 @@ if ($isGlobalAdmin)
                                 'label'    => 'Organisation Name',
                                 'type'     => 'text',
                                 'required' => true,
-                                'value'    => g2ml_sanitiseOutput($org['orgName']),
+                                'value'    => $org['orgName'],
                             ]);
 
                             echo formField([
@@ -256,7 +256,7 @@ if ($isGlobalAdmin)
                                 'label'    => 'Website URL',
                                 'type'     => 'url',
                                 'required' => false,
-                                'value'    => g2ml_sanitiseOutput($org['orgURL'] ?? ''),
+                                'value'    => $org['orgURL'] ?? '',
                             ]);
 
                             echo formField([
@@ -265,7 +265,7 @@ if ($isGlobalAdmin)
                                 'label'    => 'Description',
                                 'type'     => 'textarea',
                                 'required' => false,
-                                'value'    => g2ml_sanitiseOutput($org['orgDescription'] ?? ''),
+                                'value'    => $org['orgDescription'] ?? '',
                             ]);
 
                             echo formField([
@@ -274,7 +274,7 @@ if ($isGlobalAdmin)
                                 'label'    => 'Fallback URL',
                                 'type'     => 'url',
                                 'required' => false,
-                                'value'    => g2ml_sanitiseOutput($org['orgFallbackURL'] ?? ''),
+                                'value'    => $org['orgFallbackURL'] ?? '',
                                 'helpText' => 'URL to redirect to when a short link is not found or has expired.',
                             ]);
                             ?>
@@ -352,7 +352,7 @@ if ($isGlobalAdmin)
                                 'label'    => 'Admin Notes',
                                 'type'     => 'textarea',
                                 'required' => false,
-                                'value'    => g2ml_sanitiseOutput($org['orgNotes'] ?? ''),
+                                'value'    => $org['orgNotes'] ?? '',
                                 'helpText' => 'Internal notes (not visible to org members).',
                             ]);
                             ?>

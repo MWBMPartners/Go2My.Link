@@ -416,6 +416,26 @@ function g2ml_sanitiseOutput(?string $input): string
 }
 
 /**
+ * The text a form posted under $name, unchanged, for showing it again in the
+ * form. Returns '' when the field is missing or was sent as a list instead of
+ * text. Hand the result to formField(), which escapes it once; escaping it
+ * here as well made "&" and apostrophes appear as "&amp;" and "&#039;" and
+ * saved them that way (#280).
+ *
+ * @param  string $name  The form field's name
+ * @return string        The posted text, or '' if there is none
+ */
+function g2ml_postedText(string $name): string
+{
+    if (isset($_POST[$name]) && is_string($_POST[$name]))
+    {
+        return $_POST[$name];
+    }
+
+    return '';
+}
+
+/**
  * Sanitise a string for general use (strip tags, trim whitespace).
  *
  * @param  string|null $input  The raw input string

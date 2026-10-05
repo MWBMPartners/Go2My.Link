@@ -153,7 +153,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                         'type'         => 'email',
                         'required'     => true,
                         'autocomplete' => 'email',
-                        'value'        => g2ml_sanitiseOutput($_POST['invite_email'] ?? ''),
+                        'value'        => g2ml_postedText('invite_email'),
                         'helpText'     => 'The email address of the person you want to invite.',
                     ]);
                     ?>

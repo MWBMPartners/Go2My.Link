@@ -161,7 +161,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                         'label'    => 'Organisation Name',
                         'type'     => 'text',
                         'required' => true,
-                        'value'    => g2ml_sanitiseOutput($_POST['org_name'] ?? ''),
+                        'value'    => g2ml_postedText('org_name'),
                         'helpText' => 'The display name for your organisation.',
                     ]);
 
@@ -171,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                         'label'    => 'Handle / Slug',
                         'type'     => 'text',
                         'required' => true,
-                        'value'    => g2ml_sanitiseOutput($_POST['org_handle'] ?? ''),
+                        'value'    => g2ml_postedText('org_handle'),
                         'helpText' => 'Lowercase letters, numbers, and hyphens only (3–50 characters). This is your unique identifier.',
                     ]);
 
@@ -181,7 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                         'label'    => 'Website URL',
                         'type'     => 'url',
                         'required' => false,
-                        'value'    => g2ml_sanitiseOutput($_POST['org_url'] ?? ''),
+                        'value'    => g2ml_postedText('org_url'),
                         'helpText' => 'Your organisation\'s primary website (optional).',
                     ]);
 
@@ -191,7 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                         'label'    => 'Description',
                         'type'     => 'textarea',
                         'required' => false,
-                        'value'    => g2ml_sanitiseOutput($_POST['org_description'] ?? ''),
+                        'value'    => g2ml_postedText('org_description'),
                         'helpText' => 'A brief description of your organisation (optional).',
                     ]);
                     ?>

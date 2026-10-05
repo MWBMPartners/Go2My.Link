@@ -214,8 +214,8 @@ elseif ($recaptchaSiteKey !== '')
                                     } else {
                                         $fieldPlaceholder = 'you@example.com';
                                     }
-                                    if (isset($_POST['email'])) {
-                                        $fieldValue = g2ml_sanitiseOutput($_POST['email']);
+                                    if (isset($_POST['email']) && is_string($_POST['email'])) {
+                                        $fieldValue = $_POST['email'];
                                     } else {
                                         $fieldValue = '';
                                     }

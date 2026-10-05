@@ -295,8 +295,8 @@ if ($linkData !== null)
                                 } else {
                                     $fieldHelpText = 'Enter a Go2My.Link short URL or just the short code.';
                                 }
-                                if (isset($_GET['url'])) {
-                                    $fieldValue = g2ml_sanitiseOutput($_GET['url']);
+                                if (isset($_GET['url']) && is_string($_GET['url'])) {
+                                    $fieldValue = $_GET['url'];
                                 } else {
                                     $fieldValue = '';
                                 }
