@@ -1,0 +1,4 @@
+# Go2My.Link dashboard (admin.go2my.link)
+# Every page here is behind a login, so crawlers have nothing to index.
+User-agent: *
+Disallow: /

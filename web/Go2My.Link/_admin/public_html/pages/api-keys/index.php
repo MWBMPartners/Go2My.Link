@@ -62,14 +62,12 @@ $orgHandle   = $currentUser['orgHandle'];
 
 if ($orgHandle === '[default]' || !canManageOrg($orgHandle))
 {
-    echo '<div class="container py-5"><div class="alert alert-danger">';
-    echo '<i class="fas fa-lock" aria-hidden="true"></i> ';
     if (function_exists('__')) {
-        echo g2ml_sanitiseOutput(__('apikeys.error_forbidden'));
+        $deniedMessage = __('apikeys.error_forbidden');
     } else {
-        echo 'You do not have permission to manage API keys.';
+        $deniedMessage = 'You do not have permission to manage API keys.';
     }
-    echo '</div></div>';
+    g2ml_renderOrgAccessDenied($orgHandle, $deniedMessage);
     return;
 }
 

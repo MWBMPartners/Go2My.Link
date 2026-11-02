@@ -66,6 +66,13 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
     # HSTS — enforce HTTPS for 1 year
     # 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security
     Header set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+    # Keep dashboard pages out of search results. Every page here is behind a
+    # login, so there is nothing for a search engine to index. robots.txt asks
+    # crawlers not to visit; this header tells them not to list anything they
+    # do reach.
+    # 📖 Reference: https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag
+    Header always set X-Robots-Tag "noindex, nofollow"
 </IfModule>
 
 # =============================================================================
@@ -142,6 +149,17 @@ RewriteRule ^(.*)$ index.php?route=$1 [QSA,L]
 # Character Encoding
 # =============================================================================
 AddDefaultCharset UTF-8
+
+# =============================================================================
+# Error Documents
+# Custom branded error pages (routed through index.php for full template).
+# The front controller shows the main site's error page files for these
+# four routes, inside the dashboard layout.
+# =============================================================================
+ErrorDocument 400 /index.php?route=errors/400
+ErrorDocument 403 /index.php?route=errors/403
+ErrorDocument 404 /index.php?route=errors/404
+ErrorDocument 500 /index.php?route=errors/500
 
 # =============================================================================
 # PHP Configuration (if supported by hosting)

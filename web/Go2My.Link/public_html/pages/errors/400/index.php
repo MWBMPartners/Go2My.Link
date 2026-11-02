@@ -54,7 +54,7 @@ http_response_code(400);
                     <i class="fas fa-home" aria-hidden="true"></i>
                     <?php if (function_exists('__')) { echo __('error.go_home'); } else { echo 'Go Home'; } ?>
                 </a>
-                <a href="/contact" class="btn btn-outline-secondary">
+                <a href="<?php echo g2ml_mainSiteURL('/contact'); ?>" class="btn btn-outline-secondary">
                     <i class="fas fa-envelope" aria-hidden="true"></i>
                     <?php if (function_exists('__')) { echo __('error.contact_us'); } else { echo 'Contact Us'; } ?>
                 </a>

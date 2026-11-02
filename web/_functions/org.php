@@ -16,7 +16,7 @@
  * custom domain verification, short domain management, and (#46) designating
  * a verified short domain's custom-domain LinksPage fallback.
  *
- * Dependencies: security.php (g2ml_generateToken, g2ml_sanitiseInput),
+ * Dependencies: security.php (g2ml_generateToken, g2ml_sanitiseInput, g2ml_sanitiseOutput),
  *               db_query.php (dbSelect, dbSelectOne, dbInsert, dbUpdate, dbDelete),
  *               settings.php (getSetting),
  *               auth.php (getCurrentUser, hasMinimumRole),
@@ -83,6 +83,118 @@ function canManageOrg(string $orgHandle): bool
     // Admin can manage their own org
     return $currentUser['orgHandle'] === $orgHandle
         && hasMinimumRole($currentUser['role'], 'Admin');
+}
+
+// ============================================================================
+// 🚪 Access-Refused Block (dashboard organisation pages)
+// ============================================================================
+
+/**
+ * Build the block a dashboard page shows when it refuses someone access.
+ *
+ * Two different people are refused by the same check, and they need
+ * different words. Someone whose organisation handle is '[default]' (the
+ * shared place every new account starts in) has not joined or created an
+ * organisation yet, so they are told that and offered a button to create
+ * one. Someone who does belong to an organisation, but is not allowed to
+ * manage it, is told the page's own message.
+ *
+ * @param  string $orgHandle      The signed-in person's organisation handle.
+ * @param  string $deniedMessage  What this page says to a refused member,
+ *                                already translated. Escaped here.
+ * @return string                 HTML to print.
+ */
+function g2ml_orgAccessDeniedHTML(string $orgHandle, string $deniedMessage): string
+{
+    if ($orgHandle === '[default]')
+    {
+        if (function_exists('__'))
+        {
+            $heading = __('access.not_in_org_heading');
+        }
+        else
+        {
+            $heading = 'You are not in an organisation yet';
+        }
+
+        if (function_exists('__'))
+        {
+            $message = __('access.not_in_org_message');
+        }
+        else
+        {
+            $message = 'API keys, domains and members belong to an organisation. Create one to use this page.';
+        }
+
+        if (function_exists('__'))
+        {
+            $buttonLabel = __('access.create_org_button');
+        }
+        else
+        {
+            $buttonLabel = 'Create an organisation';
+        }
+
+        $alertClass = 'alert-warning';
+        $iconClass  = 'fas fa-building';
+        $buttonHref = '/org/create';
+    }
+    else
+    {
+        if (function_exists('__'))
+        {
+            $heading = __('access.denied_heading');
+        }
+        else
+        {
+            $heading = 'Access Denied';
+        }
+
+        $message = $deniedMessage;
+
+        if (function_exists('__'))
+        {
+            $buttonLabel = __('access.back_to_dashboard');
+        }
+        else
+        {
+            $buttonLabel = 'Back to Dashboard';
+        }
+
+        $alertClass = 'alert-danger';
+        $iconClass  = 'fas fa-lock';
+        $buttonHref = '/';
+    }
+
+    return '<div class="container py-5">'
+        . '<div class="alert ' . $alertClass . '" role="alert">'
+        . '<h1 class="h3 alert-heading">'
+        . '<i class="' . $iconClass . '" aria-hidden="true"></i> '
+        . g2ml_sanitiseOutput($heading)
+        . '</h1>'
+        . '<p>' . g2ml_sanitiseOutput($message) . '</p>'
+        . '<a href="' . $buttonHref . '" class="btn btn-primary">' . g2ml_sanitiseOutput($buttonLabel) . '</a>'
+        . '</div>'
+        . '</div>';
+}
+
+/**
+ * Print the access-refused block and mark the response as 403 Forbidden.
+ *
+ * Each dashboard page that needs an organisation calls this and then
+ * returns. The front controller runs each page into a buffer before any
+ * HTML is sent, which is what lets this set the status code (#278).
+ *
+ * @param  string $orgHandle      The signed-in person's organisation handle.
+ * @param  string $deniedMessage  The page's own refusal message, already
+ *                                translated.
+ * @return void
+ */
+function g2ml_renderOrgAccessDenied(string $orgHandle, string $deniedMessage): void
+{
+    http_response_code(403);
+
+    echo g2ml_orgAccessDeniedHTML($orgHandle, $deniedMessage);
 }
 
 // ============================================================================

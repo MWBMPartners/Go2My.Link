@@ -36,23 +36,15 @@ if (function_exists('__')) {
 $currentUser = getCurrentUser();
 $orgHandle   = $currentUser['orgHandle'];
 
-// Must not be in [default] org
-if ($orgHandle === '[default]')
+// Must be in a real organisation (not [default]) and be Admin or GlobalAdmin
+if ($orgHandle === '[default]' || !canManageOrg($orgHandle))
 {
-    echo '<div class="container py-5"><div class="alert alert-warning">';
-    echo '<i class="fas fa-exclamation-triangle" aria-hidden="true"></i> ';
-    echo 'You must be part of an organisation to access settings. <a href="/org/create">Create one</a>.';
-    echo '</div></div>';
-    return;
-}
-
-// Must be Admin or GlobalAdmin
-if (!canManageOrg($orgHandle))
-{
-    echo '<div class="container py-5"><div class="alert alert-danger">';
-    echo '<i class="fas fa-lock" aria-hidden="true"></i> ';
-    echo 'You do not have permission to manage organisation settings.';
-    echo '</div></div>';
+    if (function_exists('__')) {
+        $deniedMessage = __('org.settings_error_forbidden');
+    } else {
+        $deniedMessage = 'You do not have permission to manage organisation settings.';
+    }
+    g2ml_renderOrgAccessDenied($orgHandle, $deniedMessage);
     return;
 }
 

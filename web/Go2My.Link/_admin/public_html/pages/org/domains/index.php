@@ -48,10 +48,12 @@ $orgHandle   = $currentUser['orgHandle'];
 
 if ($orgHandle === '[default]' || !canManageOrg($orgHandle))
 {
-    echo '<div class="container py-5"><div class="alert alert-danger">';
-    echo '<i class="fas fa-lock" aria-hidden="true"></i> ';
-    echo 'You do not have permission to manage domains.';
-    echo '</div></div>';
+    if (function_exists('__')) {
+        $deniedMessage = __('org.domains_error_forbidden');
+    } else {
+        $deniedMessage = 'You do not have permission to manage domains.';
+    }
+    g2ml_renderOrgAccessDenied($orgHandle, $deniedMessage);
     return;
 }
 

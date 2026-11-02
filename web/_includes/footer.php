@@ -43,6 +43,10 @@ if ($g2mlGuardScriptPath !== '' && realpath($g2mlGuardScriptPath) === realpath(_
 unset($g2mlGuardScriptPath);
 
 $currentYear = date('Y');
+
+// The Quick Links and Legal links below point at pages that exist only on
+// the main site, so they go through g2ml_mainSiteURL() (page_init.php).
+// On the dashboard a plain "/about" would give "page not found".
 if (function_exists('getSetting')) {
     $siteName = getSetting('site.name', 'Go2My.Link');
 } else {
@@ -83,11 +87,11 @@ if (function_exists('getSetting')) {
             <div class="col-md-4 mb-3">
                 <h6><?php if (function_exists('__')) { echo __('footer.quick_links'); } else { echo 'Quick Links'; } ?></h6>
                 <ul class="list-unstyled small">
-                    <li><a href="/about" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('nav.about'); } else { echo 'About'; } ?></a></li>
-                    <li><a href="/features" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('nav.features'); } else { echo 'Features'; } ?></a></li>
-                    <li><a href="/pricing" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('nav.pricing'); } else { echo 'Pricing'; } ?></a></li>
-                    <li><a href="/help" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.help'); } else { echo 'Help &amp; Guides'; } ?></a></li>
-                    <li><a href="/contact" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.contact'); } else { echo 'Contact'; } ?></a></li>
+                    <li><a href="<?php echo g2ml_mainSiteURL('/about'); ?>" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('nav.about'); } else { echo 'About'; } ?></a></li>
+                    <li><a href="<?php echo g2ml_mainSiteURL('/features'); ?>" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('nav.features'); } else { echo 'Features'; } ?></a></li>
+                    <li><a href="<?php echo g2ml_mainSiteURL('/pricing'); ?>" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('nav.pricing'); } else { echo 'Pricing'; } ?></a></li>
+                    <li><a href="<?php echo g2ml_mainSiteURL('/help'); ?>" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.help'); } else { echo 'Help &amp; Guides'; } ?></a></li>
+                    <li><a href="<?php echo g2ml_mainSiteURL('/contact'); ?>" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.contact'); } else { echo 'Contact'; } ?></a></li>
                 </ul>
             </div>
 
@@ -95,11 +99,11 @@ if (function_exists('getSetting')) {
             <div class="col-md-4 mb-3">
                 <h6><?php if (function_exists('__')) { echo __('footer.legal'); } else { echo 'Legal'; } ?></h6>
                 <ul class="list-unstyled small">
-                    <li><a href="/legal/terms" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.terms'); } else { echo 'Terms of Use'; } ?></a></li>
-                    <li><a href="/legal/privacy" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.privacy'); } else { echo 'Privacy Policy'; } ?></a></li>
-                    <li><a href="/legal/cookies" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.cookies'); } else { echo 'Cookie Policy'; } ?></a></li>
-                    <li><a href="/legal/acceptable-use" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.aup'); } else { echo 'Acceptable Use'; } ?></a></li>
-                    <li><a href="/legal/copyright" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.copyright'); } else { echo 'Copyright'; } ?></a></li>
+                    <li><a href="<?php echo g2ml_mainSiteURL('/legal/terms'); ?>" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.terms'); } else { echo 'Terms of Use'; } ?></a></li>
+                    <li><a href="<?php echo g2ml_mainSiteURL('/legal/privacy'); ?>" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.privacy'); } else { echo 'Privacy Policy'; } ?></a></li>
+                    <li><a href="<?php echo g2ml_mainSiteURL('/legal/cookies'); ?>" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.cookies'); } else { echo 'Cookie Policy'; } ?></a></li>
+                    <li><a href="<?php echo g2ml_mainSiteURL('/legal/acceptable-use'); ?>" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.aup'); } else { echo 'Acceptable Use'; } ?></a></li>
+                    <li><a href="<?php echo g2ml_mainSiteURL('/legal/copyright'); ?>" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.copyright'); } else { echo 'Copyright'; } ?></a></li>
                 </ul>
             </div>
 

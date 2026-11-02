@@ -80,6 +80,28 @@ function g2ml_getComponent(): string
     return 'A';
 }
 
+/**
+ * Build a link to a page that exists only on the main site (go2my.link).
+ *
+ * The shared layout (nav.php, footer.php) and the main-site error pages use
+ * this for links such as /about, /login and /contact. On the main site the
+ * path is returned unchanged. On the dashboard (admin.go2my.link) it gets
+ * the full https://go2my.link address, because the dashboard does not have
+ * those pages and a plain "/about" there would give "page not found".
+ *
+ * The decision itself is made by g2ml_mainSiteURLForComponent()
+ * (web/_functions/main_site_url.php), which has unit tests. This wrapper
+ * only supplies the current component.
+ *
+ * @param  string $path  Where the page lives on the main site, starting with
+ *                       a slash, for example '/about'.
+ * @return string
+ */
+function g2ml_mainSiteURL(string $path): string
+{
+    return g2ml_mainSiteURLForComponent($path, g2ml_getComponent());
+}
+
 // ============================================================================
 // 🕐 Step 1.5: Force UTC Timezone
 // ============================================================================
@@ -261,6 +283,7 @@ require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'security.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'html_sanitiser.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'db_connect.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'db_query.php';
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'main_site_url.php';
 
 // Layer 2 — Core services (depend on Layer 1)
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'error_handler.php';

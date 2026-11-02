@@ -37,10 +37,12 @@ $orgHandle   = $currentUser['orgHandle'];
 
 if ($orgHandle === '[default]' || !canManageOrg($orgHandle))
 {
-    echo '<div class="container py-5"><div class="alert alert-danger">';
-    echo '<i class="fas fa-lock" aria-hidden="true"></i> ';
-    echo 'You do not have permission to manage members.';
-    echo '</div></div>';
+    if (function_exists('__')) {
+        $deniedMessage = __('org.members_error_forbidden');
+    } else {
+        $deniedMessage = 'You do not have permission to manage members.';
+    }
+    g2ml_renderOrgAccessDenied($orgHandle, $deniedMessage);
     return;
 }
 

@@ -54,7 +54,7 @@ http_response_code(403);
                     <i class="fas fa-home" aria-hidden="true"></i>
                     <?php if (function_exists('__')) { echo __('error.go_home'); } else { echo 'Go Home'; } ?>
                 </a>
-                <a href="/login" class="btn btn-outline-secondary">
+                <a href="<?php echo g2ml_mainSiteURL('/login'); ?>" class="btn btn-outline-secondary">
                     <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
                     <?php if (function_exists('__')) { echo __('nav.login'); } else { echo 'Log In'; } ?>
                 </a>

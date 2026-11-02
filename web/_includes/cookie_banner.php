@@ -91,7 +91,7 @@ if (function_exists('g2ml_generateCSRFToken')) {
                 </h2>
                 <p id="cookie-banner-desc" class="small text-body-secondary mb-0">
                     <?php if (function_exists('__')) { echo __('cookie.banner_message'); } else { echo 'We use cookies to improve your experience. Essential cookies are required for the site to function. You can choose which optional cookies to allow.'; } ?>
-                    <a href="/legal/cookies" class="text-decoration-underline">
+                    <a href="<?php echo g2ml_mainSiteURL('/legal/cookies'); ?>" class="text-decoration-underline">
                         <?php if (function_exists('__')) { echo __('cookie.learn_more'); } else { echo 'Learn more'; } ?>
                     </a>
                 </p>

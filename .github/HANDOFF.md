@@ -42,14 +42,13 @@ links, missing error and empty states, leftovers, contrast and layout at odd scr
 asked for a standing rule to keep checking. The findings were filed as issues **#277–#295**: #277–#288
 to fix now, #289–#295 design questions for later.
 
-**Committed and pushed so far:** `399733f` #277, `1a5b5e3` #278, `4af86c5` #280, `ce1a616` #281 (see
-the Finished table below).
+**Committed and pushed so far:** `399733f` #277, `1a5b5e3` #278, `4af86c5` #280, `ce1a616` #281 and
+#279 (see the Finished table below).
 
 **Queue, in order** (the work for the items not yet committed lives in isolated copies inside one cloud
 session; if that session is gone, rebuild each item from its issue):
 
-1. **#279** — the dashboard's missing CSS and JavaScript, dead menu and Log Out links, error pages,
-   "no permission" screens and "do not index". Review round 3 clean; commit next. Adds seed 067.
+1. ~~**#279**~~ — done (see the Finished table). Adds seed 067.
 2. **#284** — small broken things (the /legal page, legal-page links and hide switch, My Links
    status). Review round 2 clean; commit after #279. Adds seed 068.
 3. **#302 — security review for CVE-2026-111497 ("HTTP2Shell", a critical bug in Google's Brotli
@@ -227,6 +226,7 @@ batch 5; SX-205 is done).
 | `1a5b5e3` | #278 | No page on go2my.link or the dashboard showed its own title or description, redirects from inside a page failed (signing in or out left a blank page) and the error pages answered 200: both front controllers printed the header before running the page. The page now runs first, into a buffer, and the header is printed after it; the main site's form-action also allows the dashboard, so the sign-in redirect is not refused. Site polish sweep (2026-10-05). Review: 3 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
 | `4af86c5` | #280 | Opening and saving a link, profile or organisation turned "&" into "&amp;" and apostrophes into "&#039;" and saved them that way (a link's "?a=1&b=2" became "?a=1&amp;b=2"): pages escaped values that formField() escapes again. Values now reach formField() raw, through a new g2ml_postedText() helper where they come from a form; a test fails if a page escapes a value first. Site polish sweep (2026-10-05). Review: 1 round(s); reviewers by round: claude-opus-fallback; last round clean. |
 | `ce1a616` | #281 | Three security gaps. The no-JavaScript "Shorten" fallback put its result and error text in the address, so anyone could make go2my.link show a message of their choosing; it now hands them over as a one-time session message. API calls with "Authorization: Bearer <key>", the documented main way, always failed because Apache did not pass the header to PHP; .htaccess now does. And after signing in from a dashboard page, people landed on a main-site page that does not exist; the dashboard now sends its full address, and the login page accepts only a path on go2my.link or an https://admin.go2my.link/ address. Site polish sweep (2026-10-05). Review: 3 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
+| (this commit) | #279 | The dashboard (admin.go2my.link) had no stylesheet or scripts of its own, so the theme switch and the cookie banner did nothing; its menu and footer links, Log Out included, pointed at dashboard addresses that do not exist; it had no error pages; "no permission" screens were bare text with status 200; and nothing told search engines to stay out. It now has copies of the main site's CSS and JavaScript (a test keeps them identical), main-site links built by a new g2ml_mainSiteURL(), the main site's error pages, a shared 403 screen that tells people in no organisation how to create one, a robots.txt and an X-Robots-Tag header. Adds seed 067. Site polish sweep (2026-10-05). Review: 3 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
 
 **Test baseline now (after `ce1a616`): 758 unit tests and 238 database tests, all passing** (PHP 8.4 in Docker; MySQL
 8.4 with `utf8mb4_unicode_ci`). Run them with `sh .claude/programme/run-tests.sh all`.

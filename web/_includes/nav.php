@@ -55,6 +55,11 @@ unset($g2mlGuardScriptPath);
 // would otherwise make PHPStan (incorrectly) treat the per-component
 // branching below as dead code.
 $component = g2ml_getComponent();
+
+// Links to pages that exist only on the main site (About, Pricing, Log Out
+// and so on) go through g2ml_mainSiteURL() (page_init.php). On the dashboard
+// a plain "/about" would give "page not found". "Home" and the logo stay as
+// "/", which is the dashboard's own home page there.
 if (function_exists('getSetting')) {
     $siteName = getSetting('site.name', 'Go2My.Link');
 } else {
@@ -116,7 +121,7 @@ if (function_exists('getCurrentRoute')) {
                 <li class="nav-item">
                     <a class="nav-link<?php if ($currentRoute === 'about') { echo ' active'; } ?>"
                        <?php if ($currentRoute === 'about') { echo 'aria-current="page"'; } ?>
-                       href="/about">
+                       href="<?php echo g2ml_mainSiteURL('/about'); ?>">
                         <i class="fas fa-info-circle" aria-hidden="true"></i>
                         <?php if (function_exists('__')) { echo __('nav.about'); } else { echo 'About'; } ?>
                     </a>
@@ -124,7 +129,7 @@ if (function_exists('getCurrentRoute')) {
                 <li class="nav-item">
                     <a class="nav-link<?php if ($currentRoute === 'features') { echo ' active'; } ?>"
                        <?php if ($currentRoute === 'features') { echo 'aria-current="page"'; } ?>
-                       href="/features">
+                       href="<?php echo g2ml_mainSiteURL('/features'); ?>">
                         <i class="fas fa-star" aria-hidden="true"></i>
                         <?php if (function_exists('__')) { echo __('nav.features'); } else { echo 'Features'; } ?>
                     </a>
@@ -132,7 +137,7 @@ if (function_exists('getCurrentRoute')) {
                 <li class="nav-item">
                     <a class="nav-link<?php if ($currentRoute === 'pricing') { echo ' active'; } ?>"
                        <?php if ($currentRoute === 'pricing') { echo 'aria-current="page"'; } ?>
-                       href="/pricing">
+                       href="<?php echo g2ml_mainSiteURL('/pricing'); ?>">
                         <i class="fas fa-tags" aria-hidden="true"></i>
                         <?php if (function_exists('__')) { echo __('nav.pricing'); } else { echo 'Pricing'; } ?>
                     </a>
@@ -158,7 +163,7 @@ if (function_exists('getCurrentRoute')) {
                     ?>
                     <a class="nav-link<?php if ($g2mlInHelpSection === true) { echo ' active'; } ?>"
                        <?php if ($g2mlInHelpSection === true) { echo 'aria-current="page"'; } ?>
-                       href="/help">
+                       href="<?php echo g2ml_mainSiteURL('/help'); ?>">
                         <i class="fas fa-circle-question" aria-hidden="true"></i>
                         <?php if (function_exists('__')) { echo __('nav.help'); } else { echo 'Help'; } ?>
                     </a>
@@ -303,7 +308,7 @@ if (function_exists('getCurrentRoute')) {
                         <li><hr class="dropdown-divider"></li>
 
                         <!-- Log Out -->
-                        <li><a class="dropdown-item" href="/logout">
+                        <li><a class="dropdown-item" href="<?php echo g2ml_mainSiteURL('/logout'); ?>">
                             <i class="fas fa-sign-out-alt fa-fw" aria-hidden="true"></i>
                             <?php if (function_exists('__')) { echo __('nav.logout'); } else { echo 'Log Out'; } ?>
                         </a></li>
@@ -314,13 +319,13 @@ if (function_exists('getCurrentRoute')) {
                 <!-- 🔐 Login / Register Links                              -->
                 <!-- ====================================================== -->
                 <li class="nav-item">
-                    <a class="nav-link" href="/login">
+                    <a class="nav-link" href="<?php echo g2ml_mainSiteURL('/login'); ?>">
                         <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
                         <?php if (function_exists('__')) { echo __('nav.login'); } else { echo 'Log In'; } ?>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="btn btn-outline-light btn-sm ms-2 mt-1 mt-lg-0" href="/register">
+                    <a class="btn btn-outline-light btn-sm ms-2 mt-1 mt-lg-0" href="<?php echo g2ml_mainSiteURL('/register'); ?>">
                         <?php if (function_exists('__')) { echo __('nav.register'); } else { echo 'Sign Up'; } ?>
                     </a>
                 </li>
