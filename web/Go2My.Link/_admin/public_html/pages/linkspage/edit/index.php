@@ -145,6 +145,8 @@ $pageFormError   = '';
 $pageFormSuccess = false;
 $itemFormError   = '';
 $itemFormSuccess = false;
+// Set by the delete action, so the success line says "deleted" (#284).
+$itemFormSuccessIsDelete = false;
 $customFormError   = '';
 $customFormSuccess = false;
 
@@ -386,7 +388,8 @@ if ($pageData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
 
                 if ($deleteItemResult['success'] === true)
                 {
-                    $itemFormSuccess = true;
+                    $itemFormSuccess         = true;
+                    $itemFormSuccessIsDelete = true;
                 }
                 else
                 {
@@ -943,7 +946,16 @@ if ($pageData !== null)
                 <?php if ($itemFormSuccess === true) { ?>
                 <div class="alert alert-success" role="status">
                     <i class="fas fa-check-circle" aria-hidden="true"></i>
-                    Link saved.
+                    <?php
+                    if ($itemFormSuccessIsDelete === true)
+                    {
+                        if (function_exists('__')) { echo __('linkspage.item_deleted'); } else { echo 'Link deleted.'; }
+                    }
+                    else
+                    {
+                        if (function_exists('__')) { echo __('linkspage.item_saved'); } else { echo 'Link saved.'; }
+                    }
+                    ?>
                 </div>
                 <?php } ?>
 

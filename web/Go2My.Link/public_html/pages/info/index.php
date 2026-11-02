@@ -14,7 +14,7 @@
  *
  * Displays public information about a short URL. Accepts a short code
  * via the ?code= parameter (set by .htaccess rewrite from /info/CODE)
- * or via a search form.
+ * or via a search form, which takes a short URL or just the code (#284).
  *
  * Anonymous view shows: short URL, destination domain (masked path), status,
  * creation date, category, and a prompt to log in for the full destination.
@@ -45,6 +45,7 @@ if (function_exists('__')) {
 // Accepts:
 //   /info/CODE          — from .htaccess rewrite (?code=CODE)
 //   /info?url=g2my.link/CODE — parses the short code from a pasted URL
+//   /info?url=CODE      — a bare short code typed into the form (#284)
 //   /info?code=CODE     — direct query parameter
 // ============================================================================
 
@@ -53,7 +54,7 @@ $linkData   = null;
 $infoError  = '';
 
 // Priority 1: ?code= parameter (from .htaccess rewrite or direct)
-if (isset($_GET['code']) && $_GET['code'] !== '')
+if (isset($_GET['code']) && is_string($_GET['code']) && $_GET['code'] !== '')
 {
     // A custom short code may contain '-' and '_' (G2ML_CUSTOM_CODE_PATTERN
     // in shorturl_create.php). g2ml_infoNormaliseShortCode() REJECTS a code
@@ -69,7 +70,7 @@ if (isset($_GET['code']) && $_GET['code'] !== '')
     }
 }
 // Priority 2: ?url= parameter (parse code from a pasted short URL)
-elseif (isset($_GET['url']) && $_GET['url'] !== '')
+elseif (isset($_GET['url']) && is_string($_GET['url']) && $_GET['url'] !== '')
 {
     $inputURL = trim(g2ml_sanitiseInput($_GET['url']));
 
@@ -119,6 +120,18 @@ elseif (isset($_GET['url']) && $_GET['url'] !== '')
                 $shortCode = $normalisedCodePart;
             }
             break;
+        }
+    }
+
+    // A bare short code, as the help text invites ("or just the short code"),
+    // has no domain and no slash (#284).
+    if ($shortCode === '' && strpos($inputURL, '/') === false && strpos($inputURL, '.') === false)
+    {
+        $normalisedBareCode = g2ml_infoNormaliseShortCode($inputURL);
+
+        if ($normalisedBareCode !== null)
+        {
+            $shortCode = $normalisedBareCode;
         }
     }
 

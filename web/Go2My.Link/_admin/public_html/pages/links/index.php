@@ -341,8 +341,33 @@ if (function_exists('getDefaultShortDomain')) {
                                     <span class="badge bg-secondary"><?php echo number_format((int) $link['clickCount']); ?></span>
                                 </td>
                                 <td>
-                                    <?php if ((int) $link['isActive']) { ?>
+                                    <?php
+                                    // A switched-on link whose start date has not arrived, or
+                                    // whose end date has passed, does not redirect, so it is
+                                    // not shown as "Active" (#284). Same checks, in the same
+                                    // order, as sp_lookupShortURL, which compares the dates
+                                    // with the database's UTC clock.
+                                    $linkStatus = 'inactive';
+                                    if ((int) $link['isActive'] === 1)
+                                    {
+                                        $linkStatus = 'active';
+                                        $nowUtc     = gmdate('Y-m-d H:i:s');
+                                        if (!empty($link['startDate']) && $link['startDate'] > $nowUtc)
+                                        {
+                                            $linkStatus = 'scheduled';
+                                        }
+                                        elseif (!empty($link['endDate']) && $link['endDate'] < $nowUtc)
+                                        {
+                                            $linkStatus = 'expired';
+                                        }
+                                    }
+                                    ?>
+                                    <?php if ($linkStatus === 'active') { ?>
                                     <span class="badge bg-success">Active</span>
+                                    <?php } elseif ($linkStatus === 'expired') { ?>
+                                    <span class="badge bg-warning text-dark"><?php if (function_exists('__')) { echo __('links.status_expired'); } else { echo 'Expired'; } ?></span>
+                                    <?php } elseif ($linkStatus === 'scheduled') { ?>
+                                    <span class="badge bg-info text-dark"><?php if (function_exists('__')) { echo __('links.status_scheduled'); } else { echo 'Scheduled'; } ?></span>
                                     <?php } else { ?>
                                     <span class="badge bg-secondary">Inactive</span>
                                     <?php } ?>
@@ -383,11 +408,17 @@ if (function_exists('getDefaultShortDomain')) {
             <div class="card-footer">
                 <nav aria-label="Links pagination">
                     <ul class="pagination justify-content-center mb-0">
-                        <li class="page-item <?php if ($page <= 1) { echo 'disabled'; } ?>">
+                        <?php if ($page <= 1) { ?>
+                        <li class="page-item disabled">
+                            <span class="page-link" aria-disabled="true">&laquo; <?php if (function_exists('__')) { echo __('links.page_prev'); } else { echo 'Prev'; } ?></span>
+                        </li>
+                        <?php } else { ?>
+                        <li class="page-item">
                             <a class="page-link" href="?page=<?php echo $page - 1; ?>&search=<?php echo urlencode($search); ?>&filter=<?php echo urlencode($filter); ?>">
-                                &laquo; Prev
+                                &laquo; <?php if (function_exists('__')) { echo __('links.page_prev'); } else { echo 'Prev'; } ?>
                             </a>
                         </li>
+                        <?php } ?>
 
                         <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++) { ?>
                         <li class="page-item <?php if ($i === $page) { echo 'active'; } ?>">
@@ -397,11 +428,17 @@ if (function_exists('getDefaultShortDomain')) {
                         </li>
                         <?php } ?>
 
-                        <li class="page-item <?php if ($page >= $totalPages) { echo 'disabled'; } ?>">
+                        <?php if ($page >= $totalPages) { ?>
+                        <li class="page-item disabled">
+                            <span class="page-link" aria-disabled="true"><?php if (function_exists('__')) { echo __('links.page_next'); } else { echo 'Next'; } ?> &raquo;</span>
+                        </li>
+                        <?php } else { ?>
+                        <li class="page-item">
                             <a class="page-link" href="?page=<?php echo $page + 1; ?>&search=<?php echo urlencode($search); ?>&filter=<?php echo urlencode($filter); ?>">
-                                Next &raquo;
+                                <?php if (function_exists('__')) { echo __('links.page_next'); } else { echo 'Next'; } ?> &raquo;
                             </a>
                         </li>
+                        <?php } ?>
                     </ul>
                 </nav>
             </div>

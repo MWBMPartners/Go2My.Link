@@ -250,24 +250,25 @@ The application detects its environment from the hostname:
 3. 📋 Import all **16** schema files from `web/_sql/schema/`, in filename order
 4. 🔧 Import both stored procedures from `web/_sql/procedures/`
    (`sp_generateShortCode.sql`, `sp_lookupShortURL.sql`)
-5. 🌱 Import all **30** seed files from `web/_sql/seeds/`, in order — the
+5. 🌱 Import all **31** seed files from `web/_sql/seeds/`, in order — the
    numbering is not continuous: `001` through `023` run in sequence, then
-   seven later additions sit outside that run, `029_linkspage_privacy_translations.sql`,
+   eight later additions sit outside that run, `029_linkspage_privacy_translations.sql`,
    `058_truthful_marketing_translations.sql`,
    `059_link_destination_translations.sql`,
    `064_linkspage_avatar_icon_translations.sql`,
    `065_linkspage_manage_error_translations.sql`,
-   `066_org_members_unknown_action_translation.sql` and
-   `067_dashboard_access_translations.sql` (see the table below for
+   `066_org_members_unknown_action_translation.sql`,
+   `067_dashboard_access_translations.sql` and
+   `068_small_fixes_translations.sql` (see the table below for
    what each one adds). Importing "in order" means by filename, so a plain
-   `for f in web/_sql/seeds/*.sql` loop picks up all 30 without needing to
+   `for f in web/_sql/seeds/*.sql` loop picks up all 31 without needing to
    know about the gap in the numbers.
 
-> 📝 Counts as at 2026-10-05: 16 schema files, 2 stored procedures, 30 seeds,
+> 📝 Counts as at 2026-11-02: 16 schema files, 2 stored procedures, 31 seeds,
 > 21 migrations. Import order is schema → procedures → seeds, which is the
 > order `.github/workflows/ci.yml` uses. (Seed `023` and migration `021`, the
 > LinksPage feature registry, were added on 2026-09-21; seeds `029`, `058`,
-> `059`, `064`, `065`, `066` and `067` were added later still, outside the 001-023 run —
+> `059`, `064`, `065`, `066`, `067` and `068` were added later still, outside the 001-023 run —
 > see below.)
 
 #### 🚨 The collation check — do this first, every time
@@ -349,8 +350,9 @@ key names instead of words:
 | `065_linkspage_manage_error_translations.sql` | 41 strings: every OTHER error message the LinksPage admin dashboard's create/edit/delete/reorder/upload backend (`web/_functions/linkspage_manage.php`) can show — reserved/invalid slugs, page and item field validation, the per-plan page limit, the per-page item cap, ownership/not-found checks, and the custom-HTML editor's save/upload errors (CX-01, #218). The two save-time "must be https://" errors for the avatar and per-link icon fields are NOT in this seed — they are in `064` above, since they were already translated before CX-01 | Every one of those messages shows its raw `linkspage.error.*` key name (e.g. `linkspage.error.slug_reserved`) instead of readable English |
 | `066_org_members_unknown_action_translation.sql` | 1 string: the Organisation Members page's "Unknown action." message, shown when a posted `action_type` matches none of the CSRF form names the page knows how to build — a branch the #147 fix added, which the page did not have before (#147 review round 2) | The Organisation Members page shows the raw key name `org.members_error_unknown_action` instead of "Unknown action." when this happens |
 | `067_dashboard_access_translations.sql` | 10 strings: the "access refused" screen that six dashboard pages (API Keys, Custom Domains, Members, Invite Member, Organisation Settings, Short Domains) now share — a heading, a line of explanation and a button for someone with no organisation yet ("You are not in an organisation yet", "Create an organisation"), a heading and a button for someone who belongs to one but may not manage it ("Access Denied", "Back to Dashboard"), and the five pages' own refusal messages, which used to be English-only (#279) | Those six pages show raw key names such as `access.denied_heading` and `org.members_error_forbidden` instead of English when somebody is refused |
+| `068_small_fixes_translations.sql` | 9 strings for the #284 fixes: the new legal hub page at `/legal` (title, description and introduction), the LinksPage editor's "Link deleted." and "Link saved." messages, the "Expired" and "Scheduled" badges on My Links, and My Links' "Prev" and "Next" page buttons (#284) | The `/legal` page shows `legal.hub_title` and the other key names; the LinksPage editor shows `linkspage.item_saved`/`linkspage.item_deleted` after saving or deleting a link; My Links shows `links.status_expired`/`links.status_scheduled` and `links.page_prev`/`links.page_next` |
 
-All nine are `INSERT IGNORE`, so they are safe to run more than once and safe
+All ten are `INSERT IGNORE`, so they are safe to run more than once and safe
 on a database that already has them.
 
 #### 🧩 Migration `021` — the LinksPage feature registry (needed on an EXISTING database)

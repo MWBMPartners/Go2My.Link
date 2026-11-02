@@ -54,7 +54,8 @@ if (function_exists('getSetting')) {
 } else {
     $contactEmail = 'hello@go2my.link';
 }
-$hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hide_review_placeholders', '0') === '1';
+// getSetting() returns this boolean setting as true/false, never the text '1' (#284).
+$hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hide_review_placeholders', false) === true;
 ?>
 
 <!-- ====================================================================== -->
@@ -394,7 +395,7 @@ $hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hid
 
                     <p>
                         <?php if (function_exists('__')) { echo __('legal.cookies_s5_p3'); } else { echo 'For more information about how we handle these signals and your broader privacy rights, please see our'; } ?>
-                        <a href="/legal/privacy#dnt"><?php if (function_exists('__')) { echo __('legal.cookies_s5_privacy_link'); } else { echo 'Privacy Policy (Do Not Track section)'; } ?></a>.
+                        <a href="/legal/privacy#privacy-s12"><?php if (function_exists('__')) { echo __('legal.cookies_s5_privacy_link'); } else { echo 'Privacy Policy (Do Not Track section)'; } ?></a>.
                     </p>
 
                     <?php if (!$hideReviewPlaceholders) { ?>

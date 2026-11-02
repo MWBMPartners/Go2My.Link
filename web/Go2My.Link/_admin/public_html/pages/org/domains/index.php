@@ -316,8 +316,8 @@ $dnsPrefix  = getSetting('org.dns_verify_prefix', '_g2ml-verify');
                     Adding a new custom domain is now done entirely from
                     <a href="/org/short-domains">Organisation &rarr; Short Domains</a>,
                     which is also where domain ownership verification actually
-                    gates live routing (#91) and where a verified domain can be
-                    assigned to publish one of your LinksPages at its root (#46).
+                    gates live routing and where a verified domain can be
+                    assigned to publish one of your LinksPages at its root.
                 </p>
                 <a href="/org/short-domains" class="btn btn-primary">
                     <i class="fas fa-bolt" aria-hidden="true"></i> Go to Short Domains

@@ -55,7 +55,8 @@ if (function_exists('getSetting')) {
 } else {
     $contactEmail = 'hello@go2my.link';
 }
-$hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hide_review_placeholders', '0') === '1';
+// getSetting() returns this boolean setting as true/false, never the text '1' (#284).
+$hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hide_review_placeholders', false) === true;
 ?>
 
 <!-- ====================================================================== -->
@@ -917,7 +918,7 @@ $hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hid
 
                 <p>
                     <?php if (function_exists('__')) { echo __('legal.privacy_s11_preferences'); } else { echo 'You can manage your cookie preferences at any time through your browser settings or by visiting our'; } ?>
-                    <a href="/legal/cookies#cookie-preferences">
+                    <a href="/legal/cookies#cookies-s4">
                         <?php if (function_exists('__')) { echo __('legal.privacy_s11_preferences_link'); } else { echo 'cookie preferences centre'; } ?>
                     </a>.
                 </p>

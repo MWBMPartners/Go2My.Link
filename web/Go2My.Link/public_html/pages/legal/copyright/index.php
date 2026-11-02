@@ -55,7 +55,8 @@ if (function_exists('getSetting')) {
 } else {
     $contactEmail = 'hello@go2my.link';
 }
-$hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hide_review_placeholders', '0') === '1';
+// getSetting() returns this boolean setting as true/false, never the text '1' (#284).
+$hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hide_review_placeholders', false) === true;
 ?>
 
 <!-- ====================================================================== -->
