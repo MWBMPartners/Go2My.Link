@@ -25,6 +25,9 @@
  * ============================================================================
  */
 
+// Kept out of search results (#282).
+$pageRobots = 'noindex, nofollow';
+
 if (function_exists('__')) {
     $pageTitle = __('invite.page_title');
 } else {

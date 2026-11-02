@@ -22,6 +22,9 @@
  * ============================================================================
  */
 
+// Kept out of search results (#282).
+$pageRobots = 'noindex, nofollow';
+
 if (function_exists('__')) {
     $pageTitle = __('logout.title');
 } else {

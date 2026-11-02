@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Schema for the sitemap.xml files this project serves
+  (web/Go2My.Link/public_html/sitemap.xml and web/Lnks.page/public_html/sitemap.xml).
+  Checked by tests/unit/site_head_and_sitemap_test.php (#282).
+
+  Source: the official Sitemaps 0.9 schema from sitemaps.org
+  (https://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd, last modified
+  2008-03-26). The element order, the types and the limits below are copied
+  from it, so a sitemap that passes here also passes there. It is kept here
+  so the check runs without network access.
+
+  Two deliberate differences, both stricter than the official schema:
+    - at most 50,000 <url> entries (the protocol's limit, which the official
+      schema only states in a comment);
+    - no extension elements from other namespaces (image, video, news and so
+      on), because this project's sitemaps use none.
+
+  Comments and the two changes above: copyright (c) 2024–2026 MWBM Partners
+  Ltd (MWservices).
+-->
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            targetNamespace="http://www.sitemaps.org/schemas/sitemap/0.9"
+            xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+            elementFormDefault="qualified">
+
+  <xsd:element name="urlset">
+    <xsd:complexType>
+      <xsd:sequence>
+        <xsd:element name="url" type="tUrl" minOccurs="1" maxOccurs="50000"/>
+      </xsd:sequence>
+    </xsd:complexType>
+  </xsd:element>
+
+  <xsd:complexType name="tUrl">
+    <xsd:sequence>
+      <xsd:element name="loc" type="tLoc"/>
+      <xsd:element name="lastmod" type="tLastmod" minOccurs="0"/>
+      <xsd:element name="changefreq" type="tChangeFreq" minOccurs="0"/>
+      <xsd:element name="priority" type="tPriority" minOccurs="0"/>
+    </xsd:sequence>
+  </xsd:complexType>
+
+  <!-- The address of the page: 12 to 2048 characters. -->
+  <xsd:simpleType name="tLoc">
+    <xsd:restriction base="xsd:anyURI">
+      <xsd:minLength value="12"/>
+      <xsd:maxLength value="2048"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <!-- A date (2005-05-10) or a date and time (2005-05-10T17:33:30+08:00). -->
+  <xsd:simpleType name="tLastmod">
+    <xsd:union>
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:date"/>
+      </xsd:simpleType>
+      <xsd:simpleType>
+        <xsd:restriction base="xsd:dateTime"/>
+      </xsd:simpleType>
+    </xsd:union>
+  </xsd:simpleType>
+
+  <xsd:simpleType name="tChangeFreq">
+    <xsd:restriction base="xsd:string">
+      <xsd:enumeration value="always"/>
+      <xsd:enumeration value="hourly"/>
+      <xsd:enumeration value="daily"/>
+      <xsd:enumeration value="weekly"/>
+      <xsd:enumeration value="monthly"/>
+      <xsd:enumeration value="yearly"/>
+      <xsd:enumeration value="never"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+  <!-- A number from 0.0 to 1.0. -->
+  <xsd:simpleType name="tPriority">
+    <xsd:restriction base="xsd:decimal">
+      <xsd:minInclusive value="0.0"/>
+      <xsd:maxInclusive value="1.0"/>
+    </xsd:restriction>
+  </xsd:simpleType>
+
+</xsd:schema>

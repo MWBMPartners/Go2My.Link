@@ -26,12 +26,16 @@
  * ============================================================================
  */
 
+// The home page shows its whole title ("Go2My.Link — Shorten. Track.
+// Manage.") rather than "Home — Go2My.Link", and a real description (#282).
+// The title is built from the site name and tagline settings, like the hero
+// and the footer, so it is not translated.
+$pageTitleFull = getSetting('site.name', 'Go2My.Link') . ' — ' . getSetting('site.tagline', 'Shorten. Track. Manage.');
 if (function_exists('__')) {
-    $pageTitle = __('home.title');
+    $pageDesc = __('home.meta_description');
 } else {
-    $pageTitle = 'Home';
+    $pageDesc = 'Shorten long web addresses for free, with no account needed. Sign up free to keep all your links in one place and see how often each one is clicked.';
 }
-$pageDesc  = getSetting('site.tagline', 'Shorten. Track. Manage.');
 
 // 🤖 Determine bot protection configuration
 $turnstileSiteKey = getSetting('captcha.turnstile_site_key', '');

@@ -16,9 +16,14 @@
  * Includes Bootstrap 5 + Font Awesome 6 via CDN with local fallback.
  *
  * Expected variables (set by calling page or page_init.php):
- *   $pageTitle   — (string) Page title (appended to site name)
- *   $pageDesc    — (string) Meta description
- *   $bodyClass   — (string) Additional body CSS classes
+ *   $pageTitle     — (string) Page title (the site name is added after it)
+ *   $pageTitleFull — (string) Optional: the whole title, shown as written
+ *   $pageDesc      — (string) Meta description
+ *   $pageRobots    — (string) Optional robots value, default "index, follow"
+ *   $pageURLPath   — (string) Optional: the page's own address path, starting
+ *                    with "/", when the route alone does not say which page
+ *                    is shown (the info page's /info/CODE)
+ *   $bodyClass     — (string) Additional body CSS classes
  *
  * Dependencies: page_init.php (must be loaded first)
  *
@@ -54,7 +59,9 @@ if (function_exists('getSetting')) {
 } else {
     $siteName = 'Go2My.Link';
 }
-if (isset($pageTitle)) {
+if (isset($pageTitleFull)) {
+    $pageTitle = $pageTitleFull;
+} elseif (isset($pageTitle)) {
     $pageTitle = $pageTitle . ' — ' . $siteName;
 } else {
     $pageTitle = $siteName;
@@ -82,6 +89,56 @@ if (defined('G2ML_COMPONENT_DOMAIN')) {
 } else {
     $componentDomain = 'go2my.link';
 }
+// ============================================================================
+// 🔎 Search and sharing (#282)
+// ============================================================================
+// Pages that should stay out of search results (sign-in, password reset,
+// error pages and so on) set $pageRobots before the header. The dashboard is
+// never indexed.
+if (!isset($pageRobots)) {
+    $pageRobots = 'index, follow';
+}
+if (function_exists('g2ml_getComponent') && g2ml_getComponent() === 'Admin') {
+    $pageRobots = 'noindex, nofollow';
+}
+// The canonical address and og:url are built from the route the front
+// controller actually served ($resolved, from resolveRoute()), not from the
+// address typed. So every spelling the router accepts (a trailing slash,
+// /index.php?route=about, characters the router strips) names the same
+// address, and /home names "/". A page whose route alone does not say what
+// is shown (the info page's /info/CODE arrives as route "info" plus a code)
+// names its own path in $pageURLPath. When no page was found, og:url falls
+// back to the address typed (no canonical is printed then).
+$requestPath = '/';
+if (isset($resolved) && is_array($resolved) && isset($resolved['file']) && is_array($resolved['segments'] ?? null)) {
+    if (count($resolved['segments']) > 0) {
+        $requestPath = '/' . implode('/', $resolved['segments']);
+    }
+} elseif (isset($_SERVER['REQUEST_URI']) && is_string($_SERVER['REQUEST_URI'])) {
+    $parsedRequestPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+    if (is_string($parsedRequestPath) && $parsedRequestPath !== '') {
+        $requestPath = $parsedRequestPath;
+    }
+}
+if (isset($pageURLPath) && is_string($pageURLPath) && strncmp($pageURLPath, '/', 1) === 0) {
+    $requestPath = $pageURLPath;
+}
+if (strncmp($requestPath, '/', 1) !== 0) {
+    $requestPath = '/' . $requestPath;
+}
+if ($requestPath === '/home') {
+    $requestPath = '/';
+}
+$pageURL = 'https://' . $componentDomain . $requestPath;
+// Only a page that answered normally and may be indexed names a canonical
+// address; on a "noindex" page it would send search engines mixed signals.
+$printCanonical = false;
+if (http_response_code() === 200 && strpos($pageRobots, 'noindex') === false) {
+    $printCanonical = true;
+}
+$ogImageURL     = 'https://go2my.link/img/og-image.png';
+$ogLocale       = str_replace('-', '_', $locale);
+
 $faviconIcoHref = '/favicon.ico';
 $faviconPngHref = '/favicon.png';
 $hasFaviconPng = false;
@@ -124,7 +181,7 @@ if (($themePref === 'auto')) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="<?php echo htmlspecialchars($pageDesc, ENT_QUOTES, 'UTF-8'); ?>">
-    <meta name="robots" content="index, follow">
+    <meta name="robots" content="<?php echo htmlspecialchars($pageRobots, ENT_QUOTES, 'UTF-8'); ?>">
     <?php if (function_exists('g2ml_generateCSRFToken')) { ?>
     <meta name="csrf-token" content="<?php echo htmlspecialchars(g2ml_generateCSRFToken('ajax'), ENT_QUOTES, 'UTF-8'); ?>">
     <?php } ?>
@@ -133,7 +190,17 @@ if (($themePref === 'auto')) {
     <meta property="og:type" content="website">
     <meta property="og:title" content="<?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?>">
     <meta property="og:description" content="<?php echo htmlspecialchars($pageDesc, ENT_QUOTES, 'UTF-8'); ?>">
-    <meta property="og:url" content="https://<?php echo htmlspecialchars($componentDomain, ENT_QUOTES, 'UTF-8'); ?>">
+    <meta property="og:url" content="<?php echo htmlspecialchars($pageURL, ENT_QUOTES, 'UTF-8'); ?>">
+    <meta property="og:site_name" content="<?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>">
+    <meta property="og:locale" content="<?php echo htmlspecialchars($ogLocale, ENT_QUOTES, 'UTF-8'); ?>">
+    <meta property="og:image" content="<?php echo htmlspecialchars($ogImageURL, ENT_QUOTES, 'UTF-8'); ?>">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="<?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>">
+    <meta name="twitter:card" content="summary_large_image">
+    <?php if ($printCanonical) { ?>
+    <link rel="canonical" href="<?php echo htmlspecialchars($pageURL, ENT_QUOTES, 'UTF-8'); ?>">
+    <?php } ?>
 
     <title><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></title>
 
@@ -142,7 +209,7 @@ if (($themePref === 'auto')) {
     <!-- ================================================================== -->
     <link rel="icon" type="image/x-icon" href="<?php echo htmlspecialchars($faviconIcoHref, ENT_QUOTES, 'UTF-8'); ?>">
     <?php if ($hasFaviconPng) { ?>
-    <link rel="icon" type="image/png" sizes="512x512" href="<?php echo htmlspecialchars($faviconPngHref, ENT_QUOTES, 'UTF-8'); ?>">
+    <link rel="icon" type="image/png" sizes="32x32" href="<?php echo htmlspecialchars($faviconPngHref, ENT_QUOTES, 'UTF-8'); ?>">
     <?php } ?>
     <link rel="shortcut icon" href="<?php echo htmlspecialchars($faviconIcoHref, ENT_QUOTES, 'UTF-8'); ?>">
 
@@ -152,10 +219,11 @@ if (($themePref === 'auto')) {
     <!-- ================================================================== -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1E88E5">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="<?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>">
-    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
 
     <!-- ================================================================== -->
     <!-- Bootstrap 5.3 CSS (CDN + Local Fallback)                           -->

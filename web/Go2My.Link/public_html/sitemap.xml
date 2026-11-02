@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Public pages of go2my.link (#282). tests/unit/site_head_and_sitemap_test.php fails if an address here has no page behind it. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://go2my.link/</loc></url>
+  <url><loc>https://go2my.link/about</loc></url>
+  <url><loc>https://go2my.link/features</loc></url>
+  <url><loc>https://go2my.link/pricing</loc></url>
+  <url><loc>https://go2my.link/contact</loc></url>
+  <url><loc>https://go2my.link/help</loc></url>
+  <url><loc>https://go2my.link/help/short-links</loc></url>
+  <url><loc>https://go2my.link/help/analytics</loc></url>
+  <url><loc>https://go2my.link/help/api</loc></url>
+  <url><loc>https://go2my.link/help/custom-domains</loc></url>
+  <url><loc>https://go2my.link/legal</loc></url>
+  <url><loc>https://go2my.link/legal/terms</loc></url>
+  <url><loc>https://go2my.link/legal/privacy</loc></url>
+  <url><loc>https://go2my.link/legal/cookies</loc></url>
+  <url><loc>https://go2my.link/legal/acceptable-use</loc></url>
+  <url><loc>https://go2my.link/legal/copyright</loc></url>
+  <url><loc>https://go2my.link/api/docs/</loc></url>
+</urlset>

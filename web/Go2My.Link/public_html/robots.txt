@@ -1,0 +1,11 @@
+# robots.txt for go2my.link (#282)
+# Public pages may be indexed. Sign-in, account, one-time and error pages are
+# deliberately NOT blocked here: they carry a "noindex" tag, and a search
+# engine only sees that tag if it is allowed to fetch the page. Only folders
+# that never hold a page a visitor should land on are blocked.
+User-agent: *
+Disallow: /pages/
+Disallow: /api/create/
+Disallow: /api/consent/
+
+Sitemap: https://go2my.link/sitemap.xml

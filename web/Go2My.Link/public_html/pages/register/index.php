@@ -29,6 +29,9 @@ if (function_exists('isAuthenticated') && isAuthenticated())
     exit;
 }
 
+// Kept out of search results (#282).
+$pageRobots = 'noindex, nofollow';
+
 if (function_exists('__')) {
     $pageTitle = __('register.title');
 } else {

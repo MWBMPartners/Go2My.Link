@@ -468,6 +468,8 @@ All JSON structures in the project have corresponding JSON Schema files (draft 2
 | CAPTCHA Response | `external/captcha-response.schema.json` | Turnstile/reCAPTCHA siteverify response |
 | Org Invitation | `database/org-invitation.schema.json` | tblOrgInvitations record structure |
 
+XML files have schemas too. `external/sitemap-0.9.xsd` is the Sitemaps 0.9 schema (the official one, made slightly stricter), and both `sitemap.xml` files (go2my.link and lnks.page) are validated against it by `tests/unit/site_head_and_sitemap_test.php` (#282).
+
 **Validator:** `web/_functions/json_validator.php` provides `g2ml_validateJSON($data, $schemaPath)` — pure PHP, no Composer.
 
 **Rule:** All new JSON structures MUST have a corresponding schema file. Add schemas before or alongside the code that produces/consumes the JSON.

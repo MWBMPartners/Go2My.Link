@@ -28,6 +28,9 @@
  * ============================================================================
  */
 
+// Kept out of search results (#282).
+$pageRobots = 'noindex, nofollow';
+
 if (function_exists('__')) {
     $pageTitle = __('info.title');
 } else {
@@ -151,6 +154,11 @@ elseif (isset($_GET['url']) && is_string($_GET['url']) && $_GET['url'] !== '')
 
 if ($shortCode !== '')
 {
+    // The page shown is the one for this code, whichever way it was asked
+    // for, so its og:url is /info/CODE rather than the empty form at /info
+    // (#282). $shortCode only ever holds letters, digits, "-" and "_".
+    $pageURLPath = '/info/' . $shortCode;
+
     $linkData = dbSelectOne(
         "SELECT s.shortCode, s.destinationURL, s.destinationType,
                 s.isActive, s.title, s.createdAt,
