@@ -70,9 +70,10 @@ if (!defined('G2ML_CUSTOM_CODE_PATTERN'))
 // ============================================================================
 // Component B (g2my.link) serves a small set of handler/reserved paths directly
 // (robots.txt, favicon.ico, the validating/expired/404 interstitials, the API
-// and admin trees, the installer, and the www host label). A custom alias that
-// matches one of these would shadow the real handler when resolved, so we
-// reject it at creation time. Comparison is case-insensitive.
+// and admin trees, the installer, the /vendor/ folder that holds the pages'
+// local copies of Bootstrap and Font Awesome (#285), and the www host label).
+// A custom alias that matches one of these would shadow the real handler when
+// resolved, so we reject it at creation time. Comparison is case-insensitive.
 //
 // To extend the block list, add an entry to $reserved below — it is the single
 // source of truth. Entries are stored lowercase; the incoming code is
@@ -108,6 +109,7 @@ function g2ml_isReservedShortCode(string $code): bool
         'api',
         'admin',
         'install',
+        'vendor',
         'www',
         'bulk',
     ];

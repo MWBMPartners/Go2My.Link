@@ -68,10 +68,10 @@ if ($currentLocale === $defaultLocale)
 }
 ?>
 
-<!-- ====================================================================== -->
-<!-- Interim Google Translate Widget                                         -->
-<!-- This will be removed when formal translations are complete (Phase 10)  -->
-<!-- ====================================================================== -->
+<?php
+// Interim Google Translate Widget
+// This will be removed when formal translations are complete (Phase 10)
+?>
 <div id="g2ml-translate-widget" class="text-center py-2"
      style="background:#f8f9fa;border-top:1px solid #dee2e6;">
     <small class="text-muted">
@@ -81,9 +81,11 @@ if ($currentLocale === $defaultLocale)
     <div id="google_translate_element" class="d-inline-block ms-2"></div>
 </div>
 
+<?php
+// Google Translate initialisation
+// 📖 Reference: https://cloud.google.com/translate/docs/basic/translating-text
+?>
 <script>
-    // Google Translate initialisation
-    // 📖 Reference: https://cloud.google.com/translate/docs/basic/translating-text
     function googleTranslateElementInit() {
         new google.translate.TranslateElement({
             pageLanguage: '<?php echo htmlspecialchars(explode('-', $defaultLocale)[0], ENT_QUOTES, 'UTF-8'); ?>',

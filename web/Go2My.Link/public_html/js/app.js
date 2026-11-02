@@ -12,7 +12,8 @@
  * ============================================================================
  *
  * Custom JS for go2my.link (Main Website).
- * jQuery 3.7 and Bootstrap 5.3 are loaded via CDN with local fallback.
+ * Bootstrap 5.3 is loaded from a CDN, with a local copy as the fallback.
+ * This file is plain JavaScript and does not use jQuery.
  *
  * Features:
  *   - Page load accessibility announcements

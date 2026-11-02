@@ -258,7 +258,7 @@ Organisations are the multi-tenancy layer. Each user belongs to ONE org via `tbl
 
 **Legal Documents:** All 5 legal pages use structured PHP templates with `{{LEGAL_REVIEW_NEEDED}}` placeholders in `alert alert-warning` blocks. Each has a TOC with jump links, version badge from settings, and last-updated date. Ready for professional legal review before launch.
 
-**CSP Headers:** Content-Security-Policy is set in `.htaccess` files. Component B (redirect engine) has a very tight policy (`default-src 'none'`). Components A/Admin/C allow CDN sources for Bootstrap, jQuery, and Font Awesome. `'unsafe-inline'` is required for the FOUC-prevention inline script in `header.php`.
+**CSP Headers:** Content-Security-Policy is set in `.htaccess` files. Component B (redirect engine) has a very tight policy (`default-src 'none'`). Components A and Admin allow CDN sources for Bootstrap and Font Awesome (jQuery was removed in #285). The pages' local fallbacks live in each web root's own `vendor/` folder, so the policy only has to allow `'self'` for them. `'unsafe-inline'` is required for the FOUC-prevention inline script in `header.php` and for the library fallbacks: each CDN `<link>` has an inline `onerror` handler, and the footer's Bootstrap fallback is an inline script. A nonce-based policy (below) cannot cover an `onerror` attribute, so moving to nonces means moving those fallbacks into a script file first.
 
 ### 📱 Progressive Web App (Phase 6)
 
@@ -358,18 +358,17 @@ Two comprehensive security audits have been performed:
 
 ### 🎨 Logo & Branding Integration
 
-**Logo approach:** All components use a `<picture>` element with SVG source and PNG fallback:
+**Logo approach (changed in #285):** the logo is a plain `<img>` of a PNG made at the size it is shown, with a 2x file for sharp screens. The old logo was a 350 KB SVG that was really a PNG wrapped in SVG tags, shown 36 pixels high on every page.
 
 ```html
-<picture>
-    <source srcset="https://go2my.link/img/logo.svg" type="image/svg+xml">
-    <img src="https://go2my.link/img/logo.png" alt="Go2My.Link" height="36" width="auto" loading="eager">
-</picture>
+<img src="https://go2my.link/img/logo-160.png"
+     srcset="https://go2my.link/img/logo-160.png 1x, https://go2my.link/img/logo-320.png 2x"
+     alt="Go2My.Link" height="36" width="160" loading="eager">
 ```
 
-**Logo file locations:** Each component has its own `/img/logo.svg` + `/img/logo.png` (copied from BrandKit). Absolute URLs (`https://go2my.link/img/...`) are used in shared includes (`nav.php`, `footer.php`) for cross-domain consistency.
+**Logo file locations:** the sized files `logo-160.png`, `logo-320.png` and `logo-640.png` live only in `web/Go2My.Link/public_html/img/`. Every page names them by the absolute address `https://go2my.link/img/...`, so the dashboard and g2my.link keep no copies. Lnks.page keeps its own small `logo.svg` and `logo.png`. To make the sized files again from the master: `convert web/assets/BrandKit/logos/png/Go2My.link-Logo-ORIGINAL.png -filter Lanczos -resize 160x -define png:compression-level=9 -strip logo-160.png` (and `320x`, `640x`). `tests/unit/logo_and_web_root_weight_test.php` checks the files and sizes.
 
-**Source assets:** `web/assets/BrandKit/` contains the full brand kit (not web-accessible — assets are copied to component `public_html/img/` directories for serving).
+**Source assets:** `web/assets/BrandKit/` contains the full brand kit, including the full-size logo and design source files (not in any web root). Only small files made from them go in a `public_html/img/` folder.
 
 **Dynamic favicon:** `header.php` checks for `favicon.png` existence via `file_exists()` on `DOCUMENT_ROOT` and conditionally includes a PNG favicon link alongside the standard ICO.
 

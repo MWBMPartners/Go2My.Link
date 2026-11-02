@@ -66,7 +66,7 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 | --- | --- |
 | 🐘 **Backend** | PHP 8.4+ / 8.5+ (MySQLi, prepared statements only) |
 | 🗄️ **Database** | MySQL 8.0+ (InnoDB, utf8mb4, stored procedures) |
-| 🎨 **Frontend** | HTML5, CSS3, Bootstrap 5.3, jQuery 3.7, Font Awesome 6 |
+| 🎨 **Frontend** | HTML5, CSS3, Bootstrap 5.3, Font Awesome 6 (no jQuery) |
 | 📈 **Charts** | Chart.js 4.4, Leaflet.js (planned) |
 | 🚢 **Hosting** | Dreamhost Shared Hosting (no CLI/Composer) |
 | 🤖 **CI/CD** | GitHub Actions (PHP lint, release, SFTP deploy) |
@@ -116,7 +116,7 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 - 🎨 Template engine: header, nav, footer with Bootstrap 5.3 CDN + local fallback
 - ♿ Accessibility helpers (formField, ARIA, skip-to-content)
 - 🌍 i18n with `__()` translation function + locale detection + language switcher
-- 📦 Third-party libraries: Bootstrap 5.3.3, jQuery 3.7.1, Font Awesome 6.5.1, Chart.js 4.4.7
+- 📦 Third-party libraries: Bootstrap 5.3.3, Font Awesome 6.5.1, Chart.js 4.4.7 (jQuery was removed in #285; nothing used it)
 
 ### ✅ Phase 3 — Core Product (v0.4.0)
 
@@ -184,7 +184,7 @@ Go2My.Link/
 ├── 🌐 web/
 │   ├── ⚙️ _functions/           ← Shared PHP functions (13 files)
 │   ├── 📦 _includes/            ← Shared templates + email templates
-│   ├── 📦 _libraries/           ← Local fallback libraries (Bootstrap, jQuery, FA, Chart.js)
+│   ├── 📦 _libraries/           ← Master copies of the libraries (Bootstrap, FA, Chart.js); copied into each web root's vendor/ folder
 │   ├── 📐 _schemas/             ← JSON Schema definitions (api, database, external)
 │   ├── 🗄️ _sql/                 ← Schema, migrations, seeds, stored procedures
 │   ├── 🏠 Go2My.Link/           ← Component A (Main Website + Admin Dashboard)

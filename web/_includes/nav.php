@@ -73,31 +73,34 @@ if (function_exists('getCurrentRoute')) {
 }
 ?>
 
-<!-- ====================================================================== -->
-<!-- Navigation                                                             -->
-<!-- 📖 Reference: https://getbootstrap.com/docs/5.3/components/navbar/     -->
-<!-- ====================================================================== -->
+<?php
+// Navigation
+// 📖 Reference: https://getbootstrap.com/docs/5.3/components/navbar/
+?>
 <header>
 <nav class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark" aria-label="<?php if (function_exists('__')) { echo __('nav.aria_label'); } else { echo 'Main navigation'; } ?>">
     <div class="container">
 
-        <!-- Brand -->
-        <?php // The logo's dark lettering would nearly disappear on the deep blue bar, so it sits on a white rounded chip. ?>
+        <?php
+        // The logo's dark lettering would nearly disappear on the deep blue bar, so it sits on a white rounded chip.
+        // The logo is shown 160 pixels wide and 36 high. The image is made at exactly that size, plus one twice as
+        // large for sharp screens, so the browser fetches about 12 KB (37 KB on a sharp screen). It used to fetch a
+        // 350 KB picture wrapped as an SVG on every page (#285). The address is on go2my.link so the dashboard
+        // does not need copies of its own.
+        ?>
         <a class="navbar-brand d-flex align-items-center" href="/">
             <span class="d-inline-block bg-white rounded px-2 py-1">
-                <picture>
-                    <source srcset="https://go2my.link/img/logo.svg" type="image/svg+xml">
-                    <img src="https://go2my.link/img/logo.png"
-                         alt="<?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>"
-                         height="36"
-                         width="160"
-                         class="d-block"
-                         loading="eager">
-                </picture>
+                <img src="https://go2my.link/img/logo-160.png"
+                     srcset="https://go2my.link/img/logo-160.png 1x, https://go2my.link/img/logo-320.png 2x"
+                     alt="<?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>"
+                     height="36"
+                     width="160"
+                     class="d-block"
+                     loading="eager">
             </span>
         </a>
 
-        <!-- Mobile toggle button -->
+        <?php // Mobile toggle button ?>
         <button class="navbar-toggler" type="button"
                 data-bs-toggle="collapse" data-bs-target="#mainNavbar"
                 aria-controls="mainNavbar" aria-expanded="false"
@@ -105,13 +108,11 @@ if (function_exists('getCurrentRoute')) {
             <span class="navbar-toggler-icon" aria-hidden="true"></span>
         </button>
 
-        <!-- Collapsible content -->
+        <?php // Collapsible content ?>
         <div class="collapse navbar-collapse" id="mainNavbar">
 
             <?php if ($component === 'A' || $component === 'Admin') { ?>
-            <!-- ========================================================== -->
-            <!-- Component A (Main Website) + Admin Navigation              -->
-            <!-- ========================================================== -->
+            <?php // Component A (Main Website) + Admin Navigation ?>
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li class="nav-item">
                     <a class="nav-link<?php if ($currentRoute === '') { echo ' active'; } ?>"
@@ -145,11 +146,11 @@ if (function_exists('getCurrentRoute')) {
                         <?php if (function_exists('__')) { echo __('nav.pricing'); } else { echo 'Pricing'; } ?>
                     </a>
                 </li>
-                <!-- ==================================================== -->
-                <!-- Help. Marked active for /help and for every page      -->
-                <!-- beneath it (/help/analytics and so on), so somebody   -->
-                <!-- reading a guide can still see where they are.         -->
-                <!-- ==================================================== -->
+                <?php
+                // Help. Marked active for /help and for every page
+                // beneath it (/help/analytics and so on), so somebody
+                // reading a guide can still see where they are.
+                ?>
                 <li class="nav-item">
                     <?php
                     $g2mlInHelpSection = false;
@@ -174,13 +175,13 @@ if (function_exists('getCurrentRoute')) {
             </ul>
             <?php } ?>
 
-            <!-- Right-aligned items -->
+            <?php // Right-aligned items ?>
             <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
 
-                <!-- ====================================================== -->
-                <!-- 🎨 Theme Toggle (auto / light / dark)                  -->
-                <!-- 📖 Reference: https://getbootstrap.com/docs/5.3/customize/color-modes/ -->
-                <!-- ====================================================== -->
+                <?php
+                // 🎨 Theme Toggle (auto / light / dark)
+                // 📖 Reference: https://getbootstrap.com/docs/5.3/customize/color-modes/
+                ?>
                 <li class="nav-item">
                     <button type="button"
                             class="btn btn-link nav-link border-0"
@@ -201,9 +202,7 @@ if (function_exists('getCurrentRoute')) {
                 ?>
 
                 <?php if ($isLoggedIn) { ?>
-                <!-- ====================================================== -->
-                <!-- 👤 Logged-in User Dropdown                             -->
-                <!-- ====================================================== -->
+                <?php // 👤 Logged-in User Dropdown ?>
                 <?php
                 $userAvatar      = $_SESSION['user_avatar'] ?? '';
                 $userDisplayName = $_SESSION['user_display_name'] ?? 'Account';
@@ -251,7 +250,7 @@ if (function_exists('getCurrentRoute')) {
                         <?php echo htmlspecialchars($userDisplayName, ENT_QUOTES, 'UTF-8'); ?>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenuDropdown">
-                        <!-- User info header -->
+                        <?php // User info header ?>
                         <li class="dropdown-header">
                             <strong><?php echo htmlspecialchars($userDisplayName, ENT_QUOTES, 'UTF-8'); ?></strong>
                             <?php if ($userEmail !== '') { ?>
@@ -260,49 +259,49 @@ if (function_exists('getCurrentRoute')) {
                         </li>
                         <li><hr class="dropdown-divider"></li>
 
-                        <!-- Dashboard -->
+                        <?php // Dashboard ?>
                         <li><a class="dropdown-item" href="https://admin.go2my.link/">
                             <i class="fas fa-tachometer-alt fa-fw" aria-hidden="true"></i>
                             <?php if (function_exists('__')) { echo __('nav.dashboard'); } else { echo 'Dashboard'; } ?>
                         </a></li>
 
-                        <!-- My Links -->
+                        <?php // My Links ?>
                         <li><a class="dropdown-item" href="https://admin.go2my.link/links">
                             <i class="fas fa-link fa-fw" aria-hidden="true"></i>
                             <?php if (function_exists('__')) { echo __('nav.my_links'); } else { echo 'My Links'; } ?>
                         </a></li>
 
-                        <!-- LinksPage (Component C.2, #48) -->
+                        <?php // LinksPage (Component C.2, #48) ?>
                         <li><a class="dropdown-item" href="https://admin.go2my.link/linkspage">
                             <i class="fas fa-address-card fa-fw" aria-hidden="true"></i>
                             <?php if (function_exists('__')) { echo __('nav.linkspage'); } else { echo 'LinksPage'; } ?>
                         </a></li>
 
-                        <!-- Analytics (#42) -->
+                        <?php // Analytics (#42) ?>
                         <li><a class="dropdown-item" href="https://admin.go2my.link/analytics">
                             <i class="fas fa-chart-line fa-fw" aria-hidden="true"></i>
                             <?php if (function_exists('__')) { echo __('nav.analytics'); } else { echo 'Analytics'; } ?>
                         </a></li>
 
-                        <!-- Organisation -->
+                        <?php // Organisation ?>
                         <li><a class="dropdown-item" href="https://admin.go2my.link/org">
                             <i class="fas fa-building fa-fw" aria-hidden="true"></i>
                             <?php if (function_exists('__')) { echo __('nav.organisation'); } else { echo 'Organisation'; } ?>
                         </a></li>
 
-                        <!-- API Keys -->
+                        <?php // API Keys ?>
                         <li><a class="dropdown-item" href="https://admin.go2my.link/api-keys">
                             <i class="fas fa-key fa-fw" aria-hidden="true"></i>
                             <?php if (function_exists('__')) { echo __('nav.api_keys'); } else { echo 'API Keys'; } ?>
                         </a></li>
 
-                        <!-- Privacy & Data -->
+                        <?php // Privacy & Data ?>
                         <li><a class="dropdown-item" href="https://admin.go2my.link/privacy">
                             <i class="fas fa-shield-halved fa-fw" aria-hidden="true"></i>
                             <?php if (function_exists('__')) { echo __('nav.privacy'); } else { echo 'Privacy & Data'; } ?>
                         </a></li>
 
-                        <!-- Profile -->
+                        <?php // Profile ?>
                         <li><a class="dropdown-item" href="https://admin.go2my.link/profile">
                             <i class="fas fa-user-cog fa-fw" aria-hidden="true"></i>
                             <?php if (function_exists('__')) { echo __('nav.profile'); } else { echo 'Profile'; } ?>
@@ -310,7 +309,7 @@ if (function_exists('getCurrentRoute')) {
 
                         <li><hr class="dropdown-divider"></li>
 
-                        <!-- Log Out -->
+                        <?php // Log Out ?>
                         <li><a class="dropdown-item" href="<?php echo g2ml_mainSiteURL('/logout'); ?>">
                             <i class="fas fa-sign-out-alt fa-fw" aria-hidden="true"></i>
                             <?php if (function_exists('__')) { echo __('nav.logout'); } else { echo 'Log Out'; } ?>
@@ -318,9 +317,7 @@ if (function_exists('getCurrentRoute')) {
                     </ul>
                 </li>
                 <?php } else { ?>
-                <!-- ====================================================== -->
-                <!-- 🔐 Login / Register Links                              -->
-                <!-- ====================================================== -->
+                <?php // 🔐 Login / Register Links ?>
                 <li class="nav-item">
                     <a class="nav-link" href="<?php echo g2ml_mainSiteURL('/login'); ?>">
                         <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
@@ -339,5 +336,5 @@ if (function_exists('getCurrentRoute')) {
 </nav>
 </header>
 
-<!-- Main content area (target for skip-to-content link) -->
+<?php // Main content area (target for skip-to-content link) ?>
 <main id="main-content" tabindex="-1">

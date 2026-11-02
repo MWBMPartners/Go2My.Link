@@ -170,6 +170,7 @@ test('reserved short code: every documented reserved word is blocked', function 
         'api',
         'admin',
         'install',
+        'vendor',
         'www',
     ];
 

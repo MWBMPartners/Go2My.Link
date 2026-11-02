@@ -133,7 +133,7 @@ if ($g2mlThemePreference === 'light' || $g2mlThemePreference === 'dark')
     <title>Go2My.Link — API Console (Swagger UI)</title>
     <meta name="description" content="Interactive OpenAPI 3.1 console for the Go2My.Link public API (/api/v1/*) — read the reference and send real, authenticated test requests.">
     <meta name="robots" content="index, follow">
-    <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
+    <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="canonical" href="https://go2my.link/api/docs/swagger/">
 
     <link rel="stylesheet" type="text/css" href="/api/docs/swagger/vendor/swagger-ui.css">

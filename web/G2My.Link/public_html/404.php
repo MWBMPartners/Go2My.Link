@@ -59,15 +59,17 @@ $mainSiteURL  = 'https://go2my.link';
     <meta name="robots" content="noindex, nofollow">
     <title><?php echo htmlspecialchars($errorTitle, ENT_QUOTES, 'UTF-8'); ?> — <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?></title>
 
-    <!-- Bootstrap 5.3 CSS (CDN) -->
+    <?php // Bootstrap 5.3 CSS: CDN first; a local copy in /vendor/ if the CDN fails. ?>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
           integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
-          crossorigin="anonymous">
+          crossorigin="anonymous"
+          onerror="var l=document.createElement('link');l.rel='stylesheet';l.href='/vendor/bootstrap/css/bootstrap.min.css';this.parentNode.insertBefore(l, this.nextSibling);">
 
-    <!-- Font Awesome 6 (CDN) -->
+    <?php // Font Awesome 6: CDN first; a local copy in /vendor/ if the CDN fails. ?>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
           integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
-          crossorigin="anonymous">
+          crossorigin="anonymous"
+          onerror="var l=document.createElement('link');l.rel='stylesheet';l.href='/vendor/fontawesome/css/all.min.css';this.parentNode.insertBefore(l, this.nextSibling);">
 
     <!-- 🌓 FOUC Prevention — Apply theme before first paint -->
     <script>

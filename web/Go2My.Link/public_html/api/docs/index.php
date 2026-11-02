@@ -15,8 +15,10 @@
  * Self-hosted, unauthenticated static documentation page for the versioned
  * public API (/api/v1/*). Renders web/Go2My.Link/public_html/api/openapi.yaml
  * via a locally vendored Redoc standalone bundle — vendor/redoc.standalone.js
- * — so this page has NO dependency on any external CDN and works fully
- * offline of any third-party network call.
+ * — so this page has NO dependency on any external CDN for its scripts,
+ * styles or data. The one outside request is Redoc's own small logo image
+ * (see the next paragraph and .htaccess in this directory); the page works
+ * without it.
  *
  * This page is deliberately a plain PHP file with no dynamic behaviour (no
  * database access, no session, no user input processed) — it is pure static
@@ -29,8 +31,9 @@
  * Worker for search indexing, constructed from a blob: URL; CSS-in-JS
  * theming). Rather than weaken the site-wide policy, .htaccess in THIS
  * directory only relaxes the policy for paths under /api/docs/ — every
- * asset it references remains same-origin ('self'); no external CDN is
- * whitelisted anywhere.
+ * script, style and data file it uses remains same-origin ('self'). The
+ * only outside host named anywhere is https://cdn.redoc.ly, for images only,
+ * because Redoc draws its own logo from there (#285).
  *
  * There is a second view of the very same specification file next door, at
  * /api/docs/swagger/. That one is Swagger UI: an interactive console where a
@@ -61,7 +64,7 @@
     <title>Go2My.Link — API Documentation</title>
     <meta name="description" content="Interactive OpenAPI 3.1 reference for the Go2My.Link public API (/api/v1/*).">
     <meta name="robots" content="index, follow">
-    <link rel="icon" type="image/svg+xml" href="/img/logo.svg">
+    <link rel="icon" type="image/png" href="/favicon.png">
     <style>
         html, body
         {

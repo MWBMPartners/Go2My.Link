@@ -175,9 +175,11 @@ if (($themePref === 'auto')) {
       data-bs-theme="<?php echo $initialTheme; ?>"
       data-g2ml-theme-pref="<?php echo $themePref; ?>">
 <head>
-    <!-- ================================================================== -->
-    <!-- Meta Tags                                                          -->
-    <!-- ================================================================== -->
+<?php
+// Notes about the page head are PHP comments on purpose: a PHP comment never
+// reaches the visitor, so none of them add weight to the page (#285).
+// This block holds the meta tags, the share (Open Graph) tags and the title.
+?>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="<?php echo htmlspecialchars($pageDesc, ENT_QUOTES, 'UTF-8'); ?>">
@@ -186,7 +188,6 @@ if (($themePref === 'auto')) {
     <meta name="csrf-token" content="<?php echo htmlspecialchars(g2ml_generateCSRFToken('ajax'), ENT_QUOTES, 'UTF-8'); ?>">
     <?php } ?>
 
-    <!-- Open Graph / Social Sharing -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="<?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?>">
     <meta property="og:description" content="<?php echo htmlspecialchars($pageDesc, ENT_QUOTES, 'UTF-8'); ?>">
@@ -204,19 +205,16 @@ if (($themePref === 'auto')) {
 
     <title><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></title>
 
-    <!-- ================================================================== -->
-    <!-- Favicon                                                            -->
-    <!-- ================================================================== -->
+<?php
+// Favicons, then the web app manifest and the iPhone and iPad home-screen
+// icon: https://developer.mozilla.org/en-US/docs/Web/Manifest
+?>
     <link rel="icon" type="image/x-icon" href="<?php echo htmlspecialchars($faviconIcoHref, ENT_QUOTES, 'UTF-8'); ?>">
     <?php if ($hasFaviconPng) { ?>
     <link rel="icon" type="image/png" sizes="32x32" href="<?php echo htmlspecialchars($faviconPngHref, ENT_QUOTES, 'UTF-8'); ?>">
     <?php } ?>
     <link rel="shortcut icon" href="<?php echo htmlspecialchars($faviconIcoHref, ENT_QUOTES, 'UTF-8'); ?>">
 
-    <!-- ================================================================== -->
-    <!-- PWA Manifest & Apple Touch Icon                                    -->
-    <!-- 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/Manifest -->
-    <!-- ================================================================== -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1E88E5">
     <meta name="mobile-web-app-capable" content="yes">
@@ -225,46 +223,59 @@ if (($themePref === 'auto')) {
     <meta name="apple-mobile-web-app-title" content="<?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>">
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
 
-    <!-- ================================================================== -->
-    <!-- Bootstrap 5.3 CSS (CDN + Local Fallback)                           -->
-    <!-- 📖 Reference: https://getbootstrap.com/docs/5.3/getting-started/   -->
-    <!-- ================================================================== -->
+<?php
+// Bootstrap 5.3 and Font Awesome 6: from the CDN first, with a copy of each
+// kept in this site's own /vendor/ folder as the fallback (#285).
+//
+// If a CDN file cannot be fetched (the CDN is down, or the file does not match
+// its integrity hash), the browser fires the link's "error" event and the
+// handler adds a link to the local copy. The local copies are byte for byte the
+// files the CDN serves (tests/unit/library_fallbacks_test.php checks that).
+// They used to be pointed at /_libraries/, which .htaccess blocks on purpose,
+// so the fallback never worked, and Font Awesome had none at all.
+//
+// Each web root that uses this header has its own /vendor/ folder, because a
+// web root is served on its own and cannot reach another one's files.
+//
+// Reference: https://getbootstrap.com/docs/5.3/getting-started/
+// Reference: https://fontawesome.com/docs/web/setup/host-yourself
+?>
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
           integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
           crossorigin="anonymous"
           id="bootstrap-css"
-          onerror="var l=document.createElement('link');l.rel='stylesheet';l.href='/_libraries/bootstrap/css/bootstrap.min.css';document.head.appendChild(l);">
+          onerror="var l=document.createElement('link');l.rel='stylesheet';l.href='/vendor/bootstrap/css/bootstrap.min.css';this.parentNode.insertBefore(l, this.nextSibling);">
 
-    <!-- ================================================================== -->
-    <!-- Font Awesome 6 (CDN + Local Fallback)                              -->
-    <!-- 📖 Reference: https://fontawesome.com/docs/web/setup/host-yourself -->
-    <!-- ================================================================== -->
     <link rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
           integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
           crossorigin="anonymous"
           referrerpolicy="no-referrer"
-          id="fontawesome-css">
+          id="fontawesome-css"
+          onerror="var l=document.createElement('link');l.rel='stylesheet';l.href='/vendor/fontawesome/css/all.min.css';this.parentNode.insertBefore(l, this.nextSibling);">
 
-    <!-- ================================================================== -->
-    <!-- Custom CSS (Component-specific, loaded if exists)                  -->
-    <!-- ================================================================== -->
     <link rel="stylesheet" href="/css/style.css">
 
     <?php
-    // RTL support — load Bootstrap RTL if text direction is RTL
+    // Right-to-left languages also load Bootstrap's mirrored stylesheet, with
+    // the same kind of local fallback as above.
     if ($textDir === 'rtl')
     {
-        echo '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" integrity="sha384-dpuaG1suU0eT09tx5plTaGMLBsfDLzUCCUXOY2j/LSvXYuG6Bqs43ALlhIqAJVRb" crossorigin="anonymous">';
-    }
     ?>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css"
+          integrity="sha384-dpuaG1suU0eT09tx5plTaGMLBsfDLzUCCUXOY2j/LSvXYuG6Bqs43ALlhIqAJVRb"
+          crossorigin="anonymous"
+          onerror="var l=document.createElement('link');l.rel='stylesheet';l.href='/vendor/bootstrap/css/bootstrap.rtl.min.css';this.parentNode.insertBefore(l, this.nextSibling);">
+    <?php
+    }
 
-    <!-- ================================================================== -->
-    <!-- 🎨 Theme: FOUC Prevention (runs before first paint)                -->
-    <!-- Reads localStorage and corrects data-bs-theme immediately.         -->
-    <!-- 📖 Reference: https://getbootstrap.com/docs/5.3/customize/color-modes/ -->
-    <!-- ================================================================== -->
+    // The next script runs before first paint. It reads the saved theme from
+    // localStorage and sets data-bs-theme straight away, so the page does not
+    // flash the wrong colours before theme.js (loaded deferred, below) takes
+    // over. Reference: https://getbootstrap.com/docs/5.3/customize/color-modes/
+    ?>
     <script>
         (function()
         {
@@ -295,11 +306,9 @@ if (($themePref === 'auto')) {
         })();
     </script>
 
-    <!-- Theme Controller (loaded deferred — full toggle/persistence logic) -->
     <script src="/js/theme.js" defer></script>
 
-    <!-- 📱 PWA: Service Worker Registration -->
-    <!-- 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerContainer/register -->
+<?php // Registers the service worker (offline page and cached static files): https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorkerContainer/register ?>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function() {

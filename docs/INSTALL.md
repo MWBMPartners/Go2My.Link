@@ -118,9 +118,10 @@ step the installer, per component:
    ignores forged `X-Forwarded-For` / `X-Real-Ip` headers and uses
    `REMOTE_ADDR`, so audit logging and per-IP rate limits cannot be spoofed.
 
-> ⚠️ The installer refuses to run once `web/_auth_keys/.installed` exists. To
-> re-run it intentionally, remove that lock file first — only on a host you
-> control.
+> ⚠️ The installer refuses to run once `web/_auth_keys/.installed` exists: it
+> then answers a plain "404 Not Found" to every request and shows nothing
+> else. To re-run it intentionally, remove that lock file first — only on a
+> host you control. Delete the `install/` folder after installing either way.
 
 ## 🧯 Manual / fallback setup
 

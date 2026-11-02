@@ -13,8 +13,8 @@
  * ============================================================================
  *
  * Closes the <main> element, outputs the footer with links, includes
- * JavaScript files (Bootstrap, jQuery, custom), cookie consent placeholder,
- * and debug panel (when G2ML_DEBUG is true).
+ * JavaScript files (Bootstrap and the site's own), and the debug panel (when
+ * G2ML_DEBUG is true). The cookie consent banner is printed by header.php.
  *
  * Dependencies: page_init.php (must be loaded first)
  *
@@ -54,28 +54,27 @@ if (function_exists('getSetting')) {
 }
 ?>
 
-</main><!-- /#main-content -->
+</main>
 
-<!-- ====================================================================== -->
-<!-- Footer                                                                 -->
-<!-- ====================================================================== -->
 <footer class="bg-dark text-light py-4 mt-auto" data-bs-theme="dark" role="contentinfo">
     <div class="container">
         <div class="row">
 
-            <!-- Column 1: Brand & Copyright -->
+            <?php // Column 1: brand and copyright. ?>
             <div class="col-md-4 mb-3">
-                <?php // The logo's dark lettering would nearly disappear on the dark footer, so it sits on a white rounded chip. ?>
+                <?php
+                // The logo's dark lettering would nearly disappear on the dark footer, so it sits on a white rounded chip.
+                // The image is 160 pixels wide (320 for sharp screens), the same two files the navigation bar loads, so
+                // they are fetched once. The old logo was a 350 KB picture wrapped as an SVG (#285).
+                ?>
                 <span class="d-inline-block bg-white rounded px-2 py-1 mb-2">
-                    <picture>
-                        <source srcset="https://go2my.link/img/logo.svg" type="image/svg+xml">
-                        <img src="https://go2my.link/img/logo.png"
-                             alt="<?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>"
-                             height="32"
-                             width="142"
-                             class="d-block"
-                             loading="lazy">
-                    </picture>
+                    <img src="https://go2my.link/img/logo-160.png"
+                         srcset="https://go2my.link/img/logo-160.png 1x, https://go2my.link/img/logo-320.png 2x"
+                         alt="<?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>"
+                         height="32"
+                         width="142"
+                         class="d-block"
+                         loading="lazy">
                 </span>
                 <p class="text-body-secondary small">
                     <?php if (function_exists('getSetting')) { echo htmlspecialchars(getSetting('site.tagline', 'Shorten. Track. Manage.'), ENT_QUOTES, 'UTF-8'); } else { echo 'Shorten. Track. Manage.'; } ?>
@@ -86,7 +85,7 @@ if (function_exists('getSetting')) {
                 </p>
             </div>
 
-            <!-- Column 2: Quick Links -->
+            <?php // Column 2: quick links. ?>
             <div class="col-md-4 mb-3">
                 <h2 class="h6"><?php if (function_exists('__')) { echo __('footer.quick_links'); } else { echo 'Quick Links'; } ?></h2>
                 <ul class="list-unstyled small">
@@ -98,7 +97,7 @@ if (function_exists('getSetting')) {
                 </ul>
             </div>
 
-            <!-- Column 3: Legal -->
+            <?php // Column 3: legal links. ?>
             <div class="col-md-4 mb-3">
                 <h2 class="h6"><?php if (function_exists('__')) { echo __('footer.legal'); } else { echo 'Legal'; } ?></h2>
                 <ul class="list-unstyled small">
@@ -114,54 +113,38 @@ if (function_exists('getSetting')) {
     </div>
 </footer>
 
-<?php // The cookie consent banner is printed by header.php, straight after the skip link, so keyboard users reach it first (#287). ?>
-
-<!-- ====================================================================== -->
-<!-- ARIA Live Region for Dynamic Status Updates                            -->
-<!-- ====================================================================== -->
+<?php
+// The cookie consent banner is printed by header.php, straight after the skip
+// link, so keyboard users reach it first (#287).
+//
+// The live region below is where script announces changes to screen readers.
+// The translation widget that follows is the interim machine translation.
+?>
 <?php if (function_exists('ariaLiveRegion')) { echo ariaLiveRegion('global-status', '', 'polite', 'status'); } ?>
 
-<!-- ====================================================================== -->
-<!-- Interim Translation Widget                                             -->
-<!-- ====================================================================== -->
 <?php
 if (file_exists(G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'translate_widget.php'))
 {
     require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'translate_widget.php';
 }
+
+// Bootstrap 5.3 JavaScript bundle (it includes Popper): from the CDN first.
+// If the CDN script did not load, "bootstrap" is not defined, and the second
+// script writes a tag for the copy in this site's own /vendor/ folder. It must
+// be written with document.write so the copy runs before the scripts below
+// that need it. jQuery used to be loaded here as well, but nothing used it, so
+// it was removed (#285).
+// Reference: https://getbootstrap.com/docs/5.3/getting-started/
 ?>
-
-<!-- ====================================================================== -->
-<!-- JavaScript — jQuery 3.7 (CDN + Local Fallback)                         -->
-<!-- 📖 Reference: https://jquery.com/download/                             -->
-<!-- ====================================================================== -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"
-        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
-        crossorigin="anonymous"></script>
-<script>
-    // jQuery local fallback
-    if (typeof jQuery === 'undefined') {
-        document.write('<script src="/_libraries/jquery/jquery.min.js"><\/script>');
-    }
-</script>
-
-<!-- ====================================================================== -->
-<!-- JavaScript — Bootstrap 5.3 Bundle (CDN + Local Fallback)               -->
-<!-- 📖 Reference: https://getbootstrap.com/docs/5.3/getting-started/       -->
-<!-- ====================================================================== -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>
 <script>
-    // Bootstrap JS local fallback
     if (typeof bootstrap === 'undefined') {
-        document.write('<script src="/_libraries/bootstrap/js/bootstrap.bundle.min.js"><\/script>');
+        document.write('<script src="/vendor/bootstrap/js/bootstrap.bundle.min.js"><\/script>');
     }
 </script>
 
-<!-- ====================================================================== -->
-<!-- Custom JavaScript (Component-specific, loaded if exists)               -->
-<!-- ====================================================================== -->
 <script src="/js/app.js" defer></script>
 <?php // forms.js (#286): the "Working…" label and double-submit guard. The label travels in the data attribute, so no inline script is needed. ?>
 <script src="/js/forms.js"

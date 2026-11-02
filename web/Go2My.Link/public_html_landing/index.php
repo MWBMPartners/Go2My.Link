@@ -1,18 +1,17 @@
-<!--
-  Copyright (c) 2024–2026 MWBM Partners Ltd (MWservices).
-  All rights reserved.
-
-  This source code is proprietary and confidential.
-  Unauthorised copying, modification, or distribution is strictly prohibited.
--->
-
 <?php
+/**
+ * Copyright (c) 2024–2026 MWBM Partners Ltd (MWservices).
+ * All rights reserved.
+ *
+ * This source code is proprietary and confidential.
+ * Unauthorised copying, modification, or distribution is strictly prohibited.
+ */
+
 // This static "coming soon" page has no app bootstrap (no page_init.php,
 // no i18n) — $siteName is the logo's accessible alt text, matching the
 // brand name used elsewhere on this page (<title>, og:title, tagline).
 $siteName = 'Go2My.link';
 ?>
-
 <!DOCTYPE html>
 <html lang="en-GB" dir="ltr">
 <head>
@@ -22,13 +21,13 @@ $siteName = 'Go2My.link';
     <meta name="description" content="Go2My.link — A powerful URL shortening service by MWservices. Coming soon.">
     <meta name="robots" content="index, follow">
 
-    <!-- Open Graph -->
+    <?php // Open Graph ?>
     <meta property="og:title" content="Go2My.link — Coming Soon">
     <meta property="og:description" content="A powerful URL shortening service. Shorten, track, and manage your links.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://go2my.link">
 
-    <!-- Favicon -->
+    <?php // Favicon ?>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
 
     <style>
@@ -326,24 +325,22 @@ $siteName = 'Go2My.link';
     <a href="#main" class="skip-link">Skip to main content</a>
 
     <main id="main" class="container" role="main">
-        <!-- Logo -->
+        <?php // Logo ?>
         <div class="logo" aria-label="Go2My.link logo">
-            <picture>
-                <source srcset="https://go2my.link/img/logo.svg" type="image/svg+xml">
-                <img src="https://go2my.link/img/logo.png"
-                     alt="<?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>"
-                     height="150"
-                     width="auto"
-                     class="mb-2"
-                     loading="lazy">
-            </picture>
+            <img src="https://go2my.link/img/logo-320.png"
+                 srcset="https://go2my.link/img/logo-320.png 1x, https://go2my.link/img/logo-640.png 2x"
+                 alt="<?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>"
+                 height="72"
+                 width="320"
+                 class="mb-2"
+                 loading="lazy">
         </div>
 
-        <!-- Heading -->
+        <?php // Heading ?>
         <h1>Coming Soon</h1>
         <p class="tagline">A powerful URL shortening platform by MWservices</p>
 
-        <!-- Features preview -->
+        <?php // Features preview ?>
         <?php
             echo "<div class=\"features\" aria-label=\"Upcoming features\">";
             echo "<span class=\"feature\">URL Shortening</span>";
@@ -352,13 +349,13 @@ $siteName = 'Go2My.link';
             echo "</div>";
         ?>
 
-        <!-- A sign-up form used to be here. It posted to "#" and every address typed in was lost (#211). Add it back only with a real handler that stores the address with consent wording, CSRF protection and a rate limit. -->
+        <?php // A sign-up form used to be here. It posted to "#" and every address typed in was lost (#211). Add it back only with a real handler that stores the address with consent wording, CSRF protection and a rate limit. ?>
     </main>
 
     <footer>
         <p>&copy; 2026 <a href="https://www.MWBMPartners.ltd">MWBM Partners Ltd</a> (t/a MWservices). All rights reserved.</p>
     </footer>
-<!-- Countdown ring (large screens only) -->
+<?php // Countdown ring (large screens only) ?>
 <div id="countdown-ring" aria-hidden="true">
     <svg width="28" height="28" viewBox="0 0 28 28">
         <circle cx="14" cy="14" r="12" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="2.5"/>
@@ -367,9 +364,23 @@ $siteName = 'Go2My.link';
                 stroke-linecap="round" transform="rotate(-90 14 14)"/>
     </svg>
 </div>
+<?php
+// The ring shows 15 minutes (900 seconds) passing, and then the page reloads.
+//
+// Reduced motion (#104, #105): a visitor who has asked for less motion gets no
+// ring animation and no automatic reload. A reload that cannot be paused or
+// stopped would fail WCAG 2.2.1 (the timing rule), so the script checks the
+// media query once, hides the decorative ring and returns before it schedules
+// any animation frame or reload.
+//
+// Everyone else keeps the ring and the reload. When the ring is full the page
+// reloads only if the tab is visible and no form control has focus. Otherwise
+// the cycle quietly starts again, so nobody is interrupted part-way through
+// typing, and the timing is still not a trap.
+?>
 <script>
     (function () {
-        var AUTO_RELOAD_SECONDS = 900; // 15 minutes
+        var AUTO_RELOAD_SECONDS = 900;
         var CIRCUMFERENCE = 75.398;
 
         var ring = document.getElementById('countdown-ring');
@@ -378,11 +389,6 @@ $siteName = 'Go2My.link';
             return;
         }
 
-        // #104 / #105 — Reduced-motion users get NO ring animation and NO
-        // auto-reload (a page-level auto-reload with no way to pause/stop is a
-        // WCAG 2.2.1 Level-A timing trap). Read the media query once and, when
-        // it matches, hide the decorative ring and return before scheduling any
-        // animation frame or reload.
         var reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
         if (reducedMotionQuery.matches) {
             if (ring) {
@@ -391,10 +397,6 @@ $siteName = 'Go2My.link';
             return;
         }
 
-        // Everyone else keeps a gentle auto-transition. The ring visualises
-        // progress; when it completes we only reload if the page is visible AND
-        // no form control is focused — otherwise we quietly restart the cycle so
-        // the user is never interrupted mid-interaction (still non-trapping).
         var start = Date.now();
 
         function aFormControlHasFocus() {

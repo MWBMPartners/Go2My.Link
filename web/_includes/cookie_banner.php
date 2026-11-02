@@ -86,9 +86,7 @@ if (function_exists('g2ml_generateCSRFToken')) {
 }
 ?>
 
-<!-- ====================================================================== -->
-<!-- 🍪 Cookie Consent Banner                                               -->
-<!-- ====================================================================== -->
+<?php // 🍪 Cookie Consent Banner ?>
 <?php // z-index 1040 is above anything Bootstrap pins with fixed-top or sticky-top (1030 and 1020) but below its modal backdrop (1050) and modal (1055). At 1060 the banner sat on top of the preferences dialog, so it could cover part of it. ?>
 <div id="g2ml-cookie-banner"
      class="fixed-bottom bg-body border-top shadow-lg px-2 px-lg-3 py-2 py-lg-3"
@@ -128,9 +126,7 @@ if (function_exists('g2ml_generateCSRFToken')) {
     <input type="hidden" id="g2ml-consent-csrf" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
 </div>
 
-<!-- ====================================================================== -->
-<!-- 🍪 Cookie Preferences Modal                                            -->
-<!-- ====================================================================== -->
+<?php // 🍪 Cookie Preferences Modal ?>
 <div class="modal fade" id="g2ml-cookie-modal" tabindex="-1"
      aria-labelledby="cookie-modal-title" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -148,7 +144,7 @@ if (function_exists('g2ml_generateCSRFToken')) {
                     <?php if (function_exists('__')) { echo __('cookie.preferences_desc'); } else { echo 'Choose which categories of cookies you want to allow. Essential cookies cannot be disabled as they are required for the site to function.'; } ?>
                 </p>
 
-                <!-- Essential (always on) -->
+                <?php // Essential (always on) ?>
                 <div class="form-check form-switch mb-3 pb-3 border-bottom">
                     <input class="form-check-input" type="checkbox" id="g2ml-consent-essential"
                            checked disabled aria-describedby="essential-desc">
@@ -160,7 +156,7 @@ if (function_exists('g2ml_generateCSRFToken')) {
                     </small>
                 </div>
 
-                <!-- Analytics -->
+                <?php // Analytics ?>
                 <div class="form-check form-switch mb-3 pb-3 border-bottom">
                     <input class="form-check-input g2ml-consent-toggle" type="checkbox" id="g2ml-consent-analytics"
                            data-consent-type="analytics" aria-describedby="analytics-desc">
@@ -172,7 +168,7 @@ if (function_exists('g2ml_generateCSRFToken')) {
                     </small>
                 </div>
 
-                <!-- Functional -->
+                <?php // Functional ?>
                 <div class="form-check form-switch mb-3 pb-3 border-bottom">
                     <input class="form-check-input g2ml-consent-toggle" type="checkbox" id="g2ml-consent-functional"
                            data-consent-type="functional" aria-describedby="functional-desc">
@@ -184,7 +180,7 @@ if (function_exists('g2ml_generateCSRFToken')) {
                     </small>
                 </div>
 
-                <!-- Marketing -->
+                <?php // Marketing ?>
                 <div class="form-check form-switch mb-3">
                     <input class="form-check-input g2ml-consent-toggle" type="checkbox" id="g2ml-consent-marketing"
                            data-consent-type="marketing" aria-describedby="marketing-desc">

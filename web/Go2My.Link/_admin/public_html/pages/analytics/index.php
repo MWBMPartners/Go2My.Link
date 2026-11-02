@@ -73,8 +73,8 @@
  * Chart rendering (CSP-safe)
  * ----------------------------------------------------------------------------
  * The admin CSP (web/Go2My.Link/_admin/public_html/.htaccess) is
- * script-src 'self' 'unsafe-inline' cdn.jsdelivr.net code.jquery.com
- * cdnjs.cloudflare.com — but this page deliberately does NOT rely on
+ * script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com —
+ * but this page deliberately does NOT rely on
  * 'unsafe-inline' or any CDN for Chart.js: every chart is instantiated by a
  * same-origin external file, js/analytics.js, reading a
  * <script type="application/json"> data island this page writes via

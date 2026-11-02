@@ -10,8 +10,8 @@
 #
 # The site-wide Content-Security-Policy (public_html/.htaccess) is correct
 # for every other page on this component, but the self-hosted Redoc
-# standalone bundle powering THIS directory's docs UI needs two allowances
-# the site-wide policy does not grant:
+# standalone bundle powering THIS directory's docs UI needs the allowances
+# below that the site-wide policy does not grant:
 #
 #   1. worker-src 'self' blob:  — Redoc builds its client-side search index
 #      inside a Web Worker constructed from a blob: URL
@@ -23,12 +23,22 @@
 #      (styled-components), which injects <style> elements at runtime
 #      rather than using a static stylesheet.
 #
-# Every asset this page loads is still same-origin only ('self') — the
-# Redoc bundle is vendored locally at vendor/redoc.standalone.js, and
-# openapi.yaml is fetched from this same component via a relative path. NO
-# external CDN is whitelisted here or anywhere else; this directory's
-# Header directives are scoped to /api/docs/* ONLY and do not affect any
-# other path on the site (Apache applies the more specific, deeper
+# Every script, style, font and data request this page makes is still
+# same-origin only ('self') — the Redoc bundle is vendored locally at
+# vendor/redoc.standalone.js, and openapi.yaml is fetched from this same
+# component via a relative path. There is ONE outside address, and it is for
+# an image only (#285):
+#
+#   3. img-src https://cdn.redoc.ly — Redoc draws a small "Redocly" logo next
+#      to its "API docs by Redocly" link at the foot of the left-hand menu,
+#      loading it from https://cdn.redoc.ly/redoc/logo-mini.svg. In the
+#      bundled Redoc 2.5.3 the image is always drawn and no option turns it
+#      off. Without this entry the browser blocked it and wrote an error to
+#      the console on every view. The page works without the image. Only that
+#      one host is allowed, and only for images, on this page.
+#
+# This directory's Header directives are scoped to /api/docs/* ONLY and do not
+# affect any other path on the site (Apache applies the more specific, deeper
 # directory's "Header set" for a given header name last, so this block
 # overrides — for requests under this directory only — the site-wide CSP
 # set in the parent public_html/.htaccess).
@@ -44,7 +54,7 @@
 #     - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/worker-src
 # =============================================================================
 <IfModule mod_headers.c>
-    Header set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://cdn.redoc.ly; font-src 'self' data:; worker-src 'self' blob:; child-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'"
 </IfModule>
 
 # =============================================================================

@@ -26,7 +26,8 @@
  *      (+ ensure each component's include file exists), write the lock file.
  *
  * 🛡️  SECURITY:
- *   - Refuses to run once a lock file exists (web/_auth_keys/.installed).
+ *   - Once a lock file exists (web/_auth_keys/.installed) it answers a plain
+ *     404 Not Found to every request and shows nothing else (#285).
  *   - Never echoes entered secrets back to the page.
  *   - Generates ENCRYPTION_SALT / ENCRYPTION_KEY_SECONDARY server-side
  *     (32 random bytes each) and writes the creds file with 0600 perms.
@@ -60,31 +61,6 @@ declare(strict_types=1);
 
 date_default_timezone_set('UTC');
 
-// Harden the session cookie before the session starts.
-$g2mlSecureCookie = false;
-if (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
-{
-    $g2mlSecureCookie = true;
-}
-elseif (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
-{
-    $g2mlSecureCookie = true;
-}
-
-session_set_cookie_params([
-    'httponly' => true,
-    'secure'   => $g2mlSecureCookie,
-    'samesite' => 'Strict',
-]);
-session_start();
-
-// Regenerate the session id once per installer session (anti-fixation).
-if (empty($_SESSION['g2ml_install_started']))
-{
-    session_regenerate_id(true);
-    $_SESSION['g2ml_install_started'] = true;
-}
-
 // ============================================================================
 // 📁 Paths
 // ============================================================================
@@ -110,6 +86,57 @@ $g2mlComponents = [
     'G2My.Link'  => $g2mlWebRoot . DIRECTORY_SEPARATOR . 'G2My.Link',
     'Lnks.page'  => $g2mlWebRoot . DIRECTORY_SEPARATOR . 'Lnks.page',
 ];
+
+// ============================================================================
+// 🔒 Already installed? Then this page does not exist
+// ============================================================================
+// Finishing the installer writes a lock file (web/_auth_keys/.installed). From
+// then on, every request gets a plain "404 Not Found" and nothing else: no page,
+// no server path, no hint that an installer is here. This check runs before the
+// session starts, so a visitor is not even given a session cookie.
+//
+// The request that finishes the installation is not affected: the lock file
+// does not exist yet when that request begins, and its "Installation complete"
+// screen is built later in this file.
+//
+// This file still has to be deleted after installation (see the screen at the
+// end). The lock file is what makes the installer refuse to run; to run it
+// again, remove the lock file first, and only on a machine you control.
+// ============================================================================
+
+if (file_exists($g2mlLockFile))
+{
+    http_response_code(404);
+    header('Content-Type: text/plain; charset=UTF-8');
+    header('X-Robots-Tag: noindex, nofollow');
+    echo 'Not Found';
+    exit;
+}
+
+// Harden the session cookie before the session starts.
+$g2mlSecureCookie = false;
+if (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
+{
+    $g2mlSecureCookie = true;
+}
+elseif (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
+{
+    $g2mlSecureCookie = true;
+}
+
+session_set_cookie_params([
+    'httponly' => true,
+    'secure'   => $g2mlSecureCookie,
+    'samesite' => 'Strict',
+]);
+session_start();
+
+// Regenerate the session id once per installer session (anti-fixation).
+if (empty($_SESSION['g2ml_install_started']))
+{
+    session_regenerate_id(true);
+    $_SESSION['g2ml_install_started'] = true;
+}
 
 // ============================================================================
 // 🔐 CSRF (installer-local — independent of the app's keyed CSRF)
@@ -803,8 +830,14 @@ function g2ml_install_create_admin(mysqli $db, array $admin, string $securityPat
 }
 
 // ============================================================================
-// 🚦 Lock guard — refuse to run once installed
+// 🚦 Installation state
 // ============================================================================
+// The guard near the top of this file has already answered 404 for a request
+// that arrives after installation, so this flag is normally false here. The lock
+// file is read again so that a lock written by another request since that guard
+// ran is still honoured: nothing is processed then. The flag also becomes true
+// inside the request that finishes the installation, so the "Installation
+// complete" screen can be shown once.
 
 $alreadyInstalled = false;
 
@@ -1343,16 +1376,16 @@ header('Content-Type: text/html; charset=UTF-8');
 
         <?php
         // ====================================================================
-        // Already installed (and not the just-finished screen)
+        // Finished by another request while this one waited (for example a
+        // double click on the last button). Normal requests never get here:
+        // once the lock file exists they are turned away with a 404 above.
         // ====================================================================
         if ($alreadyInstalled && $step !== 5)
         {
         ?>
-        <h2>✅ Already installed</h2>
-        <p>This installation has already been completed (a lock file exists at <code>web/_auth_keys/.installed</code>).</p>
+        <h2>✅ Installation is already complete</h2>
         <div class="warn-box">
-            <strong>🔒 Security:</strong> delete the entire <code>install/</code> directory now. To re-run the installer
-            you must first remove the lock file <code>web/_auth_keys/.installed</code> — only do this on a machine you control.
+            <strong>🔒 Security:</strong> delete the entire <code>install/</code> folder from the server now.
         </div>
         <?php
         }

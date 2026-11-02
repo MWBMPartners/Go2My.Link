@@ -61,7 +61,7 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
     # widen script execution; it only lets the admin dashboard frame its own
     # already-escaped, static-HTML preview content.
     # 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
-    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net code.jquery.com cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; font-src 'self' cdnjs.cloudflare.com data:; img-src 'self' data: https:; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; font-src 'self' cdnjs.cloudflare.com data:; img-src 'self' data: https:; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
 
     # HSTS — enforce HTTPS for 1 year
     # 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security
@@ -88,6 +88,29 @@ RewriteRule ^_uploads(/|$) - [F,L]
 RewriteRule ^_backups(/|$) - [F,L]
 RewriteRule ^_sql(/|$) - [F,L]
 RewriteRule ^_schemas(/|$) - [F,L]
+
+# =============================================================================
+# Block Direct Requests to Page Files — /pages/ (#285)
+# The files under pages/ are page fragments: pieces of a page that the front
+# controller (index.php) puts between the header and the footer. They are
+# included by PHP, they are not web addresses. Opened on their own, a dashboard
+# page stopped with a blank 500 error and a PHP fatal error in the log.
+#
+# So a request for /pages/ or anything under it is answered with 404. The
+# "ErrorDocument 404" line further down sends that answer to the front
+# controller, which shows the normal branded 404 page to a signed-in visitor,
+# as for any other unknown dashboard address (a visitor who is not signed in is
+# sent to the sign-in page first, as for every dashboard address). The front
+# controller's own use of these files is a PHP include, not a request over the
+# web, so this rule does not affect it.
+# The answer is given here, rather than by rewriting to the front controller,
+# because a rewrite of a folder address that has no trailing slash (/pages/links)
+# first made Apache redirect to the same address with a slash added and the
+# route name in the query string.
+# This rule has to stay above the "Clean URLs" rule below, or a request such as
+# /pages/home would be rewritten to the file pages/home.php first.
+# =============================================================================
+RewriteRule ^pages(/|$) - [R=404,L]
 
 # =============================================================================
 # Block Access to Sensitive Files

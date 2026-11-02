@@ -9,24 +9,21 @@ info:
     organisation summary, and (for partners with the CueRCode dynamic-QR
     integration enabled) link a short URL to an externally-managed QR code.
 
-    This document is generated directly from the shipped PHP implementation
-    (`web/Go2My.Link/public_html/api/v1/index.php` and its `handlers/*.php`,
-    `web/_functions/api_auth.php`, `web/_functions/api_response.php`,
-    `web/_functions/api_ratelimit.php`) — every field, status code and
-    validation rule below reflects what the code actually does, not an
-    aspirational design.
+    This document describes how the live API actually behaves: every field,
+    status code and validation rule below reflects what the service really
+    does, not an aspirational design.
 
     ### Request pipeline
 
-    Every request passes through the same ordered pipeline before a handler
-    ever runs. Each step's failure short-circuits to a response (and is still
-    logged to the audit trail regardless of outcome):
+    Every request passes through the same ordered pipeline before the
+    endpoint itself runs. Each step's failure short-circuits to a response
+    (and is still logged to the audit trail regardless of outcome):
 
     1. HTTPS enforcement (`403` if not secure, non-local environments only).
     2. Route sanitisation (an unrecognised or malformed route is treated as
        `404`, never as a different error).
-    3. The `api.public_enabled` master switch (`503` when the operator has
-       disabled the public API entirely).
+    3. The public API on/off switch (`503` when the API has been switched
+       off entirely).
     4. Pre-authentication IP failed-auth backoff (`429` — see "Rate limiting
        and backoff" below).
     5. Bearer / `X-API-Key` extraction (`401` when neither header carries a
@@ -39,13 +36,13 @@ info:
        scope).
     9. JSON body decoding for `POST`/`PUT` requests (`400` on malformed
        JSON; an empty body decodes to `{}` rather than failing outright —
-       handlers reject a missing *required* field on their own terms with a
+       the endpoint itself then rejects a missing *required* field with a
        field-specific `422`).
-    10. Handler invocation. An expected, client-facing failure (`404`,
-        `409`, `422`, etc.) is raised deliberately by the handler with a
-        specific message and (optionally) an offending field name. Any
-        other exception is mapped generically to `500` and never leaks its
-        underlying cause to the caller.
+    10. The endpoint runs. An expected, client-facing failure (`404`,
+        `409`, `422`, etc.) comes back with a specific message and
+        (optionally) the name of the offending field. Any other failure is
+        reported generically as `500` and never reveals its underlying
+        cause to the caller.
 
     ### Authentication
 
@@ -61,8 +58,8 @@ info:
     underscore, and a 43-character base64url secret (256 bits of entropy).
     The full plaintext key is shown to its owner exactly once, at creation,
     and is never stored, logged, or reconstructable server-side — only a
-    SHA-256 hash of the whole presented string is persisted and compared via
-    a timing-safe `hash_equals()`.
+    SHA-256 hash of the whole presented string is persisted, and it is
+    compared in a timing-safe way.
 
     Every rejection path (unknown prefix, wrong secret, inactive key,
     expired key, suspended/inactive owning user, inactive organisation)
@@ -73,8 +70,7 @@ info:
 
     Each key carries an explicit list of scope strings (its
     `permissions`). An endpoint that requires a scope the key does not
-    carry returns `403`. The scopes actually enforced by the shipped
-    handlers are:
+    carry returns `403`. The scopes the API actually enforces are:
 
     | Scope | Grants |
     | --- | --- |
@@ -84,8 +80,8 @@ info:
     | `urls:write` | `POST /urls`, `PUT /urls/{code}`, `POST /urls/bulk` |
     | `urls:delete` | `DELETE /urls/{code}` |
     | `qr:link` | Additional scope required (on top of `urls:write`) to use
-      the CueRCode dynamic-QR create fields on `POST /urls` — enforced by
-      the handler itself, not by the front-controller's route table. |
+      the CueRCode dynamic-QR create fields on `POST /urls` — checked when
+      the request is processed, not by the route's own scope check. |
 
     `GET /ping` requires no scope — any valid, non-rate-limited key can call
     it, purely to prove authentication and the response envelope work
@@ -93,8 +89,8 @@ info:
 
     ### Multi-tenancy (BOLA / IDOR defence)
 
-    Every query in the `urls` and `org` handlers is scoped by the
-    **authenticated key's own** `orgHandle` — never by anything the client
+    Every URL and organisation request is scoped by the **authenticated
+    key's own** organisation (`orgHandle`) — never by anything the client
     supplies. A short code that exists but belongs to a different
     organisation is indistinguishable from one that does not exist at all:
     both return the exact same generic `404`, so a caller can never use
@@ -103,14 +99,13 @@ info:
 
     ### Rate limiting and backoff
 
-    Two independent, DB-backed windows are enforced per key (there is no
-    background daemon on the Dreamhost shared-hosting target, so limits are
-    computed from recent rows in the request-log table itself):
+    Two independent windows are enforced per key (limits are worked out
+    from the recent requests the service has already recorded for that key):
 
-    - **Daily** — the key's own `rateLimitOverride` if set, otherwise the
-      `api.default_daily_limit` setting (ships as `5000`), over a rolling
-      24-hour window.
-    - **Burst** — the `api.default_per_minute` setting (ships as `60`),
+    - **Daily** — the key's own daily limit if one has been set for it,
+      otherwise the standard daily limit (`5000` requests by default), over
+      a rolling 24-hour window.
+    - **Burst** — the standard per-minute limit (`60` requests by default),
       over a rolling 60-second window, applied to every key regardless of
       any daily override.
 
@@ -125,8 +120,8 @@ info:
 
     Separately, a **pre-authentication** IP backoff runs *before* the
     Bearer/`X-API-Key` header is even parsed: once a single IP address has
-    produced `api.preauth_fail_per_minute` (ships as `20`) failed-auth
-    (`401`) responses within a rolling 60-second window, every further
+    produced `20` failed-authentication (`401`) responses (the default
+    threshold) within a rolling 60-second window, every further
     request from that IP receives `429` + `Retry-After: 60` *without* the
     cost of a key-verification attempt — and, because the response code is
     now `429` rather than `401`, it stops feeding the very count that
@@ -162,8 +157,8 @@ info:
     image). Supplying *either* field makes *both* required. This path is
     gated, before any field-level validation runs, on:
 
-    - the `cuercode.integration_enabled` operator setting (ships **off**;
-      `403` when disabled), and
+    - the CueRCode integration being enabled for the service (it is **off**
+      by default; `403` when disabled), and
     - the calling key's own `qr:link` scope (`403` when absent) — this is
       *in addition to* the base `urls:write` scope the route itself
       requires.
@@ -180,7 +175,7 @@ info:
     url: https://go2my.link/legal/terms
 servers:
   - url: https://go2my.link/api/v1
-    description: Production (Component A — go2my.link)
+    description: Production (go2my.link)
 security:
   - bearerAuth: []
   - apiKeyAuth: []
@@ -195,7 +190,7 @@ tags:
     description: Short-URL create, read, update, soft-delete, list, and bulk create.
   - name: Analytics
     description: |
-      Click/redirect aggregates over `tblActivityLog`: totals, a time
+      Click/redirect aggregates from the activity log: totals, a time
       series, a top-links ranking, a single whitelisted-dimension
       breakdown, and CueRCode dynamic-QR scan attribution. Geographic
       breakdowns are out of scope (no GeoIP data is populated yet).
@@ -272,8 +267,8 @@ paths:
       summary: Get the authenticated key's own organisation
       description: |
         Requires the `org:read` scope. Returns only the authenticated key's
-        own organisation summary, looked up strictly by the verified key
-        row's own `orgHandle` — there is no client-suppliable identifier
+        own organisation summary, looked up strictly by the verified key's
+        own organisation (`orgHandle`) — there is no client-suppliable identifier
         anywhere in this endpoint (a key can never be used to read another
         organisation's summary).
       x-required-scope: org:read
@@ -305,7 +300,7 @@ paths:
       summary: List short URLs (cursor-paginated)
       description: |
         Requires the `urls:read` scope. Returns short URLs belonging to the
-        authenticated key's own organisation, ordered by `urlUID` ascending
+        authenticated key's own organisation, ordered by `url_uid` ascending
         and cursor-paginated (never offset-paginated, so pages stay stable
         under concurrent inserts).
 
@@ -394,14 +389,15 @@ paths:
         Supplying `qr_external_id` and/or `qr_external_uuid` opts the
         request into the CueRCode dynamic-QR create path — see "CueRCode
         dynamic-QR integration" above. That path also requires the
-        `qr:link` scope and the `cuercode.integration_enabled` operator
-        setting, and returns a different success payload shape (no
+        `qr:link` scope and the CueRCode integration being enabled for the
+        service, and returns a different success payload shape (no
         `destination_url` field; a `qr_code_external_uuid` field instead).
 
         A caller-supplied `custom_code` is honoured on a normal create.
-        On a CueRCode create it is only honoured when the operator has
-        separately enabled `cuercode.allow_external_shortcode`; otherwise
-        it is silently ignored and Go2My.Link generates the code itself.
+        On a CueRCode create it is only honoured when the service has
+        separately been set to allow externally chosen short codes;
+        otherwise it is silently ignored and Go2My.Link generates the code
+        itself.
       x-required-scope: urls:write
       parameters:
         - $ref: "#/components/parameters/FormatParam"
@@ -441,7 +437,7 @@ paths:
         "403":
           description: |
             Missing `urls:write` scope, OR (CueRCode create only) the
-            `cuercode.integration_enabled` operator setting is off, OR the
+            CueRCode integration is not enabled for the service, OR the
             key lacks the additional `qr:link` scope.
           content:
             application/json:
@@ -689,10 +685,9 @@ paths:
         organisation's totals and a top-links ranking over the requested
         date range.
 
-        A "click" is a `tblActivityLog` row with `logAction=redirect` AND
-        `logStatus=success` — every other status (`not_found`, `expired`,
-        `inactive`, an error, etc.) is a failed resolution attempt and is
-        excluded.
+        A "click" is a logged redirect that succeeded — every other outcome
+        (`not_found`, `expired`, `inactive`, an error, etc.) is a failed
+        resolution attempt and is excluded.
       x-required-scope: analytics:read
       parameters:
         - $ref: "#/components/parameters/AnalyticsFromParam"
@@ -992,7 +987,7 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorEnvelope"
     ServiceUnavailable:
-      description: The `api.public_enabled` operator switch is currently off.
+      description: The public API has been switched off.
       content:
         application/json:
           schema:
@@ -1355,8 +1350,8 @@ components:
             A caller-chosen short code, 3–50 characters
             (`[A-Za-z0-9_-]`). Rejected with `409` if already taken in
             this organisation. On a CueRCode create this is only honoured
-            when the operator has enabled `cuercode.allow_external_shortcode`;
-            otherwise it is silently ignored.
+            when the service has been set to allow externally chosen short
+            codes; otherwise it is silently ignored.
           example: "launch-2026"
         title:
           type: string
@@ -1613,7 +1608,7 @@ components:
         date range the response was computed over. `from`/`to` are UTC,
         formatted `YYYY-MM-DD HH:MM:SS` — NOT RFC 3339 `date-time`
         (no `T` separator, no `Z`/offset suffix), matching exactly what
-        the underlying PHP layer stores and compares against `createdAt`.
+        the service stores and compares against `createdAt`.
       required:
         - from
         - to
@@ -1646,7 +1641,7 @@ components:
           example: 12
     AnalyticsScanSource:
       type: object
-      description: CueRCode dynamic-QR scan attribution (#145). A click with no scan-source tag is never included here.
+      description: CueRCode dynamic-QR scan attribution. A click with no scan-source tag is never included here.
       required:
         - scan_source
         - scans

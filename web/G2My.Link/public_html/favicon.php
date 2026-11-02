@@ -164,17 +164,8 @@ if (file_exists($defaultFavicon) && is_file($defaultFavicon))
     exit;
 }
 
-// Fall back to the brand logo PNG when no .ico file is present.
-$logoFallback = __DIR__ . DIRECTORY_SEPARATOR . 'img' . DIRECTORY_SEPARATOR . 'logo.png';
-
-if (file_exists($logoFallback) && is_file($logoFallback))
-{
-    header('Content-Type: image/png');
-    header('Cache-Control: public, max-age=86400'); // 24 hours
-    header('Content-Length: ' . filesize($logoFallback));
-    readfile($logoFallback);
-    exit;
-}
+// If favicon_default.ico is missing, the next step is a 404. It used to serve
+// this web root's 262 KB img/logo.png instead; that file was removed (#285).
 
 // ============================================================================
 // ❌ No favicon available

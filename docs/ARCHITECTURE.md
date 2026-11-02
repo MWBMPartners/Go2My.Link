@@ -59,7 +59,7 @@ web/
 ├── _auth_keys/          ← Server-wide credentials (outside web root)
 ├── _includes/           ← Server-wide shared includes (headers, footers, nav)
 ├── _functions/          ← Server-wide shared functions (DB, security, i18n)
-├── _libraries/          ← Server-wide shared libraries (Bootstrap, jQuery, etc.)
+├── _libraries/          ← Server-wide master copies of libraries (Bootstrap, Font Awesome, etc.)
 ├── _uploads/            ← Server-wide uploads (not web-accessible)
 ├── _backups/            ← Server-wide backups (not web-accessible)
 ├── _sql/                ← Database schema, migrations, seeds, procedures
@@ -103,7 +103,7 @@ RewriteRule ^_libraries/ - [F,L]
 | 🖥️ Backend | PHP 8.4+ / 8.5+ | No framework; custom modular architecture |
 | 🗄️ Database | MySQL 8.0+ (InnoDB, utf8mb4) | MySQLi only (no PDO) |
 | 🎨 Frontend | HTML5, CSS3, Bootstrap 5.3 | Responsive, WCAG 2.1 AA compliant |
-| 📜 JavaScript | jQuery 3.7, Chart.js, Leaflet.js | AJAX with graceful no-JS fallback |
+| 📜 JavaScript | Plain JavaScript, Chart.js, Leaflet.js | AJAX with graceful no-JS fallback |
 | 🎭 Icons | Font Awesome 6 | CDN with local fallback |
 | 🚢 Hosting | Dreamhost Shared Hosting | No CLI/Composer |
 
