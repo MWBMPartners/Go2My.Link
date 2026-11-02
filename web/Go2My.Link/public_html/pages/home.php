@@ -126,6 +126,7 @@ $errorMsg = g2ml_flashTake('shorten_error');
                         <!-- 📝 URL Shortening Form -->
                         <form action="/api/create/" method="POST"
                               id="shorten-form"
+                              data-g2ml-no-busy="true"
                               data-captcha-type="<?php echo g2ml_sanitiseOutput($captchaType); ?>">
 
                             <?php echo g2ml_csrfField('shorten_url'); ?>

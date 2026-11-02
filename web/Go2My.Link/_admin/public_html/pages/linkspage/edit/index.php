@@ -437,6 +437,43 @@ if ($pageData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
     }
 }
 
+// ============================================================================
+// ✏️ Keep what was typed in "Add a Link" after a failed add (#286)
+// ============================================================================
+// When an add attempt fails (a missing title, a bad address, or an expired
+// session) the form is shown again with the person's own entries in it. After
+// a successful add it is left empty. Values are kept raw: formField() escapes
+// each one once, and the manual address is escaped where it is printed below.
+// The short-URL choice is matched against the page's own list, so no posted
+// text is printed for it. Only the "add_item" form is refilled; the other
+// forms on this page show what is saved.
+$postedItemFields = [
+    'item_source'      => '',
+    'url_uid'          => '',
+    'manual_url'       => '',
+    'item_title'       => '',
+    'item_description' => '',
+    'item_icon'        => '',
+];
+$postedItemAgeGate = false;
+
+if ($pageData !== null
+    && $_SERVER['REQUEST_METHOD'] === 'POST'
+    && isset($_POST['action_type'])
+    && $_POST['action_type'] === 'add_item'
+    && $itemFormSuccess !== true)
+{
+    foreach (array_keys($postedItemFields) as $postedItemKey)
+    {
+        if (isset($_POST[$postedItemKey]) && is_string($_POST[$postedItemKey]))
+        {
+            $postedItemFields[$postedItemKey] = $_POST[$postedItemKey];
+        }
+    }
+
+    $postedItemAgeGate = isset($_POST['requires_age_gate']);
+}
+
 $systemTemplates = [];
 $ownedShortURLs  = [];
 $pageItems       = [];
@@ -1166,9 +1203,21 @@ if ($pageData !== null)
                             <fieldset class="mb-3">
                                 <legend class="form-label h6">Link Source</legend>
 
+                                <?php
+                                // Short URLs are the default source when there are any, unless a
+                                // failed attempt had the manual address chosen (#286).
+                                if (count($ownedShortURLs) > 0 && $postedItemFields['item_source'] !== 'manual')
+                                {
+                                    $addSourceIsShortURL = true;
+                                }
+                                else
+                                {
+                                    $addSourceIsShortURL = false;
+                                }
+                                ?>
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="item_source" id="source-shorturl" value="shorturl"
-                                        <?php if (count($ownedShortURLs) > 0) { echo 'checked'; } ?>
+                                        <?php if ($addSourceIsShortURL) { echo 'checked="checked"'; } ?>
                                         <?php if (count($ownedShortURLs) === 0) { echo 'disabled'; } ?>>
                                     <label class="form-check-label" for="source-shorturl">One of my short URLs</label>
                                 </div>
@@ -1178,7 +1227,7 @@ if ($pageData !== null)
                                     <label for="url-uid" class="form-label visually-hidden">Choose a short URL</label>
                                     <select class="form-select" id="url-uid" name="url_uid">
                                         <?php foreach ($ownedShortURLs as $shortURLRow) { ?>
-                                        <option value="<?php echo (int) $shortURLRow['urlUID']; ?>">
+                                        <option value="<?php echo (int) $shortURLRow['urlUID']; ?>"<?php if ($postedItemFields['url_uid'] === (string) (int) $shortURLRow['urlUID']) { echo ' selected="selected"'; } ?>>
                                             <?php
                                             $optionLabel = $shortURLRow['shortCode'];
 
@@ -1199,12 +1248,13 @@ if ($pageData !== null)
 
                                 <div class="form-check">
                                     <input class="form-check-input" type="radio" name="item_source" id="source-manual" value="manual"
-                                        <?php if (count($ownedShortURLs) === 0) { echo 'checked'; } ?>>
+                                        <?php if (!$addSourceIsShortURL) { echo 'checked="checked"'; } ?>>
                                     <label class="form-check-label" for="source-manual">A manual URL</label>
                                 </div>
                                 <div class="mb-2 ms-4">
                                     <label for="manual-url" class="form-label visually-hidden">Manual URL</label>
-                                    <input type="url" class="form-control" id="manual-url" name="manual_url" placeholder="https://example.com">
+                                    <input type="url" class="form-control" id="manual-url" name="manual_url" placeholder="https://example.com"
+                                           value="<?php echo g2ml_sanitiseOutput($postedItemFields['manual_url']); ?>">
                                 </div>
                             </fieldset>
 
@@ -1215,7 +1265,7 @@ if ($pageData !== null)
                                 'label'    => 'Title',
                                 'type'     => 'text',
                                 'required' => true,
-                                'value'    => '',
+                                'value'    => $postedItemFields['item_title'],
                             ]);
 
                             echo formField([
@@ -1225,7 +1275,7 @@ if ($pageData !== null)
                                 'type'     => 'textarea',
                                 'rows'     => 2,
                                 'required' => false,
-                                'value'    => '',
+                                'value'    => $postedItemFields['item_description'],
                             ]);
 
                             echo formField([
@@ -1234,13 +1284,13 @@ if ($pageData !== null)
                                 'label'    => 'Icon Image URL (Optional)',
                                 'type'     => 'url',
                                 'required' => false,
-                                'value'    => '',
+                                'value'    => $postedItemFields['item_icon'],
                                 'helpText' => $itemIconHelpText,
                             ]);
                             ?>
 
                             <div class="form-check mb-3">
-                                <input class="form-check-input" type="checkbox" id="new-item-requires-age-gate" name="requires_age_gate" value="1">
+                                <input class="form-check-input" type="checkbox" id="new-item-requires-age-gate" name="requires_age_gate" value="1"<?php if ($postedItemAgeGate) { echo ' checked="checked"'; } ?>>
                                 <label class="form-check-label" for="new-item-requires-age-gate">
                                     🔞 Age-restricted (18+) — require visitors to confirm their age before this link is shown
                                 </label>

@@ -168,6 +168,10 @@ if (file_exists(G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'translate_widget.php'))
 <!-- Custom JavaScript (Component-specific, loaded if exists)               -->
 <!-- ====================================================================== -->
 <script src="/js/app.js" defer></script>
+<?php // forms.js (#286): the "Working…" label and double-submit guard. The label travels in the data attribute, so no inline script is needed. ?>
+<script src="/js/forms.js"
+        data-g2ml-working-label="<?php if (function_exists('__')) { echo htmlspecialchars(__('common.working'), ENT_QUOTES, 'UTF-8'); } else { echo 'Working…'; } ?>"
+        defer></script>
 <script src="/js/cookie-consent.js" defer></script>
 
 <?php

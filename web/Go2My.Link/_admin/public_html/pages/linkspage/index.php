@@ -143,6 +143,33 @@ $pages = g2ml_linkspageManageListPagesForUser($userUID);
 
 $currentPageCount = g2ml_linkspageManageCountActivePagesForUser($userUID);
 $limitStatus      = g2ml_checkLimit($orgHandle, 'maxLinksPages', $currentPageCount);
+
+// ============================================================================
+// ❓ Confirm box for "Unpublish" (#286)
+// ============================================================================
+// Unpublishing takes a page off the internet, so it asks first, the same way
+// "Delete" does. The text is the same for every row, so it is
+// built once here. It sits inside a JavaScript string inside an HTML
+// attribute: json_encode() makes it a safe JavaScript string (the JSON_HEX
+// flags turn quotes, angle brackets and ampersands into escapes), and
+// htmlspecialchars() then makes the whole handler safe for the attribute.
+if (function_exists('__')) {
+    $unpublishConfirmText = __('linkspage.unpublish_confirm');
+} else {
+    $unpublishConfirmText = 'Unpublish this LinksPage? Visitors will no longer be able to see it at its public address. You can publish it again later.';
+}
+
+$unpublishConfirmJson = json_encode(
+    $unpublishConfirmText,
+    JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP | JSON_INVALID_UTF8_SUBSTITUTE
+);
+
+if ($unpublishConfirmJson === false)
+{
+    $unpublishConfirmJson = '""';
+}
+
+$unpublishConfirmAttr = htmlspecialchars('return confirm(' . $unpublishConfirmJson . ');', ENT_QUOTES, 'UTF-8');
 ?>
 
 <section class="py-4" aria-labelledby="linkspage-heading">
@@ -281,7 +308,8 @@ $limitStatus      = g2ml_checkLimit($orgHandle, 'maxLinksPages', $currentPageCou
                                 ?>
 
                                 <?php if ((int) $pageRow['isPublished'] === 1) { ?>
-                                <form action="/linkspage" method="POST" class="d-inline">
+                                <form action="/linkspage" method="POST" class="d-inline"
+                                      onsubmit="<?php echo $unpublishConfirmAttr; ?>">
                                     <?php echo g2ml_csrfField($rowStatusFormName); ?>
                                     <input type="hidden" name="action_type" value="unpublish_page">
                                     <input type="hidden" name="page_uid" value="<?php echo (int) $pageRow['pageUID']; ?>">

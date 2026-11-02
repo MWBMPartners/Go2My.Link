@@ -249,6 +249,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     }
 }
 
+// ============================================================================
+// ✏️ Keep what was typed after a failed "create key" (#286)
+// ============================================================================
+// If the create attempt failed (a missing name, no permission ticked, a bad
+// expiry date, or an expired session), the form is shown again with the
+// person's own entries still in it. After a successful create the form is
+// left empty, so the same key is not made twice by accident. The values are
+// kept raw here: formField() escapes the name once, and the expiry date is
+// escaped where it is printed below. A box is re-ticked by matching the
+// posted value against this page's own list of permissions, so no posted
+// text is printed for the checkboxes.
+$postedKeyName   = '';
+$postedScopes    = [];
+$postedExpiresAt = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST'
+    && isset($_POST['action_type'])
+    && $_POST['action_type'] === 'create_key'
+    && $createdKeyPlaintext === null)
+{
+    if (isset($_POST['key_name']) && is_string($_POST['key_name']))
+    {
+        $postedKeyName = $_POST['key_name'];
+    }
+
+    if (isset($_POST['scopes']) && is_array($_POST['scopes']))
+    {
+        foreach ($_POST['scopes'] as $postedScopeValue)
+        {
+            if (is_string($postedScopeValue))
+            {
+                $postedScopes[] = $postedScopeValue;
+            }
+        }
+    }
+
+    if (isset($_POST['expires_at']) && is_string($_POST['expires_at']))
+    {
+        $postedExpiresAt = $_POST['expires_at'];
+    }
+}
+
 // Load data
 $apiKeys = g2ml_apiListKeys($orgHandle);
 ?>
@@ -482,7 +524,7 @@ $apiKeys = g2ml_apiListKeys($orgHandle);
                         'label'    => 'Key Name',
                         'type'     => 'text',
                         'required' => true,
-                        'value'    => '',
+                        'value'    => $postedKeyName,
                         'helpText' => 'A label to help you recognise this key later, e.g. "CI pipeline" or "Zapier integration".',
                     ]);
                     ?>
@@ -505,13 +547,23 @@ $apiKeys = g2ml_apiListKeys($orgHandle);
                             }
 
                             $scopeInputID = 'scope-' . preg_replace('/[^a-zA-Z0-9]/', '-', $scopeValue);
+
+                            // Tick again the boxes that were ticked in a failed attempt (#286).
+                            if (in_array($scopeValue, $postedScopes, true))
+                            {
+                                $scopeCheckedAttribute = ' checked="checked"';
+                            }
+                            else
+                            {
+                                $scopeCheckedAttribute = '';
+                            }
                             ?>
                             <div class="col-md-6">
                                 <div class="form-check mb-2">
                                     <input class="form-check-input" type="checkbox"
                                            id="<?php echo g2ml_sanitiseOutput($scopeInputID); ?>"
                                            name="scopes[]"
-                                           value="<?php echo g2ml_sanitiseOutput($scopeValue); ?>">
+                                           value="<?php echo g2ml_sanitiseOutput($scopeValue); ?>"<?php echo $scopeCheckedAttribute; ?>>
                                     <label class="form-check-label" for="<?php echo g2ml_sanitiseOutput($scopeInputID); ?>">
                                         <code><?php echo g2ml_sanitiseOutput($scopeValue); ?></code>
                                         &mdash; <?php echo g2ml_sanitiseOutput($scopeLabel); ?>
@@ -525,6 +577,7 @@ $apiKeys = g2ml_apiListKeys($orgHandle);
                     <div class="mb-3">
                         <label for="expires-at" class="form-label">Expiry Date (Optional)</label>
                         <input type="date" class="form-control" id="expires-at" name="expires_at"
+                               value="<?php echo g2ml_sanitiseOutput($postedExpiresAt); ?>"
                                aria-describedby="expires-at-help" style="max-width:250px;">
                         <div id="expires-at-help" class="form-text">
                             Leave blank for a key that never expires.

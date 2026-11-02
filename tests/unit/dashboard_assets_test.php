@@ -21,9 +21,10 @@
  * nothing.
  *
  * The fix is a copy of each file in the dashboard's web root (the project
- * already keeps per-root copies of img/ and icons/). A copy can fall behind
- * when someone edits only one of the two, so the first group of tests below
- * fails, naming the file, if a copy differs from the original.
+ * already keeps per-root copies of img/ and icons/). js/forms.js (#286) is
+ * kept in step the same way. A copy can fall behind when someone edits only
+ * one of the two, so the first group of tests below fails, naming the file,
+ * if a copy differs from the original.
  *
  * The other groups check the rest of the same fix: the dashboard's consent
  * endpoint reaches the main site's one, the dashboard's front controller
@@ -86,7 +87,7 @@ function _g2mlDashboardAssetsTestRead(string $fullPath, string $label): string
 }
 
 // ============================================================================
-// 📋 The four copied files must match the main site's byte for byte
+// 📋 The copied files must match the main site's byte for byte
 // ============================================================================
 
 $g2mlDashboardAssetsTestCopiedFiles = array(
@@ -94,6 +95,7 @@ $g2mlDashboardAssetsTestCopiedFiles = array(
     'js/theme.js',
     'js/app.js',
     'js/cookie-consent.js',
+    'js/forms.js',
 );
 
 foreach ($g2mlDashboardAssetsTestCopiedFiles as $g2mlDashboardAssetsTestCopiedFile)

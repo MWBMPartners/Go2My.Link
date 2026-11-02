@@ -37,8 +37,27 @@ if (function_exists('__')) {
 $formSuccess = false;
 $formError   = '';
 
+// What the visitor typed, kept so a failed send does not wipe the form (#286).
+// Raw values on purpose: formField() below escapes each one exactly once.
+// A field posted as something other than plain text (an array, for example)
+// is treated as empty.
+$postedValues = [
+    'contact_name'    => '',
+    'contact_email'   => '',
+    'contact_subject' => '',
+    'contact_message' => '',
+];
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
+    foreach (array_keys($postedValues) as $postedKey)
+    {
+        if (isset($_POST[$postedKey]) && is_string($_POST[$postedKey]))
+        {
+            $postedValues[$postedKey] = $_POST[$postedKey];
+        }
+    }
+
     // Validate CSRF token
     $csrfToken = $_POST['_csrf_token'] ?? '';
 
@@ -284,6 +303,7 @@ elseif ($recaptchaSiteKey !== '')
                                     'placeholder' => $fieldPlaceholder,
                                     'required'     => true,
                                     'autocomplete' => 'name',
+                                    'value'        => $postedValues['contact_name'],
                                 ]);
 
                                     if (function_exists('__')) {
@@ -304,6 +324,7 @@ elseif ($recaptchaSiteKey !== '')
                                     'placeholder' => $fieldPlaceholder,
                                     'required'     => true,
                                     'autocomplete' => 'email',
+                                    'value'        => $postedValues['contact_email'],
                                 ]);
 
                                     if (function_exists('__')) {
@@ -323,6 +344,7 @@ elseif ($recaptchaSiteKey !== '')
                                     'type'        => 'text',
                                     'placeholder' => $fieldPlaceholder,
                                     'required'    => false,
+                                    'value'       => $postedValues['contact_subject'],
                                 ]);
 
                                     if (function_exists('__')) {
@@ -343,6 +365,7 @@ elseif ($recaptchaSiteKey !== '')
                                     'placeholder' => $fieldPlaceholder,
                                     'required'    => true,
                                     'rows'        => 5,
+                                    'value'       => $postedValues['contact_message'],
                                 ]);
                                 ?>
 

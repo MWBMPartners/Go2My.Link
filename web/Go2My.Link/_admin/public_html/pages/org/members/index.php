@@ -324,6 +324,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 // Load data
 $members     = getOrgMembers($orgHandle);
 $invitations = getPendingInvitations($orgHandle);
+
+// ============================================================================
+// 🏷️ Text for the "Change role" control (#286)
+// ============================================================================
+// The role dropdown used to send the form the moment it changed, with no
+// button and no question asked, and it did nothing without JavaScript. It now
+// has its own "Change role" button and a confirm box. The text is the same
+// for every row, so it is looked up once here, outside the loop.
+if (function_exists('__')) {
+    $changeRoleButtonText = __('org.members_change_role_button');
+} else {
+    $changeRoleButtonText = 'Change role';
+}
+if (function_exists('__')) {
+    $newRoleLabelText = __('org.members_new_role_label');
+} else {
+    $newRoleLabelText = 'New role';
+}
+if (function_exists('__')) {
+    $changeRoleConfirmText = __('org.members_change_role_confirm');
+} else {
+    $changeRoleConfirmText = 'Change the role of this member? Their access to the organisation changes as soon as you confirm.';
+}
+
+// The confirm text sits inside a JavaScript string, inside an HTML attribute.
+// json_encode() makes it a safe JavaScript string (the JSON_HEX flags turn
+// quotes, angle brackets and ampersands into escapes), and htmlspecialchars()
+// then makes the whole handler safe to put in the attribute.
+$changeRoleConfirmJson = json_encode(
+    $changeRoleConfirmText,
+    JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_TAG | JSON_HEX_AMP | JSON_INVALID_UTF8_SUBSTITUTE
+);
+
+if ($changeRoleConfirmJson === false)
+{
+    $changeRoleConfirmJson = '""';
+}
+
+$changeRoleConfirmAttr = htmlspecialchars('return confirm(' . $changeRoleConfirmJson . ');', ENT_QUOTES, 'UTF-8');
 ?>
 
 <section class="py-4" aria-labelledby="members-heading">
@@ -453,17 +492,31 @@ $invitations = getPendingInvitations($orgHandle);
                             </td>
                             <td>
                                 <?php if ((int) $member['userUID'] !== $currentUser['userUID'] && $member['role'] !== 'GlobalAdmin') { ?>
-                                <div class="d-flex gap-1">
-                                    <!-- Role Change -->
-                                    <form action="/org/members" method="POST" class="d-inline">
+                                <?php
+                                // The member's name, used only in text read aloud by screen readers,
+                                // so that rows with the same "Change role" button can be told apart.
+                                $memberLabelName = (string) ($member['displayName'] ?? $member['firstName']);
+
+                                if (trim($memberLabelName) === '')
+                                {
+                                    $memberLabelName = (string) $member['email'];
+                                }
+                                ?>
+                                <div class="d-flex flex-wrap align-items-center gap-1">
+                                    <!-- Role Change: a dropdown plus its own button and confirm, so a role
+                                         never changes by accident and the form works without JavaScript (#286). -->
+                                    <form action="/org/members" method="POST" class="d-inline-flex align-items-center gap-1"
+                                          onsubmit="<?php echo $changeRoleConfirmAttr; ?>">
                                         <?php echo g2ml_csrfField('org_member_change_role_' . (int) $member['userUID']); ?>
                                         <input type="hidden" name="action_type" value="change_role">
                                         <input type="hidden" name="user_uid" value="<?php echo (int) $member['userUID']; ?>">
-                                        <select name="new_role" class="form-select form-select-sm d-inline-block" style="width:auto;"
-                                                onchange="this.form.submit()" aria-label="Change role">
+                                        <label for="new-role-<?php echo (int) $member['userUID']; ?>" class="visually-hidden"><?php echo g2ml_sanitiseOutput($newRoleLabelText); ?>: <?php echo g2ml_sanitiseOutput($memberLabelName); ?></label>
+                                        <select id="new-role-<?php echo (int) $member['userUID']; ?>" name="new_role"
+                                                class="form-select form-select-sm d-inline-block" style="width:auto;">
                                             <option value="User" <?php if (($member['role'] === 'User')) { echo 'selected'; } ?>>User</option>
                                             <option value="Admin" <?php if (($member['role'] === 'Admin')) { echo 'selected'; } ?>>Admin</option>
                                         </select>
+                                        <button type="submit" class="btn btn-outline-primary btn-sm"><?php echo g2ml_sanitiseOutput($changeRoleButtonText); ?><span class="visually-hidden">: <?php echo g2ml_sanitiseOutput($memberLabelName); ?></span></button>
                                     </form>
 
                                     <!-- Remove -->
