@@ -14,7 +14,7 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-09-25 15:05 (batch 4 done; second Codex catch-up clean; SX-208 reviewed by Codex — see "This session") · 2026-09-23 21:10 (everything pushed; safe restart point — see START HERE) · 2026-09-21/22 (the LinksPage and tiers programme) · earlier: 2026-09-07 (audit + docs sweep, merged as #201) · 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow; per-user analytics #165) · earlier: 2026-07-22 (PR merges, Dependabot 3-tier, pricing) · 2026-07-19 (post-recovery conformance audit) · **Working branch:** `feat/2026-09-21-linkspage-and-sweep` (from `alpha`).
+> **Last updated:** 2026-11-02 (site polish sweep in progress; new security review #302 queued — see "Site polish sweep" under START HERE) · 2026-09-25 15:05 (batch 4 done; second Codex catch-up clean; SX-208 reviewed by Codex — see "This session") · 2026-09-23 21:10 (everything pushed; safe restart point — see START HERE) · 2026-09-21/22 (the LinksPage and tiers programme) · earlier: 2026-09-07 (audit + docs sweep, merged as #201) · 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow; per-user analytics #165) · earlier: 2026-07-22 (PR merges, Dependabot 3-tier, pricing) · 2026-07-19 (post-recovery conformance audit) · **Working branch:** `feat/2026-09-21-linkspage-and-sweep` (from `alpha`).
 > **Status (2026-09-25):** a build programme is under way on the working branch, agreed with
 > the owner after a market review of LinksPage against Linktree, Beacons and about twenty other
 > "link in bio" services. The finished pieces are listed under START HERE; the next are SX-205,
@@ -33,6 +33,59 @@
 > **This section is written so a brand-new session, with no memory of the previous ones, can carry
 > on.** Read it, then `.claude/programme/README.md`, then the `progress` section of
 > `.claude/programme/build-plan.json`. Older dated sections below are history.
+
+### 🧹 Site polish sweep (started 2026-10-05; resumed 2026-11-02)
+
+The owner asked for a full check of the three sites for the things that make a site look unfinished,
+or "vibe-coded": missing titles, descriptions, favicons and share images, broken or dead buttons and
+links, missing error and empty states, leftovers, contrast and layout at odd screen sizes. They also
+asked for a standing rule to keep checking. The findings were filed as issues **#277–#295**: #277–#288
+to fix now, #289–#295 design questions for later.
+
+**Committed and pushed so far:** `399733f` #277, `1a5b5e3` #278, `4af86c5` #280, `ce1a616` #281 (see
+the Finished table below).
+
+**Queue, in order** (the work for the items not yet committed lives in isolated copies inside one cloud
+session; if that session is gone, rebuild each item from its issue):
+
+1. **#279** — the dashboard's missing CSS and JavaScript, dead menu and Log Out links, error pages,
+   "no permission" screens and "do not index". Review round 3 clean; commit next. Adds seed 067.
+2. **#284** — small broken things (the /legal page, legal-page links and hide switch, My Links
+   status). Review round 2 clean; commit after #279. Adds seed 068.
+3. **#302 — security review for CVE-2026-111497 ("HTTP2Shell", a critical bug in Google's Brotli
+   decoder).** Added by the owner on 2026-11-02 and placed here, ahead of the remaining polish, because
+   it is a security question and one report says the US cyber agency set a fix-by date of 10 November.
+   A first look found no PHP code that decodes Brotli, but the CI and deploy workflows still run
+   Node.js 20, which gets no fix. The issue lists what the full review must cover; the hosting
+   question needs the owner (ask Dreamhost whether their `libbrotli` and any PHP `brotli` extension
+   are patched).
+4. **#282** — search and sharing basics (favicons, canonical address, share image, robots.txt,
+   sitemap). Round-1 findings fixed; round-2 review was cut short by a usage limit and must be re-run.
+   Adds seed 069; `/legal` goes into the sitemap once #284 is in.
+5. **#283** — service workers (stop caching private pages, an offline page). Built; needs #279's
+   dashboard files first, then review. Adds seed 070.
+6. **#286** — forms: a "Working…" state, typed text kept after a failed submit, confirms for risky
+   actions. Built; review round 1 was cut short and must be re-run. Adds seed 071.
+7. **#287** — contrast, focus rings and layout. The LinksPage part is built (adds seed 073 and
+   refreshes seed 004's templates, which must be re-imported on every existing database). The
+   site-wide part (seed 072) was cut short mid-build and must be finished.
+8. **#285** — leftovers and page weight. Not built yet; it goes after #279, #282 and #287 because
+   it touches the same shared files.
+9. **#288** — the standing polish rule (rule 14 in `.claude/memory/working-rules.md`) and an
+   automatic check that runs with the unit tests. Built; committed last so its check covers
+   everything above.
+10. **Documentation sweep and the report to the owner.** Also, the browser test at many screen
+    sizes was cut short after both page sweeps had finished; its click tests still need running.
+
+**Trap (2026-11-02):** in the resumed cloud container, host names do not resolve, so two tests in
+`tests/unit/link_destination_test.php` that look up `example.com` fail ("an ordinary public https URL
+is accepted" and "a SUBDOMAIN of a custom short domain is NOT own_domain"). They fail the same way on
+`5872fa7`, the commit that added them, and passed in October; it is the container, not the code.
+GitHub's CI resolves names, so they pass there.
+
+**Every item here was reviewed by a fresh Claude Opus agent, because Codex is not installed in this
+cloud session; each still owes a Codex catch-up review.** After this sweep, the programme resumes with
+SX-212 and PF-13 (see "Next actions" below).
 
 ### 🔄 This session (2026-09-25, from about midnight)
 
@@ -112,8 +165,9 @@ Everything is **committed and pushed**; the working copy is clean and the local 
 GitHub exactly. The working branch is **`feat/2026-09-21-linkspage-and-sweep`**, cut from `alpha`,
 and `git log -1` is always the truth about the latest commit (each finished item adds one). There
 is deliberately **no pull request yet** — one pull request to `alpha`, opened when the owner says
-so. The finished pieces are listed below. The next items are **SX-205**, **SX-212** and **PF-13** (the
-rest of batch 5); `progress.next` in `.claude/programme/build-plan.json` says the same.
+so. The finished pieces are listed below. **Now:** the site polish sweep and the #302 security
+review (queue under "Site polish sweep" above). After that, **SX-212** and **PF-13** (the rest of
+batch 5; SX-205 is done).
 
 ### 🗂️ Where everything lives
 
@@ -172,22 +226,24 @@ rest of batch 5); `progress.next` in `.claude/programme/build-plan.json` says th
 | `399733f` | #277 | The homepage "Shorten" button failed every time (an empty HTTP 500), and the dashboard's "Create link" page always said the service was unavailable: both files climbed the wrong number of folders to find their neighbours. Fixed, with a new test that checks every `dirname(__DIR__, N)` path under `web/` lands on a real file or folder. Site polish sweep (2026-10-05). Review: 2 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback; last round clean. |
 | `1a5b5e3` | #278 | No page on go2my.link or the dashboard showed its own title or description, redirects from inside a page failed (signing in or out left a blank page) and the error pages answered 200: both front controllers printed the header before running the page. The page now runs first, into a buffer, and the header is printed after it; the main site's form-action also allows the dashboard, so the sign-in redirect is not refused. Site polish sweep (2026-10-05). Review: 3 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
 | `4af86c5` | #280 | Opening and saving a link, profile or organisation turned "&" into "&amp;" and apostrophes into "&#039;" and saved them that way (a link's "?a=1&b=2" became "?a=1&amp;b=2"): pages escaped values that formField() escapes again. Values now reach formField() raw, through a new g2ml_postedText() helper where they come from a form; a test fails if a page escapes a value first. Site polish sweep (2026-10-05). Review: 1 round(s); reviewers by round: claude-opus-fallback; last round clean. |
-| (this commit) | #281 | Three security gaps. The no-JavaScript "Shorten" fallback put its result and error text in the address, so anyone could make go2my.link show a message of their choosing; it now hands them over as a one-time session message. API calls with "Authorization: Bearer <key>", the documented main way, always failed because Apache did not pass the header to PHP; .htaccess now does. And after signing in from a dashboard page, people landed on a main-site page that does not exist; the dashboard now sends its full address, and the login page accepts only a path on go2my.link or an https://admin.go2my.link/ address. Site polish sweep (2026-10-05). Review: 3 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
+| `ce1a616` | #281 | Three security gaps. The no-JavaScript "Shorten" fallback put its result and error text in the address, so anyone could make go2my.link show a message of their choosing; it now hands them over as a one-time session message. API calls with "Authorization: Bearer <key>", the documented main way, always failed because Apache did not pass the header to PHP; .htaccess now does. And after signing in from a dashboard page, people landed on a main-site page that does not exist; the dashboard now sends its full address, and the login page accepts only a path on go2my.link or an https://admin.go2my.link/ address. Site polish sweep (2026-10-05). Review: 3 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
 
-**Test baseline now: 734 unit tests and 234 database tests, all passing** (PHP 8.4 in Docker; MySQL
+**Test baseline now (after `ce1a616`): 758 unit tests and 238 database tests, all passing** (PHP 8.4 in Docker; MySQL
 8.4 with `utf8mb4_unicode_ci`). Run them with `sh .claude/programme/run-tests.sh all`.
 
 ### ⏭️ Next actions, in order
 
-1. **The rest of batch 5:** SX-205 (#205 — check a link's destination), SX-212 (#212 — form rate
-   limits), PF-13 (personal plans; the foundation for decisions 25 and 26).
-2. Then batch 6 onwards (see `build_order` in the build plan).
-3. **Batches 3 to 18** — the rest: the approved fixes, then the platform work (environment-aware
+1. **First, finish the site polish sweep and the #302 security review** (queue under "Site polish
+   sweep" at the top of START HERE).
+2. **The rest of batch 5:** SX-212 (#212 — form rate limits) and PF-13 (personal plans; the
+   foundation for decisions 25 and 26). SX-205 is done (`5872fa7`).
+3. Then batch 6 onwards (see `build_order` in the build plan).
+4. **Batches 3 to 18** — the rest: the approved fixes, then the platform work (environment-aware
    pricing switch, the plan-and-pricing admin screens, analytics kept as daily counts), then the
    LinksPage features (hide branding, search and sharing controls, scheduled links, click tracking
    and statistics, password pages, uploads, embeds, templates, email capture, verified badges), then
    the translation pass, caching and the Help page.
-4. **The documentation sweep and the final report to the owner**, after the builds. Already noted
+5. **The documentation sweep and the final report to the owner**, after the builds. Already noted
    for it: `README.md` says there are 17 seed files (there are more); LP-23's key names need settling
    first (comment on #232).
 
