@@ -194,7 +194,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
-          node-version: '20'
+          # Node 24 (long-term support). 24.22.1 is the first 24.x release that
+          # fixes CVE-2026-111497 in Node's built-in Brotli decoder (#302). Node 20
+          # is past end of life and gets no fix. check-latest makes setup-node
+          # fetch the newest 24.x instead of reusing an older copy already cached
+          # on the runner, which could predate the fix.
+          node-version: '24'
+          check-latest: true
 
       - name: JavaScript syntax + JSON validity
         run: |
