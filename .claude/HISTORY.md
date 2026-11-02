@@ -37,7 +37,11 @@ Branch: **`feat/2026-09-21-linkspage-and-sweep`** (all pushed). Live detail:
   `en.wikipedia.org` fail there; that is the container, not the code (tests/README.md says how to work around it).
 - **Codex was not available in the cloud session**, so every piece was reviewed by a fresh Claude
   Opus agent instead, round after round until clean. Each piece still owes a Codex catch-up review.
-- Follow-up issues found along the way: #303, #304, #305.
+- **A final browser re-check** of all three sites confirmed the fixes and found two more bugs, fixed
+  in #306 (`1d7520a`): Shorten without JavaScript had never worked in a browser (every browser's
+  form submit names `application/xml`, so the endpoint answered in XML), and the dashboard's
+  breach-response page refused non-admins on a bare page.
+- Follow-up issues found along the way: #303, #304, #305, #307.
 
 ## 2026-09-25 — CX-01 and SX-198 built; Codex's allowance turns out to be shared
 

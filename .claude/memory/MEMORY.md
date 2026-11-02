@@ -350,6 +350,11 @@ Finished table. Things a future session needs to know:
   if anything mentions Brotli or `Accept-Encoding`, or turns on cURL's decoding of compressed
   responses.
 - **The polish check is standing rule 14** (#288); its automatic part is `site_polish_test.php`.
+- **Refusing a dashboard page (#306):** never ask `requireAuth()` for a role above `'User'`; its
+  refusal is a bare page with no menu. Check the role and call `g2ml_renderAccessDenied()` (or
+  `g2ml_renderOrgAccessDenied()` on organisation pages), then `return`. A unit test scans for it.
+- **Trap — browsers' Accept header names `application/xml`** on every page load and form submit.
+  Do not read it as an API client asking for XML; `g2ml_apiCreateWantsStructured()` shows how (#306).
 - **Trap — no DNS in some cloud containers:** two tests in `link_destination_test.php` look up
   `example.com` and `en.wikipedia.org` and fail where host names do not resolve. The code is fine; see tests/README.md.
 - **Trap — rewriting `build-plan.json` with a JSON library** re-escapes over a hundred lines. Edit it
