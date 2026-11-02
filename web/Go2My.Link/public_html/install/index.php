@@ -1334,11 +1334,11 @@ header('Content-Type: text/html; charset=UTF-8');
         <?php } ?>
 
         <?php foreach ($errors as $error) { ?>
-        <div class="alert alert-err">⚠️ <?php echo g2ml_install_e($error); ?></div>
+        <div class="alert alert-err" role="alert">⚠️ <?php echo g2ml_install_e($error); ?></div>
         <?php } ?>
 
         <?php foreach ($notices as $notice) { ?>
-        <div class="alert alert-ok">✅ <?php echo g2ml_install_e($notice); ?></div>
+        <div class="alert alert-ok" role="status">✅ <?php echo g2ml_install_e($notice); ?></div>
         <?php } ?>
 
         <?php

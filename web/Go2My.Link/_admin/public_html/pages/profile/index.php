@@ -47,7 +47,7 @@ $userData = dbSelectOne(
 
 if ($userData === null || $userData === false)
 {
-    echo '<div class="container py-5"><div class="alert alert-danger">User data not found.</div></div>';
+    echo '<div class="container py-5"><div class="alert alert-danger" role="alert">User data not found.</div></div>';
     return;
 }
 

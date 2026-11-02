@@ -38,7 +38,7 @@ $currentUser = getCurrentUser();
 // Must be in [default] org
 if ($currentUser['orgHandle'] !== '[default]')
 {
-    echo '<div class="container py-5"><div class="alert alert-warning">';
+    echo '<div class="container py-5"><div class="alert alert-warning" role="alert">';
     echo '<i class="fas fa-exclamation-triangle" aria-hidden="true"></i> ';
     echo 'You are already a member of an organisation. <a href="/org">View your organisation</a>.';
     echo '</div></div>';

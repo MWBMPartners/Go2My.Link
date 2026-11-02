@@ -19,17 +19,18 @@
  * switching between auto/light/dark modes.
  *
  * ---------------------------------------------------------------------------
- * 🆕 Modern CSS Features Used (with Fallbacks)
+ * 🆕 Modern CSS Features Used (and what older browsers get)
  * ---------------------------------------------------------------------------
  *
- *   Feature         | Baseline | Fallback Strategy
+ *   Feature         | Baseline | Older browsers
  *   --------------- | -------- | ------------------------------------------
  *   accent-color    | 2022     | Graceful: native OS styling applies
- *   color-mix()     | 2023     | Cascade: hardcoded hex declared first
+ *   color-mix()     | 2023     | None, except .bg-primary (@supports)
  *   :has()          | 2023     | @supports: block skipped by old browsers
  *
- * All modern features use safe fallback patterns so that older browsers
- * receive the same core experience. Modern browsers get enhanced visuals.
+ * Older browsers without color-mix() lose the primary button's hover,
+ * keyboard-focus and pressed fill colours (the button turns see-through;
+ * see "FALLBACK" below); every browser since 2023 has color-mix().
  *
  * ---------------------------------------------------------------------------
  * 🚫 Modern CSS Features Deliberately NOT Used (and Why)
@@ -117,9 +118,15 @@
 /*    instead of hardcoding separate hex values. This means changing the base  */
 /*    colour automatically updates all derived variants.                       */
 /*                                                                            */
-/*    FALLBACK: Each color-mix() declaration is preceded by a hardcoded hex    */
-/*    fallback. Browsers that don't understand color-mix() ignore the second   */
-/*    declaration and use the first (standard CSS cascade behaviour).          */
+/*    FALLBACK: a hardcoded value written before a color-mix() line does not  */
+/*    act as a fallback here. A custom property (--g2ml-...) keeps whatever    */
+/*    its later line says without checking it, and a normal property whose    */
+/*    line uses var() is accepted when the file is read and only fails later.  */
+/*    Either way, in a browser without color-mix() the value ends up unset.    */
+/*    The .bg-primary rule (Section 4) therefore puts its color-mix() inside   */
+/*    @supports. The derived hover and active colours below have no working    */
+/*    fallback in such browsers (the primary button turns see-through on       */
+/*    hover, focus and press); every browser since 2023 supports it.           */
 /*    📖 https://developer.mozilla.org/en-US/docs/Web/CSS/color_value/color-mix */
 /*    📖 https://caniuse.com/mdn-css_types_color_color-mix                    */
 /*                                                                            */
@@ -138,14 +145,14 @@
     --g2ml-brand-success:       #2E7D32;    /* Dark green — success alerts, positive actions      */
     --g2ml-brand-danger:        #E94560;    /* Red-pink — errors, destructive actions, warnings   */
 
-    /* ----- Derived Interaction Colours (color-mix with fallback) ----------- */
+    /* ----- Derived Interaction Colours (color-mix) ------------------------ */
     /* Hover: 80% brand + 20% black = slightly darker for depth on hover.     */
     /* Active: 70% brand + 30% black = even darker for pressed/active state.  */
 
-    --g2ml-brand-primary-hover:   #0D47A1;                                                      /* Fallback: hardcoded darker blue  */
+    --g2ml-brand-primary-hover:   #0D47A1;                                                      /* Not used: the next line wins     */
     --g2ml-brand-primary-hover:   color-mix(in srgb, var(--g2ml-brand-primary) 80%, black);     /* Modern: computed from primary     */
 
-    --g2ml-brand-primary-active:  #0A3A8A;                                                      /* Fallback: hardcoded darkest blue  */
+    --g2ml-brand-primary-active:  #0A3A8A;                                                      /* Not used: the next line wins     */
     --g2ml-brand-primary-active:  color-mix(in srgb, var(--g2ml-brand-primary) 70%, black);     /* Modern: computed from primary     */
 
     /* ----- Accessibility Colours ------------------------------------------ */
@@ -154,6 +161,28 @@
     --g2ml-focus-color:         #1976D2;    /* Focus ring colour (matches accent)                 */
     --g2ml-skip-bg:             #1565C0;    /* Skip-to-content background (matches primary)       */
     --g2ml-skip-color:          #ffffff;    /* Skip-to-content text (white on blue = high contrast) */
+
+    /* ----- Navigation Bar Surface (the same in light and dark mode) -------- */
+    /* The bar is always deep blue with white text, whatever the page theme.  */
+    /* These three are NOT repeated in the dark block below, on purpose: they */
+    /* never change, so every element simply inherits them from here.         */
+    /* Measured: white on the bar 5.75:1; the softer white used for inactive  */
+    /* links 4.98:1 (text needs 4.5:1, icons and outlines need 3:1).          */
+
+    --g2ml-nav-bg:              #1565C0;                    /* Navbar background: deep blue          */
+    --g2ml-nav-fg:              #ffffff;                    /* Navbar text, icons and focus ring     */
+    --g2ml-nav-fg-soft:         rgba(255, 255, 255, 0.9);   /* Navbar inactive links and toggler     */
+
+    /* ----- Text and Outline Colours for Buttons ---------------------------- */
+    /* on-brand:        text on a filled brand button or badge.               */
+    /* ink-primary:     text and border of an outline-primary button.         */
+    /* ink-secondary:   text and border of an outline-secondary button.       */
+    /* Light mode ratios on white / #f8f9fa: primary 5.75 / 5.45,             */
+    /* secondary 6.09 / 5.78; white on the filled primary button 5.75.        */
+
+    --g2ml-on-brand:            #ffffff;    /* White on the deep blue primary fill                */
+    --g2ml-ink-primary:         #1565C0;    /* Deep blue outline-primary text and border          */
+    --g2ml-ink-secondary:       #5C636A;    /* Dark grey outline-secondary text and border        */
 
     /* ----- Native Form Control Branding ----------------------------------- */
     /* accent-color applies the brand colour to native <input> elements:      */
@@ -175,10 +204,14 @@
 /* must meet WCAG 2.1 AA contrast minimums (4.5:1 for normal text, 3:1 for   */
 /* large text) against this background.                                       */
 /*                                                                            */
-/* Contrast ratios verified against #212529 (Bootstrap dark bg):              */
-/*   #42A5F5 (primary)  = ~6.2:1 ✅ (AA normal + large)                      */
-/*   #66BB6A (success)  = ~7.8:1 ✅ (AA normal + large)                      */
-/*   #FF6B6B (danger)   = ~5.1:1 ✅ (AA normal + large)                      */
+/* Contrast ratios measured against #212529 (Bootstrap dark bg):              */
+/*   #42A5F5 (primary)  = 5.83:1 ✅ (AA normal + large)                      */
+/*   #66BB6A (success)  = 6.52:1 ✅ (AA normal + large)                      */
+/*   #FF6B6B (danger)   = 5.56:1 ✅ (AA normal + large)                      */
+/*                                                                            */
+/* Because #42A5F5 is a LIGHT blue, white text on it is only 2.65:1 and       */
+/* fails. Dark mode therefore puts dark navy text on filled brand buttons     */
+/* (--g2ml-on-brand, 6.70:1 on #42A5F5) instead of white text.                */
 /*                                                                            */
 /* 🆕 color-mix() hover variants: In dark mode, hover goes LIGHTER (mixed    */
 /*    with white instead of black) because the base colours are already       */
@@ -191,17 +224,17 @@
 
     /* ----- Brand Colours (lightened for dark backgrounds) ------------------ */
 
-    --g2ml-brand-primary:       #42A5F5;    /* Light blue — ~6.2:1 on #212529                    */
+    --g2ml-brand-primary:       #42A5F5;    /* Light blue — 5.83:1 on #212529                    */
     --g2ml-brand-accent:        #64B5F6;    /* Lighter blue — text emphasis on dark               */
-    --g2ml-brand-success:       #66BB6A;    /* Light green — ~7.8:1 on #212529                   */
-    --g2ml-brand-danger:        #FF6B6B;    /* Light red — ~5.1:1 on #212529                     */
+    --g2ml-brand-success:       #66BB6A;    /* Light green — 6.52:1 on #212529                   */
+    --g2ml-brand-danger:        #FF6B6B;    /* Light red — 5.56:1 on #212529                     */
 
     /* ----- Derived Interaction Colours (lighter on hover for dark mode) ---- */
 
-    --g2ml-brand-primary-hover:   #64B5F6;                                                      /* Fallback: hardcoded lighter blue  */
+    --g2ml-brand-primary-hover:   #64B5F6;                                                      /* Not used: the next line wins     */
     --g2ml-brand-primary-hover:   color-mix(in srgb, var(--g2ml-brand-primary) 75%, white);     /* Modern: 75% primary + 25% white   */
 
-    --g2ml-brand-primary-active:  #90CAF9;                                                      /* Fallback: hardcoded lightest blue  */
+    --g2ml-brand-primary-active:  #90CAF9;                                                      /* Not used: the next line wins     */
     --g2ml-brand-primary-active:  color-mix(in srgb, var(--g2ml-brand-primary) 60%, white);     /* Modern: 60% primary + 40% white   */
 
     /* ----- Accessibility Colours ------------------------------------------ */
@@ -209,6 +242,16 @@
     --g2ml-focus-color:         #64B5F6;    /* Lighter focus ring for visibility on dark bg       */
     --g2ml-skip-bg:             #1565C0;    /* Skip link: always deep blue (brand identity)       */
     --g2ml-skip-color:          #ffffff;    /* Skip link text: always white                       */
+
+    /* ----- Text and Outline Colours for Buttons ---------------------------- */
+    /* Ratios on #212529: on-brand on the #42A5F5 fill 6.70, on the hover and  */
+    /* pressed fills about 8.6 and 10.0; ink-primary 6.97 (6.01 on #2b3035);   */
+    /* ink-secondary 7.43 (6.42 on #2b3035). Dark navy text on a filled        */
+    /* outline button: on ink-primary 8.01, on ink-secondary 8.55.             */
+
+    --g2ml-on-brand:            #0A1929;    /* Dark navy text on the light blue primary fill      */
+    --g2ml-ink-primary:         #64B5F6;    /* Light blue outline-primary text and border         */
+    --g2ml-ink-secondary:       #ADB5BD;    /* Light grey outline-secondary text and border       */
 
     /* ----- Native Form Control Branding ----------------------------------- */
 
@@ -231,7 +274,7 @@
 /* The target is in the <main> element: <main id="main-content">              */
 /*                                                                            */
 /* z-index: 100000 ensures visibility above all other UI layers including     */
-/* Bootstrap modals (1055), tooltips (1080), and the cookie banner (1060).    */
+/* Bootstrap modals (1055), tooltips (1080), and the cookie banner (1040).    */
 /*                                                                            */
 /* 📖 WCAG 2.4.1 Bypass Blocks: https://www.w3.org/TR/WCAG21/#bypass-blocks */
 /* 📖 Skip Navigation Links:    https://webaim.org/techniques/skipnav/       */
@@ -247,6 +290,12 @@
     text-decoration: none;
     font-weight: bold;
     border-bottom-right-radius: 0.375rem;
+}
+
+/* The link is the same deep blue as the navbar it sits on top of, so it    */
+/* gets a white focus ring (5.75:1 on the blue) to stay clearly outlined.    */
+.skip-to-content:focus-visible {
+    outline-color: var(--g2ml-skip-color);
 }
 
 
@@ -270,28 +319,120 @@
 /* 📖 CSS Specificity:     https://developer.mozilla.org/en-US/docs/Web/CSS/Specificity */
 /* ========================================================================== */
 
-/* Background utility — used on navbar, hero sections, branded containers */
-.bg-primary {
+/* Background utility — used on badges and tinted icon boxes. The navbar has   */
+/* its own constant colour (Section 10), so it does not follow this one.       */
+/* "html" in front makes this rule win over Bootstrap's right-to-left file,   */
+/* which loads after this one and would otherwise bring back its own blue.     */
+/* The @supports rule keeps Bootstrap's .bg-opacity-* helpers working: without */
+/* it, a "bg-primary bg-opacity-10" box was painted solid blue (the Features   */
+/* page icon boxes) and its icon disappeared into it. It sits in @supports so  */
+/* that a browser without color-mix() keeps the plain colour above.            */
+html .bg-primary {
     background-color: var(--g2ml-brand-primary) !important;
 }
 
+@supports (background-color: color-mix(in srgb, red 50%, transparent)) {
+    html .bg-primary {
+        background-color: color-mix(in srgb, var(--g2ml-brand-primary) calc(var(--bs-bg-opacity, 1) * 100%), transparent) !important;
+    }
+}
+
+/* Badge text on the brand blue. White in light mode; dark navy in dark mode,  */
+/* where the blue is light and white text on it would be only 2.65:1.          */
+.badge.bg-primary {
+    color: var(--g2ml-on-brand);
+}
+
+/* Buttons. The brand colours are fed to Bootstrap through its own button      */
+/* variables, so EVERY state (normal, hover, keyboard focus, pressed,          */
+/* disabled) uses them. Bootstrap's focus rule copies the hover colours, so    */
+/* setting only the normal and hover colours directly would leave a keyboard-  */
+/* focused button in Bootstrap's own blue.                                     */
+/*                                                                             */
+/* The two-class selector (.btn.btn-primary) is deliberate: the right-to-left  */
+/* Bootstrap file is loaded after this one and would otherwise win with the    */
+/* same single-class selector.                                                 */
+/*                                                                             */
+/* Measured contrast of the button text on its fill:                           */
+/*   light mode: white on #1565C0 5.75, on hover 7.87, on pressed 9.27         */
+/*   dark mode:  navy on #42A5F5 6.70, on hover about 8.6, on pressed 10.0     */
+
 /* Primary action button — all CTA buttons across the site */
-.btn-primary {
-    background-color: var(--g2ml-brand-primary);
-    border-color: var(--g2ml-brand-primary);
+.btn.btn-primary {
+    --bs-btn-color:                 var(--g2ml-on-brand);
+    --bs-btn-bg:                    var(--g2ml-brand-primary);
+    --bs-btn-border-color:          var(--g2ml-brand-primary);
+    --bs-btn-hover-color:           var(--g2ml-on-brand);
+    --bs-btn-hover-bg:              var(--g2ml-brand-primary-hover);
+    --bs-btn-hover-border-color:    var(--g2ml-brand-primary-hover);
+    --bs-btn-active-color:          var(--g2ml-on-brand);
+    --bs-btn-active-bg:             var(--g2ml-brand-primary-active);
+    --bs-btn-active-border-color:   var(--g2ml-brand-primary-active);
+    --bs-btn-disabled-color:        var(--g2ml-on-brand);
+    --bs-btn-disabled-bg:           var(--g2ml-brand-primary);
+    --bs-btn-disabled-border-color: var(--g2ml-brand-primary);
 }
 
-/* Button hover state — border darkens for visual depth cue */
-.btn-primary:hover {
-    background-color: var(--g2ml-brand-primary-hover);
-    border-color: var(--g2ml-brand-primary-hover);
+/* Outline buttons. The text and border use an "ink" colour chosen to pass     */
+/* 4.5:1 on the page background in both modes (values in Sections 1 and 2).    */
+/* On hover and press the button fills with that same colour and the text      */
+/* switches to --g2ml-on-brand.                                                */
+.btn.btn-outline-primary {
+    --bs-btn-color:                 var(--g2ml-ink-primary);
+    --bs-btn-border-color:          var(--g2ml-ink-primary);
+    --bs-btn-hover-color:           var(--g2ml-on-brand);
+    --bs-btn-hover-bg:              var(--g2ml-ink-primary);
+    --bs-btn-hover-border-color:    var(--g2ml-ink-primary);
+    --bs-btn-active-color:          var(--g2ml-on-brand);
+    --bs-btn-active-bg:             var(--g2ml-ink-primary);
+    --bs-btn-active-border-color:   var(--g2ml-ink-primary);
+    --bs-btn-disabled-color:        var(--g2ml-ink-primary);
+    --bs-btn-disabled-bg:           transparent;
+    --bs-btn-disabled-border-color: var(--g2ml-ink-primary);
 }
 
-/* Button active/pressed state — deepest brand colour for tactile feedback */
-.btn-primary:active,
-.btn-primary.active {
-    background-color: var(--g2ml-brand-primary-active);
-    border-color: var(--g2ml-brand-primary-active);
+.btn.btn-outline-secondary {
+    --bs-btn-color:                 var(--g2ml-ink-secondary);
+    --bs-btn-border-color:          var(--g2ml-ink-secondary);
+    --bs-btn-hover-color:           var(--g2ml-on-brand);
+    --bs-btn-hover-bg:              var(--g2ml-ink-secondary);
+    --bs-btn-hover-border-color:    var(--g2ml-ink-secondary);
+    --bs-btn-active-color:          var(--g2ml-on-brand);
+    --bs-btn-active-bg:             var(--g2ml-ink-secondary);
+    --bs-btn-active-border-color:   var(--g2ml-ink-secondary);
+    --bs-btn-disabled-color:        var(--g2ml-ink-secondary);
+    --bs-btn-disabled-bg:           transparent;
+    --bs-btn-disabled-border-color: var(--g2ml-ink-secondary);
+}
+
+/* Dark mode only: Bootstrap's red and green outline buttons are #dc3545 and   */
+/* #198754, which are 3.41:1 and 3.40:1 on the dark page. They take the        */
+/* lighter brand red and green instead (5.56:1 and 6.52:1). Light mode keeps   */
+/* Bootstrap's own colours, which already pass on a white page.                */
+[data-bs-theme="dark"] .btn.btn-outline-danger {
+    --bs-btn-color:                 var(--g2ml-brand-danger);
+    --bs-btn-border-color:          var(--g2ml-brand-danger);
+    --bs-btn-hover-color:           var(--g2ml-on-brand);
+    --bs-btn-hover-bg:              var(--g2ml-brand-danger);
+    --bs-btn-hover-border-color:    var(--g2ml-brand-danger);
+    --bs-btn-active-color:          var(--g2ml-on-brand);
+    --bs-btn-active-bg:             var(--g2ml-brand-danger);
+    --bs-btn-active-border-color:   var(--g2ml-brand-danger);
+    --bs-btn-disabled-color:        var(--g2ml-brand-danger);
+    --bs-btn-disabled-border-color: var(--g2ml-brand-danger);
+}
+
+[data-bs-theme="dark"] .btn.btn-outline-success {
+    --bs-btn-color:                 var(--g2ml-brand-success);
+    --bs-btn-border-color:          var(--g2ml-brand-success);
+    --bs-btn-hover-color:           var(--g2ml-on-brand);
+    --bs-btn-hover-bg:              var(--g2ml-brand-success);
+    --bs-btn-hover-border-color:    var(--g2ml-brand-success);
+    --bs-btn-active-color:          var(--g2ml-on-brand);
+    --bs-btn-active-bg:             var(--g2ml-brand-success);
+    --bs-btn-active-border-color:   var(--g2ml-brand-success);
+    --bs-btn-disabled-color:        var(--g2ml-brand-success);
+    --bs-btn-disabled-border-color: var(--g2ml-brand-success);
 }
 
 /* Text colour utility — used for branded headings, accented text */
@@ -346,6 +487,12 @@ main {
 /* The colour uses --g2ml-focus-color which automatically adapts between      */
 /* light (#1976D2) and dark (#64B5F6) themes for optimal contrast.            */
 /*                                                                            */
+/* Measured contrast of the ring against the page behind it:                  */
+/*   light mode: 4.60:1 on white, 4.37:1 on #f8f9fa, 3.88:1 on #e9ecef        */
+/*   dark mode:  6.97:1 on #212529, 6.01:1 on #2b3035                         */
+/*   navbar:     white ring on the deep blue bar, 5.75:1                      */
+/* (the rule is 3:1 for the ring against what surrounds it).                  */
+/*                                                                            */
 /* 📖 :focus-visible:  https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-visible */
 /* 📖 WCAG 2.4.7:      https://www.w3.org/TR/WCAG21/#focus-visible           */
 /* 📖 WCAG 2.4.11:     https://www.w3.org/TR/WCAG22/#focus-not-obscured-minimum */
@@ -353,6 +500,49 @@ main {
 *:focus-visible {
     outline: 3px solid var(--g2ml-focus-color);
     outline-offset: 2px;
+}
+
+/* Bootstrap switches its own focus ring off on most of these components      */
+/* (outline: 0) and draws a faint translucent glow instead, which measures    */
+/* only about 1.3:1 to 2.1:1. Bootstrap's selectors also outweigh the plain    */
+/* rule above, so it did not reach them.                                       */
+/* Each one gets the same 3px ring again, and the glow is removed so the two   */
+/* do not stack up.                                                            */
+/*                                                                             */
+/* The "html" in front of each selector raises its weight just enough to beat  */
+/* Bootstrap's own selectors, including the right-to-left Bootstrap file that  */
+/* is loaded after this one.                                                   */
+html .btn:focus-visible,
+html .btn-close:focus-visible,
+html .nav-link:focus-visible,
+html .navbar-toggler:focus-visible,
+html .form-control:focus-visible,
+html .form-select:focus-visible,
+html .form-check-input:focus-visible,
+html .form-range:focus-visible,
+html .page-link:focus-visible,
+html .accordion-button:focus-visible,
+html .dropdown-item:focus-visible,
+html .list-group-item-action:focus-visible {
+    outline: 3px solid var(--g2ml-focus-color);
+    outline-offset: 2px;
+    box-shadow: none;
+}
+
+/* Items that sit flush inside a box (menu entries, list rows, accordion       */
+/* headers, pagination links) draw the ring on the inside, so the box edge     */
+/* cannot cut it off.                                                          */
+html .dropdown-item:focus-visible,
+html .list-group-item-action:focus-visible,
+html .accordion-button:focus-visible,
+html .page-link:focus-visible {
+    outline-offset: -3px;
+}
+
+/* Text boxes also show the ring colour as their border while focused. */
+html .form-control:focus-visible,
+html .form-select:focus-visible {
+    border-color: var(--g2ml-focus-color);
 }
 
 
@@ -395,7 +585,7 @@ main {
 /*                                                                            */
 /* The result alert uses a coloured left border as a visual indicator —        */
 /* green for success (shortened URL ready). The :has() enhancement below      */
-/* (Section 11) extends this to also show red for errors.                     */
+/* (Section 13) extends this to also show red for errors.                     */
 /*                                                                            */
 /* The copy button uses white-space: nowrap to prevent the "Copy" text from   */
 /* wrapping on narrow viewports where it sits beside the shortened URL.       */
@@ -464,35 +654,93 @@ main {
 
 
 /* ========================================================================== */
-/* ♿ SECTION 10: Navbar Inactive Link Contrast Fix (WCAG 1.4.3)              */
+/* ♿ SECTION 10: Navigation Bar — Constant Deep Blue, Readable Controls       */
 /* ========================================================================== */
 /*                                                                            */
-/* Bootstrap's default navbar-dark link colour uses opacity: 0.55 for         */
-/* inactive links. On our custom bg-primary background (#1565C0), this        */
-/* results in insufficient contrast (only ~3.1:1 against the blue bg).        */
-/* WCAG 1.4.3 requires 4.5:1 for normal text.                                */
+/* The navbar is always dark-themed (data-bs-theme="dark" on the element, a    */
+/* brand-identity choice). That attribute also switches the brand variables    */
+/* to their dark-mode values, so the bar used to be the LIGHT blue #42A5F5 in  */
+/* both modes, and white text on it measured only 2.4 to 2.65:1 (WCAG 1.4.3    */
+/* needs 4.5:1).                                                               */
 /*                                                                            */
-/* Fix: Override to rgba(255,255,255,0.90) which gives ~12:1 contrast on      */
-/* the deep blue background — well above the AA minimum.                      */
+/* Fix: the bar has its own constant colour, --g2ml-nav-bg (deep blue          */
+/* #1565C0), the same in light and dark mode. Everything on the bar is set     */
+/* from the three --g2ml-nav-* variables so it can be checked in one place.    */
 /*                                                                            */
-/* The navbar uses data-bs-theme="dark" hardcoded (brand identity — always    */
-/* dark regardless of page theme). These selectors target that specifically.  */
+/* Measured on #1565C0 (text needs 4.5:1, icons and outlines need 3:1):        */
+/*   white text and icons, active link, hover, focus ring ........ 5.75:1     */
+/*   inactive links, toggler outline (white at 90%) ............... 4.98:1     */
+/*   Sign Up outline button (Bootstrap light, #f8f9fa) ............ 5.45:1     */
+/*   open menu (dark #212529): menu text 11.85:1, user name 11.85:1,           */
+/*   current-item white on #1565C0 5.75:1                                      */
 /*                                                                            */
-/* !important is necessary because Bootstrap's .navbar-dark .nav-link uses    */
-/* !important on its colour declarations.                                     */
+/* The selector starts with "nav" so it outweighs Bootstrap's own              */
+/* .navbar[data-bs-theme=dark] rule, including the right-to-left Bootstrap     */
+/* file that is loaded after this one.                                         */
+/*                                                                            */
+/* !important is kept on the link colours below because the theme toggle is    */
+/* both .btn-link and .nav-link and the two compete for its colour.            */
 /*                                                                            */
 /* 📖 WCAG 1.4.3 Contrast: https://www.w3.org/TR/WCAG21/#contrast-minimum   */
-/* 📖 Contrast Checker:     https://webaim.org/resources/contrastchecker/    */
+/* 📖 WCAG 1.4.11 Non-text Contrast: https://www.w3.org/TR/WCAG21/#non-text-contrast */
 /* ========================================================================== */
 
-/* Inactive nav links — boosted to 0.90 opacity for WCAG AA compliance */
-.navbar[data-bs-theme="dark"] .nav-link:not(.active):not(.dropdown-toggle) {
-    color: rgba(255, 255, 255, 0.90) !important;
+nav.navbar[data-bs-theme="dark"] {
+
+    /* The focus ring on the bar is white, whatever the page theme. */
+    --g2ml-focus-color:                 var(--g2ml-nav-fg);
+
+    --bs-navbar-color:                  var(--g2ml-nav-fg-soft);
+    --bs-navbar-hover-color:            var(--g2ml-nav-fg);
+    --bs-navbar-active-color:           var(--g2ml-nav-fg);
+    --bs-navbar-brand-color:            var(--g2ml-nav-fg);
+    --bs-navbar-brand-hover-color:      var(--g2ml-nav-fg);
+    --bs-navbar-toggler-border-color:   var(--g2ml-nav-fg-soft);
+}
+
+/* Bootstrap's menu (hamburger) icon is white at 55%: 2.84:1 on the bar, under  */
+/* the 3:1 an icon needs. This is the same three-line icon in solid white       */
+/* (5.75:1). Bootstrap sets the icon's colour on the icon element itself, in    */
+/* dark themes, so this rule has to target the icon, not just the navbar.       */
+nav.navbar[data-bs-theme="dark"] .navbar-toggler-icon {
+    --bs-navbar-toggler-icon-bg:        url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgb%28255, 255, 255%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 14h22M4 21h22'/%3e%3c/svg%3e");
+}
+
+/* The navbar element keeps Bootstrap's .bg-primary class in the markup, so    */
+/* the bar still has a colour if this file ever fails to load. This rule makes */
+/* that colour the constant deep blue. (!important to beat the utility class.) */
+.navbar.bg-primary {
+    background-color: var(--g2ml-nav-bg) !important;
+}
+
+/* Inactive nav links — soft white, 4.98:1 on the bar */
+.navbar[data-bs-theme="dark"] .nav-link:not(.active) {
+    color: var(--g2ml-nav-fg-soft) !important;
 }
 
 /* Nav link hover — full white for clear interactive feedback */
 .navbar[data-bs-theme="dark"] .nav-link:hover {
-    color: #ffffff !important;
+    color: var(--g2ml-nav-fg) !important;
+}
+
+/* Menus that open from the bar (user menu, language switcher) are dark.       */
+/* Bootstrap draws their section heading (the signed-in name) in a fixed grey  */
+/* that is only 3.29:1 on the dark menu, and the current-language row in       */
+/* Bootstrap's own blue (#0d6efd, white text on it exactly 4.50:1). The        */
+/* heading takes the normal menu text colour and the current row the bar's     */
+/* deep blue.                                                                  */
+nav.navbar .dropdown-menu {
+    --bs-dropdown-header-color:         var(--bs-body-color);
+    --bs-dropdown-link-active-bg:       var(--g2ml-nav-bg);
+    --bs-dropdown-link-active-color:    var(--g2ml-nav-fg);
+}
+
+/* The language switcher prints the English name in grey "muted" text after    */
+/* the native name. On the highlighted current row that grey on blue is under  */
+/* 3:1, so there it takes the row's own white. */
+nav.navbar .dropdown-item.active .text-muted,
+nav.navbar .dropdown-item.active .text-body-secondary {
+    color: inherit !important;
 }
 
 
@@ -613,6 +861,70 @@ footer a:focus {
         background-color: var(--bs-table-hover-bg);
     }
 }
+
+/* ========================================================================== */
+/* 🍪 SECTION 14: Cookie Consent Banner (size on small screens)                */
+/* ========================================================================== */
+/*                                                                            */
+/* The banner (web/_includes/cookie_banner.php) is fixed to the bottom of the   */
+/* screen. On a phone it used to cover 26% to 34% of the height (measured by    */
+/* the audit). This section makes it smaller and keeps the page reachable.     */
+/*                                                                            */
+/* Height in Chromium with the standard English text (a wide system font, so   */
+/* a phone's own font may need a little less):                                 */
+/*   375 px wide: 179 px before, 140 px now.                                   */
+/*   320 px wide: 239 px before, 200 px now (the buttons wrap to two rows).     */
+/*   768 px wide: 137 px before, 98 px now.                                    */
+/*  1280 px wide:  98 px before, 100 px now, because the title now sits on its  */
+/*                own line above the message.                                  */
+/*                                                                            */
+/* 1. Never taller than 40% of the window; longer text scrolls inside it.       */
+/* 2. Below the large breakpoint the side padding is tighter, so the three      */
+/*    buttons have more room, and the bold title and cookie icon are hidden     */
+/*    from sight (the message starts "We use cookies ..." anyway). The title    */
+/*    stays in the page for screen readers: it is the banner's name.           */
+/* 3. cookie-consent.js sets --g2ml-cookie-banner-height to the banner's        */
+/*    height while it is showing. The page keeps that much space at the        */
+/*    bottom, and keyboard focus scrolls to just above the banner instead of   */
+/*    underneath it (WCAG 2.4.11 Focus Not Obscured). With no JavaScript, or   */
+/*    once the banner is dismissed, the variable is unset and both are 0.      */
+/*                                                                            */
+/* 📖 scroll-padding: https://developer.mozilla.org/en-US/docs/Web/CSS/scroll-padding-bottom */
+/* ========================================================================== */
+#g2ml-cookie-banner {
+    max-height: 40vh;
+    overflow-y: auto;
+}
+
+@media (max-width: 991.98px) {
+
+    #g2ml-cookie-banner > .container {
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    /* The same technique as Bootstrap's .visually-hidden, applied only on small screens. */
+    #g2ml-cookie-banner .g2ml-cookie-heading {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+}
+
+html {
+    scroll-padding-bottom: var(--g2ml-cookie-banner-height, 0px);
+}
+
+body {
+    padding-bottom: var(--g2ml-cookie-banner-height, 0px);
+}
+
 
 /* ========================================================================== */
 /* ♿ REDUCED MOTION (WCAG 2.3.3 Animation from Interactions; supports 2.2.2)  */

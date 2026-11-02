@@ -65,15 +65,18 @@ if (function_exists('getSetting')) {
 
             <!-- Column 1: Brand & Copyright -->
             <div class="col-md-4 mb-3">
-                <picture>
-                    <source srcset="https://go2my.link/img/logo.svg" type="image/svg+xml">
-                    <img src="https://go2my.link/img/logo.png"
-                         alt="<?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>"
-                         height="32"
-                         width="auto"
-                         class="mb-2"
-                         loading="lazy">
-                </picture>
+                <?php // The logo's dark lettering would nearly disappear on the dark footer, so it sits on a white rounded chip. ?>
+                <span class="d-inline-block bg-white rounded px-2 py-1 mb-2">
+                    <picture>
+                        <source srcset="https://go2my.link/img/logo.svg" type="image/svg+xml">
+                        <img src="https://go2my.link/img/logo.png"
+                             alt="<?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>"
+                             height="32"
+                             width="142"
+                             class="d-block"
+                             loading="lazy">
+                    </picture>
+                </span>
                 <p class="text-body-secondary small">
                     <?php if (function_exists('getSetting')) { echo htmlspecialchars(getSetting('site.tagline', 'Shorten. Track. Manage.'), ENT_QUOTES, 'UTF-8'); } else { echo 'Shorten. Track. Manage.'; } ?>
                 </p>
@@ -85,7 +88,7 @@ if (function_exists('getSetting')) {
 
             <!-- Column 2: Quick Links -->
             <div class="col-md-4 mb-3">
-                <h6><?php if (function_exists('__')) { echo __('footer.quick_links'); } else { echo 'Quick Links'; } ?></h6>
+                <h2 class="h6"><?php if (function_exists('__')) { echo __('footer.quick_links'); } else { echo 'Quick Links'; } ?></h2>
                 <ul class="list-unstyled small">
                     <li><a href="<?php echo g2ml_mainSiteURL('/about'); ?>" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('nav.about'); } else { echo 'About'; } ?></a></li>
                     <li><a href="<?php echo g2ml_mainSiteURL('/features'); ?>" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('nav.features'); } else { echo 'Features'; } ?></a></li>
@@ -97,7 +100,7 @@ if (function_exists('getSetting')) {
 
             <!-- Column 3: Legal -->
             <div class="col-md-4 mb-3">
-                <h6><?php if (function_exists('__')) { echo __('footer.legal'); } else { echo 'Legal'; } ?></h6>
+                <h2 class="h6"><?php if (function_exists('__')) { echo __('footer.legal'); } else { echo 'Legal'; } ?></h2>
                 <ul class="list-unstyled small">
                     <li><a href="<?php echo g2ml_mainSiteURL('/legal/terms'); ?>" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.terms'); } else { echo 'Terms of Use'; } ?></a></li>
                     <li><a href="<?php echo g2ml_mainSiteURL('/legal/privacy'); ?>" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.privacy'); } else { echo 'Privacy Policy'; } ?></a></li>
@@ -111,15 +114,7 @@ if (function_exists('getSetting')) {
     </div>
 </footer>
 
-<!-- ====================================================================== -->
-<!-- 🍪 Cookie Consent Banner                                               -->
-<!-- ====================================================================== -->
-<?php
-if (file_exists(G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'cookie_banner.php'))
-{
-    require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'cookie_banner.php';
-}
-?>
+<?php // The cookie consent banner is printed by header.php, straight after the skip link, so keyboard users reach it first (#287). ?>
 
 <!-- ====================================================================== -->
 <!-- ARIA Live Region for Dynamic Status Updates                            -->

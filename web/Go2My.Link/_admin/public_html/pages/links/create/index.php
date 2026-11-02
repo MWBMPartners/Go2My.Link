@@ -196,9 +196,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                             <input type="text" class="form-control text-center fw-bold" id="result-url"
                                    value="<?php echo g2ml_sanitiseOutput($resultURL); ?>" readonly
                                    aria-label="<?php if (function_exists('__')) { echo __('create_link.result_url'); } else { echo 'Created short URL'; } ?>">
+                            <?php // After a click the button's words change to "Copied!", so its accessible name (aria-label) is changed to match. ?>
                             <button class="btn btn-primary" type="button" id="copy-btn"
                                     aria-label="<?php if (function_exists('__')) { echo __('create_link.copy_url'); } else { echo 'Copy short URL to clipboard'; } ?>"
-                                    onclick="navigator.clipboard.writeText(document.getElementById('result-url').value).then(function(){var b=document.getElementById('copy-btn');b.textContent='\u2713 Copied!';var s=document.getElementById('global-status');if(s){s.textContent='URL copied to clipboard';}}).catch(function(){var s=document.getElementById('global-status');if(s){s.textContent='Failed to copy. Please select and copy manually.';}})">
+                                    data-copied-text="<?php if (function_exists('__')) { echo htmlspecialchars(__('common.copied'), ENT_QUOTES, 'UTF-8'); } else { echo 'Copied!'; } ?>"
+                                    onclick="navigator.clipboard.writeText(document.getElementById('result-url').value).then(function(){var b=document.getElementById('copy-btn');var t=b.getAttribute('data-copied-text');b.textContent='\u2713 '+t;b.setAttribute('aria-label',t);var s=document.getElementById('global-status');if(s){s.textContent='URL copied to clipboard';}}).catch(function(){var s=document.getElementById('global-status');if(s){s.textContent='Failed to copy. Please select and copy manually.';}})">
                                 <i class="fas fa-copy" aria-hidden="true"></i> Copy
                             </button>
                         </div>

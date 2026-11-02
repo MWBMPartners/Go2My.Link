@@ -635,10 +635,10 @@ if ($pageData !== null)
                         </h2>
                     </div>
                     <div class="card-body p-4">
-                        <p class="text-body-secondary">
+                        <p class="text-body-secondary text-break">
                             Public URL:
                             <a href="https://lnks.page/<?php echo g2ml_sanitiseOutput($pageData['slug']); ?>" target="_blank" rel="noopener noreferrer">
-                                lnks.page/<?php echo g2ml_sanitiseOutput($pageData['slug']); ?>
+                                lnks.page/<?php echo g2ml_sanitiseOutput($pageData['slug']); ?><?php echo newTabNotice(); ?>
                             </a>
                         </p>
 
@@ -1026,7 +1026,8 @@ if ($pageData !== null)
                             ?>
                         <li class="list-group-item">
                             <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-                                <div>
+                                <?php // text-break lets a long address or title wrap, so it cannot push the whole page sideways. ?>
+                                <div class="text-break">
                                     <strong><?php echo g2ml_sanitiseOutput($itemRow['itemTitle']); ?></strong>
 
                                     <?php if ((int) $itemRow['isActive'] === 1) { ?>

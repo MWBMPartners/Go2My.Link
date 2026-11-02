@@ -250,9 +250,9 @@ The application detects its environment from the hostname:
 3. 📋 Import all **16** schema files from `web/_sql/schema/`, in filename order
 4. 🔧 Import both stored procedures from `web/_sql/procedures/`
    (`sp_generateShortCode.sql`, `sp_lookupShortURL.sql`)
-5. 🌱 Import all **34** seed files from `web/_sql/seeds/`, in order — the
+5. 🌱 Import all **36** seed files from `web/_sql/seeds/`, in order — the
    numbering is not continuous: `001` through `023` run in sequence, then
-   eleven later additions sit outside that run, `029_linkspage_privacy_translations.sql`,
+   thirteen later additions sit outside that run, `029_linkspage_privacy_translations.sql`,
    `058_truthful_marketing_translations.sql`,
    `059_link_destination_translations.sql`,
    `064_linkspage_avatar_icon_translations.sql`,
@@ -261,17 +261,19 @@ The application detects its environment from the hostname:
    `067_dashboard_access_translations.sql`,
    `068_small_fixes_translations.sql`,
    `069_home_meta_description_translation.sql`,
-   `070_offline_page_translations.sql` and
-   `071_form_feedback_translations.sql` (see the table below for
+   `070_offline_page_translations.sql`,
+   `071_form_feedback_translations.sql`,
+   `072_accessibility_translations.sql` and
+   `073_linkspage_layout_translations.sql` (see the table below for
    what each one adds). Importing "in order" means by filename, so a plain
-   `for f in web/_sql/seeds/*.sql` loop picks up all 34 without needing to
+   `for f in web/_sql/seeds/*.sql` loop picks up all 36 without needing to
    know about the gap in the numbers.
 
-> 📝 Counts as at 2026-11-02: 16 schema files, 2 stored procedures, 34 seeds,
+> 📝 Counts as at 2026-11-02: 16 schema files, 2 stored procedures, 36 seeds,
 > 21 migrations. Import order is schema → procedures → seeds, which is the
 > order `.github/workflows/ci.yml` uses. (Seed `023` and migration `021`, the
 > LinksPage feature registry, were added on 2026-09-21; seeds `029`, `058`,
-> `059`, `064`, `065`, `066`, `067`, `068`, `069`, `070` and `071` were added later still, outside the 001-023 run —
+> `059`, `064`, `065`, `066`, `067`, `068`, `069`, `070`, `071`, `072` and `073` were added later still, outside the 001-023 run —
 > see below.)
 
 #### 🚨 The collation check — do this first, every time
@@ -357,9 +359,19 @@ key names instead of words:
 | `069_home_meta_description_translation.sql` | 1 string: the home page's own search and sharing description ("Shorten long web addresses for free, with no account needed. …"), which used to be the three-word tagline (#282) | The home page's description, in search results and in link previews on social media, reads `home.meta_description` |
 | `070_offline_page_translations.sql` | 3 strings: the title, message and "Try again" button of the offline page at /offline on go2my.link and the dashboard, which the service workers show when the network is down (#283) | The offline page shows its built-in English instead (it never shows key names), so it cannot be translated |
 | `071_form_feedback_translations.sql` | 5 strings for #286: the "Working…" label buttons show while a form is being sent, the Organisation Members page's new role list label, "Change role" button and its confirmation, and the LinksPage list's confirmation before unpublishing a page (#286) | Busy buttons and the screen-reader announcement say `common.working`; the Members page shows `org.members_change_role_button` and its confirm box shows the key name; the Unpublish confirm box shows `linkspage.unpublish_confirm` |
+| `072_accessibility_translations.sql` | 3 strings for #287: the screen-reader notice "(opens in a new tab)" on links that open a new tab, the "Copied!" label of copy buttons, and the end of the cookie banner's link name ("… about our cookie policy") | Screen readers hear `common.opens_new_tab` on new-tab links; copy buttons say `common.copied`; the cookie banner's link is named with the key `cookie.learn_more_suffix` |
+| `073_linkspage_layout_translations.sql` | 1 string: "Profile picture", the alt text of an uploaded LinksPage avatar (#287) | Nothing a visitor sees breaks: the renderer falls back to the English words when the translation is missing |
 
-All thirteen are `INSERT IGNORE`, so they are safe to run more than once and safe
+All fifteen are `INSERT IGNORE`, so they are safe to run more than once and safe
 on a database that already has them.
+
+**Also re-import `004_linkspage_templates.sql` on an existing database (#287), after the new code is
+uploaded.** Unlike the files above, it is not INSERT IGNORE: it refreshes the five system LinksPage
+templates (their HTML and CSS) by their slug, so they gain a `<main>` landmark, readable colours and
+long-word wrapping. Upload the code first: the new templates use two markers (`{{avatarAlt}}`,
+`{{themeText}}`) that the old code would leave on the page. Any change made by hand to those five
+system templates in the database is replaced; owners' own pages are untouched (they only choose a
+template).
 
 #### 🧩 Migration `021` — the LinksPage feature registry (needed on an EXISTING database)
 

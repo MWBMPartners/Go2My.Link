@@ -43,6 +43,31 @@
     var rejectBtn     = document.getElementById('g2ml-cookie-reject');
     var savePrefsBtn  = document.getElementById('g2ml-cookie-save-preferences');
 
+    // ========================================================================
+    // Space for the banner
+    // ========================================================================
+    // The banner is fixed to the bottom of the screen and covers part of the
+    // page. While it is showing, its height is published as the CSS variable
+    // --g2ml-cookie-banner-height. style.css uses it to keep that much space
+    // free at the bottom of the page, and to stop keyboard focus scrolling to
+    // a spot underneath the banner (WCAG 2.4.11).
+    var bannerSizeWatcher = null;
+
+    function publishBannerHeight() {
+        document.documentElement.style.setProperty('--g2ml-cookie-banner-height', banner.offsetHeight + 'px');
+    }
+
+    publishBannerHeight();
+
+    if (typeof ResizeObserver !== 'undefined') {
+        bannerSizeWatcher = new ResizeObserver(function () {
+            publishBannerHeight();
+        });
+        bannerSizeWatcher.observe(banner);
+    } else {
+        window.addEventListener('resize', publishBannerHeight);
+    }
+
     /**
      * Send consent choices to the server.
      *
@@ -121,6 +146,13 @@
         banner.style.transform = 'translateY(100%)';
         setTimeout(function () {
             banner.style.display = 'none';
+            // The banner is gone, so the page no longer needs to keep space for it.
+            if (bannerSizeWatcher !== null) {
+                bannerSizeWatcher.disconnect();
+            } else {
+                window.removeEventListener('resize', publishBannerHeight);
+            }
+            document.documentElement.style.removeProperty('--g2ml-cookie-banner-height');
             // Return focus to main content after dismissal (WCAG 2.4.3)
             var mainContent = document.getElementById('main-content');
             if (mainContent) { mainContent.focus(); }

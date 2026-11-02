@@ -13,11 +13,11 @@
  * ============================================================================
  *
  * Pure templating layer: given an ALREADY-resolved page model (see
- * linkspage_resolver.php — g2ml_resolveLinksPage()), substitutes the 7 system
- * placeholder markers ({{avatar}}, {{name}}, {{bio}}, {{links}}, {{social}},
- * {{theme}}, {{background}}) into the page's SYSTEM templateHTML/templateCSS
- * (web/_sql/seeds/004_linkspage_templates.sql) and returns a complete,
- * self-contained HTML document.
+ * linkspage_resolver.php — g2ml_resolveLinksPage()), substitutes the system
+ * placeholder markers ({{avatar}}, {{avatarAlt}}, {{name}}, {{bio}}, {{links}},
+ * {{social}}, {{theme}}, {{themeText}}, {{background}}) into the page's SYSTEM
+ * templateHTML/templateCSS (web/_sql/seeds/004_linkspage_templates.sql) and
+ * returns a complete, self-contained HTML document.
  *
  * 🔒 SECURITY (this renders a PUBLIC page carrying third-party-authored data):
  *   - customHTML / customCSS are NEVER read or emitted here — deferred to
@@ -37,7 +37,7 @@
  *     can never appear) before either is ever placed inside a `<style>` block.
  *   - Favicons are NEVER fetched at render time (SSRF + latency risk) — only
  *     the already-stored itemIcon / faviconCacheURL is consumed, falling back
- *     to a self-contained inline (data: URI) default icon.
+ *     to a self-contained inline SVG default icon.
  *
  * These helpers are deliberately self-contained — function_exists() guards
  * around g2ml_sanitiseOutput()/g2ml_sanitiseURL() — so this file (and its unit
@@ -50,13 +50,15 @@
  *   - g2ml_linkspageDefaultThemeColour()/g2ml_linkspageDefaultBackgroundColour() — safe fallback colours
  *   - g2ml_linkspageEscape()              — HTML-escape with a safe fallback
  *   - g2ml_linkspageSanitiseHref()        — http/https scheme allowlist with a safe fallback
- *   - g2ml_linkspageDefaultAvatarSrc()/g2ml_linkspageResolveAvatarSrc() — avatar URL resolution
- *   - g2ml_linkspageDefaultItemIconSrc()  — self-contained default link icon (data: URI)
- *   - g2ml_linkspageRenderItemIcon()      — one item's icon <img>
+ *   - g2ml_linkspageContrastRatio()/g2ml_linkspageReadableTextColour() — WCAG contrast maths, black-or-white text for a colour
+ *   - g2ml_linkspageDefaultAvatarSrc()/g2ml_linkspageResolveAvatarSrc()/g2ml_linkspageAvatarAlt() — avatar URL and alt text
+ *   - g2ml_linkspageDefaultItemIconHTML() — default link icon (inline SVG, takes the link's text colour)
+ *   - g2ml_linkspageRenderItemIcon()      — one item's icon (inline SVG or <img>)
  *   - g2ml_linkspageRenderItem()          — one item's <a> markup (or '' if its URL is unsafe)
  *   - g2ml_linkspageRenderItems()         — the full {{links}} fragment
  *   - g2ml_linkspageRenderSocial()        — the full {{social}} fragment
- *   - g2ml_linkspageApplyTemplate()       — the 7-placeholder substitution engine
+ *   - g2ml_linkspageApplyTemplate()       — the placeholder substitution engine
+ *   - g2ml_linkspageBaseCSS()             — layout rules shared by every template
  *   - g2ml_linkspageBuildDocument()       — wraps rendered body + CSS into a full HTML document
  *   - g2ml_renderLinksPage()              — top-level: page model -> full HTML document
  *   - g2ml_linkspageRenderAgeGateInterstitial() — C.5/#50 good-faith age-verification interstitial
@@ -175,6 +177,130 @@ function g2ml_linkspageDefaultBackgroundColour(): string
 }
 
 // ============================================================================
+// 🌗 Readable text colour (WCAG contrast)
+// ============================================================================
+// A page owner can pick any theme colour, so text drawn on top of it cannot
+// always be white. These helpers work out whether black or white is easier to
+// read on a given colour. The formula is the one in WCAG 2.1:
+// https://www.w3.org/TR/WCAG21/#dfn-contrast-ratio
+
+/**
+ * Turn a validated hex colour into red, green and blue numbers (0 to 255).
+ *
+ * The validator lets 3, 4, 5 and 6 digit values through. A 4 digit value is a
+ * browser colour with a transparency part, so it is blended onto white, the
+ * page colour behind it. A 5 digit value is not a real colour: the browser
+ * ignores the rule, so it counts as white too.
+ *
+ * @param  string $hexColour  A value that passed g2ml_linkspageValidateHexColour().
+ * @return array{0: int, 1: int, 2: int}
+ */
+function g2ml_linkspageHexToRgb(string $hexColour): array
+{
+    $digits = ltrim(trim($hexColour), '#');
+    $length = strlen($digits);
+
+    if ($length === 3 || $length === 4)
+    {
+        $expanded = '';
+
+        for ($position = 0; $position < $length; $position++)
+        {
+            $expanded = $expanded . $digits[$position] . $digits[$position];
+        }
+
+        $digits = $expanded;
+        $length = strlen($digits);
+    }
+
+    if ($length !== 6 && $length !== 8)
+    {
+        return [255, 255, 255];
+    }
+
+    $red   = (int) hexdec(substr($digits, 0, 2));
+    $green = (int) hexdec(substr($digits, 2, 2));
+    $blue  = (int) hexdec(substr($digits, 4, 2));
+
+    if ($length === 8)
+    {
+        $opacity = ((int) hexdec(substr($digits, 6, 2))) / 255;
+        $red     = (int) round(($red * $opacity) + (255 * (1 - $opacity)));
+        $green   = (int) round(($green * $opacity) + (255 * (1 - $opacity)));
+        $blue    = (int) round(($blue * $opacity) + (255 * (1 - $opacity)));
+    }
+
+    return [$red, $green, $blue];
+}
+
+/**
+ * How bright a colour looks to the eye, from 0 (black) to 1 (white).
+ *
+ * @param  array{0: int, 1: int, 2: int} $rgb
+ * @return float
+ */
+function g2ml_linkspageRelativeLuminance(array $rgb): float
+{
+    $linear = [];
+
+    foreach ([0, 1, 2] as $channelIndex)
+    {
+        $channel = ((int) $rgb[$channelIndex]) / 255;
+
+        if ($channel <= 0.03928)
+        {
+            $linear[$channelIndex] = $channel / 12.92;
+        }
+        else
+        {
+            $linear[$channelIndex] = (($channel + 0.055) / 1.055) ** 2.4;
+        }
+    }
+
+    return (0.2126 * $linear[0]) + (0.7152 * $linear[1]) + (0.0722 * $linear[2]);
+}
+
+/**
+ * The WCAG contrast ratio between two colours: 1 (identical) up to 21
+ * (black on white). Normal text needs at least 4.5; large text needs 3.
+ *
+ * @param  array{0: int, 1: int, 2: int} $firstRgb
+ * @param  array{0: int, 1: int, 2: int} $secondRgb
+ * @return float
+ */
+function g2ml_linkspageContrastRatio(array $firstRgb, array $secondRgb): float
+{
+    $firstLuminance  = g2ml_linkspageRelativeLuminance($firstRgb);
+    $secondLuminance = g2ml_linkspageRelativeLuminance($secondRgb);
+
+    $lighter = max($firstLuminance, $secondLuminance);
+    $darker  = min($firstLuminance, $secondLuminance);
+
+    return ($lighter + 0.05) / ($darker + 0.05);
+}
+
+/**
+ * Pick the text colour to draw on top of a background colour: white when
+ * white reaches 4.5:1, otherwise black. Whichever colour a page owner picks,
+ * one of the two always reaches at least 4.5:1, because the two ratios cross
+ * at about 4.58:1.
+ *
+ * @param  string $hexBackground  A value that passed g2ml_linkspageValidateHexColour().
+ * @return string  '#FFFFFF' or '#000000'.
+ */
+function g2ml_linkspageReadableTextColour(string $hexBackground): string
+{
+    $backgroundRgb = g2ml_linkspageHexToRgb($hexBackground);
+
+    if (g2ml_linkspageContrastRatio([255, 255, 255], $backgroundRgb) >= 4.5)
+    {
+        return '#FFFFFF';
+    }
+
+    return '#000000';
+}
+
+// ============================================================================
 // 🧹 Escaping / URL sanitisation (with DB-free fallbacks for unit tests)
 // ============================================================================
 
@@ -257,74 +383,194 @@ function g2ml_linkspageSanitiseHref(?string $url): string|false
 // ============================================================================
 
 /**
- * The sensible fallback avatar shown when a page has no avatarPath, or it
- * fails scheme validation. A relative, same-origin path — never user data.
+ * Look up a translated string for the public page, with a plain-English
+ * fallback. On a real page __() is loaded, but it hands back the key itself
+ * when the translation row is missing from the database; that raw key is
+ * never shown to a visitor here. Without __() (the unit tests) the fallback
+ * is used too.
  *
+ * @param  string $key       The translation key.
+ * @param  string $fallback  English text used when there is no translation.
  * @return string
  */
-function g2ml_linkspageDefaultAvatarSrc(): string
+function g2ml_linkspageTranslate(string $key, string $fallback): string
 {
-    return '/img/logo.png';
+    if (!function_exists('__'))
+    {
+        return $fallback;
+    }
+
+    $translated = __($key);
+
+    if ($translated === '' || $translated === $key)
+    {
+        return $fallback;
+    }
+
+    return $translated;
 }
 
 /**
- * Resolve the avatar `src` value for the {{avatar}} placeholder.
+ * The first letter or digit of a page's name, in capitals, for the default
+ * avatar. Empty when the name has no usable first character.
  *
- * NOTE: every system template already wraps this value in its OWN <img> tag
- * (e.g. `<img class="lp-avatar" src="{{avatar}}" alt="{{name}}">` — see
- * web/_sql/seeds/004_linkspage_templates.sql), so this returns the bare,
- * scheme-validated URL string, not a full <img> element.
- *
- * @param  string|null $avatarPath
- * @return string  A scheme-validated URL, or the built-in default avatar path.
+ * @param  string $displayName  The page's raw (unescaped) title.
+ * @return string  One character, or ''.
  */
-function g2ml_linkspageResolveAvatarSrc(?string $avatarPath): string
+function g2ml_linkspageAvatarInitial(string $displayName): string
 {
-    if ($avatarPath === null || trim($avatarPath) === '')
+    if (preg_match('/^\s*([\p{L}\p{N}])/u', $displayName, $matches) !== 1)
     {
-        return g2ml_linkspageDefaultAvatarSrc();
+        return '';
     }
 
-    $sanitised = g2ml_linkspageSanitiseHref($avatarPath);
-
-    if ($sanitised === false || $sanitised === '')
-    {
-        return g2ml_linkspageDefaultAvatarSrc();
-    }
-
-    return $sanitised;
+    // Some letters grow when capitalised (the German ß becomes SS), so the
+    // result is cut back to one character afterwards.
+    return mb_substr(mb_strtoupper($matches[1], 'UTF-8'), 0, 1, 'UTF-8');
 }
 
 /**
- * A minimal, self-contained default link icon (an inline chain-link glyph,
- * base64 data: URI). Used whenever an item has no itemIcon/faviconCacheURL,
- * or the stored value fails scheme validation.
+ * The default avatar for a page that has not set one: a SQUARE picture with
+ * the first letter of the page's name in white on dark grey, or a plain
+ * head-and-shoulders shape when the name has no usable first letter.
  *
- * Deliberately NEVER fetched over the network (see the file header's SSRF
- * note) — this is a fixed, static asset baked into the renderer itself.
+ * It is drawn as a small inline SVG and returned as a data: address, so
+ * nothing is fetched and no file has to exist. Each template's CSS decides
+ * whether the square is cropped round. White on #495057 is 8.18:1.
  *
- * @return string
+ * It is a decorative placeholder, so the page gives it an empty alt text (see
+ * g2ml_linkspageAvatarAlt()).
+ *
+ * @param  string $displayName  The page's raw (unescaped) title; may be ''.
+ * @return string  A data: URI for an <img src>.
  */
-function g2ml_linkspageDefaultItemIconSrc(): string
+function g2ml_linkspageDefaultAvatarSrc(string $displayName = ''): string
 {
-    $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" '
-        . 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-        . '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>'
-        . '<path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'
+    $initial = g2ml_linkspageAvatarInitial($displayName);
+
+    if ($initial !== '')
+    {
+        $glyph = '<text x="48" y="48" dy=".35em" text-anchor="middle" '
+            . 'font-family="Arial, Helvetica, sans-serif" font-size="44" font-weight="700" fill="#FFFFFF">'
+            . htmlspecialchars($initial, ENT_XML1 | ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+            . '</text>';
+    }
+    else
+    {
+        $glyph = '<circle cx="48" cy="36" r="16" fill="#FFFFFF"/>'
+            . '<path d="M16 84a32 28 0 0 1 64 0z" fill="#FFFFFF"/>';
+    }
+
+    $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">'
+        . '<rect width="96" height="96" fill="#495057"/>'
+        . $glyph
         . '</svg>';
 
     return 'data:image/svg+xml;base64,' . base64_encode($svg);
 }
 
 /**
- * Render one item's icon <img>, preferring itemIcon over faviconCacheURL,
- * falling back to the built-in default icon when neither is present/safe.
+ * The page's own avatar address after the http/https check, or false when the
+ * page has none or the stored value is unsafe.
+ *
+ * @param  string|null $avatarPath
+ * @return string|false
+ */
+function g2ml_linkspageCustomAvatarURL(?string $avatarPath): string|false
+{
+    if ($avatarPath === null || trim($avatarPath) === '')
+    {
+        return false;
+    }
+
+    $sanitised = g2ml_linkspageSanitiseHref($avatarPath);
+
+    if ($sanitised === false || $sanitised === '')
+    {
+        return false;
+    }
+
+    return $sanitised;
+}
+
+/**
+ * Resolve the avatar `src` value for the {{avatar}} placeholder.
+ *
+ * NOTE: every system template already wraps this value in its OWN <img> tag
+ * (e.g. `<img class="lp-avatar" src="{{avatar}}" alt="{{avatarAlt}}">` — see
+ * web/_sql/seeds/004_linkspage_templates.sql), so this returns the bare,
+ * scheme-validated URL string, not a full <img> element.
+ *
+ * @param  string|null $avatarPath
+ * @param  string      $displayName  The page's raw title, used for the default avatar's letter.
+ * @return string  A scheme-validated URL, or the built-in default avatar.
+ */
+function g2ml_linkspageResolveAvatarSrc(?string $avatarPath, string $displayName = ''): string
+{
+    $customURL = g2ml_linkspageCustomAvatarURL($avatarPath);
+
+    if ($customURL === false)
+    {
+        return g2ml_linkspageDefaultAvatarSrc($displayName);
+    }
+
+    return $customURL;
+}
+
+/**
+ * The alt text for the {{avatarAlt}} placeholder.
+ *
+ * The default avatar is only decoration, so its alt text is empty and a screen
+ * reader skips it. A real uploaded picture is content, so it gets a short
+ * description. That description is not the page's name, because the name is
+ * already read out as the page heading right beside it.
+ *
+ * @param  string|null $avatarPath
+ * @return string  Plain text (not yet escaped).
+ */
+function g2ml_linkspageAvatarAlt(?string $avatarPath): string
+{
+    if (g2ml_linkspageCustomAvatarURL($avatarPath) === false)
+    {
+        return '';
+    }
+
+    return g2ml_linkspageTranslate('linkspage.avatar_alt', 'Profile picture');
+}
+
+/**
+ * The default link icon: an inline chain-link drawing, used whenever an item
+ * has no itemIcon/faviconCacheURL, or the stored value fails scheme validation.
+ *
+ * It is inline SVG, not an <img>, on purpose. A picture loaded through <img>
+ * cannot read the link's text colour, so `currentColor` fell back to black and
+ * the icon vanished on dark or coloured links. Inline, it takes the link's
+ * text colour, so it always has the same contrast as the link's own text.
+ *
+ * Deliberately NEVER fetched over the network (see the file header's SSRF
+ * note) — this is a fixed, static drawing baked into the renderer itself.
+ *
+ * @return string
+ */
+function g2ml_linkspageDefaultItemIconHTML(): string
+{
+    return '<svg class="lp-link-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" '
+        . 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" '
+        . 'aria-hidden="true" focusable="false">'
+        . '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>'
+        . '<path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>'
+        . '</svg>';
+}
+
+/**
+ * Render one item's icon, preferring itemIcon over faviconCacheURL, falling
+ * back to the built-in default icon (inline SVG) when neither is present/safe.
  *
  * Favicons are NEVER fetched here (see file header) — only already-stored
  * values are consumed.
  *
  * @param  array $item
- * @return string  Safe <img> HTML (always non-empty).
+ * @return string  Safe <img> or <svg> HTML (always non-empty).
  */
 function g2ml_linkspageRenderItemIcon(array $item): string
 {
@@ -353,7 +599,7 @@ function g2ml_linkspageRenderItemIcon(array $item): string
 
     if ($iconSrc === null)
     {
-        $iconSrc = g2ml_linkspageDefaultItemIconSrc();
+        return g2ml_linkspageDefaultItemIconHTML();
     }
 
     return '<img class="lp-link-icon" src="' . g2ml_linkspageEscape($iconSrc) . '" alt="" aria-hidden="true" loading="lazy" width="20" height="20">';
@@ -403,7 +649,7 @@ function g2ml_linkspageRenderItem(array $item): string
 
     if (isset($item['itemDescription']) && is_string($item['itemDescription']) && trim($item['itemDescription']) !== '')
     {
-        $descriptionHTML = '<span class="lp-link-desc">' . g2ml_linkspageEscape($item['itemDescription']) . '</span>';
+        $descriptionHTML = ' <span class="lp-link-desc">' . g2ml_linkspageEscape($item['itemDescription']) . '</span>';
     }
 
     $iconHTML = g2ml_linkspageRenderItemIcon($item);
@@ -424,10 +670,16 @@ function g2ml_linkspageRenderItem(array $item): string
         $ageGateAttribute = ' data-age-gate="1"';
     }
 
+    // The title and description sit together inside one .lp-link-text box, so
+    // the icon can stand beside them and the two lines stack on top of each
+    // other. The plain space between them is invisible on screen but stops a
+    // screen reader running the two words together ("portfolioPhotos").
     return '<a class="lp-link-item" href="' . g2ml_linkspageEscape($href) . '" target="_blank" rel="noopener noreferrer nofollow"' . $ageGateAttribute . '>'
         . $iconHTML
+        . '<span class="lp-link-text">'
         . '<span class="lp-link-title">' . $escapedTitle . '</span>'
         . $descriptionHTML
+        . '</span>'
         . '</a>';
 }
 
@@ -552,7 +804,7 @@ function g2ml_linkspageRenderSocial(?string $socialLinksJSON, bool $showSocialIc
 // ============================================================================
 
 /**
- * Substitute the 7 system placeholder markers into a template's HTML or CSS.
+ * Substitute the system placeholder markers into a template's HTML or CSS.
  *
  * A single-pass strtr() replacement — every value in $data is expected to
  * ALREADY be safe for the context it will land in (escaped HTML text/attribute
@@ -560,20 +812,26 @@ function g2ml_linkspageRenderSocial(?string $socialLinksJSON, bool $showSocialIc
  * performs NO escaping itself; see g2ml_renderLinksPage() for how each value
  * is prepared before being passed in here.
  *
+ * {{avatarAlt}} is the avatar picture's alt text (empty for the decorative
+ * default avatar). {{themeText}} is black or white, whichever reads better on
+ * the {{theme}} colour (see g2ml_linkspageReadableTextColour()).
+ *
  * @param  string $templateSource  The SYSTEM templateHTML or templateCSS.
- * @param  array  $data            Map with keys: avatar, name, bio, links,
- *                                  social, theme, background.
+ * @param  array  $data            Map with keys: avatar, avatarAlt, name, bio,
+ *                                  links, social, theme, themeText, background.
  * @return string
  */
 function g2ml_linkspageApplyTemplate(string $templateSource, array $data): string
 {
     $replacements = [
         '{{avatar}}'     => $data['avatar'] ?? '',
+        '{{avatarAlt}}'  => $data['avatarAlt'] ?? '',
         '{{name}}'       => $data['name'] ?? '',
         '{{bio}}'        => $data['bio'] ?? '',
         '{{links}}'      => $data['links'] ?? '',
         '{{social}}'     => $data['social'] ?? '',
         '{{theme}}'      => $data['theme'] ?? '',
+        '{{themeText}}'  => $data['themeText'] ?? '',
         '{{background}}' => $data['background'] ?? '',
     ];
 
@@ -585,9 +843,45 @@ function g2ml_linkspageApplyTemplate(string $templateSource, array $data): strin
 // ============================================================================
 
 /**
+ * The layout rules every system template shares, printed before the
+ * template's own CSS so a template can still override any of them.
+ *
+ * They live here, in one place, because they are the same for all five
+ * templates and they make the markup this file prints (the link boxes, the
+ * social row, the footer) lay out properly whichever template is used. The
+ * templates add the colours, shapes and spacing on top.
+ *
+ * No colours are set here, because the right colour depends on what the
+ * template draws behind the text.
+ *
+ * @return string
+ */
+function g2ml_linkspageBaseCSS(): string
+{
+    $rules = [
+        // A long word with no spaces breaks onto the next line instead of pushing the page wider than the screen.
+        '.lp-container { overflow-wrap: anywhere; }',
+        // Each link: icon on the left, title and description stacked in the box beside it.
+        '.lp-link-item { display: flex; align-items: center; column-gap: 0.75rem; }',
+        '.lp-link-icon { flex: none; width: 1.25rem; height: 1.25rem; object-fit: contain; }',
+        '.lp-link-text { flex: 1 1 auto; min-width: 0; }',
+        '.lp-link-title { display: block; }',
+        '.lp-link-desc { display: block; margin-top: 0.125rem; font-size: 0.875rem; font-weight: 400; }',
+        // Social links sit in a row that wraps, with space between them; no row at all when there are none.
+        '.lp-social { display: flex; flex-wrap: wrap; justify-content: center; column-gap: 1.25rem; row-gap: 0.25rem; margin-top: 1.5rem; }',
+        '.lp-social:empty { display: none; }',
+        '.lp-social-icon { display: inline-block; padding: 0.5rem 0.25rem; }',
+        '.lp-footer { margin-top: 2rem; font-size: 0.875rem; text-align: center; }',
+        '.lp-branding { display: inline-block; padding: 0.5rem 0.25rem; }',
+    ];
+
+    return implode("\n", $rules);
+}
+
+/**
  * Wrap the rendered body and resolved CSS into a complete, self-contained
- * HTML document. No external scripts or stylesheets — everything the page
- * needs is either same-origin static assets (the avatar default) or inline.
+ * HTML document. No scripts at all and no external stylesheets: the layout
+ * rules from g2ml_linkspageBaseCSS() and the template's own CSS are inline.
  *
  * @param  string $escapedTitle        Already-escaped page title (may be '').
  * @param  string $escapedDescription  Already-escaped, NON-<br>-converted description (may be '').
@@ -635,6 +929,7 @@ function g2ml_linkspageBuildDocument(string $escapedTitle, string $escapedDescri
     $html .= '    <meta property="og:title" content="' . $titleTag . '">' . "\n";
     $html .= '    <link rel="icon" type="image/x-icon" href="/favicon.ico">' . "\n";
     $html .= '    <style>' . "\n";
+    $html .= g2ml_linkspageBaseCSS() . "\n";
     $html .= $templateCSS . "\n";
 
     if ($customFontCSS !== '')
@@ -703,6 +998,22 @@ function g2ml_linkspageModelUsesCustomHTML(array $pageModel): bool
 }
 
 /**
+ * The few layout rules put in front of an owner's custom CSS, so the owner's
+ * rules can still replace them.
+ *
+ * A long word with no spaces breaks onto the next line, and a picture never
+ * grows wider than the screen. `:where()` gives the picture rule no weight of
+ * its own, so any rule the owner writes for pictures wins.
+ *
+ * @return string
+ */
+function g2ml_linkspageCustomBaseCSS(): string
+{
+    return '.g2ml-lp-custom { overflow-wrap: anywhere; }' . "\n"
+        . ':where(.g2ml-lp-custom) img { max-width: 100%; height: auto; }';
+}
+
+/**
  * Build a complete, self-contained HTML document from an owner's PERMITTED
  * custom HTML/CSS.
  *
@@ -715,7 +1026,8 @@ function g2ml_linkspageModelUsesCustomHTML(array $pageModel): bool
  * CSP (g2ml_linkspageCustomHtmlCSP()).
  *
  * The custom CSS is injected into a single <style> block and the custom HTML
- * body is wrapped in a `.g2ml-lp-custom` container. Because this is a
+ * body is wrapped in a `.g2ml-lp-custom` <main> container (a <div> if the
+ * owner's own HTML already has a <main>). Because this is a
  * STANDALONE document (the custom HTML replaces the whole page, not part of a
  * shared one), the CSS is inherently page-scoped — it cannot affect any other
  * Go2My.Link page.
@@ -796,6 +1108,16 @@ function g2ml_linkspageBuildCustomDocument(array $page): string
         $titleTag = htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8');
     }
 
+    // The wrapper is the page's one <main> landmark. The sanitiser allows an
+    // owner to write their own <main>, and a page must not have two, so the
+    // wrapper becomes a plain <div> when the owner already supplied one.
+    $wrapperTag = 'main';
+
+    if (preg_match('/<main[\s>\/]/i', $safeHTML) === 1)
+    {
+        $wrapperTag = 'div';
+    }
+
     $html  = '<!DOCTYPE html>' . "\n";
     $html .= '<html lang="en">' . "\n";
     $html .= '<head>' . "\n";
@@ -814,6 +1136,7 @@ function g2ml_linkspageBuildCustomDocument(array $page): string
     $html .= '    <meta property="og:title" content="' . $titleTag . '">' . "\n";
     $html .= '    <link rel="icon" type="image/x-icon" href="/favicon.ico">' . "\n";
     $html .= '    <style>' . "\n";
+    $html .= g2ml_linkspageCustomBaseCSS() . "\n";
 
     if ($safeCSS !== '')
     {
@@ -823,9 +1146,9 @@ function g2ml_linkspageBuildCustomDocument(array $page): string
     $html .= '    </style>' . "\n";
     $html .= '</head>' . "\n";
     $html .= '<body>' . "\n";
-    $html .= '<div class="g2ml-lp-custom">' . "\n";
+    $html .= '<' . $wrapperTag . ' class="g2ml-lp-custom">' . "\n";
     $html .= $safeHTML . "\n";
-    $html .= '</div>' . "\n";
+    $html .= '</' . $wrapperTag . '>' . "\n";
     $html .= '</body>' . "\n";
     $html .= '</html>';
 
@@ -893,7 +1216,8 @@ function g2ml_renderLinksPage(array $pageModel): string
         $avatarPathRaw = $page['avatarPath'];
     }
 
-    $avatarSrc = g2ml_linkspageEscape(g2ml_linkspageResolveAvatarSrc($avatarPathRaw));
+    $avatarSrc = g2ml_linkspageEscape(g2ml_linkspageResolveAvatarSrc($avatarPathRaw, (string) $pageTitleRaw));
+    $avatarAlt = g2ml_linkspageEscape(g2ml_linkspageAvatarAlt($avatarPathRaw));
 
     $themeColourRaw = null;
 
@@ -951,11 +1275,13 @@ function g2ml_renderLinksPage(array $pageModel): string
 
     $templateData = [
         'avatar'     => $avatarSrc,
+        'avatarAlt'  => $avatarAlt,
         'name'       => $escapedName,
         'bio'        => $bioForBody,
         'links'      => $linksHTML,
         'social'     => $socialHTML,
         'theme'      => $themeColour,
+        'themeText'  => g2ml_linkspageReadableTextColour($themeColour),
         'background' => $backgroundColour,
     ];
 
@@ -1086,13 +1412,14 @@ function g2ml_linkspageRenderAgeGateInterstitial(string $slug): string
     $html .= '    <title>' . $escapedTitle . '</title>' . "\n";
     $html .= '    <style>' . "\n";
     $html .= '        body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: #f8f9fa; color: #212529; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 1.5rem; box-sizing: border-box; }' . "\n";
-    $html .= '        .lp-agegate-container { max-width: 480px; width: 100%; text-align: center; background: #ffffff; border: 1px solid #dee2e6; border-radius: 12px; padding: 2rem 1.75rem; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08); }' . "\n";
+    $html .= '        .lp-agegate-container { max-width: 480px; width: 100%; text-align: center; background: #ffffff; border: 1px solid #dee2e6; border-radius: 12px; padding: 2rem 1.75rem; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08); overflow-wrap: anywhere; }' . "\n";
     $html .= '        .lp-agegate-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }' . "\n";
     $html .= '        .lp-agegate-heading { font-size: 1.4rem; font-weight: 700; margin: 0 0 0.75rem; }' . "\n";
     $html .= '        .lp-agegate-body { font-size: 1rem; color: #495057; margin: 0 0 1.5rem; line-height: 1.5; }' . "\n";
     $html .= '        .lp-agegate-actions { display: flex; flex-direction: column; gap: 0.75rem; }' . "\n";
-    $html .= '        .lp-agegate-confirm { display: block; width: 100%; padding: 0.75rem 1.25rem; background: #1E88E5; color: #ffffff; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; }' . "\n";
-    $html .= '        .lp-agegate-confirm:hover, .lp-agegate-confirm:focus { background: #1668ab; }' . "\n";
+    // White on #1565C0 is 5.75:1; white on the #0D47A1 hover colour is 8.63:1.
+    $html .= '        .lp-agegate-confirm { display: block; width: 100%; padding: 0.75rem 1.25rem; background: #1565C0; color: #ffffff; border: none; border-radius: 8px; font-weight: 600; font-size: 1rem; cursor: pointer; }' . "\n";
+    $html .= '        .lp-agegate-confirm:hover, .lp-agegate-confirm:focus { background: #0D47A1; }' . "\n";
     $html .= '        .lp-agegate-confirm:focus-visible { outline: 3px solid #0d47a1; outline-offset: 2px; }' . "\n";
     $html .= '        .lp-agegate-leave { display: block; padding: 0.6rem 1.25rem; background: transparent; color: #495057; border: 1px solid #adb5bd; border-radius: 8px; font-weight: 600; font-size: 0.95rem; text-decoration: none; }' . "\n";
     $html .= '        .lp-agegate-leave:hover, .lp-agegate-leave:focus { background: #e9ecef; }' . "\n";

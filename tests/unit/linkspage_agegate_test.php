@@ -221,3 +221,40 @@ test('renderAgeGateInterstitial: the slug is escaped in the form action', functi
 
     assert_false(str_contains($html, '<script>alert(1)</script>'), 'A raw script payload in the slug must never appear unescaped');
 });
+
+
+// ============================================================================
+// ♿ #287 — the age-gate page: one landmark, one heading, readable button, wrapping text
+// ============================================================================
+
+test('renderAgeGateInterstitial: exactly one <main> and one <h1>', function (): void
+{
+    $_SESSION = [];
+    $html = g2ml_linkspageRenderAgeGateInterstitial('example-slug');
+
+    assert_same(1, substr_count($html, '<main'), 'The page must have exactly one <main>');
+    assert_same(1, substr_count($html, '<h1'), 'The page must have exactly one <h1>');
+});
+
+test('renderAgeGateInterstitial: long words wrap inside the card instead of widening the page', function (): void
+{
+    $_SESSION = [];
+    $html = g2ml_linkspageRenderAgeGateInterstitial('example-slug');
+
+    assert_same(1, preg_match('/\.lp-agegate-container \{[^}]*overflow-wrap: anywhere;[^}]*\}/', $html), 'The card must let a long word break');
+});
+
+test('renderAgeGateInterstitial: the Confirm button, in its normal and hover states, reaches 4.5:1 (it was white on #1E88E5, 3.68:1)', function (): void
+{
+    $_SESSION = [];
+    $html = g2ml_linkspageRenderAgeGateInterstitial('example-slug');
+
+    assert_same(1, preg_match('/\.lp-agegate-confirm \{[^}]*background: (#[0-9A-Fa-f]{6});[^}]*color: (#[0-9A-Fa-f]{6});/', $html, $normal), 'The button must state its colours');
+    assert_same(1, preg_match('/\.lp-agegate-confirm:hover, \.lp-agegate-confirm:focus \{ background: (#[0-9A-Fa-f]{6}); \}/', $html, $hover), 'The hover and focus state must state its colour');
+
+    $text = g2ml_linkspageHexToRgb($normal[2]);
+
+    assert_true(g2ml_linkspageContrastRatio($text, g2ml_linkspageHexToRgb($normal[1])) >= 4.5, 'The button text on ' . $normal[1] . ' must reach 4.5:1');
+    assert_true(g2ml_linkspageContrastRatio($text, g2ml_linkspageHexToRgb($hover[1])) >= 4.5, 'The button text on ' . $hover[1] . ' (hover) must reach 4.5:1');
+    assert_false(stripos($html, '#1E88E5') !== false, 'White on #1E88E5 is only 3.68:1');
+});

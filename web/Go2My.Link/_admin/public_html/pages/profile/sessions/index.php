@@ -212,7 +212,7 @@ $sessions = listUserSessions($userUID);
         <!-- ============================================================== -->
 
         <?php if (empty($sessions)) { ?>
-        <div class="alert alert-info">
+        <div class="alert alert-info" role="status">
             <i class="fas fa-info-circle" aria-hidden="true"></i> No active sessions found.
         </div>
 

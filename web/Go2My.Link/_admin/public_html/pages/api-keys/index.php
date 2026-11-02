@@ -350,9 +350,11 @@ $apiKeys = g2ml_apiListKeys($orgHandle);
                     <input type="text" class="form-control font-monospace" id="new-api-key"
                            value="<?php echo g2ml_sanitiseOutput($createdKeyPlaintext); ?>" readonly
                            aria-label="Newly created API key">
+                    <?php // After a click the button's words change to "Copied!", so its accessible name (aria-label) is changed to match. ?>
                     <button class="btn btn-primary" type="button" id="copy-key-btn"
                             aria-label="Copy API key to clipboard"
-                            onclick="navigator.clipboard.writeText(document.getElementById('new-api-key').value).then(function(){var b=document.getElementById('copy-key-btn');b.textContent='✓ Copied!';var s=document.getElementById('global-status');if(s){s.textContent='API key copied to clipboard';}}).catch(function(){var s=document.getElementById('global-status');if(s){s.textContent='Failed to copy. Please select and copy manually.';}})">
+                            data-copied-text="<?php if (function_exists('__')) { echo htmlspecialchars(__('common.copied'), ENT_QUOTES, 'UTF-8'); } else { echo 'Copied!'; } ?>"
+                            onclick="navigator.clipboard.writeText(document.getElementById('new-api-key').value).then(function(){var b=document.getElementById('copy-key-btn');var t=b.getAttribute('data-copied-text');b.textContent='\u2713 '+t;b.setAttribute('aria-label',t);var s=document.getElementById('global-status');if(s){s.textContent='API key copied to clipboard';}}).catch(function(){var s=document.getElementById('global-status');if(s){s.textContent='Failed to copy. Please select and copy manually.';}})">
                         <i class="fas fa-copy" aria-hidden="true"></i> Copy
                     </button>
                 </div>

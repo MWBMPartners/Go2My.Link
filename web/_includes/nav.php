@@ -82,16 +82,19 @@ if (function_exists('getCurrentRoute')) {
     <div class="container">
 
         <!-- Brand -->
+        <?php // The logo's dark lettering would nearly disappear on the deep blue bar, so it sits on a white rounded chip. ?>
         <a class="navbar-brand d-flex align-items-center" href="/">
-            <picture>
-                <source srcset="https://go2my.link/img/logo.svg" type="image/svg+xml">
-                <img src="https://go2my.link/img/logo.png"
-                     alt="<?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>"
-                     height="36"
-                     width="auto"
-                     class="d-inline-block"
-                     loading="eager">
-            </picture>
+            <span class="d-inline-block bg-white rounded px-2 py-1">
+                <picture>
+                    <source srcset="https://go2my.link/img/logo.svg" type="image/svg+xml">
+                    <img src="https://go2my.link/img/logo.png"
+                         alt="<?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>"
+                         height="36"
+                         width="160"
+                         class="d-block"
+                         loading="eager">
+                </picture>
+            </span>
         </a>
 
         <!-- Mobile toggle button -->

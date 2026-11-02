@@ -973,7 +973,15 @@ $hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hid
                 </p>
                 <ul>
                     <li><strong>DNT</strong> &mdash; <?php if (function_exists('__')) { echo __('legal.privacy_s12_enable_dnt'); } else { echo 'Usually found in your browser\'s privacy or security settings under "Send a Do Not Track request" or similar'; } ?></li>
-                    <li><strong>GPC</strong> &mdash; <?php if (function_exists('__')) { echo __('legal.privacy_s12_enable_gpc'); } else { echo 'Supported natively in some browsers (e.g., Firefox, Brave) or via browser extensions. Visit <a href="https://globalprivacycontrol.org/" rel="noopener noreferrer" target="_blank">globalprivacycontrol.org</a> for more information'; } ?></li>
+                    <li><strong>GPC</strong> &mdash; <?php
+                        // The sentence holds a link that opens a new tab, so the new-tab words are added to it here.
+                        if (function_exists('__')) {
+                            $gpcSentence = __('legal.privacy_s12_enable_gpc');
+                        } else {
+                            $gpcSentence = 'Supported natively in some browsers (e.g., Firefox, Brave) or via browser extensions. Visit <a href="https://globalprivacycontrol.org/" rel="noopener noreferrer" target="_blank">globalprivacycontrol.org</a> for more information';
+                        }
+                        echo newTabNoticeInLinks($gpcSentence);
+                    ?></li>
                 </ul>
             </div>
         </div>
@@ -1090,7 +1098,7 @@ $hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hid
                         </h3>
                         <p class="mb-1">
                             <i class="fas fa-globe me-2" aria-hidden="true"></i>
-                            <a href="https://ico.org.uk/make-a-complaint/" rel="noopener noreferrer" target="_blank">ico.org.uk/make-a-complaint</a>
+                            <a href="https://ico.org.uk/make-a-complaint/" rel="noopener noreferrer" target="_blank">ico.org.uk/make-a-complaint<?php echo newTabNotice(); ?></a>
                         </p>
                         <p class="mb-1">
                             <i class="fas fa-phone me-2" aria-hidden="true"></i>
@@ -1105,7 +1113,7 @@ $hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hid
 
                 <p>
                     <?php if (function_exists('__')) { echo __('legal.privacy_s14_complaints_eu'); } else { echo 'If you are located in the EU, you may also contact your local Data Protection Authority. A list of EU DPAs is available at'; } ?>
-                    <a href="https://edpb.europa.eu/about-edpb/about-edpb/members_en" rel="noopener noreferrer" target="_blank">edpb.europa.eu</a>.
+                    <a href="https://edpb.europa.eu/about-edpb/about-edpb/members_en" rel="noopener noreferrer" target="_blank">edpb.europa.eu<?php echo newTabNotice(); ?></a>.
                 </p>
 
                 <p>

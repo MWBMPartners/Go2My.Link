@@ -189,7 +189,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
 
             <?php if (!empty($formStats['new_salt'])) { ?>
             <hr>
-            <div class="alert alert-warning mb-0">
+            <div class="alert alert-warning mb-0" role="alert">
                 <h6 class="alert-heading">
                     <i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i>
                     Action Required: Update auth_creds.php
@@ -208,7 +208,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
             <?php } ?>
         </div>
 
-        <div class="alert alert-info">
+        <div class="alert alert-info" role="status">
             <i class="fas fa-info-circle me-2" aria-hidden="true"></i>
             <strong>Note:</strong> Your own session has been invalidated. You will need to log in
             again with a new password. A reset email has been sent to your email address.
@@ -226,7 +226,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_type']) && $_POS
         </div>
         <?php } ?>
 
-        <div class="alert alert-danger border-danger">
+        <div class="alert alert-danger border-danger" role="alert">
             <h5 class="alert-heading">
                 <i class="fas fa-exclamation-triangle me-2" aria-hidden="true"></i>
                 Warning: Destructive Action

@@ -306,13 +306,34 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     /**
+     * True while the button is showing its "Copied!" words, so a second click
+     * during that time cannot save "Copied!" as the words to go back to.
+     */
+    var copyShowingSuccess = false;
+
+    /**
      * Show copy success feedback on the button.
+     *
+     * The visible words change to "Copied!", so the button's accessible name
+     * (aria-label) changes with them, then both go back after two seconds.
+     * The translated "Copied!" comes from the button's data-copied-text.
      */
     function showCopySuccess() {
         if (!copyBtn || !copyText) { return; }
+        if (copyShowingSuccess) { return; }
 
-        var originalText = copyText.textContent;
-        copyText.textContent = 'Copied!';
+        copyShowingSuccess = true;
+
+        var originalText  = copyText.textContent;
+        var originalLabel = copyBtn.getAttribute('aria-label');
+        var copiedText    = copyBtn.getAttribute('data-copied-text');
+
+        if (!copiedText) {
+            copiedText = 'Copied!';
+        }
+
+        copyText.textContent = copiedText;
+        copyBtn.setAttribute('aria-label', copiedText);
         copyBtn.classList.remove('btn-outline-success');
         copyBtn.classList.add('btn-success');
 
@@ -320,8 +341,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
         setTimeout(function() {
             copyText.textContent = originalText;
+            if (originalLabel) {
+                copyBtn.setAttribute('aria-label', originalLabel);
+            } else {
+                copyBtn.removeAttribute('aria-label');
+            }
             copyBtn.classList.remove('btn-success');
             copyBtn.classList.add('btn-outline-success');
+            copyShowingSuccess = false;
         }, 2000);
     }
 

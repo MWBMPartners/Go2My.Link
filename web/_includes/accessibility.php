@@ -97,6 +97,81 @@ function srHeading(string $text, int $level = 2): string
         . '</h' . $level . '>';
 }
 
+/**
+ * The words "(opens in a new tab)" for screen-reader users, as a visually
+ * hidden span.
+ *
+ * A link with target="_blank" opens a new tab. Sighted users can often tell
+ * from the page; a screen-reader user cannot, and is surprised when the Back
+ * button then does nothing (#287). Put this inside the link, straight after
+ * the link text, so the words become part of the link's name.
+ *
+ * The text is translated (key common.opens_new_tab). On a database that has
+ * not had that seed loaded yet, __() hands back the key itself, so the English
+ * is used instead, the same way skipToContent() does it.
+ *
+ * A link whose text is filled in later by JavaScript cannot hold the span
+ * inside it (the script would overwrite it). For that case pass an id, print
+ * the span beside the link, and point the link's aria-describedby at the id.
+ *
+ * @param  string $id  Optional id for the span (default: none)
+ * @return string      HTML span element with visually-hidden class
+ *
+ * Usage example:
+ *   echo '<a href="..." target="_blank" rel="noopener noreferrer">Docs' . newTabNotice() . '</a>';
+ */
+function newTabNotice(string $id = ''): string
+{
+    if (function_exists('__')) {
+        $notice = __('common.opens_new_tab');
+    } else {
+        $notice = '(opens in a new tab)';
+    }
+
+    if ($notice === 'common.opens_new_tab') {
+        $notice = '(opens in a new tab)';
+    }
+
+    $idAttribute = '';
+    if ($id !== '') {
+        $idAttribute = ' id="' . htmlspecialchars($id, ENT_QUOTES, 'UTF-8') . '"';
+    }
+
+    return '<span' . $idAttribute . ' class="visually-hidden"> '
+        . htmlspecialchars($notice, ENT_QUOTES, 'UTF-8')
+        . '</span>';
+}
+
+/**
+ * Add the "(opens in a new tab)" words to every target="_blank" link inside a
+ * piece of ready-made HTML, such as a translated sentence that contains a link.
+ *
+ * Only links written with target="_blank" (double quotes) are changed; every
+ * other part of the HTML is returned exactly as it was. The text is trusted
+ * HTML from the translation table, the same as when it is printed directly.
+ *
+ * @param  string $html  HTML that may contain target="_blank" links
+ * @return string        The same HTML with the notice added inside each such link
+ */
+function newTabNoticeInLinks(string $html): string
+{
+    $notice = newTabNotice();
+
+    $result = preg_replace_callback(
+        '~(<a\b[^>]*\btarget="_blank"[^>]*>)(.*?)(</a>)~is',
+        function (array $matches) use ($notice): string {
+            return $matches[1] . $matches[2] . $notice . $matches[3];
+        },
+        $html
+    );
+
+    if ($result === null) {
+        return $html;
+    }
+
+    return $result;
+}
+
 // ============================================================================
 // 📢 ARIA Live Regions
 // ============================================================================

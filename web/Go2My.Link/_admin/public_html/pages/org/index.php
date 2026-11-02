@@ -69,7 +69,7 @@ $isAdmin     = canManageOrg($orgHandle);
 
         if ($org === null)
         {
-            echo '<div class="alert alert-danger">Organisation not found.</div>';
+            echo '<div class="alert alert-danger" role="alert">Organisation not found.</div>';
             return;
         }
 
@@ -156,8 +156,8 @@ $isAdmin     = canManageOrg($orgHandle);
                             <?php if (!empty($org['orgURL'])) { ?>
                             <dt class="col-sm-4">Website</dt>
                             <dd class="col-sm-8">
-                                <a href="<?php echo g2ml_sanitiseOutput($org['orgURL']); ?>" target="_blank" rel="noopener noreferrer">
-                                    <?php echo g2ml_sanitiseOutput($org['orgURL']); ?>
+                                <a href="<?php echo g2ml_sanitiseOutput($org['orgURL']); ?>" target="_blank" rel="noopener noreferrer" class="text-break">
+                                    <?php echo g2ml_sanitiseOutput($org['orgURL']); ?><?php echo newTabNotice(); ?>
                                 </a>
                             </dd>
                             <?php } ?>

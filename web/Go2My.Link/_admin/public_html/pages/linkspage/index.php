@@ -270,8 +270,8 @@ $unpublishConfirmAttr = htmlspecialchars('return confirm(' . $unpublishConfirmJs
                             </td>
                             <td>
                                 <?php if ((int) $pageRow['isPublished'] === 1) { ?>
-                                <a href="<?php echo g2ml_sanitiseOutput($publicURL); ?>" target="_blank" rel="noopener noreferrer">
-                                    <?php echo g2ml_sanitiseOutput('lnks.page/' . $pageRow['slug']); ?>
+                                <a href="<?php echo g2ml_sanitiseOutput($publicURL); ?>" target="_blank" rel="noopener noreferrer" class="text-break">
+                                    <?php echo g2ml_sanitiseOutput('lnks.page/' . $pageRow['slug']); ?><?php echo newTabNotice(); ?>
                                 </a>
                                 <?php } else { ?>
                                 <span class="text-body-secondary"><?php echo g2ml_sanitiseOutput('lnks.page/' . $pageRow['slug']); ?></span>

@@ -190,13 +190,13 @@ if (function_exists('g2ml_getConsentHistory')) {
                     <div class="form-check form-switch mb-3 pb-3 border-bottom">
                         <input class="form-check-input" type="checkbox" role="switch"
                                id="consent-essential" checked disabled
-                               aria-describedby="essential-desc">
+                               aria-describedby="consent-essential-desc">
                         <label class="form-check-label fw-bold" for="consent-essential">
                             <i class="fas fa-lock text-secondary" aria-hidden="true"></i>
                             <?php if (function_exists('__')) { echo __('consent.essential_label'); } else { echo 'Essential Cookies'; } ?>
                             <span class="badge bg-secondary ms-1"><?php if (function_exists('__')) { echo __('consent.always_on'); } else { echo 'Always On'; } ?></span>
                         </label>
-                        <div id="essential-desc" class="form-text">
+                        <div id="consent-essential-desc" class="form-text">
                             <?php if (function_exists('__')) { echo __('consent.essential_desc'); } else { echo 'Required for the site to function. Includes session management, CSRF protection, and authentication cookies.'; } ?>
                         </div>
                     </div>
@@ -206,12 +206,12 @@ if (function_exists('g2ml_getConsentHistory')) {
                         <input class="form-check-input" type="checkbox" role="switch"
                                id="consent-analytics" name="consent_analytics" value="1"
                                <?php if (($consentSummary['analytics'] ?? null) === true) { echo 'checked'; } ?>
-                               aria-describedby="analytics-desc">
+                               aria-describedby="consent-analytics-desc">
                         <label class="form-check-label fw-bold" for="consent-analytics">
                             <i class="fas fa-chart-bar text-primary" aria-hidden="true"></i>
                             <?php if (function_exists('__')) { echo __('consent.analytics_label'); } else { echo 'Analytics Cookies'; } ?>
                         </label>
-                        <div id="analytics-desc" class="form-text">
+                        <div id="consent-analytics-desc" class="form-text">
                             <?php if (function_exists('__')) { echo __('consent.analytics_desc'); } else { echo 'Help us understand how visitors interact with the site by collecting anonymous usage statistics.'; } ?>
                         </div>
                     </div>
@@ -221,12 +221,12 @@ if (function_exists('g2ml_getConsentHistory')) {
                         <input class="form-check-input" type="checkbox" role="switch"
                                id="consent-functional" name="consent_functional" value="1"
                                <?php if (($consentSummary['functional'] ?? null) === true) { echo 'checked'; } ?>
-                               aria-describedby="functional-desc">
+                               aria-describedby="consent-functional-desc">
                         <label class="form-check-label fw-bold" for="consent-functional">
                             <i class="fas fa-cogs text-primary" aria-hidden="true"></i>
                             <?php if (function_exists('__')) { echo __('consent.functional_label'); } else { echo 'Functional Cookies'; } ?>
                         </label>
-                        <div id="functional-desc" class="form-text">
+                        <div id="consent-functional-desc" class="form-text">
                             <?php if (function_exists('__')) { echo __('consent.functional_desc'); } else { echo 'Enable enhanced functionality and personalisation, such as remembering your preferences and settings.'; } ?>
                         </div>
                     </div>
@@ -236,12 +236,12 @@ if (function_exists('g2ml_getConsentHistory')) {
                         <input class="form-check-input" type="checkbox" role="switch"
                                id="consent-marketing" name="consent_marketing" value="1"
                                <?php if (($consentSummary['marketing'] ?? null) === true) { echo 'checked'; } ?>
-                               aria-describedby="marketing-desc">
+                               aria-describedby="consent-marketing-desc">
                         <label class="form-check-label fw-bold" for="consent-marketing">
                             <i class="fas fa-bullhorn text-primary" aria-hidden="true"></i>
                             <?php if (function_exists('__')) { echo __('consent.marketing_label'); } else { echo 'Marketing Cookies'; } ?>
                         </label>
-                        <div id="marketing-desc" class="form-text">
+                        <div id="consent-marketing-desc" class="form-text">
                             <?php if (function_exists('__')) { echo __('consent.marketing_desc'); } else { echo 'Used to deliver relevant advertisements and measure their effectiveness. May be shared with third-party advertising partners.'; } ?>
                         </div>
                     </div>

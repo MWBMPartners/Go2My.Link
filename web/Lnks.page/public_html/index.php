@@ -203,7 +203,7 @@ if ($slug === '')
             }
             .lp-home-subtitle {
                 font-size: 1.1rem;
-                color: #6c757d;
+                color: #5c636a;
                 margin: 0 0 1rem;
             }
             .lp-home-message {
@@ -214,7 +214,8 @@ if ($slug === '')
             .lp-home-cta {
                 display: inline-block;
                 padding: 0.65rem 1.5rem;
-                background: #1E88E5;
+                /* White on #1565C0 is 5.75:1 (white on the hover colour #0D47A1 is 8.63:1). */
+                background: #1565C0;
                 color: #fff;
                 text-decoration: none;
                 border-radius: 8px;
@@ -222,7 +223,7 @@ if ($slug === '')
             }
             .lp-home-cta:hover,
             .lp-home-cta:focus {
-                background: #1668ab;
+                background: #0D47A1;
             }
         </style>
     </head>

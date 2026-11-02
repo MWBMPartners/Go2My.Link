@@ -389,7 +389,7 @@ if ($linkData !== null)
                                 <a href="<?php echo g2ml_sanitiseOutput($shortURL); ?>"
                                    target="_blank" rel="noopener noreferrer"
                                    class="fw-bold">
-                                    <?php echo g2ml_sanitiseOutput($shortURL); ?>
+                                    <?php echo g2ml_sanitiseOutput($shortURL); ?><?php echo newTabNotice(); ?>
                                 </a>
                             </dd>
 
@@ -482,7 +482,7 @@ if ($linkData !== null)
                            class="btn btn-primary"
                            target="_blank" rel="noopener noreferrer">
                             <i class="fas fa-external-link-alt" aria-hidden="true"></i>
-                            <?php if (function_exists('__')) { echo __('info.visit_link'); } else { echo 'Visit Link'; } ?>
+                            <?php if (function_exists('__')) { echo __('info.visit_link'); } else { echo 'Visit Link'; } ?><?php echo newTabNotice(); ?>
                         </a>
                         <a href="/" class="btn btn-outline-primary ms-2">
                             <i class="fas fa-plus" aria-hidden="true"></i>

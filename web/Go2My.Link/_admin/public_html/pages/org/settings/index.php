@@ -51,7 +51,7 @@ if ($orgHandle === '[default]' || !canManageOrg($orgHandle))
 $org = getOrganisation($orgHandle);
 if ($org === null)
 {
-    echo '<div class="container py-5"><div class="alert alert-danger">Organisation not found.</div></div>';
+    echo '<div class="container py-5"><div class="alert alert-danger" role="alert">Organisation not found.</div></div>';
     return;
 }
 

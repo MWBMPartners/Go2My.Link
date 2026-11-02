@@ -201,7 +201,7 @@ if (function_exists('getDefaultShortDomain')) {
                                 <td>
                                     <a href="https://<?php echo g2ml_sanitiseOutput($shortDomain . '/' . $link['shortCode']); ?>"
                                        target="_blank" rel="noopener noreferrer" class="fw-bold text-decoration-none">
-                                        <?php echo g2ml_sanitiseOutput($shortDomain . '/' . $link['shortCode']); ?>
+                                        <?php echo g2ml_sanitiseOutput($shortDomain . '/' . $link['shortCode']); ?><?php echo newTabNotice(); ?>
                                     </a>
                                 </td>
                                 <td class="text-truncate" style="max-width:250px;" title="<?php echo g2ml_sanitiseOutput($link['destinationURL']); ?>">

@@ -16,6 +16,19 @@
  *   1. compliance.cookie_consent_enabled = true
  *   2. User has NOT given valid consent for the current consent version
  *
+ * Where it is printed: header.php includes this file straight after the
+ * skip link, so a keyboard or screen-reader user reaches the banner before
+ * the navigation. It still APPEARS at the bottom of the screen (fixed-bottom)
+ * wherever it sits in the page source. It used to be printed after the
+ * footer, which meant tabbing through the whole page to find it (#287).
+ *
+ * Headings: the banner has NO heading. It is a labelled region, and its
+ * title is bold text, not an h2. Being now above the page's own h1, an h2
+ * here would have put a level-2 heading before the level-1 one and broken
+ * the page outline. The preferences dialog title is an h2: the dialog is
+ * hidden until it is opened, and when it is open it is a dialog on top of the
+ * page, so a screen reader meets it as its own small outline.
+ *
  * Dependencies: cookie_consent.php, settings.php, security.php, i18n.php
  *
  * @package    Go2My.Link
@@ -76,35 +89,35 @@ if (function_exists('g2ml_generateCSRFToken')) {
 <!-- ====================================================================== -->
 <!-- 🍪 Cookie Consent Banner                                               -->
 <!-- ====================================================================== -->
+<?php // z-index 1040 is above anything Bootstrap pins with fixed-top or sticky-top (1030 and 1020) but below its modal backdrop (1050) and modal (1055). At 1060 the banner sat on top of the preferences dialog, so it could cover part of it. ?>
 <div id="g2ml-cookie-banner"
-     class="fixed-bottom bg-body border-top shadow-lg p-3"
+     class="fixed-bottom bg-body border-top shadow-lg px-2 px-lg-3 py-2 py-lg-3"
      role="region"
      aria-labelledby="cookie-banner-title"
      aria-describedby="cookie-banner-desc"
-     style="z-index:1060;">
+     style="z-index:1040;">
     <div class="container">
-        <div class="row align-items-center">
-            <div class="col-lg-8 mb-2 mb-lg-0">
-                <h2 id="cookie-banner-title" class="h6 mb-1">
-                    <i class="fas fa-cookie-bite" aria-hidden="true"></i>
-                    <?php if (function_exists('__')) { echo __('cookie.banner_title'); } else { echo 'We Use Cookies'; } ?>
-                </h2>
-                <p id="cookie-banner-desc" class="small text-body-secondary mb-0">
-                    <?php if (function_exists('__')) { echo __('cookie.banner_message'); } else { echo 'We use cookies to improve your experience. Essential cookies are required for the site to function. You can choose which optional cookies to allow.'; } ?>
-                    <a href="<?php echo g2ml_mainSiteURL('/legal/cookies'); ?>" class="text-decoration-underline">
-                        <?php if (function_exists('__')) { echo __('cookie.learn_more'); } else { echo 'Learn more'; } ?>
-                    </a>
+        <div class="row align-items-center g-2">
+            <div class="col-lg-8">
+                <?php // Below the large breakpoint the title and icon are hidden from sight (style.css, section 14) to save a line; the banner is still named by the title for screen readers. ?>
+                <p class="small mb-0">
+                    <span class="g2ml-cookie-heading d-lg-block mb-lg-1">
+                        <i class="fas fa-cookie-bite" aria-hidden="true"></i>
+                        <strong id="cookie-banner-title" class="me-1"><?php if (function_exists('__')) { echo __('cookie.banner_title'); } else { echo 'We Use Cookies'; } ?></strong>
+                    </span>
+                    <span id="cookie-banner-desc" class="text-body-secondary"><?php if (function_exists('__')) { echo __('cookie.banner_message'); } else { echo 'We use cookies to improve your experience. Essential cookies are required for the site to function. You can choose which optional cookies to allow.'; } ?></span>
+                    <a href="<?php echo g2ml_mainSiteURL('/legal/cookies'); ?>" class="text-decoration-underline"><?php if (function_exists('__')) { echo __('cookie.learn_more'); } else { echo 'Learn more'; } ?><span class="visually-hidden"> <?php if (function_exists('__')) { echo __('cookie.learn_more_suffix'); } else { echo 'about our cookie policy'; } ?></span></a>
                 </p>
             </div>
-            <div class="col-lg-4 text-lg-end">
-                <div class="d-flex gap-2 justify-content-lg-end flex-wrap">
-                    <button type="button" class="btn btn-primary btn-sm" id="g2ml-cookie-accept-all">
+            <div class="col-lg-4">
+                <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+                    <button type="button" class="btn btn-primary btn-sm flex-fill flex-lg-grow-0" id="g2ml-cookie-accept-all">
                         <?php if (function_exists('__')) { echo __('cookie.accept_all'); } else { echo 'Accept All'; } ?>
                     </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm" id="g2ml-cookie-reject">
+                    <button type="button" class="btn btn-outline-secondary btn-sm flex-fill flex-lg-grow-0" id="g2ml-cookie-reject">
                         <?php if (function_exists('__')) { echo __('cookie.reject_optional'); } else { echo 'Essential Only'; } ?>
                     </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                    <button type="button" class="btn btn-outline-secondary btn-sm flex-fill flex-lg-grow-0"
                             data-bs-toggle="modal" data-bs-target="#g2ml-cookie-modal">
                         <?php if (function_exists('__')) { echo __('cookie.customise'); } else { echo 'Customise'; } ?>
                     </button>
@@ -123,10 +136,10 @@ if (function_exists('g2ml_generateCSRFToken')) {
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title h5" id="cookie-modal-title">
+                <h2 class="modal-title h5" id="cookie-modal-title">
                     <i class="fas fa-sliders-h" aria-hidden="true"></i>
                     <?php if (function_exists('__')) { echo __('cookie.preferences_title'); } else { echo 'Cookie Preferences'; } ?>
-                </h3>
+                </h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"
                         aria-label="<?php if (function_exists('__')) { echo __('common.close'); } else { echo 'Close'; } ?>"></button>
             </div>

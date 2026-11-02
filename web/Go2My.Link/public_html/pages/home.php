@@ -108,7 +108,7 @@ $errorMsg = g2ml_flashTake('shorten_error');
                                         <a href="<?php echo g2ml_sanitiseOutput($createdURL); ?>"
                                            target="_blank" rel="noopener noreferrer"
                                            class="fw-bold fs-5">
-                                            <?php echo g2ml_sanitiseOutput($createdURL); ?>
+                                            <?php echo g2ml_sanitiseOutput($createdURL); ?><?php echo newTabNotice(); ?>
                                         </a>
                                     </div>
                                 </div>
@@ -184,18 +184,20 @@ $errorMsg = g2ml_flashTake('shorten_error');
                         <div id="shorten-result" class="mt-4 d-none"
                              role="region"
                              aria-label="<?php if (function_exists('__')) { echo __('home.result_label'); } else { echo 'Shortened URL result'; } ?>">
-                            <div class="alert alert-success">
+                            <div class="alert alert-success" role="status">
                                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
                                     <div>
                                         <strong><?php if (function_exists('__')) { echo __('home.result_success'); } else { echo 'Your short URL is ready!'; } ?></strong>
                                         <div class="mt-1">
+                                            <?php // The link text is filled in by app.js, so the new-tab words sit beside it and the link points at them. ?>
                                             <a id="result-url" href="#" target="_blank" rel="noopener noreferrer"
-                                               class="fw-bold fs-5"></a>
+                                               class="fw-bold fs-5" aria-describedby="result-url-newtab"></a><?php echo newTabNotice('result-url-newtab'); ?>
                                         </div>
                                     </div>
                                     <button type="button" class="btn btn-outline-success"
                                             id="copy-url-btn"
-                                            aria-label="<?php if (function_exists('__')) { echo __('home.copy_to_clipboard'); } else { echo 'Copy short URL to clipboard'; } ?>">
+                                            aria-label="<?php if (function_exists('__')) { echo __('home.copy_to_clipboard'); } else { echo 'Copy short URL to clipboard'; } ?>"
+                                            data-copied-text="<?php if (function_exists('__')) { echo htmlspecialchars(__('common.copied'), ENT_QUOTES, 'UTF-8'); } else { echo 'Copied!'; } ?>">
                                         <i class="fas fa-copy" aria-hidden="true"></i>
                                         <span id="copy-btn-text"><?php if (function_exists('__')) { echo __('home.copy_button'); } else { echo 'Copy'; } ?></span>
                                     </button>

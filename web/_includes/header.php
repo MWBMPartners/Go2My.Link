@@ -320,4 +320,14 @@ if (defined('G2ML_COMPONENT')) {
 <?php
 // Skip to content link (first focusable element)
 echo skipToContent();
+
+// 🍪 Cookie consent banner. It is printed here, straight after the skip link
+// and before the navigation, so a keyboard or screen-reader user reaches it
+// first instead of after the whole page and the footer (#287). It still
+// appears at the bottom of the screen because it is positioned fixed-bottom.
+// The file prints nothing when consent has already been given.
+if (defined('G2ML_INCLUDES') && file_exists(G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'cookie_banner.php'))
+{
+    require_once G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'cookie_banner.php';
+}
 ?>

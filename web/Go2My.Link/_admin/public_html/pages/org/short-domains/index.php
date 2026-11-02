@@ -237,7 +237,7 @@ $orgPublishedLinksPages = getOrgPublishedLinksPages($orgHandle);
         <?php } ?>
 
         <!-- Info -->
-        <div class="alert alert-info mb-4">
+        <div class="alert alert-info mb-4" role="status">
             <i class="fas fa-info-circle" aria-hidden="true"></i>
             Short domains are used in your shortened URLs (e.g., <code>yourdomain.link/abc123</code>).
             A domain only starts routing traffic once its ownership is <strong>verified</strong> below —
