@@ -243,9 +243,9 @@ Go2My.Link/
    > own default is. See [DEV_NOTES.md](DEV_NOTES.md) → "Database collation
    > (required)" for the check and the fix (#196).
 
-4. Import the database schema from `web/_sql/schema/` (15 files).
+4. Import the database schema from `web/_sql/schema/` (16 files).
 
-5. Run the seed scripts from `web/_sql/seeds/` (17 files).
+5. Run the seed scripts from `web/_sql/seeds/` (36 files, in filename order). [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) lists them and says which migrations an existing database also needs.
 
 6. Point your web server document roots to the appropriate `public_html/` directories.
 

@@ -13,9 +13,10 @@
 | `tests/bootstrap.php` | The micro-framework: `test()` registrar, assertion helpers, results collector. No external dependencies. |
 | `tests/run.php` | Discovers and runs every `tests/unit/*.php` (**DB-free**). Exits non-zero on any failure so CI can gate. |
 | `tests/run_integration.php` | Discovers and runs every `tests/integration/*.php` against a MySQL server from environment variables. **Skips cleanly (exit 0) when no DB is reachable.** |
-| `tests/unit/` | DB-free characterization tests for `web/_functions/security.php`. |
+| `tests/unit/` | DB-free tests: characterization tests of the function library, and checks that read the files under `web/` and fail the build when a house rule is broken (for example the two described below). |
 | `tests/unit/direct_access_guard_test.php` | Regression test for #198 — proves a library's direct-access guard now tells apart two files that merely share a name, by requiring the library in a real child PHP process with `SCRIPT_FILENAME` set the way Apache would set it. |
 | `tests/unit/no_php_in_urls_test.php` | Check for #203 — fails the build when it finds a link, form target, redirect or JavaScript request in the shipping code under `web/` that points at an address ending in `.php`. See "No .php in web addresses" below. |
+| `tests/unit/site_polish_test.php` | The polish check (#288) — fails the build on the parts of the standing polish rule a machine can read from the files. See "The polish check" below. |
 | `tests/integration/` | DB-backed characterization smoke tests for the redirect hot path (`sp_lookupShortURL`). |
 
 ## 🧩 Assertion helpers
@@ -38,6 +39,13 @@ php tests/run.php
 
 Prints a `PASS`/`FAIL` line per test and a summary such as `35 passed, 0 failed`.
 Exits `0` when everything passes, `1` if anything fails.
+
+Two tests in `tests/unit/link_destination_test.php` look up `example.com`, so
+the unit suite needs working DNS. GitHub's CI has it. In a container where
+host names do not resolve, those two fail even though the code is fine; give
+Docker the address by hand, for example
+`docker run --rm --add-host example.com:93.184.215.14 -v "$PWD":/app -w /app php:8.4-cli php tests/run.php`
+(check the current address first, from a machine that can look it up).
 
 The unit runner defines throwaway encryption constants (`ENCRYPTION_SALT`,
 `ENCRYPTION_KEY_SECONDARY`) of valid length **before** loading any application
@@ -153,6 +161,26 @@ to the array returned by `_g2mlNoPhpTestAllowList()` in the test file, with
 the exact file path, the exact matched text, and a plain-English reason. An
 entry covers every occurrence of that exact text in that one file, and
 nothing else.
+
+## 🔎 The polish check
+
+Standing rule 14 in `.claude/memory/working-rules.md` says nothing a visitor
+sees may look thrown together. `tests/unit/site_polish_test.php` (#288) checks
+the parts that can be read from the files, as part of the normal
+`php tests/run.php` run and therefore of CI. It fails on:
+
+- a placeholder or preview hosting address, or "lorem ipsum", in shipped code;
+- a copyright year written as fixed numbers after a © sign;
+- a main-site or dashboard page that sets no title or no description of its own;
+- a `console.log`, `debugger` or `alert()` in the site's own JavaScript;
+- a development file (notes, backups, dumps, logs, archives, `phpinfo.php`,
+  `.env`) inside a web root.
+
+Its opening comment lists the other tests that check the rest of the rule
+(share tags and sitemaps, error pages, form feedback, contrast and focus,
+library fallbacks, clean page source). It reads files only: layout at
+different screen widths, console errors and dead buttons still need the
+browser run the rule describes.
 
 ## 🏠 House rules
 

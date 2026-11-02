@@ -3,9 +3,41 @@
 > Chronological log of significant Claude-assisted work, newest first. Portable
 > (repo-tracked) so the project's working history is available on every machine.
 > Companion to [.claude/memory/MEMORY.md](memory/MEMORY.md) and the live handoff
-> [.github/HANDOFF.md](../.github/HANDOFF.md). Last updated **2026-09-25**.
+> [.github/HANDOFF.md](../.github/HANDOFF.md). Last updated **2026-11-02**.
 
 ---
+
+## 2026-10-05 → 2026-11-02 — Site polish sweep, and the HTTP2Shell security review
+
+Branch: **`feat/2026-09-21-linkspage-and-sweep`** (all pushed). Live detail:
+[.github/HANDOFF.md](../.github/HANDOFF.md).
+
+- **The owner asked (2026-10-05) for a full check of the three sites** for anything that makes a site
+  look unfinished, and for a standing rule to keep checking. The findings became issues #277–#295:
+  #277–#288 were fixed, and #289–#295 are design questions for the owner.
+- **Fixed (one commit each):** the Shorten button and Create link page could not find their files
+  (#277, `399733f`); pages now run before the header, so titles, redirects and status codes work
+  (#278, `1a5b5e3`); "&" and apostrophes were saved escaped (#280, `4af86c5`); three security gaps
+  (#281, `ce1a616`); the dashboard had no styles or scripts of its own and broken menu links (#279,
+  `ff954db`); small leftovers, among them a missing /legal page (#284, `2fbbabd`); favicons,
+  canonical addresses, share images, robots.txt and sitemaps (#282, `2ab7857`); forms that gave no
+  sign of working and could be sent twice (#286, `fd4cb24`); service workers that stored signed-in
+  pages (#283, `fbdad7f`); contrast and focus rings that failed WCAG AA (#287, `e771fc1`); unused
+  jQuery, a 350 KB logo, developer notes in page source and fallbacks that could not work (#285,
+  `d826518`).
+- **The standing rule is rule 14 in `working-rules.md`** (#288, `21f30da`), with a unit test for
+  the parts a machine can check. The owner is to paste the machine-wide copy into
+  `~/.claude/CLAUDE.md`; its text is on the #288 issue.
+- **CVE-2026-111497 ("HTTP2Shell", a bug in Google's Brotli decoder):** the owner asked for a review
+  on 2026-11-02 (#302, `13684ad`). The application does not decode Brotli, so it is not exposed. CI
+  moved to Node 24, and a test now fails if anything starts decoding it. Questions for Dreamhost and
+  Cloudflare are with the owner.
+- **The work paused on 2026-10-05 when the usage limit was reached, and resumed on 2026-11-02.** In
+  the resumed cloud container host names do not resolve, so two tests that look up `example.com`
+  fail there; that is the container, not the code (tests/README.md says how to work around it).
+- **Codex was not available in the cloud session**, so every piece was reviewed by a fresh Claude
+  Opus agent instead, round after round until clean. Each piece still owes a Codex catch-up review.
+- Follow-up issues found along the way: #303, #304, #305.
 
 ## 2026-09-25 — CX-01 and SX-198 built; Codex's allowance turns out to be shared
 

@@ -41,16 +41,12 @@
  * web/Go2My.Link/_admin/public_html/pages/api-keys/index.php. orgHandle is
  * ALWAYS read from the authenticated session, never from client input.
  *
- * The shared "[default]" bucket org (every user who has not yet joined a
- * real organisation) is deliberately BLOCKED here, unlike the rest of the
- * dashboard: every user left unassigned shares that same orgHandle, so an
- * org-wide aggregate for '[default]' would show clicks from OTHER users'
- * short links — a cross-user data leak the #41 data layer has no way to
- * prevent (it only takes an orgHandle, not a userUID). This mirrors the
- * '[default]' guard already used by api-keys/index.php and
- * org/domains/index.php, except this page does NOT also require
- * canManageOrg() — viewing your own organisation's analytics is a
- * member-level capability, not an admin-only one.
+ * The shared "[default]" organisation holds every user who has not yet
+ * joined a real one, so an organisation-wide total there would show other
+ * people's clicks. For those users every query is narrowed to the links they
+ * created themselves (createdByUserUID, as links/index.php does); see
+ * "Per-user scope" below (#165). Viewing your own organisation's analytics
+ * needs membership only, not canManageOrg().
  *
  * ----------------------------------------------------------------------------
  * ?code= drill-down (BOLA / IDOR discipline)

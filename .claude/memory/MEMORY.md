@@ -25,6 +25,10 @@
 > and erasure ignored LinksPages entirely. The handoff also lists the GDPR gaps this found
 > (#244–#247) and the traps that cost time.
 >
+> **2026-11-02:** the site polish sweep (#277–#288) and the security review for CVE-2026-111497
+> (#302) are finished and pushed; the 59-item programme resumes after them. What changed, and the
+> traps it found, are in **"Site polish sweep"** near the end of this file.
+>
 > **Deep analysis and planning now use Opus, one agent at a time** (owner, 2026-09-23 — it used to be
 > Fable first). **Codex must be told its model on this machine:** `-c model="gpt-6-astra"`.
 
@@ -275,7 +279,7 @@
 
 ## 🗄️ Database — key facts & gotchas
 
-- New DB: `mwtools_Go2MyLink` (InnoDB, utf8mb4_unicode_ci). Schema in `web/_sql/schema/` (000–035), procedures in `procedures/`, seeds in `seeds/`, data-migrations in `migrations/`.
+- New DB: `mwtools_Go2MyLink` (InnoDB, utf8mb4_unicode_ci). Schema in `web/_sql/schema/` (000–036), procedures in `procedures/`, seeds in `seeds/`, data-migrations in `migrations/`.
 - Redirect hot path: `sp_lookupShortURL` + `tblShortURLs.UQ_shortcode_org (shortCode, orgHandle)`.
 - **Fixed on branch (2026-06-04, verified on MySQL 9.6):** `sp_lookupShortURL` declared its EXIT HANDLER before variable DECLAREs (proc wouldn't compile → broke all B redirects); `033_payments.sql` had `tblPayments` FK to `tblPaymentDiscounts` before that table was created (aborted import).
 - Stored procedures use `DELIMITER //`; schema files begin with `USE mwtools_Go2MyLink;` and `000_create_database.sql` has `CREATE DATABASE`. `sp_logActivity` was **removed** (#126, dead code — the app does a direct INSERT) — a correctly-provisioned DB now has **2** stored procedures, not 3; `dry_run.sql` matches.
@@ -299,13 +303,53 @@
 These were built in the 2026-07-09/10/18 launch-prep cycle but were missing from this map:
 
 - **API framework (#38/#39/#40/#75):** `web/_functions/api_auth.php` (key auth, scopes, `hash_equals`), `api_ratelimit.php` (DB rate-limit), `web/Go2My.Link/public_html/api/v1/` (front controller + endpoint handlers: URL CRUD/bulk/list + org, `/analytics`), `web/Go2My.Link/_admin/public_html/pages/api-keys/` (key-management UI). OpenAPI 3.1 spec + self-hosted Redoc at `/api/docs`; vendored Redoc under `web/_libraries/` (post-CVE-2024-57083 version). `web/_schemas/api/` holds the JSON schemas.
-- **Analytics (#41/#42/#44):** `web/_functions/analytics.php` (time-bucketed aggregates), `web/Go2My.Link/_admin/public_html/pages/analytics/` (Chart.js dashboard, theme-aware), `web/Go2My.Link/_admin/public_html/analytics-export.php` (streaming CSV export), `web/_sql/schema/030_analytics.sql`, index migration `014_activitylog_analytics_indexes.sql`.
+- **Analytics (#41/#42/#44):** `web/_functions/analytics.php` (time-bucketed aggregates), `web/Go2My.Link/_admin/public_html/pages/analytics/` (Chart.js dashboard, theme-aware), `web/Go2My.Link/_admin/public_html/analytics-export.php` (CSV export: built in memory, then sent), `web/_sql/schema/030_analytics.sql`, index migration `014_activitylog_analytics_indexes.sql`.
 - **IP geolocation (#43, gated OFF):** `web/_functions/geolocation.php` (`g2ml_geolocateIP()`), vendored pure-PHP `MaxMind\Db\Reader` at `web/_libraries/maxminddb/` (no C extension needed), seed `web/_sql/seeds/017_geolocation_settings.sql`, CI fetch `scripts/fetch-geoip.sh`.
 - **UTM capture/forward (#92, gated OFF):** in `web/G2My.Link/_functions/redirect_resolver.php` + Component B `public_html/index.php`; seed `016_utm_tracking_settings.sql`.
 - **Premium-tier entitlements (#146):** `web/_functions/entitlements.php` (fail-open; enforces `maxLinks`/API-daily/domain-cap from `tblSubscriptionTiers`).
 - **Component C — LinksPage (#45–#50, 6/6 BUILT):** `web/Lnks.page/` is the live component (public_html/index.php resolves a handle to a rendered page — no longer a coming-soon placeholder); `web/Lnks.page/_functions/linkspage_{resolver,renderer}.php`; shared `web/_functions/{linkspage_manage,html_sanitiser,adult_content}.php`; custom-domain fallback `web/G2My.Link/_functions/linkspage_fallback.php`; management UI `web/Go2My.Link/_admin/public_html/pages/linkspage/`. `customHTML`/WYSIWYG (#49) is DOM-allowlist-sanitised, `script-src 'none'` CSP, premium-gated, **kill switch OFF by default** pending security sign-off — the product's highest stored-XSS surface.
 - **CueRCode wiring (#145):** QR-link create/re-point/scan attribution folded into `createShortURL()` + `logActivity()`; authenticates via a `qr:link`-scoped API key (no local `tblQRCodes`).
-- **Tests:** `tests/unit/` (DB-free, 58 test files as of 2026-07-19) and `tests/integration/` (DB-backed, skips cleanly with no DB) — see `tests/README.md` for the throwaway-MySQL one-liner. 519 unit tests passing per the 2026-07-19 gate run (see the top banner).
+- **Tests:** `tests/unit/` (DB-free; 58 test files as of 2026-07-19, 72 files and 972 tests as of 2026-11-02) and `tests/integration/` (DB-backed, skips cleanly with no DB) — see `tests/README.md` for the throwaway-MySQL one-liner. 519 unit tests passing per the 2026-07-19 gate run (see the top banner).
+
+## 🧹 Site polish sweep (2026-10-05 → 2026-11-02) — what changed and the traps
+
+The owner asked for a check of all three sites for anything that looks unfinished. The findings are
+issues #277–#295 (#289–#295 are design questions for later); the commits are in the handoff's
+Finished table. Things a future session needs to know:
+
+- **Pages run before the header (#278).** Every front controller runs the page into a buffer and
+  prints `header.php` afterwards, so a page sets its own `$pageTitle`, `$pageDesc`, status code and
+  redirects. Never print anything from a page before that buffer is taken.
+- **The dashboard keeps byte-identical copies** of `css/style.css`, `js/theme.js`, `js/app.js`,
+  `js/cookie-consent.js` and `js/forms.js` (#279, #286). Change the main site's file, then copy it
+  over the dashboard's; `tests/unit/dashboard_assets_test.php` fails if they differ. Links from the
+  dashboard to the main site go through `g2ml_mainSiteURL()`.
+- **Library fallbacks (#285):** Bootstrap and Font Awesome come from the CDN first, with copies in a
+  `vendor/` folder in each web root that uses the shared templates (go2my.link, the dashboard,
+  g2my.link). The `onerror` handler puts the replacement in the failed tag's place; it relies on the
+  CSP's `'unsafe-inline'` (DEV_NOTES.md). jQuery is gone. `library_fallbacks_test.php` checks them.
+- **`/pages/...` answers the branded 404** (an `.htaccess` rule, #285), and the installer answers a
+  plain 404 once installed. PHP's own `require` of page files is not affected.
+- **Service workers (#283)** cache static files only, never pages; the offline page's text comes
+  from `web/_includes/offline_page.php` (`g2ml_offlinePageText()`), with a thin `offline.php` per site.
+- **Sign-in and messages (#281):** a one-time message survives a redirect with `g2ml_flashSet()` /
+  `g2ml_flashTake()`; where to go after signing in is checked by `g2ml_safePostLoginRedirect()`.
+- **Search and sharing (#282):** a canonical address is printed only on a normal (200) page that is
+  not `noindex`; each site has `robots.txt` and a `sitemap.xml` checked against
+  `web/_schemas/external/sitemap-0.9.xsd`. The legal pages have a hub at `/legal` (#284).
+- **Contrast (#287):** the navigation bar is a constant deep blue in both modes. `style.css` uses CSS
+  `color-mix()` for hover and pressed colours; only the `.bg-primary` rule is wrapped in `@supports`,
+  so browsers from before 2023 keep its plain colour but lose some button fills (see the table at
+  the top of `style.css`).
+- **Seeds `067`–`073`** were added; seed `004` must be re-imported after the code is uploaded
+  (DEPLOYMENT.md, checklist A19–A26).
+- **CI runs on Node 24** (#302, the Brotli "HTTP2Shell" review); `no_brotli_decoding_test.php` fails
+  if anything starts decoding Brotli or compressed responses.
+- **The polish check is standing rule 14** (#288); its automatic part is `site_polish_test.php`.
+- **Trap — no DNS in some cloud containers:** two tests in `link_destination_test.php` look up
+  `example.com` and fail where host names do not resolve. The code is fine; see tests/README.md.
+- **Trap — rewriting `build-plan.json` with a JSON library** re-escapes over a hundred lines. Edit it
+  as text.
 
 ## 📌 Standing Practices (Apply Every Session)
 

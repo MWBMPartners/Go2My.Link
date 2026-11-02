@@ -39,9 +39,9 @@
  * any client-supplied parameter; there is no "orgHandle" or "org" query
  * parameter accepted anywhere in this file. This is the exact same
  * org-resolution pattern pages/analytics/index.php uses (see that file's own
- * docblock), including the same '[default]' shared-bucket-org block (an
- * org-wide export for the shared "no org yet" bucket would otherwise leak
- * clicks belonging to OTHER users who also have not joined an organisation).
+ * docblock), including the same narrowing for the shared "[default]"
+ * organisation: those users export only the links they created themselves,
+ * not other people's clicks (#165, see Step 5 below).
  *
  * The optional ?code= drill-down is re-validated by shape and then confirmed
  * to exist WITHIN THE CALLER'S OWN ORG before it is ever passed to an

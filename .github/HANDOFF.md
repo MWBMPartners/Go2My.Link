@@ -14,7 +14,11 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-11-02 (site polish sweep in progress; new security review #302 queued — see "Site polish sweep" under START HERE) · 2026-09-25 15:05 (batch 4 done; second Codex catch-up clean; SX-208 reviewed by Codex — see "This session") · 2026-09-23 21:10 (everything pushed; safe restart point — see START HERE) · 2026-09-21/22 (the LinksPage and tiers programme) · earlier: 2026-09-07 (audit + docs sweep, merged as #201) · 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow; per-user analytics #165) · earlier: 2026-07-22 (PR merges, Dependabot 3-tier, pricing) · 2026-07-19 (post-recovery conformance audit) · **Working branch:** `feat/2026-09-21-linkspage-and-sweep` (from `alpha`).
+> **Last updated:** 2026-11-02 (site polish sweep #277–#288 and security review #302 finished and pushed, documentation swept — see "Site polish sweep" under START HERE) · 2026-09-25 15:05 (batch 4 done; second Codex catch-up clean; SX-208 reviewed by Codex — see "This session") · 2026-09-23 21:10 (everything pushed; safe restart point — see START HERE) · 2026-09-21/22 (the LinksPage and tiers programme) · earlier: 2026-09-07 (audit + docs sweep, merged as #201) · 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow; per-user analytics #165) · earlier: 2026-07-22 (PR merges, Dependabot 3-tier, pricing) · 2026-07-19 (post-recovery conformance audit) · **Working branch:** `feat/2026-09-21-linkspage-and-sweep` (from `alpha`).
+> **Status (2026-11-02):** the site polish sweep the owner asked for on 2026-10-05 (#277–#288) and
+> the HTTP2Shell security review (#302) are finished and pushed; 972 unit tests and 238 database
+> tests pass. The owner's open items are listed under "Site polish sweep". The build programme
+> resumes with SX-212 and PF-13.
 > **Status (2026-09-25):** a build programme is under way on the working branch, agreed with
 > the owner after a market review of LinksPage against Linktree, Beacons and about twenty other
 > "link in bio" services. The finished pieces are listed under START HERE; the next are SX-205,
@@ -69,8 +73,11 @@ session; if that session is gone, rebuild each item from its issue):
    **Still with the owner (Salem874):** the same rule machine-wide, for all projects. That file
    (`~/.claude/CLAUDE.md`) exists only on the owner's own computers; the ready-to-paste text is in
    the #288 issue.
-10. **Documentation sweep and the report to the owner.** Also, the browser test at many screen
-    sizes was cut short after both page sweeps had finished; its click tests still need running.
+10. ~~**Documentation sweep**~~ — done (README, DEPLOYMENT.md's migration summary, tests/README.md,
+    MEMORY.md, HISTORY.md, two stale comments in the analytics code). A final browser re-check of
+    all three sites (pages, four screen widths and the main clicks: sign-in, sign-out, Shorten, the
+    cookie banner) was run against the code as of `d826518`; its findings go in the report to the
+    owner, and any real problem gets its own issue.
 
 **Trap (2026-11-02):** in the resumed cloud container, host names do not resolve, so two tests in
 `tests/unit/link_destination_test.php` that look up `example.com` fail ("an ordinary public https URL
@@ -232,7 +239,7 @@ batch 5; SX-205 is done).
 | `d826518` | #285 | Leftovers and dead weight. jQuery (87 KB, unused) is gone; the 350 KB logo is replaced by sized PNGs (a typical home page fell from about 1.14 MB to 705 KB); the shared header, navigation, footer, cookie banner and landing pages print no HTML comments (100 per page before) and the landing pages start with <!DOCTYPE html>; /pages/... answers the branded 404; the installer answers a plain 404 once installed; the library fallbacks finally work (copies in each web root's vendor/, inserted in the failed link's place), g2my.link's own pages included; the API description no longer names internal files; a design source file left the web root; the Redoc page's CSP allows exactly its Redocly footer logo. Found #305. Site polish sweep (2026-10-05). Review: 2 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback; last round clean. |
 | (this commit) | #288 | The polish check the owner asked for on 2026-10-05, as a standing rule: rule 14 in `.claude/memory/working-rules.md` (nine things every visible change must pass, when the check runs, and what "done" means), with one-line additions to rule 7 (run it on the pages a change touches) and rule 8 (run it on the whole site in every documentation sweep); CLAUDE.md and AGENTS.md summarise it. Its automatic part is a new unit test, `tests/unit/site_polish_test.php`, which fails on a placeholder or preview hosting address or "lorem ipsum" in shipped code, a copyright year written as fixed numbers, a main-site or dashboard page with no title or description of its own, a `console.log`, `debugger` or `alert()` in the site's own JavaScript, or a development file (notes, backups, database dumps, logs, archives, `phpinfo.php`, `.env`) inside a web root, and lists the other tests that check the rest. It reads files only; layout, contrast and dead buttons still need the browser run the rule describes. Fixed what it found: the three landing pages printed a fixed copyright year (they now print the current one) and the dashboard's breach-response page had no description. Unit tests: 972, all passing. The machine-wide copy of the rule is with the owner (see the queue). Site polish sweep (2026-10-05). Review: 4 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
 
-**Test baseline now (after `ce1a616`): 758 unit tests and 238 database tests, all passing** (PHP 8.4 in Docker; MySQL
+**Test baseline now (after `21f30da`): 972 unit tests and 238 database tests, all passing** (PHP 8.4 in Docker; MySQL
 8.4 with `utf8mb4_unicode_ci`). Run them with `sh .claude/programme/run-tests.sh all`.
 
 ### ⏭️ Next actions, in order

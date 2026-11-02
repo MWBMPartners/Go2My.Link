@@ -483,15 +483,16 @@ Do these three steps, in this order:
 **Summary of migration steps:**
 
 1. 🗄️ Create new database alongside existing `mwtools_mwlink`
-2. 📋 Import all 15 schema files in filename order (`000`, `010`–`015`,
-   `020`–`021`, `030`–`035` — numbering is deliberately gapped; there is no
+2. 📋 Import all 16 schema files in filename order (`000`, `010`–`015`,
+   `020`–`021`, `030`–`036` — numbering is deliberately gapped; there is no
    `001`–`009`)
 3. 🔧 Import both stored procedures (`sp_generateShortCode.sql`,
    `sp_lookupShortURL.sql`). ⚠️ **Historical:** `sp_logActivity.sql` was
    **DELETED** — the app now performs a direct `INSERT` into `tblActivityLog`
    instead (`web/_functions/activity_logger.php`); do not look for or try to
    import this file
-4. 🌱 Import all 17 seed files in order (`001` through `017`)
+4. 🌱 Import all 36 seed files in filename order (the list is in step 5 of
+   **New Installation** above)
 5. 🧪 Run dry-run verification: `web/_sql/dry_run.sql`
 6. ▶️ Run migration scripts from `web/_sql/migrations/` in order — `001`–`004`,
    `006`, `008`–`019` (`007` is optional, see Step 7; there is no `005`). See
