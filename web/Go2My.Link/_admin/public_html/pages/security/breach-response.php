@@ -23,8 +23,43 @@
  * ============================================================================
  */
 
-// 🔒 Require GlobalAdmin role
-requireAuth('GlobalAdmin');
+// 🔒 Signed in (the dashboard's front controller checks this too)
+requireAuth('User');
+
+// 🔒 GlobalAdmin only. Anyone else is refused inside the dashboard's own
+// page, with a 403, like the organisation pages. Asking requireAuth() for
+// GlobalAdmin would print a bare page with no menu instead (#306).
+$breachUserRole = $_SESSION['user_role'] ?? 'User';
+
+if (!hasMinimumRole($breachUserRole, 'GlobalAdmin'))
+{
+    logActivity('auth', 'insufficient_role', 403, [
+        'userUID' => $_SESSION['user_uid'] ?? null,
+        'logData' => ['required' => 'GlobalAdmin', 'actual' => $breachUserRole],
+    ]);
+
+    if (function_exists('__'))
+    {
+        $pageTitle = __('access.denied_heading');
+    }
+    else
+    {
+        $pageTitle = 'Access Denied';
+    }
+
+    if (function_exists('__'))
+    {
+        $breachDeniedMessage = __('error.403_message');
+    }
+    else
+    {
+        $breachDeniedMessage = 'You don\'t have permission to access this page. If you believe this is an error, please contact support.';
+    }
+
+    g2ml_renderAccessDenied($breachDeniedMessage);
+
+    return;
+}
 
 // 🛡️ Prevent caching of this sensitive page (salt may be displayed)
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');

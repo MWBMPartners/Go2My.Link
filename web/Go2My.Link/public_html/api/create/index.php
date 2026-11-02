@@ -96,7 +96,13 @@ $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH'])
 // when X-Requested-With is absent. Everything else keeps the no-JS redirect
 // fallback. Format selection itself lives in g2ml_apiRespond().
 //
-// 📖 Reference: web/_functions/api_response.php — g2ml_apiWantsXml()
+// A browser submitting the homepage form with JavaScript off also names
+// application/xml in its Accept header, but names text/html too. That is a
+// person, not an API client, so the Accept header does not count for it and
+// it gets the redirect (#306). "?format=xml" still selects XML.
+//
+// 📖 Reference: web/_functions/api_response.php —
+//    g2ml_apiCreateWantsStructured()
 // ============================================================================
 
 $acceptHeaderValue = '';
@@ -106,12 +112,7 @@ if (isset($_SERVER['HTTP_ACCEPT']) && is_string($_SERVER['HTTP_ACCEPT']))
     $acceptHeaderValue = $_SERVER['HTTP_ACCEPT'];
 }
 
-$isStructuredRequest = $isAjax;
-
-if (g2ml_apiWantsXml($_GET, $acceptHeaderValue))
-{
-    $isStructuredRequest = true;
-}
+$isStructuredRequest = g2ml_apiCreateWantsStructured($isAjax, $_GET, $acceptHeaderValue);
 
 // ============================================================================
 // 🛡️ Step 3: Enforce POST method

@@ -88,6 +88,73 @@ test('wantsXml: an Accept header for JSON stays on JSON', function (): void
 });
 
 // ============================================================================
+// 🌐 g2ml_apiAcceptNamesHtml — a browser asking for a page (#306)
+// ============================================================================
+
+test('acceptNamesHtml: the Accept headers Chrome, Firefox and Safari send for a page count as a browser', function (): void
+{
+    $browserHeaders = array(
+        'Chrome'  => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Firefox' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Safari'  => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    );
+
+    foreach ($browserHeaders as $browserName => $acceptHeader)
+    {
+        assert_true(g2ml_apiAcceptNamesHtml($acceptHeader), $browserName . '\'s page request must count as a browser');
+    }
+});
+
+test('acceptNamesHtml: API-style Accept headers do not count as a browser', function (): void
+{
+    foreach (array('', '*/*', 'application/xml', 'text/xml', 'application/json') as $acceptHeader)
+    {
+        assert_false(g2ml_apiAcceptNamesHtml($acceptHeader), '"' . $acceptHeader . '" must not count as a browser');
+    }
+});
+
+test('acceptNamesHtml: the match ignores case', function (): void
+{
+    assert_true(g2ml_apiAcceptNamesHtml('TEXT/HTML'), 'Accept matching must ignore case');
+});
+
+test('createWantsStructured: a browser form submit gets the redirect, not XML (#306)', function (): void
+{
+    $browserHeaders = array(
+        'Chrome'  => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Firefox' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Safari'  => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    );
+
+    foreach ($browserHeaders as $browserName => $acceptHeader)
+    {
+        assert_false(g2ml_apiCreateWantsStructured(false, array(), $acceptHeader), $browserName . '\'s form submit must get the redirect');
+    }
+
+    assert_false(g2ml_apiCreateWantsStructured(false, array(), ''), 'A request with no Accept header must get the redirect');
+});
+
+test('createWantsStructured: API clients and the homepage JavaScript still get JSON or XML', function (): void
+{
+    $firefox = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
+
+    assert_true(g2ml_apiCreateWantsStructured(true, array(), '*/*'), 'The homepage JavaScript request must get a structured answer');
+    assert_true(g2ml_apiCreateWantsStructured(true, array(), $firefox), 'A JavaScript request is structured whatever its Accept header');
+    assert_true(g2ml_apiCreateWantsStructured(false, array(), 'application/xml'), 'An XML-only Accept header must get XML');
+    assert_true(g2ml_apiCreateWantsStructured(false, array(), 'text/xml'), 'A text/xml Accept header must get XML');
+    assert_true(g2ml_apiCreateWantsStructured(false, array('format' => 'xml'), $firefox), '?format=xml must still select XML from a browser');
+    assert_false(g2ml_apiCreateWantsStructured(false, array(), 'application/json'), 'A JSON Accept header without X-Requested-With keeps the old redirect');
+});
+
+test('api/create: the endpoint decides with g2ml_apiCreateWantsStructured() (#306)', function (): void
+{
+    $source = (string) file_get_contents(dirname(__DIR__, 2) . '/web/Go2My.Link/public_html/api/create/index.php');
+
+    assert_contains('$isStructuredRequest = g2ml_apiCreateWantsStructured($isAjax, $_GET, $acceptHeaderValue);', $source, 'api/create no longer uses the shared decision');
+    assert_false(strpos($source, 'g2ml_apiWantsXml(') !== false, 'api/create checks for XML on its own again, with the raw Accept header');
+});
+
+// ============================================================================
 // 🏷️ g2ml_sanitiseXmlElementName — valid XML element names
 // ============================================================================
 

@@ -105,6 +105,56 @@ function g2ml_apiWantsXml(array $get, string $acceptHeader): bool
     return false;
 }
 
+/**
+ * Whether an Accept header is a browser asking for a web page.
+ *
+ * Every browser sends an Accept header naming text/html when it loads a page
+ * or submits a form, and Chrome, Firefox and Safari also name
+ * application/xml in it ("text/html,application/xhtml+xml,application/xml;
+ * q=0.9,..."). g2ml_apiWantsXml() alone would read that as a request for
+ * XML. An endpoint that also serves plain HTML forms uses this to tell the
+ * two apart (#306).
+ *
+ * @param  string $acceptHeader  The raw Accept header ('' when absent).
+ * @return bool                  True when the header names text/html.
+ */
+function g2ml_apiAcceptNamesHtml(string $acceptHeader): bool
+{
+    return str_contains(strtolower($acceptHeader), 'text/html');
+}
+
+/**
+ * Whether the short-link create endpoint (/api/create/) should answer with
+ * JSON or XML, rather than send the visitor back to the homepage.
+ *
+ * Yes for the homepage's JavaScript request (X-Requested-With) and for an
+ * API client that asks for XML ("?format=xml", or an Accept header naming
+ * XML). No for a browser's own form submit with JavaScript off: its Accept
+ * header names text/html as well as application/xml, and it wants the page
+ * back (#306). "?format=xml" still selects XML from a browser.
+ *
+ * @param  bool                 $isAjax        True when X-Requested-With is XMLHttpRequest.
+ * @param  array<string, mixed> $get           The query-string values ($_GET).
+ * @param  string               $acceptHeader  The raw Accept header ('' when absent).
+ * @return bool                                True for a JSON or XML answer.
+ */
+function g2ml_apiCreateWantsStructured(bool $isAjax, array $get, string $acceptHeader): bool
+{
+    if ($isAjax)
+    {
+        return true;
+    }
+
+    $acceptForXmlCheck = $acceptHeader;
+
+    if (g2ml_apiAcceptNamesHtml($acceptHeader))
+    {
+        $acceptForXmlCheck = '';
+    }
+
+    return g2ml_apiWantsXml($get, $acceptForXmlCheck);
+}
+
 // ============================================================================
 // 🧱 XML construction (pure, testable)
 // ============================================================================

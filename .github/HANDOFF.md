@@ -47,7 +47,7 @@ asked for a standing rule to keep checking. The findings were filed as issues **
 to fix now, #289–#295 design questions for later.
 
 **Committed and pushed so far:** `399733f` #277, `1a5b5e3` #278, `4af86c5` #280, `ce1a616` #281,
-`ff954db` #279, `2fbbabd` #284, `2ab7857` #282, `fd4cb24` #286, `fbdad7f` #283, `13684ad` #302, `e771fc1` #287, `d826518` #285, `21f30da` #288 and the documentation sweep `d5fd101` (see the Finished table below).
+`ff954db` #279, `2fbbabd` #284, `2ab7857` #282, `fd4cb24` #286, `fbdad7f` #283, `13684ad` #302, `e771fc1` #287, `d826518` #285, `21f30da` #288, the documentation sweep `d5fd101` (with `72b3a07` and `8755a99`), and #306 from the final browser re-check (see the Finished table below).
 
 **Queue, in order** (the work for the items not yet committed lives in isolated copies inside one cloud
 session; if that session is gone, rebuild each item from its issue):
@@ -76,11 +76,16 @@ session; if that session is gone, rebuild each item from its issue):
 10. ~~**Documentation sweep**~~ — done in `d5fd101`, with the reviewer's corrections in the commit
     after it (README, DEPLOYMENT.md, MIGRATION_PLAN.md, CHANGELOG.md, tests/README.md, MEMORY.md,
     HISTORY.md, two out-of-date comments in the analytics code).
-11. **Still open: the final browser re-check and the report to the owner.** The re-check covers all
-    three sites (pages, four screen widths, and the main clicks: sign-in, sign-out, Shorten, the
-    cookie banner). It runs against a local copy of the code as of `d826518`, so it does not see
-    `21f30da`'s small changes (the landing pages' copyright year, one dashboard description). Any
-    real problem it finds gets its own issue.
+11. ~~**The final browser re-check**~~ — done, on a local copy of the code as of `d826518`, across all
+    three sites (pages; 320, 375, 768 and 1280 pixels wide; sign-in, sign-out, Shorten, the cookie
+    banner, the offline page, the library fallbacks with the CDN cut off). It confirmed the fixes
+    above. It found two new bugs, fixed in #306 (see the Finished table). It also found:
+    LinksPage sharing tags (added to #224); the owner preview's refused `<base>` tag (added to
+    #230); the 403 that people without an organisation get on API Keys (a decision for the owner,
+    on #294); lnks.page's unused service worker (added to #305); and the breach page's English-only
+    text (#307). Not run: a screen reader, right-to-left languages, forced colours, print, the
+    database-down page, organisation-member flows and the installer.
+12. **Still open: the report to the owner.**
 
 **Trap (2026-11-02):** in the resumed cloud container, host names do not resolve, so two tests in
 `tests/unit/link_destination_test.php` that look up `example.com` and `en.wikipedia.org` fail ("an ordinary public https URL
@@ -241,8 +246,9 @@ batch 5; SX-205 is done).
 | `e771fc1` | #287 | Contrast, focus and layout. Site-wide: the navigation bar is a constant deep blue in both modes (white links 5.75:1, were 2.4:1), dark-mode buttons pass in every state, every control gets a visible 3px focus ring, the cookie banner comes first in the tab order and is smaller on phones, alert boxes have screen-reader roles, new-tab links say so, copy buttons announce "Copied!", long addresses wrap, and footer headings no longer skip levels. LinksPage: all five templates have one <main>, wrap long words, keep text readable on any theme colour (black or white chosen by contrast), and pages without an avatar show an initial instead of the site logo; seed 004 is re-imported to refresh the templates. Adds seeds 072 and 073. Found #304 (old browsers without color-mix()). Site polish sweep (2026-10-05). Review: site-wide 4 round(s), LinksPage 1 round(s) then 3 combined; reviewers claude-opus-fallback; last round clean. |
 | `d826518` | #285 | Leftovers and dead weight. jQuery (87 KB, unused) is gone; the 350 KB logo is replaced by sized PNGs (a typical home page fell from about 1.14 MB to 705 KB); the shared header, navigation, footer, cookie banner and landing pages print no HTML comments (100 per page before) and the landing pages start with <!DOCTYPE html>; /pages/... answers the branded 404; the installer answers a plain 404 once installed; the library fallbacks finally work (copies in each web root's vendor/, inserted in the failed link's place), g2my.link's own pages included; the API description no longer names internal files; a design source file left the web root; the Redoc page's CSP allows exactly its Redocly footer logo. Found #305. Site polish sweep (2026-10-05). Review: 2 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback; last round clean. |
 | `21f30da` | #288 | The polish check the owner asked for on 2026-10-05, as a standing rule: rule 14 in `.claude/memory/working-rules.md` (nine things every visible change must pass, when the check runs, and what "done" means), with one-line additions to rule 7 (run it on the pages a change touches) and rule 8 (run it on the whole site in every documentation sweep); CLAUDE.md and AGENTS.md summarise it. Its automatic part is a new unit test, `tests/unit/site_polish_test.php`, which fails on a placeholder or preview hosting address or "lorem ipsum" in shipped code, a copyright year written as fixed numbers, a main-site or dashboard page with no title or description of its own, a `console.log`, `debugger` or `alert()` in the site's own JavaScript, or a development file (notes, backups, database dumps, logs, archives, `phpinfo.php`, `.env`) inside a web root, and lists the other tests that check the rest. It reads files only; layout, contrast and dead buttons still need the browser run the rule describes. Fixed what it found: the three landing pages printed a fixed copyright year (they now print the current one) and the dashboard's breach-response page had no description. Unit tests: 972, all passing. The machine-wide copy of the rule is with the owner (see the queue). Site polish sweep (2026-10-05). Review: 4 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
+| (this commit) | #306 | Two bugs found by the final browser re-check. **Shorten without JavaScript never worked in a browser:** `/api/create/` answers in XML when the Accept header names `application/xml`, and every browser's form submit does, so the redirect back to the homepage (#281) never happened and the visitor saw a bare card. A new helper, `g2ml_apiCreateWantsStructured()`, treats a header that also names `text/html` as a person, who now gets the redirect with the short link or the error shown; `?format=xml`, XML-only headers and JavaScript requests are answered as before. **The dashboard's breach-response page refused non-admins with `requireAuth()`'s bare page** (no menu, no phone layout, English only); it now answers 403 inside the dashboard, with translated text and a way back, through a new `g2ml_renderAccessDenied()`. Tests: behaviour tests for the helper with real Chrome, Firefox and Safari headers; a test that runs the real breach page as an ordinary user posting a valid form (refused, no form, the password reset never called) with a GlobalAdmin control run; and a scan that no dashboard page asks `requireAuth()` for a higher role. Checked in Chromium on the local copy. Unit tests: 982. Found #307. Review: 2 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback; the second round's only finding (an out-of-date test comment) is fixed. |
 
-**Test baseline now (after `21f30da`): 972 unit tests and 238 database tests, all passing** (PHP 8.4 in Docker; MySQL
+**Test baseline now (after #306): 982 unit tests and 238 database tests, all passing** (PHP 8.4 in Docker; MySQL
 8.4 with `utf8mb4_unicode_ci`). Run them with `sh .claude/programme/run-tests.sh all`.
 
 ### ⏭️ Next actions, in order

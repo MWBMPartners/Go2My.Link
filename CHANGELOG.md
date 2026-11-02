@@ -36,6 +36,10 @@ the owner asked for. Each item is one commit on `feat/2026-09-21-linkspage-and-s
   landing pages print no developer comments (the remaining page files are #305); `/pages/...` and
   the finished installer answer 404; the library fallbacks finally work (#285).
 - 📝 A standing "polish check" rule, with a unit test for the parts a machine can check (#288).
+- 🐛 Found by the final browser re-check (#306): Shorten without JavaScript now returns to the
+  homepage with the result (browsers' form submits were being answered in XML), and the
+  dashboard's breach-response page refuses non-admins inside the dashboard instead of on a bare
+  page.
 - 🔒 CVE-2026-111497 ("HTTP2Shell", Brotli decoder): the application is not exposed; CI moved to
   Node 24, and a test fails if anything starts decoding Brotli (#302).
 - 🗄️ **On deploy:** apply seeds `067`–`073` and re-import seed `004` after the code is uploaded;

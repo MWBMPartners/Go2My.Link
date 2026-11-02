@@ -97,7 +97,8 @@ function canManageOrg(string $orgHandle): bool
  * shared place every new account starts in) has not joined or created an
  * organisation yet, so they are told that and offered a button to create
  * one. Someone who does belong to an organisation, but is not allowed to
- * manage it, is told the page's own message.
+ * manage it, is told the page's own message. Any handle other than
+ * '[default]', '' included, gets that "Access Denied" block.
  *
  * @param  string $orgHandle      The signed-in person's organisation handle.
  * @param  string $deniedMessage  What this page says to a refused member,
@@ -195,6 +196,28 @@ function g2ml_renderOrgAccessDenied(string $orgHandle, string $deniedMessage): v
     http_response_code(403);
 
     echo g2ml_orgAccessDeniedHTML($orgHandle, $deniedMessage);
+}
+
+/**
+ * Print the "Access Denied" block for a dashboard page that is not about an
+ * organisation (for example one only GlobalAdmins may use), and mark the
+ * response as 403 Forbidden.
+ *
+ * It is the same block, wording and "Back to Dashboard" button a refused
+ * organisation member sees, shown inside the dashboard's normal page. Use it
+ * instead of requireAuth() with a higher role: requireAuth()'s own refusal is
+ * a bare page with no menu (#306). The page calls this and then returns.
+ *
+ * @param  string $deniedMessage  The page's own refusal message, already
+ *                                translated. Escaped here.
+ * @return void
+ */
+function g2ml_renderAccessDenied(string $deniedMessage): void
+{
+    http_response_code(403);
+
+    // An empty handle is never '[default]', so this is the "Access Denied" block.
+    echo g2ml_orgAccessDeniedHTML('', $deniedMessage);
 }
 
 // ============================================================================
