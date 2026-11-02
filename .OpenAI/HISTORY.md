@@ -33,8 +33,8 @@ Branch: **`feat/2026-09-21-linkspage-and-sweep`** (all pushed). Live detail:
   moved to Node 24, and a test now fails if anything starts decoding it. Questions for Dreamhost and
   Cloudflare are with the owner.
 - **The work paused on 2026-10-05 when the usage limit was reached, and resumed on 2026-11-02.** In
-  the resumed cloud container host names do not resolve, so two tests that look up `example.com`
-  fail there; that is the container, not the code (tests/README.md says how to work around it).
+  the resumed cloud container host names do not resolve, so two tests that look up `example.com` and
+  `en.wikipedia.org` fail there; that is the container, not the code (tests/README.md says how to work around it).
 - **Codex was not available in the cloud session**, so every piece was reviewed by a fresh Claude
   Opus agent instead, round after round until clean. Each piece still owes a Codex catch-up review.
 - Follow-up issues found along the way: #303, #304, #305.

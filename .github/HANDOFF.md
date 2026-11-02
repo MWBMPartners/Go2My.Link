@@ -47,7 +47,7 @@ asked for a standing rule to keep checking. The findings were filed as issues **
 to fix now, #289–#295 design questions for later.
 
 **Committed and pushed so far:** `399733f` #277, `1a5b5e3` #278, `4af86c5` #280, `ce1a616` #281,
-`ff954db` #279, `2fbbabd` #284, `2ab7857` #282, `fd4cb24` #286, `fbdad7f` #283, `13684ad` #302, `e771fc1` #287, `d826518` #285 and #288 (see the Finished table below).
+`ff954db` #279, `2fbbabd` #284, `2ab7857` #282, `fd4cb24` #286, `fbdad7f` #283, `13684ad` #302, `e771fc1` #287, `d826518` #285, `21f30da` #288 and the documentation sweep `d5fd101` (see the Finished table below).
 
 **Queue, in order** (the work for the items not yet committed lives in isolated copies inside one cloud
 session; if that session is gone, rebuild each item from its issue):
@@ -73,14 +73,17 @@ session; if that session is gone, rebuild each item from its issue):
    **Still with the owner (Salem874):** the same rule machine-wide, for all projects. That file
    (`~/.claude/CLAUDE.md`) exists only on the owner's own computers; the ready-to-paste text is in
    the #288 issue.
-10. ~~**Documentation sweep**~~ — done (README, DEPLOYMENT.md's migration summary, tests/README.md,
-    MEMORY.md, HISTORY.md, two stale comments in the analytics code). A final browser re-check of
-    all three sites (pages, four screen widths and the main clicks: sign-in, sign-out, Shorten, the
-    cookie banner) was run against the code as of `d826518`; its findings go in the report to the
-    owner, and any real problem gets its own issue.
+10. ~~**Documentation sweep**~~ — done in `d5fd101`, with the reviewer's corrections in the commit
+    after it (README, DEPLOYMENT.md, MIGRATION_PLAN.md, CHANGELOG.md, tests/README.md, MEMORY.md,
+    HISTORY.md, two out-of-date comments in the analytics code).
+11. **Still open: the final browser re-check and the report to the owner.** The re-check covers all
+    three sites (pages, four screen widths, and the main clicks: sign-in, sign-out, Shorten, the
+    cookie banner). It runs against a local copy of the code as of `d826518`, so it does not see
+    `21f30da`'s small changes (the landing pages' copyright year, one dashboard description). Any
+    real problem it finds gets its own issue.
 
 **Trap (2026-11-02):** in the resumed cloud container, host names do not resolve, so two tests in
-`tests/unit/link_destination_test.php` that look up `example.com` fail ("an ordinary public https URL
+`tests/unit/link_destination_test.php` that look up `example.com` and `en.wikipedia.org` fail ("an ordinary public https URL
 is accepted" and "a SUBDOMAIN of a custom short domain is NOT own_domain"). They fail the same way on
 `5872fa7`, the commit that added them, and passed in October; it is the container, not the code.
 GitHub's CI resolves names, so they pass there.
@@ -237,15 +240,15 @@ batch 5; SX-205 is done).
 | `13684ad` | #302 | Security review for CVE-2026-111497 ("HTTP2Shell", a critical bug in Google's Brotli decoder), asked for by the owner on 2026-11-02. The application is not exposed: nothing under web/ unpacks Brotli data, and PHP's built-in web streams never unpack compressed responses (checked against PHP 8.4's source and by experiment); the full write-up is on the issue. This commit moves the CI and deploy workflows from Node 20 (no fix) to Node 24 with check-latest, adds a test that fails if any setup-node step asks for less, and adds a guard test that fails if anything under web/ mentions Brotli, Accept-Encoding or a cURL decoding setting, or is a binary file other than a real image or font (a .phar library could hide code). Still with the owner: ask Dreamhost whether their libbrotli and any PHP brotli extension are patched, confirm Cloudflare, check CISA's list, and carry the Node change to beta and main. Review: 6 round(s); reviewers by round: claude-opus-fallback ×6; last round clean. |
 | `e771fc1` | #287 | Contrast, focus and layout. Site-wide: the navigation bar is a constant deep blue in both modes (white links 5.75:1, were 2.4:1), dark-mode buttons pass in every state, every control gets a visible 3px focus ring, the cookie banner comes first in the tab order and is smaller on phones, alert boxes have screen-reader roles, new-tab links say so, copy buttons announce "Copied!", long addresses wrap, and footer headings no longer skip levels. LinksPage: all five templates have one <main>, wrap long words, keep text readable on any theme colour (black or white chosen by contrast), and pages without an avatar show an initial instead of the site logo; seed 004 is re-imported to refresh the templates. Adds seeds 072 and 073. Found #304 (old browsers without color-mix()). Site polish sweep (2026-10-05). Review: site-wide 4 round(s), LinksPage 1 round(s) then 3 combined; reviewers claude-opus-fallback; last round clean. |
 | `d826518` | #285 | Leftovers and dead weight. jQuery (87 KB, unused) is gone; the 350 KB logo is replaced by sized PNGs (a typical home page fell from about 1.14 MB to 705 KB); the shared header, navigation, footer, cookie banner and landing pages print no HTML comments (100 per page before) and the landing pages start with <!DOCTYPE html>; /pages/... answers the branded 404; the installer answers a plain 404 once installed; the library fallbacks finally work (copies in each web root's vendor/, inserted in the failed link's place), g2my.link's own pages included; the API description no longer names internal files; a design source file left the web root; the Redoc page's CSP allows exactly its Redocly footer logo. Found #305. Site polish sweep (2026-10-05). Review: 2 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback; last round clean. |
-| (this commit) | #288 | The polish check the owner asked for on 2026-10-05, as a standing rule: rule 14 in `.claude/memory/working-rules.md` (nine things every visible change must pass, when the check runs, and what "done" means), with one-line additions to rule 7 (run it on the pages a change touches) and rule 8 (run it on the whole site in every documentation sweep); CLAUDE.md and AGENTS.md summarise it. Its automatic part is a new unit test, `tests/unit/site_polish_test.php`, which fails on a placeholder or preview hosting address or "lorem ipsum" in shipped code, a copyright year written as fixed numbers, a main-site or dashboard page with no title or description of its own, a `console.log`, `debugger` or `alert()` in the site's own JavaScript, or a development file (notes, backups, database dumps, logs, archives, `phpinfo.php`, `.env`) inside a web root, and lists the other tests that check the rest. It reads files only; layout, contrast and dead buttons still need the browser run the rule describes. Fixed what it found: the three landing pages printed a fixed copyright year (they now print the current one) and the dashboard's breach-response page had no description. Unit tests: 972, all passing. The machine-wide copy of the rule is with the owner (see the queue). Site polish sweep (2026-10-05). Review: 4 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
+| `21f30da` | #288 | The polish check the owner asked for on 2026-10-05, as a standing rule: rule 14 in `.claude/memory/working-rules.md` (nine things every visible change must pass, when the check runs, and what "done" means), with one-line additions to rule 7 (run it on the pages a change touches) and rule 8 (run it on the whole site in every documentation sweep); CLAUDE.md and AGENTS.md summarise it. Its automatic part is a new unit test, `tests/unit/site_polish_test.php`, which fails on a placeholder or preview hosting address or "lorem ipsum" in shipped code, a copyright year written as fixed numbers, a main-site or dashboard page with no title or description of its own, a `console.log`, `debugger` or `alert()` in the site's own JavaScript, or a development file (notes, backups, database dumps, logs, archives, `phpinfo.php`, `.env`) inside a web root, and lists the other tests that check the rest. It reads files only; layout, contrast and dead buttons still need the browser run the rule describes. Fixed what it found: the three landing pages printed a fixed copyright year (they now print the current one) and the dashboard's breach-response page had no description. Unit tests: 972, all passing. The machine-wide copy of the rule is with the owner (see the queue). Site polish sweep (2026-10-05). Review: 4 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
 
 **Test baseline now (after `21f30da`): 972 unit tests and 238 database tests, all passing** (PHP 8.4 in Docker; MySQL
 8.4 with `utf8mb4_unicode_ci`). Run them with `sh .claude/programme/run-tests.sh all`.
 
 ### ⏭️ Next actions, in order
 
-1. **First, finish the site polish sweep and the #302 security review** (queue under "Site polish
-   sweep" at the top of START HERE).
+1. ~~**First, finish the site polish sweep and the #302 security review**~~ — done (see "Site
+   polish sweep" at the top of START HERE); only the owner's items and the report are left.
 2. **The rest of batch 5:** SX-212 (#212 — form rate limits) and PF-13 (personal plans; the
    foundation for decisions 25 and 26). SX-205 is done (`5872fa7`).
 3. Then batch 6 onwards (see `build_order` in the build plan).
@@ -255,8 +258,7 @@ batch 5; SX-205 is done).
    and statistics, password pages, uploads, embeds, templates, email capture, verified badges), then
    the translation pass, caching and the Help page.
 5. **The documentation sweep and the final report to the owner**, after the builds. Already noted
-   for it: `README.md` says there are 17 seed files (there are more); LP-23's key names need settling
-   first (comment on #232).
+   for it: LP-23's key names need settling first (comment on #232).
 
 ### 🔁 Codex, and what it is owed
 

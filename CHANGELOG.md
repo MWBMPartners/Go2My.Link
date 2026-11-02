@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🧹 Fixed — site polish sweep and the HTTP2Shell review (2026-10-05 → 2026-11-02)
+
+A check of all three sites for anything that looks unfinished (#277–#288), plus a security review
+the owner asked for. Each item is one commit on `feat/2026-09-21-linkspage-and-sweep`.
+
+- 🐛 The homepage "Shorten" button and the Create link page could not find their own files (#277).
+- 🐛 Pages now run before the header, so every page shows its own title, sign-in and log-out
+  redirects work, and error pages answer with their real status code (#278).
+- 🐛 "&" and apostrophes are no longer saved as `&amp;` and `&#039;` (#280).
+- 🔒 Three small security gaps: the homepage no longer shows text taken from its own address, API
+  keys sent in an `Authorization: Bearer` header are no longer dropped, and signing in returns
+  dashboard users to the dashboard (#281).
+- 🐛 The dashboard has its own styles and scripts, so the theme switch, cookie banner and log-out
+  work; its menu links and error pages are fixed (#279).
+- 🐛 Small broken things: a new `/legal` page, working legal links, link status badges, the info
+  lookup (#284).
+- ✨ Favicons, canonical addresses, share images, `noindex` on private pages, `robots.txt` and
+  sitemaps (#282).
+- ✨ Forms show "Working…", cannot be sent twice, keep what was typed after an error, and ask
+  before risky changes (#286).
+- 🔒 The service workers on go2my.link and the dashboard no longer store pages (sign-in pages and
+  one-time links included); they cache static files only and show an offline page (#283).
+- ♿ The navigation bar and dark-mode buttons pass WCAG AA contrast, every control has a visible
+  focus ring, and LinksPage layouts are fixed (#287).
+- 🧹 Unused jQuery and a 350 KB logo removed, no developer comments in page source, `/pages/...`
+  and the finished installer answer 404, and the library fallbacks finally work (#285).
+- 📝 A standing "polish check" rule, with a unit test for the parts a machine can check (#288).
+- 🔒 CVE-2026-111497 ("HTTP2Shell", Brotli decoder): the application is not exposed; CI moved to
+  Node 24, and a test fails if anything starts decoding Brotli (#302).
+- 🗄️ **On deploy:** apply seeds `067`–`073` and re-import seed `004` after the code is uploaded;
+  before deploying #285, check production for a short link with the code `vendor`
+  (`PRE_LAUNCH_CHECKLIST.md`, rows A19–A26).
+
 ### 🚨 BREAKING — 2026-07 launch-prep cycle (API, Component C, CI/deploy hardening)
 
 - **BREAKING: per-component credential directory renamed `_auth_keys/` → `.auth/`.** Every
@@ -23,7 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   self-hosted Redoc at `/api/docs` (#38, #39, #40, #75). CueRCode dynamic-QR integrates via
   `/api/v1` with a `qr:link`-scoped key (#145).
 - ✨ **Analytics** — time-bucketed click aggregates, an accessible Chart.js dashboard, and a
-  streaming CSV export (#41, #42, #44).
+  CSV export (#41, #42, #44).
 - ✨ **IP geolocation** (#43) — vendored pure-PHP MaxMind reader (no C extension), gated OFF
   by default, a total no-op when off/absent.
 - ✨ **UTM capture/forward on redirect** (#92) — settings-gated, OFF by default.

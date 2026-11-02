@@ -1,7 +1,7 @@
 # 🧠 Go2My.Link Project Memory
 
 > 🚦 **2026-09-23 — read this first, then [.github/HANDOFF.md](../../.github/HANDOFF.md).**
-> A **59-item build programme** is under way on branch `feat/2026-09-21-linkspage-and-sweep`, agreed
+> A **build programme** (59 items when agreed; 63 in the build plan as at 2026-11-02) is under way on branch `feat/2026-09-21-linkspage-and-sweep`, agreed
 > with the owner on 2026-09-21/22 after comparing LinksPage with Linktree, Beacons and about twenty
 > other "link in bio" services. **The owner's 45 decisions are GitHub issue #243 and are binding.**
 > The plan, the build order and what is already done are in
@@ -317,37 +317,41 @@ The owner asked for a check of all three sites for anything that looks unfinishe
 issues #277–#295 (#289–#295 are design questions for later); the commits are in the handoff's
 Finished table. Things a future session needs to know:
 
-- **Pages run before the header (#278).** Every front controller runs the page into a buffer and
-  prints `header.php` afterwards, so a page sets its own `$pageTitle`, `$pageDesc`, status code and
+- **Pages run before the header (#278).** Both Go2My.Link front controllers (the main site and the
+  dashboard) run the page into a buffer and print `header.php` afterwards (g2my.link and lnks.page
+  do not use `header.php`), so a page sets its own `$pageTitle`, `$pageDesc`, status code and
   redirects. Never print anything from a page before that buffer is taken.
 - **The dashboard keeps byte-identical copies** of `css/style.css`, `js/theme.js`, `js/app.js`,
   `js/cookie-consent.js` and `js/forms.js` (#279, #286). Change the main site's file, then copy it
   over the dashboard's; `tests/unit/dashboard_assets_test.php` fails if they differ. Links from the
   dashboard to the main site go through `g2ml_mainSiteURL()`.
 - **Library fallbacks (#285):** Bootstrap and Font Awesome come from the CDN first, with copies in a
-  `vendor/` folder in each web root that uses the shared templates (go2my.link, the dashboard,
-  g2my.link). The `onerror` handler puts the replacement in the failed tag's place; it relies on the
+  `vendor/` folder in go2my.link, the dashboard and g2my.link (lnks.page has none; g2my.link's own
+  error and holding pages carry the fallbacks). The `onerror` handler puts the replacement in the failed tag's place; it relies on the
   CSP's `'unsafe-inline'` (DEV_NOTES.md). jQuery is gone. `library_fallbacks_test.php` checks them.
 - **`/pages/...` answers the branded 404** (an `.htaccess` rule, #285), and the installer answers a
   plain 404 once installed. PHP's own `require` of page files is not affected.
-- **Service workers (#283)** cache static files only, never pages; the offline page's text comes
+- **Service workers (#283):** go2my.link's and the dashboard's cache static files only, never pages.
+  lnks.page has an old `sw.js` and `manifest.json` that nothing registers or links (noted on #305); the offline page's text comes
   from `web/_includes/offline_page.php` (`g2ml_offlinePageText()`), with a thin `offline.php` per site.
 - **Sign-in and messages (#281):** a one-time message survives a redirect with `g2ml_flashSet()` /
   `g2ml_flashTake()`; where to go after signing in is checked by `g2ml_safePostLoginRedirect()`.
 - **Search and sharing (#282):** a canonical address is printed only on a normal (200) page that is
-  not `noindex`; each site has `robots.txt` and a `sitemap.xml` checked against
-  `web/_schemas/external/sitemap-0.9.xsd`. The legal pages have a hub at `/legal` (#284).
+  not `noindex`; go2my.link and lnks.page each have `robots.txt` and a `sitemap.xml` checked against
+  `web/_schemas/external/sitemap-0.9.xsd` (the dashboard has `robots.txt` only, and g2my.link serves
+  its `robots.txt` from `robots.php`). The legal pages have a hub at `/legal` (#284).
 - **Contrast (#287):** the navigation bar is a constant deep blue in both modes. `style.css` uses CSS
   `color-mix()` for hover and pressed colours; only the `.bg-primary` rule is wrapped in `@supports`,
   so browsers from before 2023 keep its plain colour but lose some button fills (see the table at
   the top of `style.css`).
 - **Seeds `067`–`073`** were added; seed `004` must be re-imported after the code is uploaded
-  (DEPLOYMENT.md, checklist A19–A26).
+  (DEPLOYMENT.md, checklist A19–A25; A26 is #285's `vendor` short-code check).
 - **CI runs on Node 24** (#302, the Brotli "HTTP2Shell" review); `no_brotli_decoding_test.php` fails
-  if anything starts decoding Brotli or compressed responses.
+  if anything mentions Brotli or `Accept-Encoding`, or turns on cURL's decoding of compressed
+  responses.
 - **The polish check is standing rule 14** (#288); its automatic part is `site_polish_test.php`.
 - **Trap — no DNS in some cloud containers:** two tests in `link_destination_test.php` look up
-  `example.com` and fail where host names do not resolve. The code is fine; see tests/README.md.
+  `example.com` and `en.wikipedia.org` and fail where host names do not resolve. The code is fine; see tests/README.md.
 - **Trap — rewriting `build-plan.json` with a JSON library** re-escapes over a hundred lines. Edit it
   as text.
 

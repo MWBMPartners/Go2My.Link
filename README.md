@@ -182,9 +182,9 @@ Go2My.Link/
 ├── ⚙️ .github/workflows/        ← CI/CD (PHP lint, release, SFTP deploy)
 ├── 📚 docs/                     ← ARCHITECTURE, DATABASE, API, DEPLOYMENT
 ├── 🌐 web/
-│   ├── ⚙️ _functions/           ← Shared PHP functions (13 files)
+│   ├── ⚙️ _functions/           ← Shared PHP functions (32 files)
 │   ├── 📦 _includes/            ← Shared templates + email templates
-│   ├── 📦 _libraries/           ← Master copies of the libraries (Bootstrap, FA, Chart.js); copied into each web root's vendor/ folder
+│   ├── 📦 _libraries/           ← Master copies of the libraries (Bootstrap, FA, Chart.js, MaxMind reader); Bootstrap and FA are copied into the vendor/ folder of go2my.link, the dashboard and g2my.link, Chart.js into the dashboard's js/vendor/
 │   ├── 📐 _schemas/             ← JSON Schema definitions (api, database, external)
 │   ├── 🗄️ _sql/                 ← Schema, migrations, seeds, stored procedures
 │   ├── 🏠 Go2My.Link/           ← Component A (Main Website + Admin Dashboard)
@@ -245,9 +245,11 @@ Go2My.Link/
 
 4. Import the database schema from `web/_sql/schema/` (16 files).
 
-5. Run the seed scripts from `web/_sql/seeds/` (36 files, in filename order). [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) lists them and says which migrations an existing database also needs.
+5. Import the two stored procedures from `web/_sql/procedures/`. Without `sp_lookupShortURL`, no short link redirects.
 
-6. Point your web server document roots to the appropriate `public_html/` directories.
+6. Run the seed scripts from `web/_sql/seeds/` (36 files, in filename order). [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) lists them and says which migrations an existing database also needs.
+
+7. Point your web server document roots to the appropriate `public_html/` directories.
 
 ### 🌿 Branch Strategy
 

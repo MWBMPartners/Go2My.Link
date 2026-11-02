@@ -28,8 +28,8 @@ Complete **all** items before beginning the migration:
 
 ### 📁 Application Files
 
-- [ ] All 15 schema files (`web/_sql/schema/` — `000`, `010`–`015`, `020`–`021`, `030`–`035`) are current and tested
-- [ ] All 17 seed files (`web/_sql/seeds/001-017`) are current and tested
+- [ ] All 16 schema files (`web/_sql/schema/` — `000`, `010`–`015`, `020`–`021`, `030`–`036`) are current and tested
+- [ ] All 36 seed files (`web/_sql/seeds/`, listed in Phase C below) are current and tested
 - [ ] Both stored procedures (`web/_sql/procedures/sp_generateShortCode.sql`, `sp_lookupShortURL.sql`) are current — ⚠️ `sp_logActivity.sql` no longer exists (DELETED; direct `INSERT` now)
 - [ ] All 18 migration scripts (`web/_sql/migrations/001-004,006,008-019` — there is no `005`) match legacy schema, with `016` and `019` confirmed MANDATORY (see Phase D)
 - [ ] `auth_creds.php` populated with production database credentials
@@ -98,6 +98,7 @@ Step A12: web/_sql/schema/032_linkspage.sql
 Step A13: web/_sql/schema/033_payments.sql
 Step A14: web/_sql/schema/034_legal_compliance.sql
 Step A15: web/_sql/schema/035_translations.sql
+Step A16: web/_sql/schema/036_pricing_engine.sql
 ```
 
 ⚠️ **A7 (`015_account_types.sql`) is not optional** — its absence was
@@ -120,29 +121,50 @@ Only **2** stored procedures exist today; do not attempt to import a third.
 ### Phase C: Seed Data
 
 ```
-Step C1:  web/_sql/seeds/001_subscription_tiers.sql
-Step C2:  web/_sql/seeds/002_default_organisation.sql
-Step C3:  web/_sql/seeds/003_default_settings.sql
-Step C4:  web/_sql/seeds/004_linkspage_templates.sql
-Step C5:  web/_sql/seeds/005_languages.sql
-Step C6:  web/_sql/seeds/006_phase3_settings.sql
-Step C7:  web/_sql/seeds/007_phase4_settings.sql
-Step C8:  web/_sql/seeds/008_phase5_settings.sql
-Step C9:  web/_sql/seeds/009_phase6_settings.sql
-Step C10: web/_sql/seeds/010_phase6_translations.sql
-Step C11: web/_sql/seeds/011_account_types.sql
-Step C12: web/_sql/seeds/012_email_settings.sql
-Step C13: web/_sql/seeds/013_cuercode_settings.sql
-Step C14: web/_sql/seeds/014_redirect_ssrf_settings.sql
-Step C15: web/_sql/seeds/015_api_settings.sql
-Step C16: web/_sql/seeds/016_utm_tracking_settings.sql
-Step C17: web/_sql/seeds/017_geolocation_settings.sql
+Step C1:   web/_sql/seeds/001_subscription_tiers.sql
+Step C2:   web/_sql/seeds/002_default_organisation.sql
+Step C3:   web/_sql/seeds/003_default_settings.sql
+Step C4:   web/_sql/seeds/004_linkspage_templates.sql
+Step C5:   web/_sql/seeds/005_languages.sql
+Step C6:   web/_sql/seeds/006_phase3_settings.sql
+Step C7:   web/_sql/seeds/007_phase4_settings.sql
+Step C8:   web/_sql/seeds/008_phase5_settings.sql
+Step C9:   web/_sql/seeds/009_phase6_settings.sql
+Step C10:  web/_sql/seeds/010_phase6_translations.sql
+Step C11:  web/_sql/seeds/011_account_types.sql
+Step C12:  web/_sql/seeds/012_email_settings.sql
+Step C13:  web/_sql/seeds/013_cuercode_settings.sql
+Step C14:  web/_sql/seeds/014_redirect_ssrf_settings.sql
+Step C15:  web/_sql/seeds/015_api_settings.sql
+Step C16:  web/_sql/seeds/016_utm_tracking_settings.sql
+Step C17:  web/_sql/seeds/017_geolocation_settings.sql
+Step C18:  web/_sql/seeds/018_pricing_feature_registry.sql
+Step C19:  web/_sql/seeds/019_pricing_settings.sql
+Step C20:  web/_sql/seeds/020_cron_gdpr_settings.sql
+Step C21:  web/_sql/seeds/021_missing_ui_translations.sql
+Step C22:  web/_sql/seeds/022_help_translations.sql
+Step C23:  web/_sql/seeds/023_linkspage_feature_registry.sql
+Step C24:  web/_sql/seeds/029_linkspage_privacy_translations.sql
+Step C25:  web/_sql/seeds/058_truthful_marketing_translations.sql
+Step C26:  web/_sql/seeds/059_link_destination_translations.sql
+Step C27:  web/_sql/seeds/064_linkspage_avatar_icon_translations.sql
+Step C28:  web/_sql/seeds/065_linkspage_manage_error_translations.sql
+Step C29:  web/_sql/seeds/066_org_members_unknown_action_translation.sql
+Step C30:  web/_sql/seeds/067_dashboard_access_translations.sql
+Step C31:  web/_sql/seeds/068_small_fixes_translations.sql
+Step C32:  web/_sql/seeds/069_home_meta_description_translation.sql
+Step C33:  web/_sql/seeds/070_offline_page_translations.sql
+Step C34:  web/_sql/seeds/071_form_feedback_translations.sql
+Step C35:  web/_sql/seeds/072_accessibility_translations.sql
+Step C36:  web/_sql/seeds/073_linkspage_layout_translations.sql
 ```
 
-⚠️ This list previously stopped at `010`; **7 more seed files exist**
-(`011`–`017`, added across later phases). All 17 must be loaded — several
-later migrations/features (account types, CueRCode, SSRF guard, public API,
-UTM capture, geolocation) read settings these seeds define.
+⚠️ **All 36 must be loaded, in filename order.** The numbers have gaps (there
+is no `024`–`028`, `030`–`057` or `060`–`063`); that is expected. Many
+features read settings these seeds define, and the later ones hold the words
+the pages show, so a page without its seed shows key names instead of text.
+This list matches `docs/DEPLOYMENT.md` → New Installation, step 5, as at
+2026-11-02; if the two ever differ, the files in `web/_sql/seeds/` win.
 
 ### Phase D: Data Migration & Schema Catch-Up
 
