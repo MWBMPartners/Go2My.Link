@@ -8,52 +8,72 @@
 
 /**
  * ============================================================================
- * 📱 Go2My.Link — Service Worker (Admin Dashboard — admin.go2my.link)
+ * 📱 Go2My.Link — Service Worker (Admin Dashboard)
  * ============================================================================
  *
- * Network-first strategy for dynamic PHP content with cache fallback
- * for static assets (CSS, JS, icons, fonts).
+ * Caches static files only. Pages are never stored: the previous worker
+ * saved a copy of every page it fetched, including sign-in pages and
+ * one-time links with their token in the address (password reset, email
+ * verification, invitations) and, on the dashboard, signed-in pages that the
+ * next person on the same browser could see offline (#283).
+ *
+ *   - Pages (navigation requests): always from the network. When the
+ *     network is down, the small offline page is shown instead.
+ *   - Static files listed below: from the cache, while a fresh copy is
+ *     fetched in the background for next time (asking the server, not the
+ *     browser's own week-long cache), so a deploy reaches returning visitors
+ *     on their next visit. The offline page is fetched fresh when the worker
+ *     installs.
+ *   - Anything with a query string, and any other request: not touched.
+ *
+ * Bump CACHE_NAME when this list changes; activation deletes older caches.
  *
  * @package    Go2My.Link
  * @subpackage PWA
  * @author     MWBM Partners Ltd (MWservices)
- * @version    0.7.0
+ * @version    0.8.0
  * @since      Phase 6
  *
  * 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API
  * ============================================================================
  */
 
-// 🏷️ Cache version — bump this to invalidate old caches on deployment
-const CACHE_NAME = 'go2mylink-admin-v1';
+const CACHE_NAME = 'go2mylink-admin-v2';
 
-// 📦 App shell — static assets to pre-cache on install
-const APP_SHELL = [
-    '/',
+// The offline page (offline.php) prints its own small document without the
+// site header, navigation or cookie banner, so fetching it here issues no
+// form tokens. The old worker fetched "/", whose cookie banner issued a new
+// token and broke a first visit's "Accept cookies" (#283).
+const OFFLINE_PAGE = '/offline';
+
+const STATIC_FILES = [
+    '/offline',
+    '/css/style.css',
+    '/js/theme.js',
+    '/js/app.js',
+    '/js/cookie-consent.js',
     '/icons/icon-192x192.png',
     '/icons/icon-512x512.png',
     '/manifest.json'
 ];
 
-// ============================================================================
-// 📥 Install — Pre-cache the app shell
-// ============================================================================
 self.addEventListener('install', function(event)
 {
     event.waitUntil(
         caches.open(CACHE_NAME).then(function(cache)
         {
-            return cache.addAll(APP_SHELL);
+            // cache: 'reload' asks the server, so a new cache never starts
+            // with old copies from the browser's own cache.
+            var freshRequests = STATIC_FILES.map(function(path)
+            {
+                return new Request(path, { cache: 'reload' });
+            });
+            return cache.addAll(freshRequests);
         })
     );
-
-    // Activate immediately without waiting for existing clients to close
     self.skipWaiting();
 });
 
-// ============================================================================
-// ♻️ Activate — Clean up old caches from previous versions
-// ============================================================================
 self.addEventListener('activate', function(event)
 {
     event.waitUntil(
@@ -66,96 +86,91 @@ self.addEventListener('activate', function(event)
                     {
                         return caches.delete(name);
                     }
+                    return Promise.resolve(false);
                 })
             );
         })
     );
-
-    // Claim all open clients immediately
     self.clients.claim();
 });
 
-// ============================================================================
-// 🌐 Fetch — Network-first for pages, cache-first for static assets
-// ============================================================================
 self.addEventListener('fetch', function(event)
 {
     var request = event.request;
 
-    // Only handle GET requests
     if (request.method !== 'GET')
     {
         return;
     }
 
-    // Skip cross-origin requests (CDN resources are handled by browser cache)
-    if (!request.url.startsWith(self.location.origin))
+    var url = new URL(request.url);
+
+    if (url.origin !== self.location.origin)
     {
         return;
     }
 
-    // Determine if this is a static asset (CSS, JS, images, fonts, manifest)
-    var url = new URL(request.url);
-    var isStaticAsset = /\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2?|json)$/i.test(url.pathname);
-
-    if (isStaticAsset)
+    if (request.mode === 'navigate')
     {
-        // 📦 Cache-first for static assets — fast loads, updated on next SW update
         event.respondWith(
-            caches.match(request).then(function(cachedResponse)
+            fetch(request).catch(function()
             {
-                if (cachedResponse)
+                return caches.match(OFFLINE_PAGE).then(function(offlineResponse)
                 {
-                    return cachedResponse;
-                }
-
-                return fetch(request).then(function(networkResponse)
-                {
-                    // Cache the new static asset for future use
-                    if (networkResponse.ok)
+                    if (offlineResponse)
                     {
-                        var responseClone = networkResponse.clone();
-                        caches.open(CACHE_NAME).then(function(cache)
-                        {
-                            cache.put(request, responseClone);
-                        }).catch(function() {});
+                        return offlineResponse;
                     }
-
-                    return networkResponse;
+                    return Response.error();
                 });
             })
         );
+        return;
     }
-    else
+
+    if (url.search !== '' || STATIC_FILES.indexOf(url.pathname) === -1)
     {
-        // 🌐 Network-first for HTML/PHP pages — always get fresh content
-        event.respondWith(
-            fetch(request).then(function(networkResponse)
-            {
-                // Cache the page response for offline fallback
-                if (networkResponse.ok)
-                {
-                    var responseClone = networkResponse.clone();
-                    caches.open(CACHE_NAME).then(function(cache)
-                    {
-                        cache.put(request, responseClone);
-                    });
-                }
-
-                return networkResponse;
-            }).catch(function()
-            {
-                // Offline — try the cache, then fall back to the homepage
-                return caches.match(request).then(function(cachedResponse)
-                {
-                    if (cachedResponse)
-                    {
-                        return cachedResponse;
-                    }
-
-                    return caches.match('/');
-                });
-            })
-        );
+        return;
     }
+
+    // A fresh copy for next time. waitUntil keeps the worker alive until it
+    // is stored. If storing fails (storage full), the server's copy is still
+    // returned; if the network fails, the cached copy is served when there
+    // is one.
+    var refresh = fetch(request, { cache: 'no-cache' }).then(function(networkResponse)
+    {
+        if (!networkResponse.ok)
+        {
+            return networkResponse;
+        }
+
+        var copyToStore = networkResponse.clone();
+
+        return caches.open(CACHE_NAME).then(function(cache)
+        {
+            return cache.put(request, copyToStore);
+        }).then(function()
+        {
+            return networkResponse;
+        }, function()
+        {
+            return networkResponse;
+        });
+    });
+
+    event.waitUntil(refresh.catch(function()
+    {
+        return undefined;
+    }));
+
+    event.respondWith(
+        caches.match(request, { cacheName: CACHE_NAME }).then(function(cachedResponse)
+        {
+            if (cachedResponse)
+            {
+                return cachedResponse;
+            }
+            return refresh;
+        })
+    );
 });

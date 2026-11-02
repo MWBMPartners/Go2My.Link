@@ -250,9 +250,9 @@ The application detects its environment from the hostname:
 3. 📋 Import all **16** schema files from `web/_sql/schema/`, in filename order
 4. 🔧 Import both stored procedures from `web/_sql/procedures/`
    (`sp_generateShortCode.sql`, `sp_lookupShortURL.sql`)
-5. 🌱 Import all **33** seed files from `web/_sql/seeds/`, in order — the
+5. 🌱 Import all **34** seed files from `web/_sql/seeds/`, in order — the
    numbering is not continuous: `001` through `023` run in sequence, then
-   ten later additions sit outside that run, `029_linkspage_privacy_translations.sql`,
+   eleven later additions sit outside that run, `029_linkspage_privacy_translations.sql`,
    `058_truthful_marketing_translations.sql`,
    `059_link_destination_translations.sql`,
    `064_linkspage_avatar_icon_translations.sql`,
@@ -260,17 +260,18 @@ The application detects its environment from the hostname:
    `066_org_members_unknown_action_translation.sql`,
    `067_dashboard_access_translations.sql`,
    `068_small_fixes_translations.sql`,
-   `069_home_meta_description_translation.sql` and
+   `069_home_meta_description_translation.sql`,
+   `070_offline_page_translations.sql` and
    `071_form_feedback_translations.sql` (see the table below for
    what each one adds). Importing "in order" means by filename, so a plain
-   `for f in web/_sql/seeds/*.sql` loop picks up all 33 without needing to
+   `for f in web/_sql/seeds/*.sql` loop picks up all 34 without needing to
    know about the gap in the numbers.
 
-> 📝 Counts as at 2026-11-02: 16 schema files, 2 stored procedures, 33 seeds,
+> 📝 Counts as at 2026-11-02: 16 schema files, 2 stored procedures, 34 seeds,
 > 21 migrations. Import order is schema → procedures → seeds, which is the
 > order `.github/workflows/ci.yml` uses. (Seed `023` and migration `021`, the
 > LinksPage feature registry, were added on 2026-09-21; seeds `029`, `058`,
-> `059`, `064`, `065`, `066`, `067`, `068`, `069` and `071` were added later still, outside the 001-023 run —
+> `059`, `064`, `065`, `066`, `067`, `068`, `069`, `070` and `071` were added later still, outside the 001-023 run —
 > see below.)
 
 #### 🚨 The collation check — do this first, every time
@@ -354,9 +355,10 @@ key names instead of words:
 | `067_dashboard_access_translations.sql` | 10 strings: the "access refused" screen that six dashboard pages (API Keys, Custom Domains, Members, Invite Member, Organisation Settings, Short Domains) now share — a heading, a line of explanation and a button for someone with no organisation yet ("You are not in an organisation yet", "Create an organisation"), a heading and a button for someone who belongs to one but may not manage it ("Access Denied", "Back to Dashboard"), and the five pages' own refusal messages, which used to be English-only (#279) | Those six pages show raw key names such as `access.denied_heading` and `org.members_error_forbidden` instead of English when somebody is refused |
 | `068_small_fixes_translations.sql` | 9 strings for the #284 fixes: the new legal hub page at `/legal` (title, description and introduction), the LinksPage editor's "Link deleted." and "Link saved." messages, the "Expired" and "Scheduled" badges on My Links, and My Links' "Prev" and "Next" page buttons (#284) | The `/legal` page shows `legal.hub_title` and the other key names; the LinksPage editor shows `linkspage.item_saved`/`linkspage.item_deleted` after saving or deleting a link; My Links shows `links.status_expired`/`links.status_scheduled` and `links.page_prev`/`links.page_next` |
 | `069_home_meta_description_translation.sql` | 1 string: the home page's own search and sharing description ("Shorten long web addresses for free, with no account needed. …"), which used to be the three-word tagline (#282) | The home page's description, in search results and in link previews on social media, reads `home.meta_description` |
+| `070_offline_page_translations.sql` | 3 strings: the title, message and "Try again" button of the offline page at /offline on go2my.link and the dashboard, which the service workers show when the network is down (#283) | The offline page shows its built-in English instead (it never shows key names), so it cannot be translated |
 | `071_form_feedback_translations.sql` | 5 strings for #286: the "Working…" label buttons show while a form is being sent, the Organisation Members page's new role list label, "Change role" button and its confirmation, and the LinksPage list's confirmation before unpublishing a page (#286) | Busy buttons and the screen-reader announcement say `common.working`; the Members page shows `org.members_change_role_button` and its confirm box shows the key name; the Unpublish confirm box shows `linkspage.unpublish_confirm` |
 
-All twelve are `INSERT IGNORE`, so they are safe to run more than once and safe
+All thirteen are `INSERT IGNORE`, so they are safe to run more than once and safe
 on a database that already has them.
 
 #### 🧩 Migration `021` — the LinksPage feature registry (needed on an EXISTING database)
