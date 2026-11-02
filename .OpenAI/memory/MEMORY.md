@@ -333,7 +333,7 @@ Finished table. Things a future session needs to know:
   plain 404 once installed. PHP's own `require` of page files is not affected.
 - **Service workers (#283):** go2my.link's and the dashboard's cache static files only, never pages.
   lnks.page has an old `sw.js` and `manifest.json` that nothing registers or links (noted on #305); the offline page's text comes
-  from `web/_includes/offline_page.php` (`g2ml_offlinePageText()`), with a thin `offline.php` per site.
+  from `web/_includes/offline_page.php` (`g2ml_offlinePageText()`), with a thin `offline.php` on go2my.link and the dashboard.
 - **Sign-in and messages (#281):** a one-time message survives a redirect with `g2ml_flashSet()` /
   `g2ml_flashTake()`; where to go after signing in is checked by `g2ml_safePostLoginRedirect()`.
 - **Search and sharing (#282):** a canonical address is printed only on a normal (200) page that is

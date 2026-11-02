@@ -16,11 +16,12 @@ the owner asked for. Each item is one commit on `feat/2026-09-21-linkspage-and-s
 - 🐛 Pages now run before the header, so every page shows its own title, sign-in and log-out
   redirects work, and error pages answer with their real status code (#278).
 - 🐛 "&" and apostrophes are no longer saved as `&amp;` and `&#039;` (#280).
-- 🔒 Three small security gaps: the homepage no longer shows text taken from its own address, API
+- 🔒 Three security gaps: the homepage no longer shows text taken from its own address (anyone
+  could make a go2my.link address show a message of their choosing), API
   keys sent in an `Authorization: Bearer` header are no longer dropped, and signing in returns
   dashboard users to the dashboard (#281).
-- 🐛 The dashboard has its own styles and scripts, so the theme switch, cookie banner and log-out
-  work; its menu links and error pages are fixed (#279).
+- 🐛 The dashboard has its own styles and scripts, so the theme switch and cookie banner work; its
+  menu links (log-out included) and error pages are fixed (#279).
 - 🐛 Small broken things: a new `/legal` page, working legal links, link status badges, the info
   lookup (#284).
 - ✨ Favicons, canonical addresses, share images, `noindex` on private pages, `robots.txt` and
@@ -31,8 +32,9 @@ the owner asked for. Each item is one commit on `feat/2026-09-21-linkspage-and-s
   one-time links included); they cache static files only and show an offline page (#283).
 - ♿ The navigation bar and dark-mode buttons pass WCAG AA contrast, every control has a visible
   focus ring, and LinksPage layouts are fixed (#287).
-- 🧹 Unused jQuery and a 350 KB logo removed, no developer comments in page source, `/pages/...`
-  and the finished installer answer 404, and the library fallbacks finally work (#285).
+- 🧹 Unused jQuery and a 350 KB logo removed; the shared header, menu, footer, cookie banner and
+  landing pages print no developer comments (the remaining page files are #305); `/pages/...` and
+  the finished installer answer 404; the library fallbacks finally work (#285).
 - 📝 A standing "polish check" rule, with a unit test for the parts a machine can check (#288).
 - 🔒 CVE-2026-111497 ("HTTP2Shell", Brotli decoder): the application is not exposed; CI moved to
   Node 24, and a test fails if anything starts decoding Brotli (#302).
