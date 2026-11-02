@@ -6,7 +6,8 @@
 > `~/.claude/CLAUDE.md` (which `~/.codex/AGENTS.md` links to), but that file only exists on the
 > owner's own computers. This copy travels with the code, so the rules still apply on a fresh
 > clone, a cloud session, or another tool.
-> **Last revised:** 2026-09-22, for owner decisions 16–19 (#243) — parallel fact-gathering (rule 4),
+> **Last revised:** 2026-11-02, rule 14 (the polish check the owner asked for on 2026-10-05,
+> #288), with one-line additions to rules 7 and 8. Before that: 2026-09-22, for owner decisions 16–19 (#243) — parallel fact-gathering (rule 4),
 > the handoff's move to `.github/HANDOFF.md` (rule 3), the dev-team plugin's code-writing skills
 > allowed on a branch or worktree of their own (rule 5), and the plugin's own files moving to
 > `docs/dev-team/`, done the same day in `#249` (rule 5). Before that: 2026-09-21, from the owner's
@@ -281,7 +282,8 @@ One piece of work = one GitHub issue and one commit. When it is finished:
    that version:
    `docker run --rm -v "$PWD":/app -w /app php:8.4-cli php tests/run.php`. Format only the files
    you touched (the tree has older formatting drift, tracked in #153 — do not reformat unrelated
-   files). Read the diff once with security in mind.
+   files). Read the diff once with security in mind. If the work changes what visitors see, also run
+   the polish check (rule 14) on the pages it touches.
 2. **Review loop** (rule 6).
 3. **Update the Claude memory and context** in `.claude/` (`memory/MEMORY.md`, the topic files,
    `HISTORY.md`, and the root `CLAUDE.md` when a house rule changes).
@@ -314,6 +316,8 @@ code in every documentation sweep** even when nothing seems to have changed (the
 both self-hosted as plain files so they work on shared hosting with no Docker or other container
 software: **Redoc** (a readable manual) at `/api/docs/` and **Swagger UI** (a try-it-out console) at
 `/api/docs/swagger/`. Keep both working.
+
+Every documentation sweep also runs the full polish check (rule 14) in a browser across all three sites.
 
 ## 9. 🔀 Order and bundle the work sensibly
 
@@ -401,6 +405,42 @@ tool it means falling back from one model or agent to another. Tomorrow it may m
   with no memory of building the thing) and name it, and include the change in the catch-up review.
 - **Write down every fallback** — in the commit message, the handoff and the progress report — so the
   catch-up review knows what to look at and a pattern of repeated fallbacks gets noticed.
+
+## 14. 🔎 The polish check — nothing that looks thrown together
+
+*(Asked for by the owner on 2026-10-05, written in on 2026-11-02, #288. The owner wants the same rule
+machine-wide, for all projects.)*
+Visitors decide in a few seconds whether a site was built with care, and small unfinished details
+make them doubt everything else. So every change a visitor can see passes this check.
+
+**What it covers** (each item passes or fails):
+
+1. No default, preview or placeholder address or text anywhere that is served.
+2. Every page has its own title and description, a canonical address, share tags with a real image,
+   and a favicon that loads. Private and error pages say `noindex`.
+3. The "boring" pages exist and look like the rest of the site: 404, 403 and 500 pages with a way
+   back; a working state for every slow action; an empty state with a next step for every list and
+   chart; error messages that say what happened and what to do next.
+4. One `h1` per page, no skipped heading levels, alt text on meaningful images, a label on every field
+   and icon-only button, and AA contrast in light and dark mode.
+5. A `robots.txt` and a sitemap per site, listing only real public pages.
+6. No console errors, no debug output, no development files a visitor can fetch, and no large library
+   on a page that does not use it.
+7. Nothing breaks at 280, 320, 375, 768, 1024, 1440 and 1920 pixels wide, on a landscape phone, in dark
+   mode, with very long text, or with no data: no sideways scrolling, nothing cut off or overlapping.
+8. Buttons, spacing, fonts, corner rounding, icons and components follow the same pattern on every page.
+9. Every button, link and form does something real.
+
+**When it runs:** the parts a machine can check are unit tests (`tests/unit/site_polish_test.php`,
+which lists the other tests for the machine-checkable parts), so they run with the whole suite before every commit (rule
+7, step 1), and in CI on every pull request and every push to `alpha`, `beta`, `release-candidate` and
+`main`. The rest is a browser run at the widths above: on the pages the work touches, before reporting
+any piece of work that changes what visitors see; on the whole site, before each pull request; and in
+every documentation sweep (rule 8).
+
+**Done means:** the unit tests pass; the browser run shows no console errors and no sideways scrolling;
+each problem found is either fixed in the same piece of work (when small) or has its own issue; and
+anything that could not be checked is listed as NOT RUN in the report.
 
 ---
 

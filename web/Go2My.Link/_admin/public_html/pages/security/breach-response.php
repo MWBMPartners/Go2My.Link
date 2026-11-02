@@ -35,6 +35,8 @@ header('Pragma: no-cache');
 // ============================================================================
 $pageTitle       = 'Breach Response';
 $pageDescription = 'Emergency mass credential reset for security incidents.';
+// header.php reads $pageDesc for the page's description (#288).
+$pageDesc        = $pageDescription;
 
 // ============================================================================
 // 📋 Process form submission

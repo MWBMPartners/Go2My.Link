@@ -225,7 +225,7 @@
     </main>
 
     <footer>
-        <p>&copy; 2026 <a href="https://www.MWBMpartners.LTD">MWBM Partners Ltd</a> (MWservices)</p>
+        <p>&copy; <?php echo date('Y'); ?> <a href="https://www.MWBMpartners.LTD">MWBM Partners Ltd</a> (MWservices)</p>
     </footer>
 
 <?php // Countdown ring (large screens only) ?>

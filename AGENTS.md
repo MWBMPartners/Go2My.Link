@@ -74,6 +74,13 @@ copy is out of step (it warns; `alpha` has no required checks, so it cannot bloc
   everything not blocked. A decision the owner has taken is final.
 - **Reorder and bundle tasks** where that is more efficient, as long as nothing is dropped.
 - **Progress tables:** frequent updates as a table of the queued tasks and the status of each.
+- **The polish check** (working-rules.md rule 14): nothing a visitor sees may look thrown together —
+  own titles and share tags, 404/empty/loading/error states, no debug output or development files,
+  works at every screen size and in dark mode, consistent components, no dead buttons or links. The
+  parts a machine can check are unit tests (`tests/unit/site_polish_test.php`), run before every commit
+  and in CI on pull requests and on pushes to alpha, beta, release-candidate and main; the rest is a
+  browser run on the pages touched before reporting visitor-facing work, and on the whole site before
+  each pull request.
 - **The documentation sweep is a standing task** after each real body of work: every `.md` file, the
   in-app Help section, the assistants' notes, and the API description (`openapi.yaml`, shown by Redoc
   at `/api/docs/` and Swagger UI at `/api/docs/swagger/`, both plain files that work on shared

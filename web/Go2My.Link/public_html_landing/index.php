@@ -353,7 +353,7 @@ $siteName = 'Go2My.link';
     </main>
 
     <footer>
-        <p>&copy; 2026 <a href="https://www.MWBMPartners.ltd">MWBM Partners Ltd</a> (t/a MWservices). All rights reserved.</p>
+        <p>&copy; <?php echo date('Y'); ?> <a href="https://www.MWBMPartners.ltd">MWBM Partners Ltd</a> (t/a MWservices). All rights reserved.</p>
     </footer>
 <?php // Countdown ring (large screens only) ?>
 <div id="countdown-ring" aria-hidden="true">
