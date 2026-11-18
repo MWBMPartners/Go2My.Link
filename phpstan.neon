@@ -22,6 +22,16 @@
 parameters:
     level: 5
 
+    # The range of PHP versions the code must be correct for.
+    #   min = the oldest PHP we support (8.4). PHPStan then warns about any
+    #         call to a function that only exists in a newer PHP unless the
+    #         call is guarded with function_exists().
+    #   max = the highest PHP version this PHPStan release knows about. It
+    #         refuses anything above 80599. Raise it after upgrading PHPStan.
+    phpVersion:
+        min: 80400
+        max: 80599
+
     paths:
         - web/_functions
         - web/_includes

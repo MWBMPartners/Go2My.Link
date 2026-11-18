@@ -48,6 +48,73 @@ declare(strict_types=1);
 date_default_timezone_set('UTC');
 
 // ============================================================================
+// ⚠️ Deprecation notices fail the run
+// ============================================================================
+// A newer PHP version marks more things as deprecated. Those notices never
+// change the exit code on their own, so they are easy to miss. Here every
+// deprecation notice is recorded, and g2ml_test_run_all() prints each one and
+// counts it as a failure. A notice hidden with the @ operator is left alone.
+// A recorded notice is NOT also printed by PHP itself (the handler returns
+// true), so each one shows up exactly once, in the report at the end.
+// The list is never cleared. A test may only save it and put it back.
+// ============================================================================
+
+error_reporting(E_ALL);
+
+$GLOBALS['g2ml_test_deprecations'] = array();
+
+/**
+ * Record one deprecation notice. Installed as the PHP error handler for
+ * deprecation notices only.
+ *
+ * @param  int    $errno    The PHP error level.
+ * @param  string $errstr  The notice text.
+ * @param  string $errfile The file the notice came from.
+ * @param  int    $errline The line the notice came from.
+ * @return bool  True when the notice was recorded, false when it was left to PHP.
+ */
+function g2ml_test_record_deprecation(int $errno, string $errstr, string $errfile = '', int $errline = 0): bool
+{
+    if ((error_reporting() & $errno) === 0)
+    {
+        return false;
+    }
+
+    $GLOBALS['g2ml_test_deprecations'][] = array(
+        'message' => $errstr,
+        'file'    => $errfile,
+        'line'    => $errline,
+    );
+
+    return true;
+}
+
+set_error_handler('g2ml_test_record_deprecation', E_DEPRECATED | E_USER_DEPRECATED);
+
+/**
+ * Return the deprecation notices recorded so far.
+ *
+ * @return array<int, array{message: string, file: string, line: int}>
+ */
+function g2ml_test_get_deprecations(): array
+{
+    return $GLOBALS['g2ml_test_deprecations'];
+}
+
+/**
+ * Put back a list of deprecation notices saved earlier with
+ * g2ml_test_get_deprecations(). A test that checks the recording itself uses
+ * this to leave the list as it found it.
+ *
+ * @param  array<int, array{message: string, file: string, line: int}> $saved
+ * @return void
+ */
+function g2ml_test_restore_deprecations(array $saved): void
+{
+    $GLOBALS['g2ml_test_deprecations'] = $saved;
+}
+
+// ============================================================================
 // 🧾 Assertion failure exception
 // ============================================================================
 
@@ -279,7 +346,8 @@ function assert_contains(string $needle, string $haystack, string $message = '')
 
 /**
  * Execute every registered test in order, printing a per-test PASS/FAIL line
- * and a final summary. Returns the number of failures so a caller can set the
+ * and a final summary. Every recorded deprecation notice is printed and counts
+ * as one extra failure. Returns the number of failures so a caller can set the
  * process exit code.
  *
  * @return int  Count of failed tests (0 means everything passed).
@@ -313,6 +381,14 @@ function g2ml_test_run_all(): int
             echo 'FAIL  ' . $name . ' (unexpected ' . get_class($unexpected) . ')' . PHP_EOL;
             echo '        ' . $unexpected->getMessage() . PHP_EOL;
         }
+    }
+
+    $deprecations = g2ml_test_get_deprecations();
+
+    foreach ($deprecations as $notice)
+    {
+        $failed = $failed + 1;
+        echo 'DEPRECATED  ' . $notice['message'] . ' in ' . $notice['file'] . ':' . $notice['line'] . PHP_EOL;
     }
 
     echo PHP_EOL;

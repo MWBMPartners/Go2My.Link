@@ -53,7 +53,7 @@ function g2ml_offlinePageText(string $key, string $english): string
     {
         $translated = __($key);
 
-        if (is_string($translated) && $translated !== '' && $translated !== $key)
+        if ($translated !== '' && $translated !== $key)
         {
             return $translated;
         }
