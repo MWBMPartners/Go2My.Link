@@ -27,7 +27,7 @@ HOUSE RULES THAT BITE (CLAUDE.md and .claude/memory/patterns.md have the full li
 - A local safety lock (.git/hooks/pre-commit and pre-push) refuses every commit and push unless G2ML_ALLOW_COMMIT=1 / G2ML_ALLOW_PUSH=1 is set for that one command. Only the finaliser role may set them. Never use --no-verify, never edit or remove the hooks.
 - The dev-team plugin's guard hook blocks any shell command whose TEXT contains a git push to the main branch. You have no reason to push; if a command is blocked for that reason, write the text to a file with the Write tool and run the file.
 - TESTS: ${TESTS}
-  This runs php -l on changed PHP files, the unit suite on PHP 8.4, and the integration suite against a fresh MySQL 8.4 (utf8mb4_unicode_ci) with PHP 8.4. It prints each result and a final "OVERALL exit=N". Read the real exit codes; never pipe it into grep/tail and rely on &&. The baseline on 2026-09-23 was 652 unit + 229 integration, all passing; each finished item adds its own tests on top.
+  This runs the strict PHP lint, the unit suite and the integration suite (against a fresh MySQL 8.4, utf8mb4_unicode_ci) on PHP 8.4 and 8.5 (counted) and on the PHP 8.6 release candidate (reported only, not counted). It prints each result and a final "OVERALL exit=N". Read the real exit codes; never pipe it into grep/tail and rely on &&. The baseline on 2026-09-23 was 652 unit + 229 integration, all passing; each finished item adds its own tests on top.
 `
 
 // Codex is told its model by name. Without it, Codex on the owner's Mac
