@@ -6,8 +6,9 @@
 > `~/.claude/CLAUDE.md` (which `~/.codex/AGENTS.md` links to), but that file only exists on the
 > owner's own computers. This copy travels with the code, so the rules still apply on a fresh
 > clone, a cloud session, or another tool.
-> **Last revised:** 2026-11-02, rule 14 (the polish check the owner asked for on 2026-10-05,
-> #288), with one-line additions to rules 7 and 8. Before that: 2026-09-22, for owner decisions 16–19 (#243) — parallel fact-gathering (rule 4),
+> **Last revised:** 2026-11-18, rule 4 (the three tiers, each with a model and an effort level —
+> gather, plan, implement). Before that: 2026-11-02, rule 14 (the polish check the owner asked for
+> on 2026-10-05, #288), with one-line additions to rules 7 and 8. Before that: 2026-09-22, for owner decisions 16–19 (#243) — parallel fact-gathering (rule 4),
 > the handoff's move to `.github/HANDOFF.md` (rule 3), the dev-team plugin's code-writing skills
 > allowed on a branch or worktree of their own (rule 5), and the plugin's own files moving to
 > `docs/dev-team/`, done the same day in `#249` (rule 5). Before that: 2026-09-21, from the owner's
@@ -107,6 +108,24 @@ gets.
   finding seven rounds running. None reached GitHub, and the work was redone on Sonnet.)*
 - **Checking is never done by a weaker model than the building** — in Claude Code, never below
   Opus.
+- **The three tiers, each with a model and an effort level (owner, 2026-11-18).** Every piece of
+  work that is not a one-line fix goes through them in this order, and the effort level is set on
+  purpose, not left to the default:
+
+  | Tier | What it does | Model (in Claude Code) | Effort |
+  |---|---|---|---|
+  | 1. **Gather** | Finds out what is already true: reads code, lists issues, fetches documents. No judgement. May run in parallel. | Sonnet or Haiku | **Medium** |
+  | 2. **Analyse and plan** | Decides what the facts mean, what to build, in what order. One agent at a time. | **Opus** | **High** |
+  | 3. **Implement** | Builds exactly what the plan says. | Sonnet or Haiku (Opus only when the build is genuinely complex, as above) | **Medium** |
+
+  Checking and review keep the rule above (never weaker than the building) and are not changed by
+  this table. **On other tools** (Codex, Ollama, Kimi, Grok, Gemini and whatever comes next) the same
+  three tiers apply with the closest equivalents: a small, fast model with moderate reasoning to
+  gather; the strongest reasoning model available, at its highest routine reasoning setting, to plan;
+  a small or mid-sized model with moderate reasoning to implement. If a tool has no effort setting,
+  say so in the plan and use the nearest thing it offers (for example a "thinking" or "reasoning"
+  mode). The owner keeps the same table machine-wide, outside this repository, so it reaches every
+  project and every tool.
 - The aim is **GIRFT — Get It Right First Time**: spend effort where judgement is needed and save it
   where it is not. Verify before asserting; prefer designs that refuse when unsure over ones that
   guess.

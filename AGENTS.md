@@ -37,10 +37,14 @@ copy is out of step (it warns; `alpha` has no required checks, so it cannot bloc
   each piece of work, the moment something important is learned, and before anything long-running.
   Never create a second one, and never write it at the repository root: the root `HANDOFF.md` is the
   dev-team plugin's scratch card and is ignored by git.
-- **Deep analysis and planning: Opus, one agent after another** (changed 2026-09-23; it used to be
-  Fable first). Building: the cheapest capable model (Sonnet, or Haiku for mechanical edits; Opus when
-  genuinely complex). Checking is never done by a weaker model than the building. Fact-gathering may
-  run in parallel; judgements may not.
+- **Three tiers, each with a model and an effort level** (owner, 2026-11-18). **Gather** facts with a
+  small, fast model at medium effort (Sonnet or Haiku in Claude Code); this may run in parallel.
+  **Analyse and plan** with the strongest reasoning model at high effort (Opus in Claude Code), one
+  agent after another, never in parallel. **Implement** with a small or mid-sized model at medium
+  effort (Sonnet or Haiku; the strongest model only when the build is genuinely complex). Checking is
+  never done by a weaker model than the building. If your tool has no effort setting, say so in your
+  plan and use its nearest equivalent (a reasoning or thinking mode). Full rule: `working-rules.md`
+  rule 4 (in `.OpenAI/memory/`).
 - **Use helper plugins where they fit**, including to suggest further fixes, tweaks, enhancements and
   new features — raised as suggestions, not built unless the owner says so. **The Claude Code dev-team
   plugin stays in use here (decision 18, #243).** Where its own habits differ from this project's
