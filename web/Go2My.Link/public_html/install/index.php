@@ -124,6 +124,10 @@ elseif (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
     $g2mlSecureCookie = true;
 }
 
+// Always refuse session ids the server did not create. PHP 8.6 turns this on
+// by default; setting it here makes every PHP version behave the same.
+ini_set('session.use_strict_mode', '1');
+
 session_set_cookie_params([
     'httponly' => true,
     'secure'   => $g2mlSecureCookie,
@@ -1238,6 +1242,30 @@ function g2ml_install_requirements(string $authDir, string $sqlDir): array
 
     $phpOk    = version_compare(PHP_VERSION, '8.4.0', '>=');
     $checks[] = ['label' => 'PHP 8.4 or newer (found ' . PHP_VERSION . ')', 'ok' => $phpOk];
+
+    // Advice about the PHP version. This never blocks the install: it only adds
+    // a warning line. The installer's own text is plain English (it runs before
+    // any database or translations exist). The helper is loaded only if it is
+    // there, because the installer can also run on its own.
+    $supportFile = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . '_functions' . DIRECTORY_SEPARATOR . 'php_support.php';
+    if (file_exists($supportFile))
+    {
+        require_once $supportFile;
+    }
+
+    if ($phpOk && function_exists('g2ml_phpSupportStatus') && function_exists('g2ml_phpSupportMessage'))
+    {
+        $supportStatus = g2ml_phpSupportStatus(PHP_VERSION_ID, PHP_EXTRA_VERSION);
+        if ($supportStatus === 'pre-release' || $supportStatus === 'untested')
+        {
+            $checks[] = [
+                'label' => g2ml_phpSupportMessage($supportStatus, PHP_VERSION),
+                'ok'    => true,
+                'warn'  => true,
+            ];
+        }
+    }
+
     $checks[] = ['label' => 'mysqli extension', 'ok' => extension_loaded('mysqli')];
     $checks[] = ['label' => 'openssl extension', 'ok' => extension_loaded('openssl')];
     $checks[] = ['label' => 'mbstring extension', 'ok' => extension_loaded('mbstring')];
@@ -1284,12 +1312,12 @@ header('Content-Type: text/html; charset=UTF-8');
         :root {
             color-scheme: light dark;
             --bg: #f4f6fb; --card: #ffffff; --text: #1c2333; --muted: #56607a;
-            --border: #d8dee9; --brand: #2f6fed; --ok: #1f7a44; --err: #b3261e;
+            --border: #d8dee9; --brand: #2f6fed; --ok: #1f7a44; --err: #b3261e; --warn: #8a5a00;
         }
         @media (prefers-color-scheme: dark) {
             :root {
                 --bg: #11151f; --card: #1b2130; --text: #e8ecf5; --muted: #9aa4ba;
-                --border: #313a52; --brand: #6ea0ff; --ok: #4cc587; --err: #ff6b61;
+                --border: #313a52; --brand: #6ea0ff; --ok: #4cc587; --err: #ff6b61; --warn: #f0b44c;
             }
         }
         * { box-sizing: border-box; }
@@ -1333,6 +1361,12 @@ header('Content-Type: text/html; charset=UTF-8');
         ul.checks li { padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
         .badge-ok { color: var(--ok); font-weight: 700; }
         .badge-no { color: var(--err); font-weight: 700; }
+        .badge-warn { color: var(--warn); font-weight: 700; }
+        /* Text for screen readers only: present in the page, but not drawn. */
+        .sr-only {
+            position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+            overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+        }
         table.log { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.5rem; }
         table.log th, table.log td { text-align: left; padding: 0.35rem 0.5rem; border-bottom: 1px solid var(--border); }
         code { background: var(--bg); padding: 0.1rem 0.35rem; border-radius: 5px; font-size: 0.85em; }
@@ -1409,7 +1443,9 @@ header('Content-Type: text/html; charset=UTF-8');
         <ul class="checks">
             <?php foreach ($checks as $check) { ?>
             <li>
-                <?php if ($check['ok']) { ?>
+                <?php if (!empty($check['warn'])) { ?>
+                    <span class="badge-warn" aria-hidden="true">⚠</span><span class="sr-only">Warning:</span>
+                <?php } elseif ($check['ok']) { ?>
                     <span class="badge-ok">✔</span>
                 <?php } else { ?>
                     <span class="badge-no">✘</span>

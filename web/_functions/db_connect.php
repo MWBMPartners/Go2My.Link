@@ -50,6 +50,56 @@ if ($g2mlGuardScriptPath !== '' && realpath($g2mlGuardScriptPath) === realpath(_
 unset($g2mlGuardScriptPath);
 
 /**
+ * Say whether a database connection still answers.
+ *
+ * Sends the cheapest possible statement ("DO 1"). Only a LOST connection
+ * counts as "not alive": that returns false, so getDB() reconnects. Any other
+ * database error is a real problem (for example "Commands out of sync" when a
+ * result has not been read yet) and is thrown again, so it is never hidden by
+ * quietly opening a second connection.
+ *
+ * This replaces mysqli::ping(), which PHP has marked as deprecated. Note that
+ * ping() also throws on a dead connection under strict reporting, and the @
+ * sign does not stop an exception, so the old check never reached the
+ * reconnect code.
+ *
+ * @param  mysqli $db  The connection to test
+ * @return bool        True if the connection answered, false if it was lost
+ * @throws mysqli_sql_exception  For any error that is not a lost connection
+ */
+function g2ml_dbConnectionIsAlive(mysqli $db): bool
+{
+    // The error numbers that mean "the connection is gone".
+    $lostConnectionCodes = [
+        2006, // The server has gone away.
+        2013, // The connection was lost while a query was running.
+        2055, // The connection to the server was lost (system error).
+        4031, // The server disconnected this client for being idle too long.
+    ];
+
+    try
+    {
+        $answer = $db->query('DO 1');
+    }
+    catch (mysqli_sql_exception $exception)
+    {
+        if (in_array($exception->getCode(), $lostConnectionCodes, true))
+        {
+            return false;
+        }
+
+        throw $exception;
+    }
+
+    if ($answer === false)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+/**
  * Get the MySQLi database connection (singleton).
  *
  * Creates a new connection on first call, then returns the same connection
@@ -72,8 +122,7 @@ function getDB(): ?mysqli
     if ($db !== null && $db instanceof mysqli)
     {
         // Check if the connection is still alive
-        // 📖 Reference: https://www.php.net/manual/en/mysqli.ping.php
-        if (@$db->ping())
+        if (g2ml_dbConnectionIsAlive($db))
         {
             return $db;
         }
@@ -204,5 +253,5 @@ function isDBConnected(): bool
         return false;
     }
 
-    return @$db->ping();
+    return g2ml_dbConnectionIsAlive($db);
 }

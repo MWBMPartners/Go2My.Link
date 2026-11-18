@@ -657,21 +657,10 @@ function validateDestination(string $url, int $timeout = 5): array
 
     try
     {
-        // PHP 8.4+ supports passing context to get_headers()
+        // get_headers() takes the stream context as its third argument, so the
+        // pinned-IP request options apply to this one call only.
         // 📖 Reference: https://www.php.net/manual/en/function.get-headers.php
-        if (version_compare(PHP_VERSION, '8.4.0', '>='))
-        {
-            $headers = @get_headers($pinnedUrl, true, $context);
-        }
-        else
-        {
-            // For PHP < 8.4: set the default stream context temporarily
-            // 📖 Reference: https://www.php.net/manual/en/function.stream-context-set-default.php
-            $previousContext = stream_context_get_default();
-            stream_context_set_default($contextOptions);
-            $headers = @get_headers($pinnedUrl, true);
-            stream_context_set_default(stream_context_get_options($previousContext));
-        }
+        $headers = @get_headers($pinnedUrl, true, $context);
 
         if ($headers === false)
         {
