@@ -22,6 +22,11 @@
 # or drop the matrix without also updating the ruleset, or every PR to main
 # will soft-lock.
 #
+# PHP 8.5 and 8.6 are checked in two SEPARATE jobs further down
+# ("Backend (PHP ...)" and "Tests (Integration, PHP ...)"), never by adding a
+# PHP version to the matrix of the jobs above. A PHP version in that matrix
+# would change the check names and the required checks would stop reporting.
+#
 # Must-pass steps are syntax-level checks (JS parse, JSON validity, PHP lint)
 # plus PHPStan (level 5), all known-green on the current tree (#76). Style /
 # code-sniffer steps still run advisory (continue-on-error) so they surface
@@ -139,6 +144,10 @@ jobs:
       - name: PHP syntax lint
         run: |
           parallel-lint --exclude vendor --exclude _libraries --exclude .git web/
+
+      - name: PHP strict lint
+        run: |
+          sh scripts/php-lint.sh
 
       - name: PHPStan
         continue-on-error: false
@@ -289,6 +298,174 @@ jobs:
       # 🔤 #196 — proves the fix above actually held, rather than trusting it
       # silently: fails the build the moment the database's own collation is
       # anything other than what the stored procedures depend on.
+      - name: Check database collation
+        env:
+          MYSQL_PWD: "g2ml_ci_root_password"
+        run: |
+          set -euo pipefail
+          collation=$(mysql --host="127.0.0.1" --port="3306" --user="root" \
+            --skip-column-names --batch \
+            --execute="SELECT DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = 'mwtools_Go2MyLink'")
+          echo "Database collation: ${collation}"
+          if [ "${collation}" != "utf8mb4_unicode_ci" ]
+          then
+            echo "Expected utf8mb4_unicode_ci, got '${collation}' — see #196."
+            exit 1
+          fi
+
+      - name: PHP integration tests
+        env:
+          G2ML_TEST_DB_HOST: "127.0.0.1"
+          G2ML_TEST_DB_PORT: "3306"
+          G2ML_TEST_DB_NAME: "mwtools_Go2MyLink"
+          G2ML_TEST_DB_USER: "root"
+          G2ML_TEST_DB_PASS: "g2ml_ci_root_password"
+        run: |
+          php tests/run_integration.php
+
+  # ===========================================================================
+  # Backend on newer PHP versions — the same checks as "Backend" above, run on
+  # PHP 8.5 and 8.6 (the lowest PHP we support, 8.4, stays in "Backend").
+  #
+  # WHY NEW JOBS: "Backend (ubuntu-latest)" is a required check by name. If a
+  # PHP version were added to that job's matrix, GitHub would rename the check
+  # and the required one would never report. So the new versions live here.
+  #
+  # WHAT IS REQUIRED: the 8.5 entry has `advisory: false`, so it is a real
+  # gate. The owner adds its check name ("Backend (PHP 8.5)") to the "Protect
+  # main branch" ruleset in GitHub; that cannot be done from this file.
+  # The 8.6 entry has `advisory: true`: until 8.6 is promoted (see below), a
+  # failure there shows red but does not fail the run, and the check must not
+  # be made required.
+  #
+  # PROMOTING 8.6: PHP 8.6.0 is released. Promote once the pinned setup-php
+  # (v2.37.2 still lists 8.6 as nightly) installs the stable 8.6 build and the
+  # 8.6 jobs have been green twice in a row. Each step is one line:
+  #   1. In this job and in "Tests (Integration, PHP ...)" below, change
+  #      `advisory: true` to `advisory: false` on the 8.6 entry.
+  #   2. Add '8.6' to the php-version list in sftp-deploy.yml.
+  #   3. Change 8.6-rc to 8.6 in .claude/programme/run-tests.sh and empty its
+  #      advisory list.
+  #   4. In web/_functions/php_support.php, move the "first untested PHP
+  #      version" setting ($firstUntested, and its unit test) from 80600 to
+  #      80700.
+  #   5. Update the docs, then add "Backend (PHP 8.6)" as a required check.
+  #   6. Later, once PHPStan is upgraded to a release that accepts PHP 8.6,
+  #      raise `max` in phpstan.neon from 80599 to 80699.
+  # ===========================================================================
+  backend-newer-php:
+    name: Backend (PHP ${{ matrix.php-version }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php-version: '8.5'
+            advisory: false
+          - php-version: '8.6'
+            advisory: true
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.advisory }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2.37.2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: mbstring, mysqli
+          tools: parallel-lint
+
+      - name: PHP syntax lint
+        run: |
+          parallel-lint --exclude vendor --exclude _libraries --exclude .git web/
+
+      - name: PHP strict lint
+        run: |
+          sh scripts/php-lint.sh
+
+      - name: PHPStan
+        continue-on-error: false
+        env:
+          PHPSTAN_VERSION: "2.2.4"
+          PHPSTAN_SHA256: "f1e81a1418faab14a057188646cf1220f066276fc640ce9ef1c9a4af3f0ed46b"
+        run: |
+          curl -sL "https://github.com/phpstan/phpstan/releases/download/${PHPSTAN_VERSION}/phpstan.phar" -o phpstan.phar
+          echo "${PHPSTAN_SHA256}  phpstan.phar" | sha256sum --check --strict
+          chmod +x phpstan.phar
+          php phpstan.phar analyse --configuration=phpstan.neon --no-progress
+
+      - name: PHP unit tests
+        continue-on-error: false
+        run: |
+          php tests/run.php
+
+  # ===========================================================================
+  # Tests (Integration) on newer PHP versions — the same database job as
+  # "Tests (Integration)" above, on PHP 8.5 and 8.6. See the note above
+  # "Backend (PHP ...)" for why these are separate jobs, which entry is
+  # advisory, and how to promote 8.6. As there, the mysql service container is
+  # deliberately NOT given the image's "create a database on startup" setting
+  # (#196): our own schema file must create the database.
+  # ===========================================================================
+  tests-integration-newer-php:
+    name: Tests (Integration, PHP ${{ matrix.php-version }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php-version: '8.5'
+            advisory: false
+          - php-version: '8.6'
+            advisory: true
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.advisory }}
+
+    services:
+      mysql:
+        image: "mysql:8"
+        env:
+          MYSQL_ROOT_PASSWORD: "g2ml_ci_root_password"
+        ports:
+          - "3306:3306"
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2.37.2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: "mysqli"
+
+      - name: Import schema + procedures + seeds (fresh-install order, see docs/INSTALL.md)
+        env:
+          MYSQL_PWD: "g2ml_ci_root_password"
+        run: |
+          set -euo pipefail
+          for sqlFile in $(find "web/_sql/schema" -maxdepth 1 -name "*.sql" | sort)
+          do
+            echo "Importing ${sqlFile}"
+            mysql --host="127.0.0.1" --port="3306" --user="root" < "${sqlFile}"
+          done
+          for sqlFile in $(find "web/_sql/procedures" -maxdepth 1 -name "*.sql" | sort)
+          do
+            echo "Importing ${sqlFile}"
+            mysql --host="127.0.0.1" --port="3306" --user="root" < "${sqlFile}"
+          done
+          for sqlFile in $(find "web/_sql/seeds" -maxdepth 1 -name "*.sql" | sort)
+          do
+            echo "Importing ${sqlFile}"
+            mysql --host="127.0.0.1" --port="3306" --user="root" < "${sqlFile}"
+          done
+
       - name: Check database collation
         env:
           MYSQL_PWD: "g2ml_ci_root_password"

@@ -172,11 +172,28 @@ concurrency:
 jobs:
   # ===========================================================================
   # Gate — the same must-pass code checks that gate main, re-run here so NO
-  # deploy (on any branch) proceeds unless PHP/JS/JSON are syntactically valid.
+  # deploy (on any branch) proceeds unless PHP/JS/JSON are syntactically valid
+  # and the unit tests pass.
+  #
+  # The PHP checks run once for each supported PHP version in the list below
+  # (the lowest we support, 8.4, and 8.5). PHP 8.6 is NOT in the list while it
+  # is still advisory in ci.yml: an advisory check must never stop a deploy.
+  # When 8.6 is promoted in ci.yml, add '8.6' to this list in the same change.
+  #
+  # The deploy job below uses `needs: checks` and its `if:` does not name a
+  # status function, so GitHub adds `success()` itself. That means every leg
+  # of this matrix must pass: one failed leg stops the deploy.
+  #
+  # The unit tests need no database and no secrets. They look up two public
+  # host names (see tests/README.md); that works on GitHub's runners.
   # ===========================================================================
   checks:
-    name: Pre-deploy checks
+    name: Pre-deploy checks (PHP ${{ matrix.php-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['8.4', '8.5']
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -184,14 +201,26 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2.37.2
         with:
-          php-version: '8.4'
+          php-version: ${{ matrix.php-version }}
+          extensions: mbstring, mysqli
           tools: parallel-lint
 
       - name: PHP syntax lint
         run: |
           parallel-lint --exclude vendor --exclude _libraries --exclude .git web/
 
+      - name: PHP strict lint
+        run: |
+          sh scripts/php-lint.sh
+
+      - name: PHP unit tests
+        run: |
+          php tests/run.php
+
+      # The JavaScript and JSON checks do not depend on the PHP version, so
+      # they run on the 8.4 leg only.
       - name: Setup Node.js
+        if: matrix.php-version == '8.4'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
         with:
           # Node 24 (long-term support). 24.22.1 is the first 24.x release that
@@ -203,6 +232,7 @@ jobs:
           check-latest: true
 
       - name: JavaScript syntax + JSON validity
+        if: matrix.php-version == '8.4'
         run: |
           set -euo pipefail
           while IFS= read -r file
