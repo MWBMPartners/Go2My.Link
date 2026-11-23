@@ -50,6 +50,19 @@ if ($g2mlGuardScriptPath !== '' && realpath($g2mlGuardScriptPath) === realpath(_
 unset($g2mlGuardScriptPath);
 
 // ============================================================================
+// 🌍 Non-English Letters In Web Addresses (url_ascii.php)
+// ============================================================================
+// Loaded only if the file is there. If it is missing, g2ml_sanitiseURL()
+// refuses any address that has non-English letters or spaces, instead of
+// silently cutting those letters out.
+$g2mlUrlAsciiPath = __DIR__ . DIRECTORY_SEPARATOR . 'url_ascii.php';
+if (file_exists($g2mlUrlAsciiPath))
+{
+    require_once $g2mlUrlAsciiPath;
+}
+unset($g2mlUrlAsciiPath);
+
+// ============================================================================
 // 🔐 AES-256-GCM Encryption / Decryption
 // ============================================================================
 // Used for encrypting sensitive database values (tblSettings.isSensitive = 1,
@@ -511,6 +524,21 @@ function g2ml_sanitiseInput(?string $input): string
 /**
  * Sanitise a URL for safe use (validate format and scheme).
  *
+ * Plain ASCII text with no space is cleaned exactly as it always was.
+ *
+ * Text with a byte of 128 or above (non-English letters) or with a space is
+ * first turned into plain ASCII by g2ml_urlToAscii() (url_ascii.php):
+ *   - A host name such as bücher.de becomes xn--bcher-kva.de, so the saved
+ *     link points at the real website. Host names that cannot be converted
+ *     safely (right-to-left scripts, mixed alphabets, emoji, and so on) are
+ *     refused.
+ *   - In the path, query and fragment, non-English letters become %XX codes
+ *     and a space becomes %20, as browsers do.
+ *   - A space in the host, broken UTF-8, or a missing url_ascii.php file all
+ *     give false. Letters are never silently deleted.
+ * This happens before any other check, so the own-domain and
+ * server-request-forgery checks see the real ASCII host.
+ *
  * @param  string|null $url  The raw URL string
  * @return string|false      Sanitised URL, or false if invalid
  *
@@ -523,9 +551,29 @@ function g2ml_sanitiseURL(?string $url): string|false
         return false;
     }
 
+    $trimmed = trim($url);
+
+    // Non-English letters or a space: convert to ASCII first (or refuse).
+    if (preg_match('/[\x80-\xFF ]/', $trimmed) === 1)
+    {
+        if (!function_exists('g2ml_urlToAscii'))
+        {
+            return false;
+        }
+
+        $converted = g2ml_urlToAscii($trimmed);
+
+        if ($converted === false)
+        {
+            return false;
+        }
+
+        $trimmed = $converted;
+    }
+
     // Sanitise the URL
     // 📖 Reference: https://www.php.net/manual/en/filter.filters.sanitize.php
-    $sanitised = filter_var(trim($url), FILTER_SANITIZE_URL);
+    $sanitised = filter_var($trimmed, FILTER_SANITIZE_URL);
 
     // Validate the URL structure
     // 📖 Reference: https://www.php.net/manual/en/filter.filters.validate.php

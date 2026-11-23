@@ -196,3 +196,44 @@ test('g2ml_validateLinkDestination: userinfo (user:pass@) is blocked_destination
     assert_false($result['ok'], 'A URL carrying userinfo must be refused');
     assert_same('blocked_destination', $result['errorCode'], 'errorCode identifies the SSRF-guard failure');
 });
+
+// ----------------------------------------------------------------------------
+// Non-English letters are converted BEFORE the own-domain and SSRF checks (#309).
+// ----------------------------------------------------------------------------
+
+test('g2ml_validateLinkDestination: a full-width spelling of an own domain is own_domain', function (): void
+{
+    // Before #309 the full-width letters were deleted and this became the
+    // harmless-looking host "gmylink". Now it is read as g2my.link.
+    $result = _g2mlLinkDestinationTestCheck('https://g２my．link/x');
+
+    assert_false($result['ok'], 'A full-width spelling of g2my.link must be refused');
+    assert_same('own_domain', $result['errorCode'], 'errorCode identifies the own-domain failure');
+});
+
+test('g2ml_validateLinkDestination: full-width letters in a public host are converted and accepted', function (): void
+{
+    $result = _g2mlLinkDestinationTestCheck('https://ｅｘａｍｐｌｅ．ｃｏｍ/');
+
+    assert_true($result['ok'], 'A full-width spelling of example.com is the same host and is accepted');
+    assert_same('https://example.com/', $result['url'], 'The ASCII form is returned');
+});
+
+test('g2ml_validateLinkDestination: an emoji host and a host with a space are invalid_url', function (): void
+{
+    $emoji = _g2mlLinkDestinationTestCheck('https://i❤.ws/');
+    assert_false($emoji['ok'], 'An emoji host must be refused');
+    assert_same('invalid_url', $emoji['errorCode'], 'Refused with the existing invalid-URL code');
+
+    $space = _g2mlLinkDestinationTestCheck('https://exa mple.com/');
+    assert_false($space['ok'], 'A space in the host must be refused');
+    assert_same('invalid_url', $space['errorCode'], 'Refused with the existing invalid-URL code');
+});
+
+test('g2ml_validateLinkDestination: non-English letters in the path are percent-encoded and kept', function (): void
+{
+    $result = _g2mlLinkDestinationTestCheck('https://example.com/straße?q=café');
+
+    assert_true($result['ok'], 'A public destination with non-English letters in the path is accepted');
+    assert_same('https://example.com/stra%C3%9Fe?q=caf%C3%A9', $result['url'], 'Letters are encoded, not deleted');
+});

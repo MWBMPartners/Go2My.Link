@@ -148,3 +148,45 @@ test('g2ml_sanitiseURL: rejects null', function (): void
 {
     assert_same(false, g2ml_sanitiseURL(null), 'null returns false');
 });
+
+// ----------------------------------------------------------------------------
+// g2ml_sanitiseURL — non-English letters and spaces (#309)
+// ----------------------------------------------------------------------------
+// The link cleaner used to delete every non-English letter, so a link to
+// bücher.de was saved as bcher.de, a different website. The full table of
+// cases is in url_ascii_test.php; these are the headline cases.
+
+test('g2ml_sanitiseURL: bücher.de becomes its xn-- form instead of losing the letter', function (): void
+{
+    assert_same('https://xn--bcher-kva.de/', g2ml_sanitiseURL('https://bücher.de/'), 'The host is converted, not cut');
+});
+
+test('g2ml_sanitiseURL: non-English letters in the query are percent-encoded, not deleted', function (): void
+{
+    assert_same(
+        'https://example.com/?q=caf%C3%A9&x=%C3%BC',
+        g2ml_sanitiseURL('https://example.com/?q=café&x=ü'),
+        'Each non-ASCII byte becomes %XX'
+    );
+});
+
+test('g2ml_sanitiseURL: an emoji host is refused rather than turned into a different site', function (): void
+{
+    assert_same(false, g2ml_sanitiseURL('https://i❤.ws/'), 'Emoji hosts are refused');
+});
+
+test('g2ml_sanitiseURL: broken UTF-8 is refused rather than silently cut', function (): void
+{
+    assert_same(false, g2ml_sanitiseURL("https://example.com/caf\xC3"), 'Broken UTF-8 is refused');
+});
+
+test('g2ml_sanitiseURL: full-width letters and dots are read as the real host', function (): void
+{
+    assert_same('https://g2my.link/x', g2ml_sanitiseURL('https://g２my．link/x'), 'The own-domain check will see g2my.link');
+});
+
+test('g2ml_sanitiseURL: a space in the path becomes %20, and a space in the host is refused', function (): void
+{
+    assert_same('https://example.com/a%20b', g2ml_sanitiseURL('https://example.com/a b'), 'A space in the path becomes %20');
+    assert_same(false, g2ml_sanitiseURL('https://exa mple.com/'), 'A space in the host is refused');
+});
