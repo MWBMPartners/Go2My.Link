@@ -478,3 +478,272 @@ test('url parser layer: g2ml_validateLinkDestination refuses with the existing i
         assert_same('Invalid URL format. Please enter a valid HTTP or HTTPS URL.', $result['error'], 'Existing message for ' . $url);
     }
 });
+
+// ----------------------------------------------------------------------------
+// The link check when a link is followed (#308, F1b).
+// ----------------------------------------------------------------------------
+
+/**
+ * Read a repository file for the source tests.
+ *
+ * @param  string $relativePath  Path from the repository root
+ * @return string                The file text
+ */
+function g2mlParserLayerTest_readSource(string $relativePath): string
+{
+    $text = file_get_contents(dirname(__DIR__, 2) . '/' . $relativePath);
+    assert_true($text !== false, 'The file must be readable: ' . $relativePath);
+
+    return (string) $text;
+}
+
+test('follow-time check: refuses only when the check fails and the setting is on, on every version', function (): void
+{
+    require_once dirname(__DIR__, 1) . '/../web/G2My.Link/_functions/redirect_resolver.php';
+
+    $GLOBALS['g2ml_link_destination_custom_domains_override'] = [];
+
+    $passing = 'https://example.com/path?x=1';
+    $failing = 'http://1572395022/';
+
+    $result = g2ml_followTimeDestinationCheck($passing, false);
+    assert_same(['problem' => '', 'refuse' => false], $result, 'Passing, setting off');
+
+    $result = g2ml_followTimeDestinationCheck($passing, true);
+    assert_same(['problem' => '', 'refuse' => false], $result, 'Passing, setting on');
+
+    $result = g2ml_followTimeDestinationCheck($failing, false);
+    assert_same('number_host', $result['problem'], 'Failing, setting off: the reason is still found for the log');
+    assert_false($result['refuse'], 'Failing, setting off: the visitor is never refused');
+
+    $result = g2ml_followTimeDestinationCheck($failing, true);
+    assert_same('number_host', $result['problem'], 'Failing, setting on: the reason');
+    assert_true($result['refuse'], 'Failing, setting on: refused');
+
+    $result = g2ml_followTimeDestinationCheck('http://example.com:0x50/', true);
+    assert_same('odd_port', $result['problem'], 'An odd port');
+    assert_true($result['refuse'], 'An odd port is refused when on');
+
+    $result = g2ml_followTimeDestinationCheck('not a url', true);
+    assert_same('not_valid', $result['problem'], 'Text that is not an address');
+
+    // The reason is a short word and never holds the address.
+    $result = g2ml_followTimeDestinationCheck('http://1572395022/secret-token', true);
+    assert_false(str_contains($result['problem'], 'secret-token'), 'The reason never holds the address');
+});
+
+test('follow-time check: the setting counts as on only for true, 1 and the text 1', function (): void
+{
+    require_once dirname(__DIR__, 1) . '/../web/G2My.Link/_functions/redirect_resolver.php';
+
+    foreach ([true, 1, '1'] as $on)
+    {
+        assert_true(g2ml_destinationCheckIsOn($on), 'On: ' . var_export($on, true));
+    }
+
+    foreach (['0', 0, false, '', null, 'yes', 'true', '2', 1.0, []] as $off)
+    {
+        assert_false(g2ml_destinationCheckIsOn($off), 'Off: ' . var_export($off, true));
+    }
+
+    $info = g2mlParserLayerTest_readSource('web/Go2My.Link/public_html/pages/info/index.php');
+    assert_true(
+        str_contains($info, "(\$enforceValue === true || \$enforceValue === 1 || \$enforceValue === '1')"),
+        'The info page uses the same rule'
+    );
+
+    $index = g2mlParserLayerTest_readSource('web/G2My.Link/public_html/index.php');
+    assert_true(
+        str_contains($index, "g2ml_destinationCheckIsOn(getSetting('redirect.enforce_destination_check', '0'))"),
+        'The redirect page reads the setting with a default of off'
+    );
+});
+
+test('follow-time check: the redirect page runs it first, before validateDestination and the click count', function (): void
+{
+    $index = g2mlParserLayerTest_readSource('web/G2My.Link/public_html/index.php');
+
+    $success = strpos($index, "if (\$status === 'success' && \$destination !== null");
+    $check   = strpos($index, '$destinationCheck = g2ml_followTimeDestinationCheck(');
+    $validate = strpos($index, '= validateDestination(');
+    $update  = strpos($index, 'UPDATE tblShortURLs');
+    $refuse  = strpos($index, "'destination_refused'");
+
+    assert_true($success !== false && $check !== false && $validate !== false && $update !== false && $refuse !== false, 'All markers are found');
+    assert_true($success < $check, 'The check is inside the success branch');
+    assert_true($check < $validate, 'The check comes before validateDestination()');
+    assert_true($check < $update, 'The check comes before the click-count UPDATE');
+    assert_true($refuse < $update, 'A refusal ends before the click-count UPDATE');
+
+    // The warning line and the refusal branch, which ends at its own exit.
+    $refuseStart = strpos($index, "if (\$destinationCheck['refuse'])");
+    assert_true($refuseStart !== false, 'The refusal branch is found');
+    $refuseEnd = strpos($index, 'exit;', (int) $refuseStart);
+    assert_true($refuseEnd !== false, 'The refusal branch ends in exit');
+    $refusal = substr($index, (int) $check, (int) $refuseEnd + 5 - (int) $check);
+    assert_true(str_contains($refusal, 'http_response_code(404)'), 'The refusal is a 404');
+    assert_true(str_contains($refusal, "'404.php'"), 'The refusal uses the existing 404 page');
+    assert_true(str_contains($refusal, 'exit;'), 'The refusal stops the page');
+    assert_false(str_contains($refusal, 'buildRedirectResponse'), 'A refusal never redirects');
+    assert_false(str_contains($refusal, "'redirect', 'success'"), 'A refusal is not logged as a click');
+    assert_false(str_contains($refusal, 'destinationURL'), 'The refusal log never holds the address');
+    assert_true(str_contains($refusal, 'g2ml_destinationCheckLogLine('), 'The warning line is written');
+    assert_true(str_contains($refusal, "redirect.destination_refused_title"), 'Title key');
+    assert_true(str_contains($refusal, "redirect.destination_refused_message"), 'Message key');
+});
+
+test('follow-time check: validateDestination, the SSRF code and the info helper do not use it', function (): void
+{
+    $resolver = g2mlParserLayerTest_readSource('web/G2My.Link/_functions/redirect_resolver.php');
+
+    $start = strpos($resolver, 'function validateDestination(');
+    $end   = strpos($resolver, 'function buildRedirectResponse(');
+    assert_true($start !== false && $end !== false && $start < $end, 'validateDestination() is found');
+
+    $body = substr($resolver, (int) $start, (int) $end - (int) $start);
+    assert_false(str_contains($body, 'g2ml_followTimeDestinationCheck'), 'validateDestination() does not call the check');
+    assert_false(str_contains($body, 'g2ml_destinationProblem'), 'validateDestination() does not call the link check');
+
+    $display = g2mlParserLayerTest_readSource('web/Go2My.Link/_functions/info_display.php');
+    assert_false(str_contains($display, 'g2ml_destinationProblem'), 'The info helper stays pure');
+});
+
+test('follow-time check: new Uri appears nowhere in the web code', function (): void
+{
+    $root     = dirname(__DIR__, 2) . '/web';
+    $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
+    $checked  = 0;
+
+    foreach ($iterator as $file)
+    {
+        $path = $file->getPathname();
+
+        if (substr($path, -4) !== '.php' || str_contains($path, '/_libraries/'))
+        {
+            continue;
+        }
+
+        $checked++;
+        $text = (string) file_get_contents($path);
+        assert_false(preg_match('/new\s+\\\\?Uri\b/', $text) === 1, 'No constructor call on the browser-style parser in ' . $path);
+    }
+
+    assert_true($checked > 50, 'Many files were checked');
+});
+
+test('follow-time check: seed 074 has the setting off by default and the three texts matching the code', function (): void
+{
+    $seed = g2mlParserLayerTest_readSource('web/_sql/seeds/074_destination_check.sql');
+
+    assert_true(
+        preg_match("/\\('redirect\\.enforce_destination_check', 'System', NULL,\\s*'0', '0', '/", $seed) === 1,
+        'The setting is System scope and defaults to 0'
+    );
+    assert_true(str_contains($seed, "'boolean', 0, 1)"), 'It is a boolean and editable');
+    assert_true(str_contains($seed, 'ON DUPLICATE KEY UPDATE'), 'It can be re-run');
+    assert_true(str_contains($seed, 'INSERT IGNORE INTO tblTranslations'), 'Texts are INSERT IGNORE');
+
+    $index = g2mlParserLayerTest_readSource('web/G2My.Link/public_html/index.php');
+    $info  = g2mlParserLayerTest_readSource('web/Go2My.Link/public_html/pages/info/index.php');
+
+    $texts = [
+        'redirect.destination_refused_title'   => ['Link Cannot Be Opened', $index],
+        'redirect.destination_refused_message' => ["This short link's destination address is not valid, so we cannot send you there.", $index],
+        'info.destination_refused'             => ["This link's destination address is not valid, so the link will not open.", $info],
+    ];
+
+    foreach ($texts as $key => $pair)
+    {
+        $english  = $pair[0];
+        $code     = $pair[1];
+        $inSeed   = "('en-GB', '" . $key . "', '" . str_replace("'", "''", $english) . "', ";
+        $inCode   = "'" . str_replace("'", "\\'", $english) . "'";
+
+        assert_true(str_contains($seed, $inSeed), 'Seed has ' . $key . ' with the expected English');
+        assert_true(str_contains($seed, "', 1);") || str_contains($seed, "', 1),"), 'Verified rows');
+        assert_true(str_contains($code, "__('" . $key . "')"), 'The code uses the key ' . $key);
+        assert_true(str_contains($code, $inCode), 'The code fallback matches the seed for ' . $key);
+    }
+});
+
+test('follow-time check: the warning line never holds a control character or the address', function (): void
+{
+    require_once dirname(__DIR__, 1) . '/../web/G2My.Link/_functions/redirect_resolver.php';
+
+    $line = g2ml_destinationCheckLogLine("ab\x1b[31mc\x07\x08\x7f\x01\n", 'number_host');
+
+    assert_same(0, preg_match('/[\x00-\x1f\x7f]/', $line), 'No byte below 0x20 or 0x7F');
+    assert_true(str_contains($line, 'ab%1B%5B31mc'), 'The code is percent-encoded');
+    assert_same(
+        '[Go2My.Link] WARNING: short link spring-sale has a destination that fails the link check (odd_port).',
+        g2ml_destinationCheckLogLine('spring-sale', 'odd_port'),
+        'A normal code reads the same as before'
+    );
+
+    $index = g2mlParserLayerTest_readSource('web/G2My.Link/public_html/index.php');
+    assert_true(str_contains($index, 'error_log(g2ml_destinationCheckLogLine($shortCode,'), 'The page uses the safe line');
+    assert_true(str_contains($index, "'shortCode' => rawurlencode(\$shortCode)"), 'The refusal log holds the encoded code');
+});
+
+test('follow-time check: a fault in the check cannot break a redirect', function (): void
+{
+    $index = g2mlParserLayerTest_readSource('web/G2My.Link/public_html/index.php');
+
+    $try   = strpos($index, "try\n    {\n        \$destinationCheck = g2ml_followTimeDestinationCheck(");
+    $catch = strpos($index, 'catch (\\Throwable $checkError)');
+    $default = strpos($index, "\$destinationCheck = ['problem' => '', 'refuse' => false];");
+
+    assert_true($default !== false && $try !== false && $catch !== false, 'The default, try and catch are present');
+    assert_true($default < $try && $try < $catch, 'The default is set before the try');
+    assert_true(strpos($index, 'the link check failed to run') > $catch, 'A failure is logged');
+});
+
+test('follow-time check: the info page checks only plain, non-empty address links', function (): void
+{
+    $info = g2mlParserLayerTest_readSource('web/Go2My.Link/public_html/pages/info/index.php');
+
+    assert_true(str_contains($info, "\$destinationType !== 'alias'"), 'Alias links are skipped');
+    assert_true(str_contains($info, "\$destinationToCheck !== ''"), 'Empty destinations are skipped');
+    assert_true(str_contains($info, 'g2ml_destinationProblem($destinationToCheck)'), 'The checked text is the non-empty one');
+
+    // Run the real block for each row with the setting forced on.
+    $start = strpos($info, "\$destinationType = 'url';");
+    $end   = strpos($info, '// Determine link status for display');
+    assert_true($start !== false && $end !== false, 'The block is found');
+    $block = substr($info, (int) $start, (int) $end - (int) $start);
+    $block = substr($block, 0, (int) strrpos($block, "// ====="));
+    $block = str_replace("getSetting('redirect.enforce_destination_check', '0')", "'1'", $block);
+    $block = str_replace("function_exists('getSetting') && ", '', $block);
+    assert_true(str_contains($block, "\$enforceValue = '1';"), 'The setting read was replaced');
+
+    $GLOBALS['g2ml_link_destination_custom_domains_override'] = [];
+
+    $rows = [
+        'alias row, empty destination'  => [['destinationType' => 'alias', 'destinationURL' => null], false],
+        'alias row, stale failing text' => [['destinationType' => 'alias', 'destinationURL' => 'http://1572395022/'], false],
+        'url row, empty destination'    => [['destinationType' => 'url', 'destinationURL' => ''], false],
+        'url row, null destination'     => [['destinationType' => 'url', 'destinationURL' => null], false],
+        'url row, failing address'      => [['destinationType' => 'url', 'destinationURL' => 'http://1572395022/'], true],
+        'url row, passing address'      => [['destinationType' => 'url', 'destinationURL' => 'https://example.com/'], false],
+    ];
+
+    foreach ($rows as $name => $case)
+    {
+        $linkData           = $case[0];
+        $destinationDisplay = 'shown';
+        $destinationRefused = false;
+
+        eval($block);
+
+        assert_same($case[1], $destinationRefused, $name);
+
+        if ($case[1])
+        {
+            assert_true($destinationDisplay !== 'shown', 'The notice replaces the destination: ' . $name);
+        }
+        else
+        {
+            assert_same('shown', $destinationDisplay, 'Nothing changes: ' . $name);
+        }
+    }
+});

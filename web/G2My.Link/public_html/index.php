@@ -298,6 +298,62 @@ if ($status === 'error')
 
 if ($status === 'success' && $destination !== null && $destination !== '')
 {
+    // 🔎 The link check (#308). It always runs and always logs a failure.
+    // The visitor is refused only when redirect.enforce_destination_check is
+    // on (it is off by default). With it off, nothing below changes.
+    // 📖 Reference: web/G2My.Link/_functions/redirect_resolver.php — g2ml_followTimeDestinationCheck()
+    // A fault in the check must never break a redirect: on any error the
+    // link is treated as passing.
+    $destinationCheck = ['problem' => '', 'refuse' => false];
+
+    try
+    {
+        $destinationCheck = g2ml_followTimeDestinationCheck(
+            $destination,
+            g2ml_destinationCheckIsOn(getSetting('redirect.enforce_destination_check', '0'))
+        );
+    }
+    catch (\Throwable $checkError)
+    {
+        // The reason only. The address may hold a token.
+        error_log('[Go2My.Link] WARNING: the link check failed to run (' . get_class($checkError) . ').');
+    }
+
+    if ($destinationCheck['problem'] !== '')
+    {
+        // The short code (percent-encoded) and the reason only.
+        error_log(g2ml_destinationCheckLogLine($shortCode, $destinationCheck['problem']));
+    }
+
+    if ($destinationCheck['refuse'])
+    {
+        // Not a click: analytics count only logStatus = 'success'.
+        if ($shouldLog)
+        {
+            logActivity('redirect', 'destination_refused', 404, [
+                'orgHandle' => $orgHandle,
+                'shortCode' => rawurlencode($shortCode),
+                'logData'   => ['reason' => $destinationCheck['problem']],
+            ]);
+        }
+
+        http_response_code(404);
+
+        if (function_exists('__'))
+        {
+            $errorTitle   = __('redirect.destination_refused_title');
+            $errorMessage = __('redirect.destination_refused_message');
+        }
+        else
+        {
+            $errorTitle   = 'Link Cannot Be Opened';
+            $errorMessage = 'This short link\'s destination address is not valid, so we cannot send you there.';
+        }
+
+        require __DIR__ . DIRECTORY_SEPARATOR . '404.php';
+        exit;
+    }
+
     // 🔍 Optional: Validate destination URL accessibility
     // Gated behind setting — OFF by default for performance
     // 📖 Reference: web/G2My.Link/_functions/redirect_resolver.php — validateDestination()

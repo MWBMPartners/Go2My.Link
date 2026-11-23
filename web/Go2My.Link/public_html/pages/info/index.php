@@ -211,6 +211,57 @@ if ($linkData !== null && function_exists('g2ml_infoDisplayDestination'))
 }
 
 // ============================================================================
+// Destination check (#308) — only when redirect.enforce_destination_check is on
+// ============================================================================
+// When the setting is on and the stored destination fails the link check, the
+// link will not open, so the page says so instead of showing the destination.
+// With the setting off (the default) nothing here runs and nothing is logged:
+// the follow path writes the log line. Same "on" rule as
+// g2ml_destinationCheckIsOn() in the redirect component: true, 1 or '1'.
+// ============================================================================
+
+$destinationRefused = false;
+
+// Only a plain address link is checked here. An alias link keeps its real
+// address elsewhere (the redirect follows the alias), so its own destination
+// column may be empty or old and says nothing about whether the link opens.
+// An empty destination is also left alone: it showed nothing before.
+$destinationType = 'url';
+
+if ($linkData !== null && isset($linkData['destinationType']) && is_string($linkData['destinationType']))
+{
+    $destinationType = $linkData['destinationType'];
+}
+
+$destinationToCheck = '';
+
+if ($linkData !== null && isset($linkData['destinationURL']) && is_string($linkData['destinationURL']))
+{
+    $destinationToCheck = $linkData['destinationURL'];
+}
+
+if ($linkData !== null && $destinationType !== 'alias' && $destinationToCheck !== ''
+    && function_exists('getSetting') && function_exists('g2ml_destinationProblem'))
+{
+    $enforceValue = getSetting('redirect.enforce_destination_check', '0');
+
+    if (($enforceValue === true || $enforceValue === 1 || $enforceValue === '1')
+        && g2ml_destinationProblem($destinationToCheck) !== null)
+    {
+        $destinationRefused = true;
+
+        if (function_exists('__'))
+        {
+            $destinationDisplay = __('info.destination_refused');
+        }
+        else
+        {
+            $destinationDisplay = 'This link\'s destination address is not valid, so the link will not open.';
+        }
+    }
+}
+
+// ============================================================================
 // Determine link status for display
 // ============================================================================
 
@@ -400,7 +451,7 @@ if ($linkData !== null)
                             <dd class="col-sm-8">
                                 <i class="fas fa-external-link-alt text-body-secondary" aria-hidden="true"></i>
                                 <span class="text-break"><?php echo g2ml_sanitiseOutput($destinationDisplay); ?></span>
-                                <?php if (!$isViewerAuthenticated && $destinationDisplay !== '') { ?>
+                                <?php if (!$isViewerAuthenticated && $destinationDisplay !== '' && !$destinationRefused) { ?>
                                 <div class="small mt-1">
                                     <a href="/login">
                                         <i class="fas fa-lock" aria-hidden="true"></i>

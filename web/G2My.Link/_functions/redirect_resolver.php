@@ -452,6 +452,91 @@ function g2ml_extractTrackingParams(array $queryParams): array
 }
 
 // ============================================================================
+// 🔎 g2ml_destinationCheckIsOn / g2ml_followTimeDestinationCheck (#308, F1b)
+// ============================================================================
+// The link check that runs when a short link is followed. It uses the same
+// check as link creation (g2ml_destinationProblem() in security.php).
+//
+// The setting redirect.enforce_destination_check is OFF by default. The
+// check always runs and its result is always logged by the caller. The visitor
+// is refused only when the setting is on. Both functions are pure, so tests
+// can try both settings on every PHP version.
+//
+// This does not touch validateDestination() or any other safety check.
+// ============================================================================
+
+/**
+ * Say whether a stored setting value means "on".
+ *
+ * Only true, 1 and '1' mean on. Anything else, including a missing setting,
+ * means off. This is the same rule g2ml_privateDestinationsAllowed() uses.
+ *
+ * @param  mixed $value  The value read from the settings
+ * @return bool          True when the setting is on
+ */
+function g2ml_destinationCheckIsOn(mixed $value): bool
+{
+    if ($value === true || $value === 1 || $value === '1')
+    {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Build the warning line for a destination that fails the link check.
+ *
+ * The short code comes from the visitor's address, so it is percent-encoded:
+ * the line can then never hold a control character or an escape sequence.
+ * The address itself is never in the line.
+ *
+ * @param  string $shortCode  The short code as requested
+ * @param  string $problem    The reason from the check
+ * @return string             One log line
+ */
+function g2ml_destinationCheckLogLine(string $shortCode, string $problem): string
+{
+    return '[Go2My.Link] WARNING: short link ' . rawurlencode($shortCode)
+        . ' has a destination that fails the link check (' . rawurlencode($problem) . ').';
+}
+
+/**
+ * Run the link check on a destination that is about to be followed.
+ *
+ * The problem is a short reason (never the address) or an empty string when
+ * the address passes. The visitor is refused only when the check failed and
+ * the setting is on.
+ *
+ * @param  string $destination  The stored destination address
+ * @param  bool   $enforce      True when the setting is on
+ * @return array{problem: string, refuse: bool}
+ */
+function g2ml_followTimeDestinationCheck(string $destination, bool $enforce): array
+{
+    $problem = '';
+
+    if (function_exists('g2ml_destinationProblem'))
+    {
+        $found = g2ml_destinationProblem($destination);
+
+        if ($found !== null)
+        {
+            $problem = $found;
+        }
+    }
+
+    $refuse = false;
+
+    if ($enforce && $problem !== '')
+    {
+        $refuse = true;
+    }
+
+    return ['problem' => $problem, 'refuse' => $refuse];
+}
+
+// ============================================================================
 // 🧷 g2ml_buildPinnedDestinationUrl — Rebuild a URL against a resolved IP
 // ============================================================================
 // Reconstructs a request URL with the host component replaced by an already
