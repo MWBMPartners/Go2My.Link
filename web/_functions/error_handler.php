@@ -407,6 +407,8 @@ function g2ml_shutdownHandler(): void
             $severity  = _g2ml_mapErrorSeverity($error['type']);
             $errorType = _g2ml_mapErrorType($error['type']);
 
+            // PHP 8.5 and later can add a 'trace' entry to some fatal errors.
+            // When it is missing, no backtrace is logged, as before.
             g2ml_logError(
                 $severity,
                 $error['type'],
@@ -414,7 +416,7 @@ function g2ml_shutdownHandler(): void
                 null,
                 $error['file'],
                 $error['line'],
-                null // No backtrace available for fatal errors
+                _g2ml_fatalErrorBacktrace($error)
             );
         }
     }
@@ -447,6 +449,86 @@ function _g2ml_formatBacktrace(array $trace): string
             . $class . $type . $function . "()\n";
 
         $frameNum++;
+    }
+
+    return $output;
+}
+
+/**
+ * The most stack frames a fatal-error backtrace will list. A deep trace is
+ * cut here so a runaway recursion cannot fill the log. Only the first frames
+ * are kept because they show where the error happened.
+ */
+const G2ML_FATAL_BACKTRACE_MAX_FRAMES = 50;
+
+/**
+ * Turn the 'trace' entry of error_get_last() into a readable backtrace.
+ *
+ * Some PHP versions add a 'trace' entry to the fatal error data; others do
+ * not, and out-of-memory errors never have one. The choice is made by whether
+ * the entry is there, never by the PHP version number. When it is missing or
+ * is not a usable list, this returns null, which is what the log received
+ * before this function existed.
+ *
+ * Function arguments are NEVER copied. Each frame is rebuilt from only its
+ * file, line, class, call type and function name, so a password passed to a
+ * function cannot reach the log.
+ *
+ * @param  array<mixed> $error  The array from error_get_last()
+ * @return string|null          The formatted backtrace, or null when there is none
+ */
+function _g2ml_fatalErrorBacktrace(array $error): ?string
+{
+    if (!array_key_exists('trace', $error) || !is_array($error['trace']) || count($error['trace']) === 0)
+    {
+        return null;
+    }
+
+    $safeFrames = [];
+    $totalFrames = 0;
+
+    foreach ($error['trace'] as $frame)
+    {
+        if (!is_array($frame))
+        {
+            continue;
+        }
+
+        $totalFrames++;
+
+        if (count($safeFrames) >= G2ML_FATAL_BACKTRACE_MAX_FRAMES)
+        {
+            continue;
+        }
+
+        $safeFrame = [];
+
+        foreach (['file', 'class', 'type', 'function'] as $textKey)
+        {
+            if (isset($frame[$textKey]) && is_string($frame[$textKey]))
+            {
+                $safeFrame[$textKey] = $frame[$textKey];
+            }
+        }
+
+        if (isset($frame['line']) && is_int($frame['line']))
+        {
+            $safeFrame['line'] = $frame['line'];
+        }
+
+        $safeFrames[] = $safeFrame;
+    }
+
+    if (count($safeFrames) === 0)
+    {
+        return null;
+    }
+
+    $output = _g2ml_formatBacktrace($safeFrames);
+
+    if ($totalFrames > count($safeFrames))
+    {
+        $output .= '... [' . ($totalFrames - count($safeFrames)) . " more frames not shown]\n";
     }
 
     return $output;
