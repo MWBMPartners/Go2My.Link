@@ -427,6 +427,7 @@ function g2ml_attachTagsToShortURL(int $urlUID, string $orgHandle, string|array 
 //                 failure 'url' is null and 'errorCode' is one of
 //                 'invalid_url', 'own_domain', 'blocked_destination'.
 // ============================================================================
+#[\NoDiscard('the result says whether the destination may be used and gives the cleaned address; ignoring it skips the check')]
 function g2ml_validateLinkDestination(string $rawURL): array
 {
     $rawURL = trim($rawURL);

@@ -279,6 +279,7 @@ function g2ml_hashPassword(string $password): string
  *
  * 📖 Reference: https://www.php.net/manual/en/function.password-verify.php
  */
+#[\NoDiscard('the answer says whether the password matches; ignoring it skips the check')]
 function g2ml_verifyPassword(string $password, string $hash): bool
 {
     return password_verify($password, $hash);
@@ -359,6 +360,7 @@ function g2ml_generateCSRFToken(string $formName = 'default', int $lifetime = 36
  * @param  string $formName  The form identifier used during generation
  * @return bool              True if the token is valid and not expired
  */
+#[\NoDiscard('the answer says whether the CSRF token is valid; ignoring it skips the check')]
 function g2ml_validateCSRFToken(string $token, string $formName = 'default'): bool
 {
     // Check if a token exists for this form
@@ -465,6 +467,7 @@ function g2ml_postedText(string $name): string
  * @param  string $value  The requested redirect target
  * @return string         $value unchanged when safe, otherwise ''
  */
+#[\NoDiscard('the result is the safe redirect target (or an empty text); ignoring it skips the check')]
 function g2ml_safePostLoginRedirect(string $value): string
 {
     if ($value === '' || preg_match('/[\x00-\x1F\x7F\\\\]/', $value) === 1)
@@ -544,6 +547,7 @@ function g2ml_sanitiseInput(?string $input): string
  *
  * 📖 Reference: https://www.php.net/manual/en/function.filter-var.php
  */
+#[\NoDiscard('the result is the cleaned address, or false when it is not valid; ignoring it skips the check')]
 function g2ml_sanitiseURL(?string $url): string|false
 {
     if ($url === null || $url === '')
@@ -830,6 +834,7 @@ function g2ml_browserSeesSameHost(string $sanitisedURL): bool
  * @return string|null  null, or 'not_valid', 'number_host', 'odd_port',
  *                      'bad_punycode' or 'browser_host'
  */
+#[\NoDiscard('the result says why a destination is refused, or null when it is fine; ignoring it skips the check')]
 function g2ml_destinationProblem(string $url): ?string
 {
     $sanitised = g2ml_sanitiseURL($url);
@@ -1112,6 +1117,7 @@ function g2ml_privateDestinationsAllowed(): bool
  * 📖 Reference: https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
  * 📖 Reference: https://www.php.net/manual/en/function.dns-get-record.php
  */
+#[\NoDiscard('the answer says whether the destination host is allowed; ignoring it skips the check')]
 function g2ml_destinationHostIsAllowed(string $url): bool
 {
     return g2ml_resolveAllowedDestinationIps($url) !== false;
@@ -1138,6 +1144,7 @@ function g2ml_destinationHostIsAllowed(string $url): bool
  * 📖 Reference: https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
  * 📖 Reference: https://www.php.net/manual/en/function.dns-get-record.php
  */
+#[\NoDiscard('the result is the checked list of addresses, or false when the destination is not allowed; ignoring it skips the check')]
 function g2ml_resolveAllowedDestinationIps(string $url): array|false
 {
     $url = trim($url);

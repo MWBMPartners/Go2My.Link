@@ -431,7 +431,12 @@ function loginUser(string $email, string $password): array
     {
         // Use Argon2id dummy hash to match the real algorithm's timing profile
         // and prevent timing-based user enumeration
-        g2ml_verifyPassword($password, '$argon2id$v=19$m=65536,t=4,p=1$ZHVtbXlzYWx0Zm9ydGhpcw$dummyhashvaluetopreventtimingleaksinthisproject0000');
+        //
+        // The answer is ignored on purpose: this check is run only so that
+        // an unknown email takes as long as a real one. It is kept in a
+        // named variable because the (void) cast cannot be used while
+        // PHP 8.4 is supported.
+        $timingOnlyResult = g2ml_verifyPassword($password, '$argon2id$v=19$m=65536,t=4,p=1$ZHVtbXlzYWx0Zm9ydGhpcw$dummyhashvaluetopreventtimingleaksinthisproject0000');
 
         return [
             'success'     => false,

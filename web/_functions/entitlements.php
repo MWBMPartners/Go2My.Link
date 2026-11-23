@@ -560,6 +560,7 @@ function g2ml_clearOrgTierCache(?string $orgHandle = null): void
  * Usage example:
  *   if (g2ml_canUseFeature($orgHandle, 'hasAnalytics')) { // show upgrade CTA if false }
  */
+#[\NoDiscard('the answer says whether the plan allows the feature; ignoring it skips the check')]
 function g2ml_canUseFeature(string $orgHandle, string $flag): bool
 {
     if (!in_array($flag, G2ML_ENTITLEMENT_FEATURE_FLAGS, true))
