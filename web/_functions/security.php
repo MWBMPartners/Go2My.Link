@@ -594,6 +594,267 @@ function g2ml_sanitiseURL(?string $url): string|false
 }
 
 // ============================================================================
+// 🔎 The Stricter Link Check (#308, F1)
+// ============================================================================
+// g2ml_sanitiseURL() accepts some addresses that a browser reads differently
+// from PHP or cannot open at all. This section adds a second check that is
+// used when a link is created or edited. It can only REFUSE, never accept
+// more. It has two layers:
+//
+//   1. Three plain-PHP rules (g2ml_urlHostShapeProblem). They give the same
+//      answer on every PHP version.
+//        - A host that ends in a number must be a normal dotted IPv4 address.
+//          (A browser reads http://1572395022/ as 93.184.216.14.)
+//        - A port must be digits only.
+//        - Every host label that starts with `xn--` must be real punycode and
+//          must use allowed letters.
+//   2. PHP 8.5 and newer have a browser-style parser (Uri\WhatWg\Url). When it
+//      exists, the link is also refused if that parser cannot read it or reads
+//      a different host. PHP 8.4 skips this layer.
+//
+// 📖 Reference: https://url.spec.whatwg.org/
+// ============================================================================
+
+/**
+ * Say which parser layer is in use: 'uri-ext' when PHP has the browser-style
+ * parser, otherwise 'legacy'.
+ *
+ * Test seam: setting $GLOBALS['g2ml_url_parser_mode_override'] to 'legacy'
+ * forces 'legacy'. Any other value is ignored, so a test can never switch the
+ * parser on where PHP does not have it, and can never make a version accept more.
+ *
+ * @return string  'uri-ext' or 'legacy'
+ */
+function g2ml_urlParserMode(): string
+{
+    if (isset($GLOBALS['g2ml_url_parser_mode_override']) && $GLOBALS['g2ml_url_parser_mode_override'] === 'legacy')
+    {
+        return 'legacy';
+    }
+
+    if (class_exists('Uri\\WhatWg\\Url', false))
+    {
+        return 'uri-ext';
+    }
+
+    return 'legacy';
+}
+
+/**
+ * Say whether the last label of a host is made only of digits, or is `0x`
+ * followed by hex digits. One trailing dot is ignored.
+ *
+ * @param  string $host  A host name (not an IPv6 literal)
+ * @return bool          True if the host ends in a number
+ */
+function g2ml_urlHostEndsInNumber(string $host): bool
+{
+    $labels = explode('.', $host);
+
+    if (count($labels) > 1 && end($labels) === '')
+    {
+        array_pop($labels);
+    }
+
+    $last = end($labels);
+
+    if ($last === '' || $last === false)
+    {
+        return false;
+    }
+
+    if (preg_match('/^[0-9]+$/', $last) === 1)
+    {
+        return true;
+    }
+
+    return preg_match('/^0[xX][0-9a-fA-F]*$/', $last) === 1;
+}
+
+/**
+ * Run the three plain-PHP rules on an address that g2ml_sanitiseURL() accepted.
+ *
+ * @param  string $sanitisedURL  A cleaned address
+ * @return string                '' if all is well, else 'number_host',
+ *                               'odd_port' or 'bad_punycode'
+ */
+function g2ml_urlHostShapeProblem(string $sanitisedURL): string
+{
+    $host = parse_url($sanitisedURL, PHP_URL_HOST);
+
+    if (!is_string($host) || $host === '')
+    {
+        return '';
+    }
+
+    $isIPv6 = ($host[0] === '[');
+
+    // Rule 1: a host that ends in a number must be a normal dotted IPv4 address.
+    if (!$isIPv6 && g2ml_urlHostEndsInNumber($host))
+    {
+        if (!g2ml_isCanonicalIPv4Literal(rtrim($host, '.')))
+        {
+            return 'number_host';
+        }
+    }
+
+    // Rule 2: the port, read from the text after the last "@" and the host.
+    if (preg_match('#^[A-Za-z][A-Za-z0-9+.\-]*://([^/?\#]*)#', $sanitisedURL, $matches) === 1)
+    {
+        $authority = $matches[1];
+        $atSign    = strrpos($authority, '@');
+
+        if ($atSign !== false)
+        {
+            $authority = substr($authority, $atSign + 1);
+        }
+
+        $afterHost = '';
+
+        if ($authority !== '' && $authority[0] === '[')
+        {
+            $close = strpos($authority, ']');
+
+            if ($close !== false)
+            {
+                $afterHost = substr($authority, $close + 1);
+            }
+        }
+        else
+        {
+            $colon = strrpos($authority, ':');
+
+            if ($colon !== false)
+            {
+                $afterHost = substr($authority, $colon);
+            }
+        }
+
+        if ($afterHost !== '' && preg_match('/^:[0-9]*$/', $afterHost) !== 1)
+        {
+            return 'odd_port';
+        }
+    }
+
+    // Rule 3: every `xn--` label must be real punycode, and its letters must
+    // pass the same alphabet checks as a typed non-English host. If the
+    // helper functions are missing, this fails closed.
+    if (!$isIPv6)
+    {
+        foreach (explode('.', $host) as $label)
+        {
+            if (strncasecmp($label, 'xn--', 4) !== 0)
+            {
+                continue;
+            }
+
+            if (!function_exists('g2ml_punycodeLabelIsValid')
+                || !function_exists('g2ml_punycodeDecode')
+                || !function_exists('g2ml_urlAsciiLabelAlphabetsOk')
+                || !g2ml_punycodeLabelIsValid($label))
+            {
+                return 'bad_punycode';
+            }
+
+            $decoded = g2ml_punycodeDecode(substr(strtolower($label), 4));
+
+            if ($decoded === false || !g2ml_urlAsciiLabelAlphabetsOk($decoded))
+            {
+                return 'bad_punycode';
+            }
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Say whether the browser-style parser reads the same host as parse_url().
+ *
+ * It can only refuse. Without the parser it has nothing to add and returns
+ * true. Hosts are compared in lower case with one trailing dot removed, and
+ * IPv6 addresses by value.
+ *
+ * @param  string $sanitisedURL  A cleaned address
+ * @return bool                  True if the parser reads it and agrees on the host
+ */
+function g2ml_browserSeesSameHost(string $sanitisedURL): bool
+{
+    if (g2ml_urlParserMode() !== 'uri-ext')
+    {
+        return true;
+    }
+
+    // Url::parse() returns null for a bad address. The constructor would throw.
+    $parserClass = 'Uri\\WhatWg\\Url';
+
+    try
+    {
+        $browserUrl = $parserClass::parse($sanitisedURL);
+    }
+    catch (\Throwable $error)
+    {
+        return false;
+    }
+
+    if ($browserUrl === null)
+    {
+        return false;
+    }
+
+    $browserHost = rtrim(strtolower((string) $browserUrl->getAsciiHost()), '.');
+    $phpHost     = rtrim(strtolower((string) parse_url($sanitisedURL, PHP_URL_HOST)), '.');
+
+    if ($browserHost === $phpHost)
+    {
+        return true;
+    }
+
+    if (str_starts_with($browserHost, '[') && str_starts_with($phpHost, '['))
+    {
+        $browserBytes = @inet_pton(trim($browserHost, '[]'));
+        $phpBytes     = @inet_pton(trim($phpHost, '[]'));
+
+        return $browserBytes !== false && $browserBytes === $phpBytes;
+    }
+
+    return false;
+}
+
+/**
+ * Give the reason a destination fails the stricter check, or null if it passes.
+ *
+ * The reason never holds the address, so it is safe to log.
+ *
+ * @param  string $url  A destination address
+ * @return string|null  null, or 'not_valid', 'number_host', 'odd_port',
+ *                      'bad_punycode' or 'browser_host'
+ */
+function g2ml_destinationProblem(string $url): ?string
+{
+    $sanitised = g2ml_sanitiseURL($url);
+
+    if ($sanitised === false)
+    {
+        return 'not_valid';
+    }
+
+    $shapeProblem = g2ml_urlHostShapeProblem($sanitised);
+
+    if ($shapeProblem !== '')
+    {
+        return $shapeProblem;
+    }
+
+    if (g2ml_urlParserMode() === 'uri-ext' && !g2ml_browserSeesSameHost($sanitised))
+    {
+        return 'browser_host';
+    }
+
+    return null;
+}
+
+// ============================================================================
 // 🛡️ Destination Host Safety / Anti-SSRF
 // ============================================================================
 // Guards every server-side fetch of, and every stored, user-supplied

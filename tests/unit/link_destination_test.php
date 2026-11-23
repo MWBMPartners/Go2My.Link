@@ -237,3 +237,27 @@ test('g2ml_validateLinkDestination: non-English letters in the path are percent-
     assert_true($result['ok'], 'A public destination with non-English letters in the path is accepted');
     assert_same('https://example.com/stra%C3%9Fe?q=caf%C3%A9', $result['url'], 'Letters are encoded, not deleted');
 });
+
+// ----------------------------------------------------------------------------
+// The stricter link check (#308, F1): a number-looking host is invalid_url on
+// every PHP version, and a normal dotted address still reaches the own-network check.
+// ----------------------------------------------------------------------------
+
+test('g2ml_validateLinkDestination: a number-looking host, an odd port and broken punycode are invalid_url', function (): void
+{
+    foreach (['http://1572395022/', 'http://0x7f.1/', 'https://example.123/', 'http://example.com:0x50/', 'http://xn--123.com/'] as $url)
+    {
+        $result = _g2mlLinkDestinationTestCheck($url);
+
+        assert_false($result['ok'], 'Must be refused: ' . $url);
+        assert_same('invalid_url', $result['errorCode'], 'Refused with the existing invalid-URL code: ' . $url);
+    }
+});
+
+test('g2ml_validateLinkDestination: a normal dotted loopback address is still named blocked_destination', function (): void
+{
+    $result = _g2mlLinkDestinationTestCheck('http://127.0.0.1/');
+
+    assert_false($result['ok'], 'Loopback must be refused');
+    assert_same('blocked_destination', $result['errorCode'], 'The stricter check lets a normal dotted address through to the safety check');
+});

@@ -393,6 +393,9 @@ function g2ml_attachTagsToShortURL(int $urlUID, string $orgHandle, string|array 
 //
 // The three checks, in the same order createShortURL always ran them:
 //   1. g2ml_sanitiseURL() — must be a well-formed http/https URL.
+//   1b. g2ml_destinationProblem() — the stricter link check (#308): number-like
+//      hosts, odd ports and broken `xn--` labels on every PHP version, plus the
+//      browser-style parser when this PHP has one. Refused as 'invalid_url'.
 //   2. Not one of our own short domains (the three built-in ones, or a
 //      registered custom short domain), and not a SUBDOMAIN of one of the
 //      three built-in domains (admin.go2my.link, for example) — a link back
@@ -432,6 +435,20 @@ function g2ml_validateLinkDestination(string $rawURL): array
     $sanitisedURL = g2ml_sanitiseURL($rawURL);
 
     if ($sanitisedURL === false)
+    {
+        return [
+            'ok'        => false,
+            'url'       => null,
+            'errorCode' => 'invalid_url',
+            'error'     => 'Invalid URL format. Please enter a valid HTTP or HTTPS URL.',
+        ];
+    }
+
+    // Check 1b: the stricter link check (#308). It refuses a host that ends
+    // in a number but is not a normal IPv4 address, an odd port, broken
+    // `xn--` labels, and (when this PHP has the browser-style parser) anything the browser-style
+    // parser cannot read or reads as a different host. Same message as check 1.
+    if (g2ml_destinationProblem($sanitisedURL) !== null)
     {
         return [
             'ok'        => false,
