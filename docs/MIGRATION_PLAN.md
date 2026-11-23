@@ -29,7 +29,7 @@ Complete **all** items before beginning the migration:
 ### 📁 Application Files
 
 - [ ] All 16 schema files (`web/_sql/schema/` — `000`, `010`–`015`, `020`–`021`, `030`–`036`) are current and tested
-- [ ] All 36 seed files (`web/_sql/seeds/`, listed in Phase C below) are current and tested
+- [ ] All 37 seed files (`web/_sql/seeds/`, listed in Phase C below) are current and tested
 - [ ] Both stored procedures (`web/_sql/procedures/sp_generateShortCode.sql`, `sp_lookupShortURL.sql`) are current — ⚠️ `sp_logActivity.sql` no longer exists (DELETED; direct `INSERT` now)
 - [ ] All 18 migration scripts (`web/_sql/migrations/001-004,006,008-019` — there is no `005`) match legacy schema, with `016` and `019` confirmed MANDATORY (see Phase D). The other three files there (`020`, `021` and `042`) are covered in `docs/DEPLOYMENT.md`
 - [ ] `auth_creds.php` populated with production database credentials
@@ -64,7 +64,7 @@ Complete **all** items before beginning the migration:
 - [ ] Admin subdomain configured (admin.go2my.link)
 - [ ] SSL certificates active on all domains (Let's Encrypt)
 - [ ] `.htaccess` files deployed to all `public_html/` directories
-- [ ] PHP version set to 8.4+ on Dreamhost panel
+- [ ] PHP version set to 8.4 or 8.5 on the Dreamhost panel for all three domains (8.6 only after checking it; checklist A28)
 
 ### 🧪 Testing
 
@@ -157,9 +157,10 @@ Step C33:  web/_sql/seeds/070_offline_page_translations.sql
 Step C34:  web/_sql/seeds/071_form_feedback_translations.sql
 Step C35:  web/_sql/seeds/072_accessibility_translations.sql
 Step C36:  web/_sql/seeds/073_linkspage_layout_translations.sql
+Step C37:  web/_sql/seeds/074_destination_check.sql
 ```
 
-⚠️ **All 36 must be loaded, in filename order.** The numbers have gaps (there
+⚠️ **All 37 must be loaded, in filename order.** The numbers have gaps (there
 is no `024`–`028`, `030`–`057` or `060`–`063`); that is expected. Many
 features read settings these seeds define, and the later ones hold the words
 the pages show, so most pages without their seed show key names instead of

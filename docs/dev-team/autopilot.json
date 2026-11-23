@@ -4,7 +4,7 @@
   "definition_of_done": [
     "all launch-blocking audit/schema items (#93-#128) resolved",
     "no unresolved Critical/High security finding",
-    "lint clean (parallel-lint, PHP 8.4)",
+    "lint clean (parallel-lint on PHP 8.4; strict lint on PHP 8.4, 8.5 and 8.6)",
     "core flows verified live on MySQL (shorten->redirect, auth/login, dashboard link CRUD, installer import)",
     "in-scope feature gaps built-or-queued",
     "docs sufficient to install/run"

@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🐘 PHP 8.6 readiness and link safety (2026-11-18 → 2026-11-23)
+
+Get the code ready for PHP 8.6 (released on 2026-11-19) while keeping PHP 8.4 as the minimum and
+8.5 working (#308), and fix a bug found on the way (#309). Each piece is one commit on
+`feat/2026-09-21-linkspage-and-sweep`. The code is now tested on PHP 8.4, 8.5 and 8.6.
+
+- 🐛 Letters and spaces are no longer deleted from links. `https://bücher.de/` used to be saved as
+  `https://bcher.de/` (a different website), and a space in a link was dropped. Non-English domain
+  names are now converted to their `xn--` form and non-English text in the rest of the link is
+  encoded, in plain PHP, with the same result on every PHP version (#309).
+- 🔒 A stricter link check when a short link is created or edited: addresses a browser would read
+  as a different place are refused. These are number-like hosts (`http://1572395022/`,
+  `http://0127.0.0.1/`), odd ports (`:0x50`) and broken or look-alike `xn--` names. The same check
+  runs when LinksPage links, icons, avatars and social links are saved.
+- 🔒 The same check also runs when a short link is followed. It always writes a line to the log when
+  a link fails, but it refuses the visitor only when the new setting
+  `redirect.enforce_destination_check` is on. The setting is **off by default**, so nothing changes
+  for visitors until you switch it on.
+- 🐛 A dropped database connection now reconnects. The old connection check was deprecated in PHP
+  and, because of strict database errors, threw an error on a dropped connection, so a request
+  failed instead of reconnecting.
+- 🐛 Fatal errors now log a real backtrace on PHP 8.5 and later (function arguments, which could hold
+  a password, are never logged).
+- 🧪 CI and the deploy test more: "Backend (PHP 8.5)" is a hard check, the PHP 8.6 checks are
+  advisory until they have passed twice on GitHub, and the deploy tests 8.4 and 8.5 first. A new
+  strict lint fails on any deprecation notice, and so do the tests, on every version.
+- ✨ The installer shows a warning (without stopping) when the PHP is a pre-release or newer than the
+  tested versions, and it now sets session strict mode itself.
+- 🗄️ **On deploy:** apply seed `074_destination_check.sql` to every existing database (it adds the
+  setting, off, and three texts). Leave `redirect.enforce_destination_check` off until you have read
+  the "fails the link check" log lines (`PRE_LAUNCH_CHECKLIST.md`, rows A27–A29).
+
 ### 🧹 Fixed — site polish sweep and the HTTP2Shell review (2026-10-05 → 2026-11-02)
 
 A check of all three sites for anything that looks unfinished (#277–#288), plus a security review

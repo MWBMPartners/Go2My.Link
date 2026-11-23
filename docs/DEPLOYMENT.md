@@ -7,11 +7,28 @@
 | Property | Value |
 | --- | --- |
 | **🏢 Provider** | Dreamhost Shared Hosting |
-| **🖥️ PHP version** | 8.4+ / 8.5+ |
+| **🖥️ PHP version** | PHP 8.4 or newer. Tested on 8.4, 8.5 and 8.6 (8.4 is the minimum). Whether Dreamhost offers 8.6 is not confirmed. |
 | **🗄️ MySQL version** | 8.0+ |
 | **❌ CLI access** | None (no Composer, npm, or artisan) |
 | **📤 File upload** | Automated — GitHub Actions [`sftp-deploy.yml`](../.github/workflows/sftp-deploy.yml) (lftp mirror over SFTP). Manual VS Code FTP-Sync is **not** the deployment path (see 🚀 Deployment Process below). |
 | **⚙️ .htaccess** | Supported (`AllowOverride All`) |
+
+### 🖥️ What Dreamhost must offer
+
+Dreamhost must offer PHP 8.4 or newer, with the `mysqli`, `openssl` and `mbstring` extensions and
+Argon2id password hashing. Whether Dreamhost offers PHP 8.6 is not confirmed. Choose PHP 8.4 or
+8.5 for all three domains in the Dreamhost panel, and choose 8.6 only after you have checked it
+yourself (pre-launch checklist A28). If the installer finds a PHP that is a pre-release or newer
+than the tested versions, it warns but does not stop (see `docs/INSTALL.md`).
+
+### ✅ What to do on the owner's side after the PHP 8.6 readiness work (#308)
+
+- Apply seed `074_destination_check.sql` to every existing database (checklist A27).
+- Leave the setting `redirect.enforce_destination_check` off until you have read the log lines
+  that say a link "fails the link check". Switching it on makes short links that fail the
+  stricter check stop redirecting.
+- After the first pull request, read the names of the new checks on GitHub and add
+  "Backend (PHP 8.5)" as a required check (checklist A29). The PHP 8.6 checks are advisory for now.
 
 ## 🌐 Domain Configuration
 
@@ -250,9 +267,9 @@ The application detects its environment from the hostname:
 3. 📋 Import all **16** schema files from `web/_sql/schema/`, in filename order
 4. 🔧 Import both stored procedures from `web/_sql/procedures/`
    (`sp_generateShortCode.sql`, `sp_lookupShortURL.sql`)
-5. 🌱 Import all **36** seed files from `web/_sql/seeds/`, in order — the
+5. 🌱 Import all **37** seed files from `web/_sql/seeds/`, in order — the
    numbering is not continuous: `001` through `023` run in sequence, then
-   thirteen later additions sit outside that run, `029_linkspage_privacy_translations.sql`,
+   fourteen later additions sit outside that run, `029_linkspage_privacy_translations.sql`,
    `058_truthful_marketing_translations.sql`,
    `059_link_destination_translations.sql`,
    `064_linkspage_avatar_icon_translations.sql`,
@@ -263,17 +280,18 @@ The application detects its environment from the hostname:
    `069_home_meta_description_translation.sql`,
    `070_offline_page_translations.sql`,
    `071_form_feedback_translations.sql`,
-   `072_accessibility_translations.sql` and
-   `073_linkspage_layout_translations.sql` (see the table below for
+   `072_accessibility_translations.sql`,
+   `073_linkspage_layout_translations.sql` and
+   `074_destination_check.sql` (see the table below for
    what each one adds). Importing "in order" means by filename, so a plain
-   `for f in web/_sql/seeds/*.sql` loop picks up all 36 without needing to
+   `for f in web/_sql/seeds/*.sql` loop picks up all 37 without needing to
    know about the gap in the numbers.
 
-> 📝 Counts as at 2026-11-02: 16 schema files, 2 stored procedures, 36 seeds,
+> 📝 Counts as at 2026-11-23: 16 schema files, 2 stored procedures, 37 seeds,
 > 21 migrations. Import order is schema → procedures → seeds, which is the
 > order `.github/workflows/ci.yml` uses. (Seed `023` and migration `021`, the
 > LinksPage feature registry, were added on 2026-09-21; seeds `029`, `058`,
-> `059`, `064`, `065`, `066`, `067`, `068`, `069`, `070`, `071`, `072` and `073` were added later still, outside the 001-023 run —
+> `059`, `064`, `065`, `066`, `067`, `068`, `069`, `070`, `071`, `072`, `073` and `074` were added later still, outside the 001-023 run —
 > see below.)
 
 #### 🚨 The collation check — do this first, every time
@@ -361,9 +379,11 @@ key names instead of words:
 | `071_form_feedback_translations.sql` | 5 strings for #286: the "Working…" label buttons show while a form is being sent, the Organisation Members page's new role list label, "Change role" button and its confirmation, and the LinksPage list's confirmation before unpublishing a page (#286) | Busy buttons and the screen-reader announcement say `common.working`; the Members page shows `org.members_change_role_button` and its confirm box shows the key name; the Unpublish confirm box shows `linkspage.unpublish_confirm` |
 | `072_accessibility_translations.sql` | 3 strings for #287: the screen-reader notice "(opens in a new tab)" on links that open a new tab, the "Copied!" label of copy buttons, and the end of the cookie banner's link name ("… about our cookie policy") | Screen readers hear `common.opens_new_tab` on new-tab links; copy buttons say `common.copied`; the cookie banner's link is named with the key `cookie.learn_more_suffix` |
 | `073_linkspage_layout_translations.sql` | 1 string: "Profile picture", the alt text of an uploaded LinksPage avatar (#287) | Nothing a visitor sees breaks: the renderer falls back to the English words when the translation is missing |
+| `074_destination_check.sql` | The setting `redirect.enforce_destination_check` (off) and 3 strings for #308: the refusal page's title and message, and the info page's "destination is not valid" line. The setting decides whether a short link that fails the stricter link check is refused when followed | Nothing a visitor sees breaks: until it is applied the setting counts as off, and the code's own English is used. Apply it before you switch the setting on |
 
-All fifteen are `INSERT IGNORE`, so they are safe to run more than once and safe
-on a database that already has them.
+All sixteen are safe to run more than once and safe on a database that already has them.
+Fifteen are plain `INSERT IGNORE`; `074` writes its one setting with
+`ON DUPLICATE KEY UPDATE` so that a value you chose is kept (its texts are `INSERT IGNORE`).
 
 **Also re-import `004_linkspage_templates.sql` on an existing database (#287), after the new code is
 uploaded.** Unlike the files above, it is not INSERT IGNORE: it refreshes the five system LinksPage
@@ -491,7 +511,7 @@ Do these three steps, in this order:
    **DELETED** — the app now performs a direct `INSERT` into `tblActivityLog`
    instead (`web/_functions/activity_logger.php`); do not look for or try to
    import this file
-4. 🌱 Import all 36 seed files in filename order (the list is in step 5 of
+4. 🌱 Import all 37 seed files in filename order (the list is in step 5 of
    **New Installation** above)
 5. 🧪 Run dry-run verification: `web/_sql/dry_run.sql`
 6. ▶️ Run migration scripts from `web/_sql/migrations/` in order — `001`–`004`,

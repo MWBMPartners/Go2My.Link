@@ -37,7 +37,7 @@ Each accepts an optional final `$message` string for context.
 php tests/run.php
 ```
 
-Prints a `PASS`/`FAIL` line per test and a summary such as `972 passed, 0 failed`.
+Prints a `PASS`/`FAIL` line per test and a summary such as `1069 passed, 0 failed`.
 Exits `0` when everything passes, `1` if anything fails.
 
 Two tests in `tests/unit/link_destination_test.php` look up host names (one
@@ -45,8 +45,32 @@ looks up `example.com`, the other `en.wikipedia.org`), so the unit suite needs
 working DNS. GitHub's CI has it. In a container where host names do not
 resolve, those two fail even though the code is fine; give Docker the
 addresses by hand, for example
-`docker run --rm --add-host example.com:93.184.215.14 --add-host en.wikipedia.org:185.15.59.224 -v "$PWD":/app -w /app php:8.4-cli php tests/run.php`
+`docker run --rm --add-host example.com:93.184.215.14 --add-host en.wikipedia.org:185.15.59.224 -v "$PWD":/app -w /app g2ml-php:8.5-test php tests/run.php`
 (check the current addresses first, from a machine that can look them up).
+
+### 🐳 Running on PHP 8.4, 8.5 and 8.6 in Docker (#308)
+
+The code is tested on PHP 8.4, 8.5 and 8.6 (8.4 is the minimum).
+
+- **The test image.** The stock `php:8.x-cli` images lack the `mysqli` extension, and the 8.6
+  release-candidate image also lacked `mbstring`; the site needs both. Build one image per version
+  from `tests/docker/Dockerfile`, which adds whichever is missing and stops if either is still
+  absent: `docker build -q -t g2ml-php:8.5-test --build-arg PHP_TAG=8.5-cli - < tests/docker/Dockerfile`.
+- **The runner for all three versions.** `sh .claude/programme/run-tests.sh all` builds the images,
+  then runs the strict lint, the unit suite and the database suite on each version against one
+  throwaway MySQL 8.4 container, and prints a final `OVERALL exit=N` line. `G2ML_PHP_VERSIONS`
+  picks the versions (default `8.4 8.5 8.6`); `G2ML_PHP_ADVISORY` names versions that are reported
+  but cannot fail the run (default none).
+- **Settings for the runner.** `G2ML_DOCKER_EXTRA_ARGS` is added to every `docker run`, for example
+  `--add-host example.com:93.184.215.14` where host names do not resolve.
+  `G2ML_TEST_DB_CONTAINER` and `G2ML_TEST_NET` rename the database container and the Docker
+  network, so two runs can go at the same time (with the fixed default names, two runs remove each
+  other's database).
+- **The strict lint.** `sh scripts/php-lint.sh` runs `php -l` with every notice switched on and
+  fails on any syntax error, deprecation, warning or notice. A plain `php -l` prints a deprecation
+  but still exits 0.
+- **Deprecation notices fail tests.** A deprecation raised while a test runs counts as a failure and
+  is printed as `DEPRECATED`. A notice hidden with `@` is ignored.
 
 The unit runner defines throwaway encryption constants (`ENCRYPTION_SALT`,
 `ENCRYPTION_KEY_SECONDARY`) of valid length **before** loading any application

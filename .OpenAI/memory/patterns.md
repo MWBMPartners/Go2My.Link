@@ -134,7 +134,13 @@ explanation of a careful piece of work wastes the care.
 
 ## 🐘 PHP Standards
 
-- PHP 8.5+ with 8.4 backward compat via `version_compare()`
+- PHP 8.4 or newer; tested on 8.4, 8.5 and 8.6 (8.4 is the minimum). Rules for supporting several versions (#308; the longer version is in DEV_NOTES.md):
+  - Detect a feature with `function_exists` / `class_exists` / `method_exists` / `defined` first; use `PHP_VERSION_ID` only when a behaviour cannot be detected. The support advice helper is `web/_functions/php_support.php`.
+  - Syntax newer than 8.4 is allowed only through the version-gated-file method (a second file loaded only on a PHP that can parse it, with lint, parallel-lint and PHPStan exclusions and a contract test), and only when something real is gained. The method is documented, not built.
+  - An attribute is harmless on an older PHP only when its class does not exist there: `#[\NoDiscard]` is safe; `#[\Override]` on a class constant is a fatal compile error on 8.4 and 8.5.
+  - Never use the `(void)` cast or the pipe operator `|>` (the pipe operator is banned shorthand).
+  - A new function named like a possible future built-in must be guarded or named differently (ours all start with `g2ml_`).
+  - The strict lint (`scripts/php-lint.sh`) and the test runner fail on any deprecation notice, on every supported version.
 - Use PHP predefined constants: `DIRECTORY_SEPARATOR`, `PHP_EOL`, etc.
 - Detailed inline comments with links to official docs
 - Proper indentation — consistent and readable throughout all code

@@ -6,8 +6,12 @@
 
 ## 📋 Prerequisites
 
-- PHP **8.4+** with the `mysqli`, `openssl`, and `mbstring` extensions, and
-  Argon2id password hashing (`PASSWORD_ARGON2ID`).
+- PHP 8.4 or newer. Tested on 8.4, 8.5 and 8.6 (8.4 is the minimum). Dreamhost must offer PHP
+  8.4 or newer with `mysqli`, `openssl`, `mbstring` and Argon2id password hashing
+  (`PASSWORD_ARGON2ID`). Whether Dreamhost offers 8.6 is not confirmed.
+  The installer's requirements step shows a warning line, without stopping, when the PHP is a
+  pre-release (for example an 8.6 release candidate) or newer than the tested versions. A PHP
+  older than 8.4 still stops it.
 - An **empty MySQL/MariaDB database** already created in your hosting panel
   (on Dreamhost: *Goodies → MySQL Databases*). Note its host (e.g.
   `mysql.yourdomain.com`), name, user, and password.

@@ -64,7 +64,7 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 
 | Layer | Technology |
 | --- | --- |
-| 🐘 **Backend** | PHP 8.4+ / 8.5+ (MySQLi, prepared statements only) |
+| 🐘 **Backend** | PHP 8.4 or newer, tested on 8.4, 8.5 and 8.6 (MySQLi, prepared statements only) |
 | 🗄️ **Database** | MySQL 8.0+ (InnoDB, utf8mb4, stored procedures) |
 | 🎨 **Frontend** | HTML5, CSS3, Bootstrap 5.3, Font Awesome 6 (no jQuery) |
 | 📈 **Charts** | Chart.js 4.4, Leaflet.js (planned) |
@@ -209,7 +209,7 @@ Go2My.Link/
 
 ### 📌 Prerequisites
 
-- 🐘 PHP 8.4+ or 8.5+
+- 🐘 PHP 8.4 or newer (tested on 8.4, 8.5 and 8.6; 8.4 is the minimum). Dreamhost must offer PHP 8.4 or newer with `mysqli`, `openssl`, `mbstring` and Argon2id. Whether Dreamhost offers 8.6 is not confirmed.
 - 🗄️ MySQL 8.0+
 - 🖥️ Visual Studio Code (recommended) with FTP Sync extension
 - 🔀 Git
@@ -247,7 +247,7 @@ Go2My.Link/
 
 5. Import the two stored procedures from `web/_sql/procedures/`. Without `sp_lookupShortURL`, no short link redirects.
 
-6. Run the seed scripts from `web/_sql/seeds/` (36 files, in filename order). [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) lists them and says which migrations an existing database also needs.
+6. Run the seed scripts from `web/_sql/seeds/` (37 files, in filename order). [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) lists them and says which migrations an existing database also needs.
 
 7. Point your web server document roots to the appropriate `public_html/` directories.
 

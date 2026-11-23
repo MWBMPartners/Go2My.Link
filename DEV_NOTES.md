@@ -10,7 +10,7 @@
   - ❌ No CLI access (no Composer, no npm, no artisan)
   - 📦 Libraries must be manually downloaded and uploaded
   - 🌐 CDN-first with local fallback pattern for all third-party libraries
-- **🖥️ PHP Version:** 8.5+ (with 8.4 backward compatibility via `version_compare()`)
+- **🖥️ PHP Version:** PHP 8.4 or newer. Tested on 8.4, 8.5 and 8.6 (8.4 is the minimum). Dreamhost must offer PHP 8.4 or newer with mysqli, openssl, mbstring and Argon2id. Whether Dreamhost offers 8.6 is not confirmed.
 - **🗄️ MySQL Version:** 8.0+
 
 ## 🏗️ Key Architecture Decisions
@@ -432,7 +432,7 @@ Releases are managed via the **"🚀 Create Release"** GitHub Actions workflow (
 | Redirect Engine | `component-b/v0.5.0` | `web/G2My.Link/public_html/` |
 | LinksPage | `component-c/v0.5.0` | `web/Lnks.page/public_html/` |
 
-> 💡 **Tip:** Concurrent releases are prevented — only one release can run at a time. The workflow uses `actions/checkout@v6` and runs PHP lint with `php-parallel-lint` on PHP 8.4.
+> 💡 **Tip:** Concurrent releases are prevented — only one release can run at a time. The workflow uses `actions/checkout@v6` and runs PHP lint with `php-parallel-lint` on PHP 8.4 (the release workflow still has no 8.5 or 8.6 leg).
 
 ## 📋 Issue Closure Protocol
 
@@ -475,10 +475,45 @@ XML files have schemas too. `external/sitemap-0.9.xsd` is the Sitemaps 0.9 schem
 
 ## 💡 Gotchas & Tips
 
-### ⚠️ PHP 8.5 vs 8.4
+### ⚠️ Supporting several PHP versions (8.4, 8.5, 8.6)
 
-Use `version_compare(PHP_VERSION, '8.5.0', '>=')` for features only available in 8.5.
-Always provide a fallback for 8.4 compatibility.
+The code must run on every version we test, with 8.4 the lowest. The rules (#308):
+
+1. **Detect the feature, do not compare version numbers.** Ask with `function_exists`,
+   `class_exists`, `method_exists` or `defined` first. Use `PHP_VERSION_ID` only when a behaviour
+   cannot be detected that way. Version advice for people (for example the installer's warning)
+   comes from `web/_functions/php_support.php`.
+2. **Never write syntax that PHP 8.4 cannot read** (the pipe operator `|>`, the `(void)` cast,
+   `clone($x, [...])`, closures in constants, partial function application). A file that 8.4
+   cannot parse is a fatal error there. The owner allows newer syntax only through the
+   version-gated-file method below, and only when something real is gained.
+3. **An attribute is harmless on an older PHP only when its class does not exist there.**
+   `#[\NoDiscard]` is safe: 8.4 ignores it (an attribute whose class does not exist is never checked unless read through reflection). `#[\Override]` on a class constant is a
+   fatal compile error on 8.4 and 8.5 (the attribute exists there, but not for constants).
+4. **Never use the `(void)` cast or the pipe operator `|>`.** The pipe operator is shorthand, which
+   the house rule bans, and the `(void)` cast gains nothing (assign the result to a variable).
+5. **A new function with the same name as a possible future built-in** must be guarded
+   (`function_exists`) or named differently. All our functions start with `g2ml_`, which cannot clash.
+6. **Deprecation notices fail the build.** `scripts/php-lint.sh` (the strict lint) and the test
+   runner both fail on any deprecation notice, on every supported version.
+
+#### 📄 The version-gated-file method: documented, NOT built
+
+Written down in the issue #308 plan so it can be built the day it is needed; none of its tooling
+exists yet. In short:
+
+- A gated implementation lives in `web/_functions/php85/<name>.php` (or `php86/`) and defines only
+  `_g2ml_<name>_php85()`. The ordinary 8.4 file beside it always defines
+  `_g2ml_<name>_baseline()` and loads the gated file only when `PHP_VERSION_ID` allows, then the
+  public function calls whichever exists.
+- `scripts/php-lint.sh` would skip those folders (and say "SKIPPED") on a PHP too old to read
+  them; `parallel-lint` would exclude them; `phpstan.neon` would exclude them, and a second PHPStan
+  configuration with a higher minimum version would analyse them.
+- A contract test would check that every gated function has a baseline, that both give the same
+  answers, and that the gated function does not exist on a PHP that is too old.
+- **What would trigger building it:** a concrete security or correctness gain that only newer
+  *syntax* can give, in code we really have. Probing every new feature in 8.5 and 8.6 found none.
+  Raising the minimum to 8.5 would remove the need altogether.
 
 ### 🔑 Auth Credentials
 

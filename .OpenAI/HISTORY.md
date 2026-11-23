@@ -3,7 +3,45 @@
 > Chronological log of significant Claude-assisted work, newest first. Portable
 > (repo-tracked) so the project's working history is available on every machine.
 > Companion to [.claude/memory/MEMORY.md](memory/MEMORY.md) and the live handoff
-> [.github/HANDOFF.md](../.github/HANDOFF.md). Last updated **2026-11-02**.
+> [.github/HANDOFF.md](../.github/HANDOFF.md). Last updated **2026-11-23**.
+
+---
+
+## 2026-11-18 → 2026-11-23 — PHP 8.6 readiness
+
+Branch: **`feat/2026-09-21-linkspage-and-sweep`** (all pushed). Live detail:
+[.github/HANDOFF.md](../.github/HANDOFF.md), section "PHP 8.6 readiness (#308)".
+
+- **The owner asked (2026-11-18, issue #308) for the code to be ready for PHP 8.6**, due on
+  2026-11-19, with every document brought up to date. The same day they set a standing rule: three
+  tiers of work, each with its own model and effort level (gather facts, analyse and plan, build;
+  `470d75d`).
+- **What was found.** The 88 test failures first seen on PHP 8.6 were not the code: the stock PHP
+  images lack the `mysqli` extension (and the 8.6 release-candidate image lacks `mbstring`), so a
+  test image was added. The deprecated `mysqli ping()` was a real bug: with strict database errors
+  on, a dropped connection threw an error instead of reconnecting, so a dropped connection during a
+  request was fatal. PHPStan was red on the first pull request waiting to happen (CI had not run on
+  the branch since 2026-10-19).
+- **PHP 8.6.0 was released on 2026-11-19** and everything passes on it: 1069 unit and 241 database
+  tests on each of PHP 8.4.27, 8.5.12 and 8.6.0. CI counts 8.6.0 now; its 8.6 checks run in our own
+  Docker image because the pinned `setup-php` still lists 8.6 as a nightly build.
+- **The commits (oldest first):** `38b6361` strict lint, test image, deprecations fail tests;
+  `1ee688a` local runner on three versions; `beeb815` the ping replacement and the installer's
+  warning; `1491d2e` CI and deploy on 8.4, 8.5 and 8.6; `93c5756` backtraces for fatal errors;
+  `93dc9b8` 8.6.0 counted; `b5d67f2` letters and spaces no longer deleted from links (#309);
+  `1fb3d9b`, `38d2e2a`, `38d315e` the stricter link check at create and edit, on LinksPage
+  addresses, and when a link is followed (off by default); and `84f3795`, `#[\NoDiscard]` on
+  nine security checks.
+- **The owner's decisions:** the allowed letters (Vietnamese, the extra Cyrillic letters, 々 and the
+  Turkish dotless i accepted; ĸ refused; the Japanese dash and slash look-alikes refused next to
+  Latin letters); the follow-time check is a setting that is off; the version-gated-file method for
+  newer syntax is written down but not built.
+- **How the work was done:** by separate agents, each piece reviewed by a fresh Claude Opus agent
+  (Codex is not installed in the cloud session), so every commit still owes a Codex catch-up review.
+- **Filed:** #309 (letters, fixed), #310 (upgrade PHPStan, since 2.2.4 stops at PHP 8.5.99), #311
+  (a session warning in the database tests; the data export's file write is not checked), #312 (the
+  uncaught-exception log can hold argument values; long titles fail to save), #313 (a test gap for
+  the direct-access guard).
 
 ---
 

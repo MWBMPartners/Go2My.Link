@@ -23,7 +23,7 @@
 ## Project at a glance
 
 - **Product:** Go2My.Link — URL shortener by MWBM Partners Ltd (MWservices). 3 components/domains: **go2my.link** (main, A), **g2my.link** (shortlinks, B), **lnks.page** (LinksPage, C).
-- **Stack:** PHP 8.4+/8.5+, MySQLi only (prepared statements), Bootstrap 5.3, vanilla JS. **Dreamhost shared hosting** (no Composer/CLI assumed).
+- **Stack:** PHP 8.4 or newer (tested on 8.4, 8.5 and 8.6; 8.4 is the minimum), MySQLi only (prepared statements), Bootstrap 5.3, vanilla JS. **Dreamhost shared hosting** (no Composer/CLI assumed).
 - **State (2026-07-19):** A + B are code-complete for launch. **C (LinksPage) is now BUILT** (6/6 issues #45–#50 — renderer, custom-domain fallback, templates, management UI, sanitised custom HTML, age gate); `customHTML`/WYSIWYG is premium-gated with a kill switch defaulting OFF pending security sign-off. Also built: public API v1 (framework + endpoints + key management + OpenAPI/Redoc docs), analytics + dashboard + CSV export, IP geolocation (gated off), UTM capture/forward (gated off), custom domains with DNS-TXT verification, premium-tier entitlement gating, CueRCode integration path. Remaining work is owner-blocked (credential rotation, DB cutover, legal sign-off, SIGNula/billing credentials) — see **`.github/HANDOFF.md`** for the authoritative live state.
 - **GitHub Project #4** (MWBMPartners org) — keep it maintained; create issues for all work and close with commit refs.
 

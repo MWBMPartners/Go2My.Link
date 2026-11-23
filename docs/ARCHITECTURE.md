@@ -100,7 +100,7 @@ RewriteRule ^_libraries/ - [F,L]
 
 | Layer | Technology | Notes |
 | --- | --- | --- |
-| 🖥️ Backend | PHP 8.4+ / 8.5+ | No framework; custom modular architecture |
+| 🖥️ Backend | PHP 8.4 or newer (tested on 8.4, 8.5 and 8.6) | No framework; custom modular architecture |
 | 🗄️ Database | MySQL 8.0+ (InnoDB, utf8mb4) | MySQLi only (no PDO) |
 | 🎨 Frontend | HTML5, CSS3, Bootstrap 5.3 | Responsive, WCAG 2.1 AA compliant |
 | 📜 JavaScript | Plain JavaScript, Chart.js, Leaflet.js | AJAX with graceful no-JS fallback |
@@ -177,7 +177,7 @@ User → lnks.page/{slug} → .htaccess → index.php?slug={slug}
 
 ### 🔑 Authentication
 
-- **Password hashing:** Argon2id (bcrypt fallback for PHP 8.4)
+- **Password hashing:** Argon2id (bcrypt only as a fallback where PHP lacks Argon2id)
 - **Session management:** PHP native sessions with secure configuration. The
   session cookie's Domain attribute is worked out per component by
   `g2ml_sessionCookieDomain()` (`web/_functions/session.php`, used by

@@ -296,10 +296,10 @@ One piece of work = one GitHub issue and one commit. When it is finished:
 
 1. **Verify it yourself.** Run the checks and read their real exit codes — never pipe a check into
    `grep` or `tail` and then rely on `&&`, because the pipe hides the real result. PHP 8.5 is
-   installed on the owner's Mac through Homebrew (found 2026-09-21; older notes say it is not), but CI
-   uses PHP 8.4 — the lowest version the live site is meant to run — so run the tests in Docker with
-   that version:
-   `docker run --rm -v "$PWD":/app -w /app php:8.4-cli php tests/run.php`. Format only the files
+   installed on the owner's Mac through Homebrew (found 2026-09-21; older notes say it is not). The code
+   is supported on PHP 8.4 (the lowest), 8.5 and 8.6, so run the tests in Docker on all three:
+   `sh .claude/programme/run-tests.sh all` (the strict lint, the unit suite and the database suite
+   on each version; `tests/README.md` has the details and the settings). Format only the files
    you touched (the tree has older formatting drift, tracked in #153 — do not reformat unrelated
    files). Read the diff once with security in mind. If the work changes what visitors see, also run
    the polish check (rule 14) on the pages it touches.

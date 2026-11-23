@@ -133,7 +133,7 @@
 
 - **Product:** Go2My.Link (URL shortening service) by MWBM Partners Ltd (MWservices)
 - **Repo:** https://github.com/MWBMPartners/Go2My.Link
-- **Tech Stack:** PHP 8.4+/8.5+, MySQL (MySQLi only), Bootstrap 5.3, HTML5/CSS3
+- **Tech Stack:** PHP 8.4 or newer (tested on 8.4, 8.5 and 8.6; 8.4 is the minimum), MySQL (MySQLi only), Bootstrap 5.3, HTML5/CSS3
 - **Hosting:** Dreamhost shared hosting (no CLI/Composer)
 - **3 Domains:** go2my.link (main, Component A), g2my.link (shortlinks, Component B), lnks.page (LinksPage, Component C)
 - **Current state (2026-07-19):** A + B are code-complete for launch. **C (LinksPage) is BUILT** (6/6, #45–#50) — renderer, custom-domain fallback, templates, management UI, sanitised custom-HTML, age gate; custom-HTML is premium-gated with a kill switch OFF pending security sign-off. Public API v1, analytics/dashboard/CSV export, IP geolocation (gated off), UTM capture/forward (gated off), custom domains, and premium-tier entitlement gating are all BUILT too. Remaining work is owner-blocked (see the banner above and [HANDOFF.md](../../.github/HANDOFF.md)).
@@ -309,7 +309,7 @@ These were built in the 2026-07-09/10/18 launch-prep cycle but were missing from
 - **Premium-tier entitlements (#146):** `web/_functions/entitlements.php` (fail-open; enforces `maxLinks`/API-daily/domain-cap from `tblSubscriptionTiers`).
 - **Component C — LinksPage (#45–#50, 6/6 BUILT):** `web/Lnks.page/` is the live component (public_html/index.php resolves a handle to a rendered page — no longer a coming-soon placeholder); `web/Lnks.page/_functions/linkspage_{resolver,renderer}.php`; shared `web/_functions/{linkspage_manage,html_sanitiser,adult_content}.php`; custom-domain fallback `web/G2My.Link/_functions/linkspage_fallback.php`; management UI `web/Go2My.Link/_admin/public_html/pages/linkspage/`. `customHTML`/WYSIWYG (#49) is DOM-allowlist-sanitised, `script-src 'none'` CSP, premium-gated, **kill switch OFF by default** pending security sign-off — the product's highest stored-XSS surface.
 - **CueRCode wiring (#145):** QR-link create/re-point/scan attribution folded into `createShortURL()` + `logActivity()`; authenticates via a `qr:link`-scoped API key (no local `tblQRCodes`).
-- **Tests:** `tests/unit/` (DB-free; 58 test files as of 2026-07-19, 72 files and 972 tests as of 2026-11-02) and `tests/integration/` (DB-backed, skips cleanly with no DB) — see `tests/README.md` for the throwaway-MySQL one-liner. 519 unit tests passing per the 2026-07-19 gate run (see the top banner).
+- **Tests:** `tests/unit/` (DB-free; 58 test files as of 2026-07-19, 82 files and 1069 tests as of 2026-11-23) and `tests/integration/` (DB-backed, skips cleanly with no DB) — see `tests/README.md` for the throwaway-MySQL one-liner. 519 unit tests passing per the 2026-07-19 gate run (see the top banner).
 
 ## 🧹 Site polish sweep (2026-10-05 → 2026-11-02) — what changed and the traps
 
@@ -359,6 +359,34 @@ Finished table. Things a future session needs to know:
   `example.com` and `en.wikipedia.org` and fail where host names do not resolve. The code is fine; see tests/README.md.
 - **Trap — rewriting `build-plan.json` with a JSON library** re-escapes over a hundred lines. Edit it
   as text.
+
+## 🐘 PHP 8.6 readiness (2026-11-18 → 2026-11-23, #308) — what changed and the traps
+
+Supported: PHP 8.4 or newer, tested on 8.4, 8.5 and 8.6 (8.4 is the minimum). Baseline: 1069 unit and
+241 database tests on each of PHP 8.4.27, 8.5.12 and 8.6.0. Seeds: 37 (`074` added). The rules for
+supporting several versions are in `patterns.md` and `DEV_NOTES.md`.
+
+- **New files:** `web/_functions/url_ascii.php` (pure-PHP punycode and the letters-in-links
+  conversion, #309); `web/_functions/php_support.php` (how well a PHP version is supported; used by
+  the installer's warning); `scripts/php-lint.sh` (the strict lint: any deprecation, warning or
+  notice fails); `scripts/ci-php-run.sh` (runs a CI step on the host PHP or inside our own image);
+  `tests/docker/Dockerfile` (the test image).
+- **Settings:** `redirect.enforce_destination_check` (seed `074`, off): when on, a short link that
+  fails the stricter link check is refused when followed; the failure is logged whatever the setting.
+- **Trap — stock `php:8.x-cli` images lack `mysqli`** (and the 8.6 release-candidate image lacked
+  `mbstring`). Build the test image from `tests/docker/Dockerfile`; the 88 failures first seen on 8.6
+  were this, not the code.
+- **Trap — two test runs at once** remove each other's database unless `G2ML_TEST_DB_CONTAINER` and
+  `G2ML_TEST_NET` give them different names.
+- **Trap — the pinned `setup-php` (v2.37.2) still lists 8.6 as a nightly build.** The CI 8.6 legs use
+  our own image and check that `php -v` says exactly 8.6.x.
+- **Trap — `@` does not stop an exception.** The deprecated `ping()` threw on a dropped connection
+  under strict mysqli errors; `g2ml_dbConnectionIsAlive()` replaces it.
+- **Trap — an attribute on a class constant:** `#[\Override]` there is a fatal error on 8.4 and 8.5.
+  `#[\NoDiscard]` is safe (an unknown attribute is ignored on 8.4).
+- **Trap — PHPStan 2.2.4 caps `phpVersion` at 8.5.99** (#310).
+- **Fatal-error backtraces** come from `error_get_last()['trace']` on 8.5+; only file, line and
+  function names are logged, never arguments (`_g2ml_fatalErrorBacktrace()`).
 
 ## 📌 Standing Practices (Apply Every Session)
 

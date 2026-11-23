@@ -14,7 +14,13 @@
 > **Purpose:** durable pick-up point so any session (or a fresh start) can continue
 > without re-deriving state. Companion to `docs/LAUNCH_PLAN_2026-07-09.md` (the full
 > strategic plan) and `.claude/memory/MEMORY.md` (project memory).
-> **Last updated:** 2026-11-02 (site polish sweep #277–#288 and security review #302 finished and pushed, documentation swept — see "Site polish sweep" under START HERE) · 2026-09-25 15:05 (batch 4 done; second Codex catch-up clean; SX-208 reviewed by Codex — see "This session") · 2026-09-23 21:10 (everything pushed; safe restart point — see START HERE) · 2026-09-21/22 (the LinksPage and tiers programme) · earlier: 2026-09-07 (audit + docs sweep, merged as #201) · 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow; per-user analytics #165) · earlier: 2026-07-22 (PR merges, Dependabot 3-tier, pricing) · 2026-07-19 (post-recovery conformance audit) · **Working branch:** `feat/2026-09-21-linkspage-and-sweep` (from `alpha`).
+> **Last updated:** 2026-11-23 (PHP 8.6 readiness, #308, and link safety, #309 — see "PHP 8.6 readiness (#308)" under START HERE) · 2026-11-02 (site polish sweep #277–#288 and security review #302 finished and pushed, documentation swept — see "Site polish sweep" under START HERE) · 2026-09-25 15:05 (batch 4 done; second Codex catch-up clean; SX-208 reviewed by Codex — see "This session") · 2026-09-23 21:10 (everything pushed; safe restart point — see START HERE) · 2026-09-21/22 (the LinksPage and tiers programme) · earlier: 2026-09-07 (audit + docs sweep, merged as #201) · 2026-08-04 (`release-candidate` branch cut from `alpha`; four-tier Dependabot + dependency-backport workflow; per-user analytics #165) · earlier: 2026-07-22 (PR merges, Dependabot 3-tier, pricing) · 2026-07-19 (post-recovery conformance audit) · **Working branch:** `feat/2026-09-21-linkspage-and-sweep` (from `alpha`).
+> **Status (2026-11-23):** the PHP 8.6 readiness work (#308) is built and pushed (last commit
+> `84f3795`): the code is supported on PHP 8.4 or
+> newer and tested on 8.4, 8.5 and 8.6 (released 2026-11-19), and the letters-in-links bug (#309)
+> is fixed. 1069 unit and 241 database tests pass on each of the three versions. Nothing has run on
+> GitHub yet; the owner's items are listed under "PHP 8.6 readiness (#308)". The build programme
+> resumes with SX-212 and PF-13.
 > **Status (2026-11-02):** the site polish sweep the owner asked for on 2026-10-05 (#277–#288) and
 > the HTTP2Shell security review (#302) are finished and pushed; 972 unit tests and 238 database
 > tests pass. The owner's open items are listed under "Site polish sweep". The build programme
@@ -32,11 +38,72 @@
 
 ---
 
-## ▶️ START HERE — everything a fresh session needs (2026-09-25, 15:05)
+## ▶️ START HERE — everything a fresh session needs (2026-09-25, 15:05; PHP 8.6 section added 2026-11-23)
 
 > **This section is written so a brand-new session, with no memory of the previous ones, can carry
 > on.** Read it, then `.claude/programme/README.md`, then the `progress` section of
 > `.claude/programme/build-plan.json`. Older dated sections below are history.
+
+### 🐘 PHP 8.6 readiness (#308)
+
+The owner asked on 2026-11-18 for the code to be ready for PHP 8.6 (released 2026-11-19), with
+every document brought up to date. **The result:** PHP 8.4 or newer is supported and tested on
+8.4, 8.5 and 8.6 (8.4 is the minimum); whether Dreamhost offers 8.6 is not confirmed. The issue
+**#308 is the umbrella and stays open.** The work was done by separate agents; each piece was
+reviewed by a fresh Claude Opus agent (Codex is not installed in this cloud session), so **every
+commit below still owes a Codex catch-up review.**
+
+**What is done** (oldest first; details in the Finished table):
+
+| Commit | Piece |
+| --- | --- |
+| `470d75d` | The three-tier rule (gather, plan, build, each with a model and an effort level) |
+| `38b6361` | Piece 1: strict lint script, test image, deprecations fail the tests, PHPStan fix |
+| `1ee688a` | Piece 3: local test runner on three versions |
+| `beeb815` | Piece 2: the deprecated mysqli ping replaced (a real bug: a dropped connection was a fatal error), installer session strict mode, installer warning for a pre-release or untested PHP |
+| `1491d2e` | Piece 4: CI "Backend (PHP 8.5)" hard, 8.6 advisory, deploy tests 8.4 and 8.5, lint hardening |
+| `93c5756` | F2: fatal-error backtraces on PHP 8.5+ |
+| `93dc9b8` | P1: 8.6.0 counted; the CI 8.6 legs run in our own Docker image |
+| `b5d67f2` | F4 (#309): letters and spaces no longer deleted from links; pure-PHP punycode |
+| `1fb3d9b` | F1a: stricter link check at create and edit |
+| `38d2e2a` | F1c: the same check when LinksPage items, icons, avatars and social links are saved |
+| `38d315e` | F1b: follow-time check, always logged, refuses only when `redirect.enforce_destination_check` is on (default off; seed 074) |
+| `84f3795` | F3: `#[\NoDiscard]` on nine security checks |
+
+**Test baseline:** 1069 unit and 241 database tests, on each of PHP 8.4.27, 8.5.12 and 8.6.0
+(`sh .claude/programme/run-tests.sh all`). Seeds: 37 (`074` added).
+
+**Owner items:**
+
+1. **Add "Backend (PHP 8.5)" as a required check** on the "Protect main branch" ruleset, once its exact
+   name appears on the first pull request (checklist A29).
+2. **Read these on the first pull request** (nothing has run on GitHub yet): the names of the new
+   checks; the `php -v` line of the 8.6 legs (it must say exactly 8.6.x); that the integration leg
+   reaches its database from inside the container; and that a failing advisory 8.6 leg shows red
+   without failing the run.
+3. **Apply seed `074_destination_check.sql` to every existing database** (checklist A27).
+4. **Keep `redirect.enforce_destination_check` off** until you have read the "fails the link check"
+   log lines: switching it on stops old links with a number-like host or an odd port from redirecting.
+5. **Decide how addresses inside LinksPage custom HTML are checked.** They are not checked today
+   (custom HTML is switched off by default and has its own cleaner).
+6. **Two letter decisions were made:** Vietnamese, the extra Cyrillic letters, 々 and the Turkish
+   dotless i are accepted; ĸ is refused; the Japanese dash and slash look-alikes are refused next to
+   Latin letters.
+7. **Promote the 8.6 CI legs to hard gates** after two green GitHub runs; the exact one-line steps
+   are in the comments in `.github/workflows/ci.yml`. Then add "Backend (PHP 8.6)" as a required check (step 3 there).
+8. **Dreamhost:** it is not confirmed which PHP versions it offers. Choose 8.4 or 8.5 for all three
+   domains, and 8.6 only after you have checked it (checklist A28).
+9. **The three-tier rule on your own computers:** the machine-wide copy (for `~/.claude`, `~/.codex`
+   and the other tools) is for you to place; a cloud session cannot write to your computers (the text was to go on #308; not checked here).
+
+**Issues filed:** **#309** (letters deleted from links; fixed in `b5d67f2`), **#310** (upgrade
+PHPStan, since 2.2.4 caps `phpVersion` at 8.5.99), **#311** (a `session_regenerate_id` warning in the
+database tests; the data export's file write in `data_rights.php` is not checked), **#312** (the
+uncaught-exception log can hold argument values; long titles fail to save), **#313** (a gap in the
+direct-access guard test).
+
+**Method written down, not built:** newer PHP syntax through version-gated files (see DEV_NOTES.md).
+It would be built only for a concrete gain that only newer syntax can give.
 
 ### 🧹 Site polish sweep (started 2026-10-05; resumed 2026-11-02)
 
@@ -248,15 +315,27 @@ batch 5; SX-205 is done).
 | `d826518` | #285 | Leftovers and dead weight. jQuery (87 KB, unused) is gone; the 350 KB logo is replaced by sized PNGs (a typical home page fell from about 1.14 MB to 705 KB); the shared header, navigation, footer, cookie banner and landing pages print no HTML comments (100 per page before) and the landing pages start with <!DOCTYPE html>; /pages/... answers the branded 404; the installer answers a plain 404 once installed; the library fallbacks finally work (copies in each web root's vendor/, inserted in the failed link's place), g2my.link's own pages included; the API description no longer names internal files; a design source file left the web root; the Redoc page's CSP allows exactly its Redocly footer logo. Found #305. Site polish sweep (2026-10-05). Review: 2 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback; last round clean. |
 | `21f30da` | #288 | The polish check the owner asked for on 2026-10-05, as a standing rule: rule 14 in `.claude/memory/working-rules.md` (nine things every visible change must pass, when the check runs, and what "done" means), with one-line additions to rule 7 (run it on the pages a change touches) and rule 8 (run it on the whole site in every documentation sweep); CLAUDE.md and AGENTS.md summarise it. Its automatic part is a new unit test, `tests/unit/site_polish_test.php`, which fails on a placeholder or preview hosting address or "lorem ipsum" in shipped code, a copyright year written as fixed numbers, a main-site or dashboard page with no title or description of its own, a `console.log`, `debugger` or `alert()` in the site's own JavaScript, or a development file (notes, backups, database dumps, logs, archives, `phpinfo.php`, `.env`) inside a web root, and lists the other tests that check the rest. It reads files only; layout, contrast and dead buttons still need the browser run the rule describes. Fixed what it found: the three landing pages printed a fixed copyright year (they now print the current one) and the dashboard's breach-response page had no description. Unit tests: 972, all passing. The machine-wide copy of the rule is with the owner (see the queue). Site polish sweep (2026-10-05). Review: 4 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback, claude-opus-fallback, claude-opus-fallback; last round clean. |
 | `1d7520a` | #306 | Two bugs found by the final browser re-check. **Shorten without JavaScript never worked in a browser:** `/api/create/` answers in XML when the Accept header names `application/xml`, and every browser's form submit does, so the redirect back to the homepage (#281) never happened and the visitor saw a bare card. A new helper, `g2ml_apiCreateWantsStructured()`, treats a header that also names `text/html` as a person, who now gets the redirect with the short link or the error shown; `?format=xml`, XML-only headers and JavaScript requests are answered as before. **The dashboard's breach-response page refused non-admins with `requireAuth()`'s bare page** (no menu, no phone layout, English only); it now answers 403 inside the dashboard, with translated text and a way back, through a new `g2ml_renderAccessDenied()`. Tests: behaviour tests for the helper with real Chrome, Firefox and Safari headers; a test that runs the real breach page as an ordinary user posting a valid form (refused, no form, the password reset never called) with a GlobalAdmin control run; and a scan that no dashboard page asks `requireAuth()` for a higher role. Checked in Chromium on the local copy. Unit tests: 982. Found #307. Review: 2 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback; the second round's only finding (an out-of-date test comment) is fixed. |
+| `470d75d` | #308 | The three tiers as a standing rule (owner, 2026-11-18): gather facts with Sonnet or Haiku at medium effort, analyse and plan with Opus at high effort one agent at a time, build with Sonnet or Haiku at medium effort. A table in rule 4 of `working-rules.md`, with `CLAUDE.md`, `AGENTS.md` and the `.OpenAI/` copy. Documentation only. The machine-wide copy is for the owner to place. |
+| `38b6361` | #308 | PHP 8.6 readiness, piece 1: the checks made true and strict. A new `scripts/php-lint.sh` fails on any deprecation, warning or notice (a plain `php -l` prints PHP 8.6's deprecations and still exits 0); `tests/docker/Dockerfile` builds a test image with `mbstring` and `mysqli` (the stock images lack them, which caused the 88 failures first seen on 8.6); a deprecation notice during a test now fails it; a redundant `is_string()` that PHPStan 2.2.4 rejects was removed; `phpstan.neon` accepts 8.4 to 8.5.99. Unit tests: 984. Review: 2 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback. |
+| `1ee688a` | #308 | Piece 3: `.claude/programme/run-tests.sh` runs the strict lint, the unit suite and the database suite on PHP 8.4, 8.5 and 8.6 (at that time the 8.6 release candidate, advisory), one test image per version, one MySQL container, `G2ML_DOCKER_EXTRA_ARGS` for `--add-host`, and a clean-up on Ctrl-C. Unit tests: 984. Review: 1 round(s); reviewers by round: claude-opus-fallback. |
+| `beeb815` | #308 | Piece 2: the application changes. **A real bug:** the deprecated `mysqli ping()` threw `MySQL server has gone away` on a dropped connection (strict database errors are on, and `@` does not stop an exception), so a dropped connection during a request was a fatal error and the reconnect code could never run; the new `g2ml_dbConnectionIsAlive()` returns false only for the lost-connection error codes, so it now reconnects (checked against real drops on MySQL 8.4 and MariaDB 11.4). The installer sets session strict mode itself (PHP 8.6 turns it on by default); a new `web/_functions/php_support.php` gives the installer a non-blocking warning for a pre-release or untested PHP; a version check that could never run was removed. Unit tests: 992. Review: 2 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback. |
+| `1491d2e` | #308 | Piece 4: CI and deploy. Two new jobs, "Backend (PHP 8.5 or 8.6)" and "Tests (Integration, PHP 8.5 or 8.6)" (check names "Backend (PHP 8.5)" and so on): 8.5 hard, 8.6 advisory (`continue-on-error`); the required "Frontend" and "Backend" checks keep their names and PHP 8.4; the deploy's checks run on 8.4 and 8.5 with the strict lint and the unit tests; `php-lint.sh` ignores start-up messages PHP prints on every run; `ci_workflow_test.php` turns the design into rules with 21 mutations. Nothing has run on GitHub yet. Unit tests: 999. Review: 2 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback. |
+| `93c5756` | #308 | F2: on PHP 8.5 and later the shutdown handler logs a real backtrace for a fatal error (`_g2ml_fatalErrorBacktrace()`), chosen by whether `error_get_last()` has a `trace` entry, never by version number; only file, line, class and function names are kept (never arguments, which could hold a password), at most 50 frames. 8.4 is unchanged. Found, not fixed: #312. Unit tests: 1007. Review: 1 round(s); reviewers by round: claude-opus-fallback. |
+| `93dc9b8` | #308 | P1: PHP 8.6.0 (released 2026-11-19) is counted everywhere. The runner counts 8.6.0 and its container names can be set so two runs can go at once. The pinned `setup-php` v2.37.2 still lists 8.6 as nightly, so the CI 8.6 legs build our own image, check that `php -v` says exactly 8.6.x, and run through the new `scripts/ci-php-run.sh`; they stay advisory until two green GitHub runs. The installer says "tested on PHP 8.4, 8.5 and 8.6". Unit tests: 1007. Review: 1 round(s); reviewers by round: claude-opus-fallback. |
+| `b5d67f2` | #309 | F4: the link cleaner deleted every letter outside a small ASCII set (`https://bücher.de/` was saved as `https://bcher.de/`, a different website) and every space. New pure-PHP `web/_functions/url_ascii.php` (punycode encoder and decoder, checked against the RFC 3492 samples): non-English domains become `xn--` names, non-English path, query and fragment text becomes UTF-8 percent-codes, a space becomes `%20`. Owner decisions on the allowed letters (see "PHP 8.6 readiness (#308)"). Same result on 8.4, 8.5 and 8.6. Unit tests: 1041. Review: 2 round(s); reviewers by round: claude-opus-fallback, claude-opus-fallback. |
+| `1fb3d9b` | #308 | F1a: a stricter link check when a short link is created or edited, the same on every PHP version: R1 a host whose last part is a number must be a normal dotted IPv4 address (`http://1572395022/` and `http://0127.0.0.1/` are refused); R2 the port must be digits only; R3 every `xn--` part must be valid punycode that passes the alphabet and look-alike checks. On PHP 8.5+ an optional browser-style parser layer (`Uri\WhatWg\Url`, found by `class_exists`) can only add refusals. Unit tests: 1051. Review: 1 round(s); reviewers by round: claude-opus-fallback. |
+| `38d2e2a` | #308 | F1c: the same check when LinksPage addresses are saved (social links, avatar, item addresses, item icons); a refusal behaves as that place already treated an invalid address. No new text, no seed. Unit tests: 1057. Review: 1 round(s); reviewers by round: claude-opus-fallback. |
+| `38d315e` | #308 | F1b: the check when a short link is followed. A failure is always logged (short code and reason, never the address); the visitor is refused (a 404 with the shared page) only when the new setting `redirect.enforce_destination_check` is on. **It is off by default.** Seed `074` adds the setting and three texts; apply it to every existing database. Unit tests: 1066. Review: 1 round(s); reviewers by round: claude-opus-fallback. |
+| `84f3795` | #308 | F3: `#[\NoDiscard]` on nine security checks, so a call that throws the answer away is flagged on PHP 8.5+ (PHP 8.4 ignores it). The dummy password check in `auth.php` assigns its result. Unit tests: 1069. Review: by a fresh Opus agent standing in for Codex. |
 
-**Test baseline now (after #306): 982 unit tests and 238 database tests, all passing** (PHP 8.4 in Docker; MySQL
+**Test baseline now (after #308): 1069 unit tests and 241 database tests, all passing on each of PHP 8.4.27, 8.5.12 and 8.6.0** (Docker; MySQL
 8.4 with `utf8mb4_unicode_ci`). Run them with `sh .claude/programme/run-tests.sh all`.
 
 ### ⏭️ Next actions, in order
 
 1. ~~**First, finish the site polish sweep and the #302 security review**~~ — done (see "Site
    polish sweep" at the top of START HERE); only the owner's items and the report are left.
-2. **The rest of batch 5:** SX-212 (#212 — form rate limits) and PF-13 (personal plans; the
+2. **The programme resumes** (the PHP 8.6 readiness work, #308, is built; its owner items are under "PHP 8.6 readiness (#308)"). **The rest of batch 5:** SX-212 (#212 — form rate limits) and PF-13 (personal plans; the
    foundation for decisions 25 and 26). SX-205 is done (`5872fa7`).
 3. Then batch 6 onwards (see `build_order` in the build plan).
 4. **Batches 3 to 18** — the rest: the approved fixes, then the platform work (environment-aware
@@ -268,6 +347,10 @@ batch 5; SX-205 is done).
    for it: LP-23's key names need settling first (comment on #232).
 
 ### 🔁 Codex, and what it is owed
+
+- **Codex catch-up review owed for every commit of the PHP 8.6 readiness work (#308):** `470d75d`, `38b6361`,
+  `1ee688a`, `beeb815`, `1491d2e`, `93c5756`, `93dc9b8`, `b5d67f2`, `1fb3d9b`, `38d2e2a`, `38d315e` and
+  `84f3795`. Each was reviewed by a fresh Claude Opus agent standing in for Codex.
 
 - **Codex works, but it must be told which model to use on this machine:** add
   `-c model="gpt-6-astra"` to every `codex` command. Without it, it refuses with *"The 'gpt-6-sol'
@@ -322,8 +405,10 @@ batch 5; SX-205 is done).
 - **The dev-team plugin's command guard misfires** on any command whose *text* contains a push to the
   main branch. Write such text to a file with the editor and run the file. Since `b4d6b52` the guard
   is off between runs (it switches on only when `.dev-team/autopilot.json` exists, which has moved).
-- **PHP 8.5 is installed on this Mac** (`/opt/homebrew/bin/php`), but CI uses 8.4 — the lowest the
-  live site is meant to run — so test in Docker on `php:8.4-cli`.
+- **PHP 8.5 is installed on this Mac** (`/opt/homebrew/bin/php`). The code is tested on PHP 8.4, 8.5 and
+  8.6 (the required CI checks still run 8.4, the lowest). Test in Docker on all three with
+  `sh .claude/programme/run-tests.sh all`; the stock `php:8.x-cli` images lack `mysqli`, so use the
+  test image (`tests/README.md`).
 - **Long comments grow until they are wrong** (2026-09-25, CX-01). The code was right from the first
   review round, but it took eight rounds, because each fix lengthened the comments (history,
   counts, pointers to other files) and the next round found a new false statement in them. Keep

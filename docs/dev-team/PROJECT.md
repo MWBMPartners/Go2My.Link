@@ -12,7 +12,7 @@
 ## 🎯 Goal
 
 Go2My.Link is a multi-component URL-shortening platform by MWBM Partners Ltd
-(MWservices), deployed on **Dreamhost shared hosting** (PHP 8.4+/8.5+, MySQLi,
+(MWservices), deployed on **Dreamhost shared hosting** (PHP 8.4 or newer, tested on 8.4, 8.5 and 8.6; MySQLi,
 Bootstrap 5.3, vanilla JS; no Composer/CLI assumed). It comprises three
 components on three domains: **A = go2my.link** (the main marketing site, URL
 creation, user/org dashboard, and `admin.go2my.link`), **B = g2my.link** (the
@@ -29,7 +29,7 @@ house rules below.
 
 - [ ] All launch-blocking audit/schema items (#93–#128) resolved.
 - [ ] No unresolved Critical or High security finding.
-- [ ] Lint clean (`parallel-lint`, PHP 8.4) across shipping code; PHPStan /
+- [ ] Lint clean (`parallel-lint` on PHP 8.4 and the strict lint on 8.4, 8.5 and 8.6) across shipping code; PHPStan /
       PHP_CodeSniffer advisories triaged.
 - [ ] Core flows verified live on MySQL: shorten → redirect (A create → B
       resolve), auth/login, dashboard link CRUD, installer schema import.
@@ -82,7 +82,7 @@ list; these OVERRIDE default behaviour):
 
 ## 🎨 House style (existing-repo conventions)
 
-- **Language/stack:** PHP 8.4+/8.5+ (8.4 backward-compat via `version_compare()`),
+- **Language/stack:** PHP 8.4 or newer (tested on 8.4, 8.5 and 8.6; features are detected, not version-compared, see DEV_NOTES.md),
   MySQLi, Bootstrap 5.3, HTML5/CSS3, vanilla JS. No build step; CDN-first with
   local fallback for libraries.
 - **Lint / static analysis:** `parallel-lint` (NOT `php-parallel-lint`) via
@@ -546,7 +546,7 @@ _(none yet)_
 ## 🗂️ Codebase Map  (cached reference — delta-updated each run)
 
 - **map-commit:** `7b67ad5`    **updated:** 2026-06-05
-- **Stack & build:** PHP 8.4+/8.5+, MySQLi (no PDO), Bootstrap 5.3, vanilla JS.
+- **Stack & build:** PHP 8.4 or newer (tested on 8.4, 8.5 and 8.6), MySQLi (no PDO), Bootstrap 5.3, vanilla JS.
   No build/bundler; CDN-first with local fallback. Deploy = SFTP to Dreamhost
   (`.github/workflows/sftp-deploy.yml`: alpha→`public_html_dev_alpha`,
   beta→`public_html_dev_beta`, prod→`public_html`). Lint via
