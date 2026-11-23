@@ -32,13 +32,17 @@ test('php support: each version and suffix gets the right status', function (): 
         array(80427, '', 'supported'),
         array(80512, '', 'supported'),
         array(80600, 'RC7', 'pre-release'),
-        array(80600, '', 'untested'),
+        array(80600, '', 'supported'),
+        array(80601, '', 'supported'),
+        array(80699, '', 'supported'),
         array(80427, '-dev', 'pre-release'),
         array(80427, '-1ubuntu1', 'supported'),
         // A development build with extra build text after '-dev'. A distribution
         // suffix that merely starts with '-dev' is unlikely, so any '-dev...' counts.
         array(80510, '-dev+foo', 'pre-release'),
         array(80700, '', 'untested'),
+        array(80700, 'RC1', 'pre-release'),
+        array(80700, '-dev', 'pre-release'),
         array(80399, 'RC1', 'too-old'),
         array(80600, 'alpha2', 'pre-release'),
         array(80600, 'beta1', 'pre-release'),
@@ -68,11 +72,13 @@ test('php support: the pre-release message says not to run a live site', functio
 
     assert_contains('Do not run a live site on a pre-release PHP.', $message);
     assert_contains('is a test (pre-release) build of PHP', $message);
+    assert_contains('tested on PHP 8.4, 8.5 and 8.6', $message);
 });
 
 test('php support: the untested message says it has not been fully tested', function (): void
 {
-    $message = g2ml_phpSupportMessage('untested', '8.6.0');
+    $message = g2ml_phpSupportMessage('untested', '8.7.0');
 
+    assert_contains('(8.4, 8.5 and 8.6)', $message);
     assert_contains('It may work, but has not been fully tested yet', $message);
 });

@@ -338,20 +338,32 @@ jobs:
   # failure there shows red but does not fail the run, and the check must not
   # be made required.
   #
-  # PROMOTING 8.6: PHP 8.6.0 is released. Promote once the pinned setup-php
-  # (v2.37.2 still lists 8.6 as nightly) installs the stable 8.6 build and the
-  # 8.6 jobs have been green twice in a row. Each step is one line:
+  # HOW 8.6 IS INSTALLED: the pinned setup-php (v2.37.2) still lists PHP 8.6
+  # as a nightly build, so it may not give us the 8.6.0 release. The 8.6 entry
+  # therefore has `in-image: true`: it skips setup-php, builds our own test
+  # image from tests/docker/Dockerfile (the official php:8.6-cli image, which
+  # is the 8.6.0 release, plus mbstring and mysqli), prints and checks its PHP
+  # version, and runs every PHP command inside that image through
+  # scripts/ci-php-run.sh. The 8.5 entry has `in-image: false` and keeps
+  # using setup-php. The steps that gate the run have no `if:` of their own:
+  # the switch between the machine's PHP and the image happens inside
+  # scripts/ci-php-run.sh, so those steps can never be skipped.
+  #
+  # PROMOTING 8.6: the 8.6 jobs must be green on two GitHub runs in a row
+  # (they have not run on GitHub yet). Then each step is one line:
   #   1. In this job and in "Tests (Integration, PHP ...)" below, change
   #      `advisory: true` to `advisory: false` on the 8.6 entry.
-  #   2. Add '8.6' to the php-version list in sftp-deploy.yml.
-  #   3. Change 8.6-rc to 8.6 in .claude/programme/run-tests.sh and empty its
-  #      advisory list.
-  #   4. In web/_functions/php_support.php, move the "first untested PHP
-  #      version" setting ($firstUntested, and its unit test) from 80600 to
-  #      80700.
-  #   5. Update the docs, then add "Backend (PHP 8.6)" as a required check.
-  #   6. Later, once PHPStan is upgraded to a release that accepts PHP 8.6,
+  #   2. Add an 8.6 leg to sftp-deploy.yml, using the same in-image method
+  #      (its "checks" job installs PHP with setup-php, which cannot give 8.6.0).
+  #   3. Add "Backend (PHP 8.6)" as a required check in the "Protect main
+  #      branch" ruleset (owner action in GitHub).
+  #   4. Update the docs and the tests/unit/ci_workflow_test.php rules that
+  #      say the 8.6 entry is advisory.
+  #   5. Later, once PHPStan is upgraded to a release that accepts PHP 8.6,
   #      raise `max` in phpstan.neon from 80599 to 80699.
+  # (The local runner .claude/programme/run-tests.sh and the installer's
+  # tested-version text in web/_functions/php_support.php already count and
+  # name 8.6.)
   # ===========================================================================
   backend-newer-php:
     name: Backend (PHP ${{ matrix.php-version }})
@@ -361,8 +373,10 @@ jobs:
         include:
           - php-version: '8.5'
             advisory: false
+            in-image: false
           - php-version: '8.6'
             advisory: true
+            in-image: true
     runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.advisory }}
 
@@ -371,20 +385,50 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Setup PHP
+        if: ${{ !matrix.in-image }}
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2.37.2
         with:
           php-version: ${{ matrix.php-version }}
           extensions: mbstring, mysqli
           tools: parallel-lint
 
+      - name: Build the PHP test image
+        if: ${{ matrix.in-image }}
+        env:
+          PHP_VERSION: ${{ matrix.php-version }}
+        run: |
+          set -eu
+          image="g2ml-php:ci-${PHP_VERSION}"
+          docker build -q -t "${image}" --build-arg "PHP_TAG=${PHP_VERSION}-cli" - < tests/docker/Dockerfile
+          docker run --rm "${image}" php -v
+          actual=$(docker run --rm "${image}" php -r 'echo PHP_VERSION;')
+          echo "Wanted PHP ${PHP_VERSION}.x, the image has PHP ${actual}"
+          case "${actual}" in
+            "${PHP_VERSION}".*[!0-9.]*)
+              echo "The image has a test (pre-release) build of PHP, not a release."
+              exit 1
+              ;;
+            "${PHP_VERSION}".*)
+              ;;
+            *)
+              echo "The image does not have PHP ${PHP_VERSION}."
+              exit 1
+              ;;
+          esac
+          echo "G2ML_CI_IMAGE=${image}" >> "${GITHUB_ENV}"
+
       - name: PHP syntax lint
+        if: ${{ !matrix.in-image }}
         run: |
           parallel-lint --exclude vendor --exclude _libraries --exclude .git web/
 
       - name: PHP strict lint
         run: |
-          sh scripts/php-lint.sh
+          sh scripts/ci-php-run.sh sh scripts/php-lint.sh
 
+      # The memory limit is set here because the PHP image's own default is
+      # only 128M, too little for PHPStan. The PHP that setup-php installs
+      # (the 8.5 leg) is believed to have no limit, but that was not checked.
       - name: PHPStan
         continue-on-error: false
         env:
@@ -394,20 +438,26 @@ jobs:
           curl -sL "https://github.com/phpstan/phpstan/releases/download/${PHPSTAN_VERSION}/phpstan.phar" -o phpstan.phar
           echo "${PHPSTAN_SHA256}  phpstan.phar" | sha256sum --check --strict
           chmod +x phpstan.phar
-          php phpstan.phar analyse --configuration=phpstan.neon --no-progress
+          sh scripts/ci-php-run.sh php -d memory_limit=2G phpstan.phar analyse --configuration=phpstan.neon --no-progress
 
       - name: PHP unit tests
         continue-on-error: false
         run: |
-          php tests/run.php
+          sh scripts/ci-php-run.sh php tests/run.php
 
   # ===========================================================================
   # Tests (Integration) on newer PHP versions — the same database job as
   # "Tests (Integration)" above, on PHP 8.5 and 8.6. See the note above
   # "Backend (PHP ...)" for why these are separate jobs, which entry is
-  # advisory, and how to promote 8.6. As there, the mysql service container is
-  # deliberately NOT given the image's "create a database on startup" setting
-  # (#196): our own schema file must create the database.
+  # advisory, how the 8.6 entry gets its PHP (our own image, not setup-php) and
+  # how to promote 8.6. As there, the mysql service container is deliberately
+  # NOT given the image's "create a database on startup" setting (#196): our
+  # own schema file must create the database.
+  #
+  # In the image, the tests reach the mysql service through the machine's own
+  # network (scripts/ci-php-run.sh uses `--network host`), so the address stays
+  # 127.0.0.1:3306, the port the service publishes. The schema import below
+  # still uses the mysql client on the machine itself.
   # ===========================================================================
   tests-integration-newer-php:
     name: Tests (Integration, PHP ${{ matrix.php-version }})
@@ -417,8 +467,10 @@ jobs:
         include:
           - php-version: '8.5'
             advisory: false
+            in-image: false
           - php-version: '8.6'
             advisory: true
+            in-image: true
     runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.advisory }}
 
@@ -440,10 +492,36 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Setup PHP
+        if: ${{ !matrix.in-image }}
         uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2.37.2
         with:
           php-version: ${{ matrix.php-version }}
           extensions: "mysqli"
+
+      - name: Build the PHP test image
+        if: ${{ matrix.in-image }}
+        env:
+          PHP_VERSION: ${{ matrix.php-version }}
+        run: |
+          set -eu
+          image="g2ml-php:ci-${PHP_VERSION}"
+          docker build -q -t "${image}" --build-arg "PHP_TAG=${PHP_VERSION}-cli" - < tests/docker/Dockerfile
+          docker run --rm "${image}" php -v
+          actual=$(docker run --rm "${image}" php -r 'echo PHP_VERSION;')
+          echo "Wanted PHP ${PHP_VERSION}.x, the image has PHP ${actual}"
+          case "${actual}" in
+            "${PHP_VERSION}".*[!0-9.]*)
+              echo "The image has a test (pre-release) build of PHP, not a release."
+              exit 1
+              ;;
+            "${PHP_VERSION}".*)
+              ;;
+            *)
+              echo "The image does not have PHP ${PHP_VERSION}."
+              exit 1
+              ;;
+          esac
+          echo "G2ML_CI_IMAGE=${image}" >> "${GITHUB_ENV}"
 
       - name: Import schema + procedures + seeds (fresh-install order, see docs/INSTALL.md)
         env:
@@ -489,4 +567,4 @@ jobs:
           G2ML_TEST_DB_USER: "root"
           G2ML_TEST_DB_PASS: "g2ml_ci_root_password"
         run: |
-          php tests/run_integration.php
+          sh scripts/ci-php-run.sh php tests/run_integration.php

@@ -37,6 +37,14 @@
  * rule in memory to prove the function notices. Full-line comments are
  * dropped before the rules look at the text, so a comment cannot satisfy one.
  *
+ * The 8.6 entries run inside our own Docker image (built from
+ * tests/docker/Dockerfile) because the pinned setup-php action still treats
+ * 8.6 as a nightly build. Each of the two newer-PHP jobs has an `in-image`
+ * field (true for 8.6, false for 8.5); the image is built, its `php -v` is
+ * printed and its version checked, and the gate steps run through
+ * scripts/ci-php-run.sh, so none of them needs an `if:` of its own. The
+ * rules below check all of that, and the script itself.
+ *
  * A fourth check, added for #302, reads every actions/setup-node step in
  * every workflow file (.yml and .yaml) and fails unless it asks for a plain
  * major version of 24 or later with check-latest: true. CVE-2026-111497, the
@@ -342,7 +350,8 @@ test('setup-node check: the ways a step could slip back to an unfixed Node are r
 // "Frontend (ubuntu-latest)" and "Backend (ubuntu-latest)" are required checks
 // BY NAME. So PHP 8.5 and 8.6 are checked in their own jobs, and the
 // 8.6 entries are advisory (a failure shows red but does not fail the run)
-// until 8.6 is promoted. The deploy workflow re-runs the checks on 8.4 and 8.5.
+// until 8.6 is promoted, and run in our own image (the `in-image` field). The
+// deploy workflow re-runs the checks on 8.4 and 8.5.
 // These tests turn that design into rules. The rule checker takes the file
 // texts as arguments, so the mutation test below can break each rule in memory
 // and confirm the checker notices.
@@ -360,6 +369,24 @@ function _g2mlCiWorkflowTestReadSftpFile(): string
     if ($contents === false)
     {
         throw new RuntimeException('Could not read ' . $path);
+    }
+
+    return $contents;
+}
+
+/**
+ * Read scripts/ci-php-run.sh from the repository root. '' when it is missing,
+ * so a missing script is reported as a rule problem.
+ *
+ * @return string
+ */
+function _g2mlCiWorkflowTestReadRunScript(): string
+{
+    $contents = file_get_contents(dirname(__DIR__, 2) . '/scripts/ci-php-run.sh');
+
+    if ($contents === false)
+    {
+        return '';
     }
 
     return $contents;
@@ -521,18 +548,21 @@ function _g2mlCiWorkflowTestJobIfText(string $jobBlock): string
 }
 
 /**
- * Every broken rule in the two workflow texts, as plain sentences. An empty
- * list means every rule holds.
+ * Every broken rule in the workflow texts and the run script, as plain
+ * sentences. An empty list means every rule holds.
  *
- * @param  string $ciText   Text of ci.yml.
- * @param  string $sftpText Text of sftp-deploy.yml.
+ * @param  string $ciText     Text of ci.yml.
+ * @param  string $sftpText   Text of sftp-deploy.yml.
+ * @param  string $scriptText Text of scripts/ci-php-run.sh.
  * @return array<int, string>
  */
-function _g2mlCiWorkflowTestRuleProblems(string $ciText, string $sftpText): array
+function _g2mlCiWorkflowTestRuleProblems(string $ciText, string $sftpText, string $scriptText): array
 {
-    $problems = array();
-    $ciText   = _g2mlCiWorkflowTestStripComments($ciText);
-    $sftpText = _g2mlCiWorkflowTestStripComments($sftpText);
+    $problems   = array();
+    $ciText     = _g2mlCiWorkflowTestStripComments($ciText);
+    $sftpText   = _g2mlCiWorkflowTestStripComments($sftpText);
+    $scriptText = _g2mlCiWorkflowTestStripComments($scriptText);
+    $viaScript  = 'sh scripts/ci-php-run.sh ';
 
     // Rule 1: the two required-by-name jobs keep their names and matrix, and
     // have no PHP version in the matrix.
@@ -592,9 +622,9 @@ function _g2mlCiWorkflowTestRuleProblems(string $ciText, string $sftpText): arra
             $problems[] = 'the "' . $jobKey . '" job name must be "' . $namePrefix . ' ${{ matrix.php-version }})"';
         }
 
-        if (preg_match("/- php-version: '8\\.5'\\s*\\n\\s*advisory: false\\s*\\n/", $block) !== 1)
+        if (preg_match("/- php-version: '8\\.5'\\s*\\n\\s*advisory: false\\s*\\n\\s*in-image: false\\s*\\n/", $block) !== 1)
         {
-            $problems[] = 'the "' . $jobKey . '" job must list \'8.5\' with advisory: false';
+            $problems[] = 'the "' . $jobKey . '" job must list \'8.5\' with advisory: false and in-image: false';
         }
 
         if (preg_match("/- php-version: '8\\.5'\\s*\\n\\s*advisory: true/", $block) === 1)
@@ -602,9 +632,9 @@ function _g2mlCiWorkflowTestRuleProblems(string $ciText, string $sftpText): arra
             $problems[] = 'the "' . $jobKey . '" job makes 8.5 advisory, so it could not block a merge';
         }
 
-        if (preg_match("/- php-version: '8\\.6'\\s*\\n\\s*advisory: true\\s*\\n/", $block) !== 1)
+        if (preg_match("/- php-version: '8\\.6'\\s*\\n\\s*advisory: true\\s*\\n\\s*in-image: true\\s*\\n/", $block) !== 1)
         {
-            $problems[] = 'the "' . $jobKey . '" job must list \'8.6\' with advisory: true';
+            $problems[] = 'the "' . $jobKey . '" job must list \'8.6\' with advisory: true and in-image: true';
         }
 
         if (preg_match('/^    continue-on-error: \$\{\{ matrix\.advisory \}\}\s*$/m', $block) !== 1)
@@ -615,6 +645,133 @@ function _g2mlCiWorkflowTestRuleProblems(string $ciText, string $sftpText): arra
         if (str_contains($block, 'php-version: ${{ matrix.php-version }}') === false)
         {
             $problems[] = 'the "' . $jobKey . '" job does not install the PHP version from its matrix';
+        }
+    }
+
+    // Rule 3b: in both newer-PHP jobs, setup-php is skipped for the in-image
+    // entry, and that entry builds our own image, shows and checks its PHP
+    // version, and hands it to the later steps.
+    foreach (array_keys($newJobs) as $jobKey)
+    {
+        $block = _g2mlCiWorkflowTestJobOrEmpty($ciText, $jobKey);
+
+        if ($block === '')
+        {
+            continue;
+        }
+
+        $setupStep = _g2mlCiWorkflowTestStepBlock($block, 'Setup PHP');
+
+        if (str_contains($setupStep, 'if: ${{ !matrix.in-image }}') === false)
+        {
+            $problems[] = 'the "' . $jobKey . '" job runs setup-php for the in-image entry too (the "Setup PHP" step needs if: ${{ !matrix.in-image }})';
+        }
+
+        // parallel-lint comes from setup-php, so the in-image entry has none (only the backend job has this step).
+        if ($jobKey === 'backend-newer-php' && str_contains(_g2mlCiWorkflowTestStepBlock($block, 'PHP syntax lint'), 'if: ${{ !matrix.in-image }}') === false)
+        {
+            $problems[] = 'the "' . $jobKey . '" job runs the parallel-lint step for the in-image entry too (the "PHP syntax lint" step needs if: ${{ !matrix.in-image }})';
+        }
+
+        $buildStep = _g2mlCiWorkflowTestStepBlock($block, 'Build the PHP test image');
+
+        if ($buildStep === '')
+        {
+            $problems[] = 'the "' . $jobKey . '" job has no "Build the PHP test image" step';
+            continue;
+        }
+
+        $buildNeeds = array(
+            'if: ${{ matrix.in-image }}'                                 => 'only run when matrix.in-image is true',
+            'PHP_VERSION: ${{ matrix.php-version }}'                     => 'take the version from the matrix',
+            '--build-arg "PHP_TAG=${PHP_VERSION}-cli"'                   => 'build with PHP_TAG=<version>-cli',
+            '- < tests/docker/Dockerfile'                                => 'build from tests/docker/Dockerfile',
+            'docker run --rm "${image}" php -v'                          => 'print php -v',
+            'echo "G2ML_CI_IMAGE=${image}" >> "${GITHUB_ENV}"'           => 'hand the image to the later steps through G2ML_CI_IMAGE',
+        );
+
+        foreach ($buildNeeds as $needle => $meaning)
+        {
+            if (str_contains($buildStep, $needle) === false)
+            {
+                $problems[] = 'the "Build the PHP test image" step in the "' . $jobKey . '" job does not ' . $meaning;
+            }
+        }
+
+        if (preg_match('/does not have PHP \$\{PHP_VERSION\}\."\s*\n\s*exit 1\b/', $buildStep) !== 1)
+        {
+            $problems[] = 'the "Build the PHP test image" step in the "' . $jobKey . '" job does not stop when the image has the wrong PHP version';
+        }
+
+        if (preg_match('/not a release\."\s*\n\s*exit 1\b/', $buildStep) !== 1)
+        {
+            $problems[] = 'the "Build the PHP test image" step in the "' . $jobKey . '" job does not stop when the image has a pre-release PHP';
+        }
+    }
+
+    // Rule 3c: the gate steps of the newer-PHP jobs run through the script
+    // (which picks the machine's PHP or the image), and PHPStan is still
+    // downloaded and checked against its pinned hash on the runner.
+    $viaCommands = array(
+        'backend-newer-php'          => array(
+            'PHP strict lint' => $viaScript . 'sh scripts/php-lint.sh',
+            'PHPStan'         => $viaScript . 'php -d memory_limit=2G phpstan.phar analyse --configuration=phpstan.neon --no-progress',
+            'PHP unit tests'  => $viaScript . 'php tests/run.php',
+        ),
+        'tests-integration-newer-php' => array(
+            'PHP integration tests' => $viaScript . 'php tests/run_integration.php',
+        ),
+    );
+
+    foreach ($viaCommands as $jobKey => $steps)
+    {
+        $block = _g2mlCiWorkflowTestJobOrEmpty($ciText, $jobKey);
+
+        foreach ($steps as $stepName => $command)
+        {
+            if (_g2mlCiWorkflowTestRunsCommand(_g2mlCiWorkflowTestStepBlock($block, $stepName), $command) === false)
+            {
+                $problems[] = 'the "' . $stepName . '" step in the "' . $jobKey . '" job must run "' . $command . '"';
+            }
+        }
+    }
+
+    $phpstanStep = _g2mlCiWorkflowTestStepBlock(_g2mlCiWorkflowTestJobOrEmpty($ciText, 'backend-newer-php'), 'PHPStan');
+
+    if (str_contains($phpstanStep, 'sha256sum --check --strict') === false || str_contains($phpstanStep, 'PHPSTAN_SHA256') === false)
+    {
+        $problems[] = 'the PHPStan step in the "backend-newer-php" job no longer checks the downloaded phar against its pinned hash';
+    }
+
+    // Rule 3d: the run script passes the command on, shares the network (so
+    // the database service on 127.0.0.1 is reachable), mounts the checkout,
+    // and falls back to the machine's own PHP.
+    $scriptNeeds = array(
+        '[ -n "${G2ML_CI_IMAGE-}" ]' => 'choose the image from G2ML_CI_IMAGE',
+        '--network host'             => 'use --network host',
+        '-v "${PWD}:/app" -w /app'   => 'mount the checkout at /app',
+        '--user "$(id -u):$(id -g)"' => 'run as the caller\'s own user',
+        '"${G2ML_CI_IMAGE}" "$@"'    => 'pass the command on inside the image',
+        'G2ML_TEST_DB_HOST'          => 'pass the database settings on',
+    );
+
+    if ($scriptText === '')
+    {
+        $problems[] = 'scripts/ci-php-run.sh is missing';
+    }
+    else
+    {
+        foreach ($scriptNeeds as $needle => $meaning)
+        {
+            if (str_contains($scriptText, $needle) === false)
+            {
+                $problems[] = 'scripts/ci-php-run.sh does not ' . $meaning;
+            }
+        }
+
+        if (preg_match('/^exec "\$@"\s*$/m', $scriptText) !== 1)
+        {
+            $problems[] = 'scripts/ci-php-run.sh does not fall back to running the command on the machine\'s own PHP';
         }
     }
 
@@ -631,7 +788,14 @@ function _g2mlCiWorkflowTestRuleProblems(string $ciText, string $sftpText): arra
     {
         $block = _g2mlCiWorkflowTestJobOrEmpty($ciText, $jobKey);
 
-        if (str_contains($block, '- name: PHP strict lint') === false || _g2mlCiWorkflowTestRunsCommand($block, 'sh scripts/php-lint.sh') === false)
+        $lintCommand = 'sh scripts/php-lint.sh';
+
+        if ($jobKey === 'backend-newer-php')
+        {
+            $lintCommand = $viaScript . $lintCommand;
+        }
+
+        if (str_contains($block, '- name: PHP strict lint') === false || _g2mlCiWorkflowTestRunsCommand($block, $lintCommand) === false)
         {
             $problems[] = 'the "' . $jobKey . '" job has no PHP strict lint step';
         }
@@ -643,6 +807,8 @@ function _g2mlCiWorkflowTestRuleProblems(string $ciText, string $sftpText): arra
         array('backend', $backend, 'PHP unit tests'),
         array('backend-newer-php', _g2mlCiWorkflowTestJobOrEmpty($ciText, 'backend-newer-php'), 'PHP strict lint'),
         array('backend-newer-php', _g2mlCiWorkflowTestJobOrEmpty($ciText, 'backend-newer-php'), 'PHP unit tests'),
+        array('backend-newer-php', _g2mlCiWorkflowTestJobOrEmpty($ciText, 'backend-newer-php'), 'PHPStan'),
+        array('tests-integration-newer-php', _g2mlCiWorkflowTestJobOrEmpty($ciText, 'tests-integration-newer-php'), 'PHP integration tests'),
         array('checks', _g2mlCiWorkflowTestJobOrEmpty($sftpText, 'checks'), 'PHP strict lint'),
         array('checks', _g2mlCiWorkflowTestJobOrEmpty($sftpText, 'checks'), 'PHP unit tests'),
     );
@@ -692,17 +858,18 @@ function _g2mlCiWorkflowTestRuleProblems(string $ciText, string $sftpText): arra
 
 test('the CI workflows keep the required check names and run PHP 8.4, 8.5 and 8.6 as designed (#308)', function (): void
 {
-    $problems = _g2mlCiWorkflowTestRuleProblems(_g2mlCiWorkflowTestReadFile(), _g2mlCiWorkflowTestReadSftpFile());
+    $problems = _g2mlCiWorkflowTestRuleProblems(_g2mlCiWorkflowTestReadFile(), _g2mlCiWorkflowTestReadSftpFile(), _g2mlCiWorkflowTestReadRunScript());
 
     assert_same(0, count($problems), implode(' | ', $problems));
 });
 
 test('workflow rules: each way of breaking the design is noticed', function (): void
 {
-    $ci   = _g2mlCiWorkflowTestReadFile();
-    $sftp = _g2mlCiWorkflowTestReadSftpFile();
+    $ci     = _g2mlCiWorkflowTestReadFile();
+    $sftp   = _g2mlCiWorkflowTestReadSftpFile();
+    $script = _g2mlCiWorkflowTestReadRunScript();
 
-    assert_same(0, count(_g2mlCiWorkflowTestRuleProblems($ci, $sftp)), 'The real files must pass before mutating them');
+    assert_same(0, count(_g2mlCiWorkflowTestRuleProblems($ci, $sftp, $script)), 'The real files must pass before mutating them');
 
     // Each entry: a label, which file to change, text to find, text to put there.
     $mutations = array(
@@ -716,7 +883,7 @@ test('workflow rules: each way of breaking the design is noticed', function (): 
         array('8.5 made advisory (both jobs)', 'ci',  "          - php-version: '8.5'\n            advisory: false\n", "          - php-version: '8.5'\n            advisory: true\n"),
         array('8.6 made required',            'ci',   "          - php-version: '8.6'\n            advisory: true\n", "          - php-version: '8.6'\n            advisory: false\n"),
         array('continue-on-error dropped',    'ci',   "    continue-on-error: \${{ matrix.advisory }}\n", "    continue-on-error: false\n"),
-        array('database job loses its service', 'ci', "        image: \"mysql:8\"\n        env:\n          MYSQL_ROOT_PASSWORD: \"g2ml_ci_root_password\"\n        ports:\n          - \"3306:3306\"\n        options: >-\n          --health-cmd=\"mysqladmin ping --silent\"\n          --health-interval=10s\n          --health-timeout=5s\n          --health-retries=10\n\n    steps:\n      - name: Checkout code\n        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1\n\n      - name: Setup PHP\n        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2.37.2\n        with:\n          php-version: \${{ matrix.php-version }}", "        image: \"mysql:9\"\n\n    steps:\n      - name: Checkout code\n        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1\n\n      - name: Setup PHP\n        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2.37.2\n        with:\n          php-version: \${{ matrix.php-version }}"),
+        array('database job loses its service', 'ci', "        image: \"mysql:8\"\n        env:\n          MYSQL_ROOT_PASSWORD: \"g2ml_ci_root_password\"\n        ports:\n          - \"3306:3306\"\n        options: >-\n          --health-cmd=\"mysqladmin ping --silent\"\n          --health-interval=10s\n          --health-timeout=5s\n          --health-retries=10\n\n    steps:\n      - name: Checkout code\n        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1\n\n      - name: Setup PHP\n        if: \${{ !matrix.in-image }}\n        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2.37.2\n        with:\n          php-version: \${{ matrix.php-version }}", "        image: \"mysql:9\"\n\n    steps:\n      - name: Checkout code\n        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1\n\n      - name: Setup PHP\n        if: \${{ !matrix.in-image }}\n        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2.37.2\n        with:\n          php-version: \${{ matrix.php-version }}"),
         array('deploy checks drop 8.5',       'sftp', "php-version: ['8.4', '8.5']", "php-version: ['8.4']"),
         array('deploy checks drop the strict lint', 'sftp', "          sh scripts/php-lint.sh\n", "          echo skipped\n"),
         array('deploy checks drop the unit tests', 'sftp', "          php tests/run.php\n", "          echo skipped\n"),
@@ -731,39 +898,79 @@ test('workflow rules: each way of breaking the design is noticed', function (): 
         array('strict lint only in a comment (ci)', 'ci', "          sh scripts/php-lint.sh\n", "          # sh scripts/php-lint.sh\n"),
         array('unit tests only in a comment (deploy)', 'sftp', "          php tests/run.php\n", "          # php tests/run.php\n"),
         array('8.5 only in a comment (deploy)', 'sftp', "        php-version: ['8.4', '8.5']\n", "        # php-version: ['8.4', '8.5']\n        php-version: ['8.4']\n"),
+        // The 8.6 entries run in our own image (the in-image rules).
+        array('8.6 loses in-image',           'ci',   "            advisory: true\n            in-image: true\n", "            advisory: true\n            in-image: false\n"),
+        array('8.5 given in-image',           'ci',   "            advisory: false\n            in-image: false\n", "            advisory: false\n            in-image: true\n"),
+        array('in-image field dropped',       'ci',   "            advisory: true\n            in-image: true\n", "            advisory: true\n"),
+        array('setup-php no longer skipped for 8.6', 'ci', "        if: \${{ !matrix.in-image }}\n        uses: shivammathur/setup-php", "        uses: shivammathur/setup-php"),
+        array('image build step renamed',     'ci',   "      - name: Build the PHP test image\n", "      - name: Build something\n"),
+        array('image build step made unconditional', 'ci', "        if: \${{ matrix.in-image }}\n", "        if: true\n"),
+        array('image not built from the Dockerfile', 'ci', "- < tests/docker/Dockerfile", "- < tests/docker/Other"),
+        array('image built without the PHP tag', 'ci', "--build-arg \"PHP_TAG=\${PHP_VERSION}-cli\"", "--build-arg \"PHP_TAG=8.4-cli\""),
+        array('php -v no longer printed',     'ci',   "          docker run --rm \"\${image}\" php -v\n", ""),
+        array('wrong PHP version no longer stops the leg', 'ci', "              echo \"The image does not have PHP \${PHP_VERSION}.\"\n              exit 1\n", "              echo \"The image does not have PHP \${PHP_VERSION}.\"\n"),
+        array('pre-release PHP no longer stops the leg', 'ci', "              echo \"The image has a test (pre-release) build of PHP, not a release.\"\n              exit 1\n", "              echo \"The image has a test (pre-release) build of PHP, not a release.\"\n"),
+        array('image not handed to later steps', 'ci', "          echo \"G2ML_CI_IMAGE=\${image}\" >> \"\${GITHUB_ENV}\"\n", "          echo built\n"),
+        array('lint no longer through the script', 'ci', "          sh scripts/ci-php-run.sh sh scripts/php-lint.sh\n", "          sh scripts/php-lint.sh\n"),
+        array('PHPStan no longer through the script', 'ci', "          sh scripts/ci-php-run.sh php -d memory_limit=2G phpstan.phar", "          php -d memory_limit=2G phpstan.phar"),
+        array('unit tests no longer through the script', 'ci', "          sh scripts/ci-php-run.sh php tests/run.php\n", "          php tests/run.php\n"),
+        array('integration tests no longer through the script', 'ci', "          sh scripts/ci-php-run.sh php tests/run_integration.php\n", "          php tests/run_integration.php\n"),
+        array('PHPStan hash check dropped (newer job)', 'ci', "          echo \"\${PHPSTAN_SHA256}  phpstan.phar\" | sha256sum --check --strict\n          chmod +x phpstan.phar\n          sh scripts/ci-php-run.sh", "          chmod +x phpstan.phar\n          sh scripts/ci-php-run.sh"),
+        array('newer strict lint given an if:', 'ci', "      - name: PHP strict lint\n        run: |\n          sh scripts/ci-php-run.sh", "      - name: PHP strict lint\n        if: \${{ !matrix.in-image }}\n        run: |\n          sh scripts/ci-php-run.sh"),
+        array('newer PHPStan given an if:',   'ci',   "      - name: PHPStan\n        continue-on-error: false\n        env:\n          PHPSTAN_VERSION: \"2.2.4\"\n          PHPSTAN_SHA256: \"f1e81a1418faab14a057188646cf1220f066276fc640ce9ef1c9a4af3f0ed46b\"\n        run: |\n          curl -sL \"https://github.com/phpstan/phpstan/releases/download/\${PHPSTAN_VERSION}/phpstan.phar\" -o phpstan.phar\n          echo \"\${PHPSTAN_SHA256}  phpstan.phar\" | sha256sum --check --strict\n          chmod +x phpstan.phar\n          sh scripts/ci-php-run.sh", "      - name: PHPStan\n        if: false\n        continue-on-error: false\n        env:\n          PHPSTAN_VERSION: \"2.2.4\"\n          PHPSTAN_SHA256: \"f1e81a1418faab14a057188646cf1220f066276fc640ce9ef1c9a4af3f0ed46b\"\n        run: |\n          curl -sL \"https://github.com/phpstan/phpstan/releases/download/\${PHPSTAN_VERSION}/phpstan.phar\" -o phpstan.phar\n          echo \"\${PHPSTAN_SHA256}  phpstan.phar\" | sha256sum --check --strict\n          chmod +x phpstan.phar\n          sh scripts/ci-php-run.sh"),
+        array('newer unit tests given an if:', 'ci',  "        run: |\n          sh scripts/ci-php-run.sh php tests/run.php\n", "        if: \${{ !matrix.in-image }}\n        run: |\n          sh scripts/ci-php-run.sh php tests/run.php\n"),
+        array('newer integration tests given an if:', 'ci', "      - name: PHP integration tests\n        env:\n          G2ML_TEST_DB_HOST: \"127.0.0.1\"\n          G2ML_TEST_DB_PORT: \"3306\"\n          G2ML_TEST_DB_NAME: \"mwtools_Go2MyLink\"\n          G2ML_TEST_DB_USER: \"root\"\n          G2ML_TEST_DB_PASS: \"g2ml_ci_root_password\"\n        run: |\n          sh scripts/ci-php-run.sh", "      - name: PHP integration tests\n        if: false\n        env:\n          G2ML_TEST_DB_HOST: \"127.0.0.1\"\n          G2ML_TEST_DB_PORT: \"3306\"\n          G2ML_TEST_DB_NAME: \"mwtools_Go2MyLink\"\n          G2ML_TEST_DB_USER: \"root\"\n          G2ML_TEST_DB_PASS: \"g2ml_ci_root_password\"\n        run: |\n          sh scripts/ci-php-run.sh"),
+        // The run script itself.
+        array('script loses --network host',  'script', "--network host", "--network bridge"),
+        array('script stops passing the command on', 'script', "\"\${G2ML_CI_IMAGE}\" \"\$@\"", "\"\${G2ML_CI_IMAGE}\""),
+        array('script no longer mounts the checkout', 'script', "-v \"\${PWD}:/app\" -w /app", "-w /app"),
+        array('script no longer reads G2ML_CI_IMAGE', 'script', "[ -n \"\${G2ML_CI_IMAGE-}\" ]", "[ -n \"\${OTHER_IMAGE-}\" ]"),
+        array('script no longer passes the database settings', 'script', "-e G2ML_TEST_DB_HOST ", ""),
+        array('script has no fallback to the machine\'s PHP', 'script', "\nexec \"\$@\"\n", "\n"),
+        array('script loses --user',          'script', "--user \"\$(id -u):\$(id -g)\"", "--user root"),
+        array('syntax lint no longer skipped for 8.6', 'ci', "      - name: PHP syntax lint\n        if: \${{ !matrix.in-image }}\n", "      - name: PHP syntax lint\n"),
     );
 
     foreach ($mutations as $mutation)
     {
-        $label   = $mutation[0];
-        $ciText  = $ci;
-        $sftpText = $sftp;
+        $label      = $mutation[0];
+        $ciText     = $ci;
+        $sftpText   = $sftp;
+        $scriptText = $script;
 
-        $original = $sftp;
-
-        if ($mutation[1] === 'ci')
-        {
-            $original = $ci;
-        }
+        $originals = array('ci' => $ci, 'sftp' => $sftp, 'script' => $script);
+        $original  = $originals[$mutation[1]];
 
         assert_true(
             str_contains($original, $mutation[2]),
             'Mutation "' . $label . '" no longer matches the file text, so it proves nothing; update it'
         );
 
+        // Text that appears in both newer-PHP jobs is changed in every copy; that is the point.
+        $changed = str_replace($mutation[2], $mutation[3], $original);
+
         if ($mutation[1] === 'ci')
         {
-            // The 8.5 entry appears in both new jobs; changing every copy is the point.
-            $ciText = str_replace($mutation[2], $mutation[3], $ci);
+            $ciText = $changed;
+        }
+        elseif ($mutation[1] === 'sftp')
+        {
+            $sftpText = $changed;
         }
         else
         {
-            $sftpText = str_replace($mutation[2], $mutation[3], $sftp);
+            $scriptText = $changed;
         }
 
         assert_true(
-            count(_g2mlCiWorkflowTestRuleProblems($ciText, $sftpText)) > 0,
+            count(_g2mlCiWorkflowTestRuleProblems($ciText, $sftpText, $scriptText)) > 0,
             'Breaking the design in this way was not noticed: ' . $label
         );
     }
+
+    // A missing script file reads as an empty text and must be reported.
+    assert_true(
+        count(_g2mlCiWorkflowTestRuleProblems($ci, $sftp, '')) > 0,
+        'A missing scripts/ci-php-run.sh was not noticed'
+    );
 });

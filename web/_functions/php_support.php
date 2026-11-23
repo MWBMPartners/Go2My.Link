@@ -52,11 +52,12 @@ function g2ml_phpSupportStatus(int $versionId, string $extraVersion): string
     // The oldest PHP that works (8.4.0).
     $lowestSupported = 80400;
 
-    // The first PHP that has not been fully tested yet (8.6.0).
-    // Raise this to 80700 when PHP 8.6 is promoted to fully tested. The two
-    // messages below (they name 8.4, 8.5 and 8.6) and the expectations in
-    // tests/unit/php_support_test.php must be updated together with it.
-    $firstUntested = 80600;
+    // The first PHP that has not been fully tested yet (8.7.0). PHP 8.4, 8.5
+    // and 8.6 are the tested versions. Raise this number only when a newer
+    // PHP is fully tested. The two messages below (they name the tested
+    // versions) and the expectations in tests/unit/php_support_test.php must
+    // be updated together with it.
+    $firstUntested = 80700;
 
     // Order matters: too old first, then pre-release, then untested.
     if ($versionId < $lowestSupported)
@@ -108,13 +109,13 @@ function g2ml_phpSupportMessage(string $status, string $versionText): string
     if ($status === 'pre-release')
     {
         return 'PHP ' . $versionText . ' is a test (pre-release) build of PHP. '
-            . 'Go2My.Link is tested on PHP 8.4 and 8.5, and PHP 8.6 is being tested. '
+            . 'Go2My.Link is tested on PHP 8.4, 8.5 and 8.6. '
             . 'Do not run a live site on a pre-release PHP.';
     }
 
     if ($status === 'untested')
     {
-        return 'PHP ' . $versionText . ' is newer than the versions Go2My.Link has been fully tested on (8.4 and 8.5). '
+        return 'PHP ' . $versionText . ' is newer than the versions Go2My.Link has been fully tested on (8.4, 8.5 and 8.6). '
             . 'It may work, but has not been fully tested yet.';
     }
 

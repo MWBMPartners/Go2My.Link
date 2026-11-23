@@ -18,15 +18,15 @@
 #
 # PHP VERSIONS
 #   G2ML_PHP_VERSIONS  versions to test, separated by spaces.
-#                      Default: "8.4 8.5 8.6-rc". The Docker image tag is the
-#                      version plus "-cli" (8.6-rc gives php:8.6-rc-cli).
+#                      Default: "8.4 8.5 8.6". The Docker image tag is the
+#                      version plus "-cli" (8.6 gives php:8.6-cli, which is
+#                      the PHP 8.6.0 release since 2026-11-19).
 #   G2ML_PHP_ADVISORY  versions that are run and REPORTED but do not change
-#                      the final result. Default: "8.6-rc" (a release candidate
-#                      may fail for reasons outside our code). Versions not in
-#                      this list are counted in OVERALL.
-#   To promote 8.6 later: in G2ML_PHP_VERSIONS change "8.6-rc" to "8.6" (once
-#   the php:8.6-cli image exists) and make the advisory list empty
-#   (G2ML_PHP_ADVISORY="" or change the default below).
+#                      the final result. Default: empty, so every version is
+#                      counted in OVERALL. Use it for a version that may fail
+#                      for reasons outside our code, for example a release
+#                      candidate: G2ML_PHP_ADVISORY="8.7-rc". An empty value
+#                      stays empty (it does not fall back to a default).
 #   Quick check on one version:
 #     G2ML_PHP_VERSIONS=8.4 sh .claude/programme/run-tests.sh unit
 #
@@ -36,6 +36,18 @@
 #                           into words). Use it where host names do not
 #                           resolve, for example in a cloud container:
 #                           G2ML_DOCKER_EXTRA_ARGS="--add-host example.com:93.184.215.14"
+#   G2ML_TEST_DB_CONTAINER  name of the throwaway MySQL container.
+#                           Default: g2ml-test-mysql
+#   G2ML_TEST_NET           name of the Docker network it runs on.
+#                           Default: g2ml-test-net
+#                           Give both a different name in each run so two runs
+#                           can go at once. With the same names, each run
+#                           removes the other's database in the middle of its
+#                           tests. The result files in /tmp start with the
+#                           container name (for example
+#                           /tmp/g2ml-test-mysql_unit_8.4.txt), so concurrent
+#                           runs with different names do not overwrite each
+#                           other's results either.
 #
 # One test image per version, g2ml-php:<version>-test, is built once from
 # tests/docker/Dockerfile and then reused.
@@ -50,11 +62,12 @@ set -u
 SCRIPT_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd -P)
 REPO=$(CDPATH='' cd -- "${SCRIPT_DIR}/../.." && pwd -P)
 MODE="${1:-all}"
-PHP_VERSIONS="${G2ML_PHP_VERSIONS:-8.4 8.5 8.6-rc}"
-ADVISORY_VERSIONS="${G2ML_PHP_ADVISORY-8.6-rc}"
+PHP_VERSIONS="${G2ML_PHP_VERSIONS:-8.4 8.5 8.6}"
+ADVISORY_VERSIONS="${G2ML_PHP_ADVISORY-}"
 EXTRA_ARGS="${G2ML_DOCKER_EXTRA_ARGS:-}"
-NET="g2ml-test-net"
-DB="g2ml-test-mysql"
+NET="${G2ML_TEST_NET:-g2ml-test-net}"
+DB="${G2ML_TEST_DB_CONTAINER:-g2ml-test-mysql}"
+LOG_PREFIX="/tmp/${DB}"
 # The MySQL image keeps its data in a separate storage area (an anonymous
 # Docker volume). A plain "docker rm -f" removes the container but LEAVES that
 # volume behind, holding a whole test database, and nothing on screen says so.
@@ -117,10 +130,10 @@ for V in ${READY_VERSIONS}; do
     IMAGE="g2ml-php:${V}-test"
     echo "=== lint, every PHP file under web/ and tests/ (PHP ${V}) ==="
     # shellcheck disable=SC2086
-    docker run --rm ${EXTRA_ARGS} -v "${REPO}":/app:ro -w /app "${IMAGE}" sh scripts/php-lint.sh > "/tmp/g2ml_lint_${V}.txt" 2>&1
+    docker run --rm ${EXTRA_ARGS} -v "${REPO}":/app:ro -w /app "${IMAGE}" sh scripts/php-lint.sh > "${LOG_PREFIX}_lint_${V}.txt" 2>&1
     LINT_EXIT=$?
-    grep -E "^PROBLEM" "/tmp/g2ml_lint_${V}.txt" | head -40
-    tail -1 "/tmp/g2ml_lint_${V}.txt"
+    grep -E "^PROBLEM" "${LOG_PREFIX}_lint_${V}.txt" | head -40
+    tail -1 "${LOG_PREFIX}_lint_${V}.txt"
     echo "lint exit=${LINT_EXIT}"
     if [ "${LINT_EXIT}" -ne 0 ]; then
         record_failure "${V}"
@@ -132,10 +145,10 @@ if [ "${MODE}" = "unit" ] || [ "${MODE}" = "all" ]; then
         IMAGE="g2ml-php:${V}-test"
         echo "=== unit suite (PHP ${V}) ==="
         # shellcheck disable=SC2086
-        docker run --rm ${EXTRA_ARGS} -v "${REPO}":/app:ro -w /app "${IMAGE}" php tests/run.php > "/tmp/g2ml_unit_${V}.txt" 2>&1
+        docker run --rm ${EXTRA_ARGS} -v "${REPO}":/app:ro -w /app "${IMAGE}" php tests/run.php > "${LOG_PREFIX}_unit_${V}.txt" 2>&1
         UNIT_EXIT=$?
-        grep -E "^(FAIL|ERROR|DEPRECATED|(PHP )?(Warning|Notice|Fatal error|Deprecated):)" "/tmp/g2ml_unit_${V}.txt" | head -40
-        tail -1 "/tmp/g2ml_unit_${V}.txt"
+        grep -E "^(FAIL|ERROR|DEPRECATED|(PHP )?(Warning|Notice|Fatal error|Deprecated):)" "${LOG_PREFIX}_unit_${V}.txt" | head -40
+        tail -1 "${LOG_PREFIX}_unit_${V}.txt"
         echo "unit exit=${UNIT_EXIT}"
         if [ "${UNIT_EXIT}" -ne 0 ]; then
             record_failure "${V}"
@@ -190,12 +203,12 @@ if [ "${MODE}" = "integration" ] || [ "${MODE}" = "all" ]; then
         echo "=== database suite (PHP ${V}) ==="
         # Start each version from a clean database. The schema file creates
         # the database itself, so the collation still comes from the server.
-        docker exec "${DB}" mysql -uroot -e "DROP DATABASE IF EXISTS mwtools_Go2MyLink" > "/tmp/g2ml_import_${V}.txt" 2>&1
+        docker exec "${DB}" mysql -uroot -e "DROP DATABASE IF EXISTS mwtools_Go2MyLink" > "${LOG_PREFIX}_import_${V}.txt" 2>&1
         IMPORT_FAIL=0
         for DIR in schema procedures seeds; do
             for FILE in $(find "web/_sql/${DIR}" -maxdepth 1 -name "*.sql" | sort); do
-                if ! docker exec -i "${DB}" mysql -uroot < "${FILE}" > "/tmp/g2ml_import_${V}.txt" 2>&1; then
-                    echo "IMPORT FAIL ${FILE}: $(head -3 "/tmp/g2ml_import_${V}.txt")"
+                if ! docker exec -i "${DB}" mysql -uroot < "${FILE}" > "${LOG_PREFIX}_import_${V}.txt" 2>&1; then
+                    echo "IMPORT FAIL ${FILE}: $(head -3 "${LOG_PREFIX}_import_${V}.txt")"
                     IMPORT_FAIL=1
                 fi
             done
@@ -207,10 +220,10 @@ if [ "${MODE}" = "integration" ] || [ "${MODE}" = "all" ]; then
         docker run --rm ${EXTRA_ARGS} --network "${NET}" -v "${REPO}":/app:ro -w /app \
             -e G2ML_TEST_DB_HOST="${DB}" -e G2ML_TEST_DB_PORT=3306 -e G2ML_TEST_DB_NAME=mwtools_Go2MyLink \
             -e G2ML_TEST_DB_USER=root -e G2ML_TEST_DB_PASS= \
-            "${IMAGE}" php tests/run_integration.php > "/tmp/g2ml_integ_${V}.txt" 2>&1
+            "${IMAGE}" php tests/run_integration.php > "${LOG_PREFIX}_integ_${V}.txt" 2>&1
         INTEG_EXIT=$?
-        grep -E "^(FAIL|ERROR|DEPRECATED|(PHP )?(Warning|Notice|Fatal error|Deprecated):)|SKIPPED" "/tmp/g2ml_integ_${V}.txt" | head -40
-        tail -1 "/tmp/g2ml_integ_${V}.txt"
+        grep -E "^(FAIL|ERROR|DEPRECATED|(PHP )?(Warning|Notice|Fatal error|Deprecated):)|SKIPPED" "${LOG_PREFIX}_integ_${V}.txt" | head -40
+        tail -1 "${LOG_PREFIX}_integ_${V}.txt"
         echo "integration exit=${INTEG_EXIT}"
         if [ "${INTEG_EXIT}" -ne 0 ]; then
             record_failure "${V}"

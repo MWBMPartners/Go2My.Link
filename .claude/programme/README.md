@@ -13,7 +13,7 @@ without the previous session's memory. Everything here is committed on purpose.
 | `build-plan.json` | Every piece of work in the programme: its plan, what finished means, which files it shares with other items, what it depends on, the order to build in, and what is already done. |
 | `build-plan.schema.json` | Describes the shape of that file, with a plain-English description of every field. Checked by `tests/unit/build_plan_schema_test.php`, so a mistake in the plan fails the test suite. |
 | `build-workflow.js` | The script that runs one item at a time: build → tests → review until clean → one commit pushed → issue comment. |
-| `run-tests.sh` | The checks every item must pass: the strict syntax lint, the unit suite and the database suite (against a throwaway MySQL 8.4 with the right text setting), on PHP 8.4 and 8.5 (counted) and the PHP 8.6 release candidate (reported only, not counted). |
+| `run-tests.sh` | The checks every item must pass: the strict syntax lint, the unit suite and the database suite (against a throwaway MySQL 8.4 with the right text setting), on PHP 8.4, 8.5 and 8.6 (all three counted). |
 
 **The plan is not the only copy.** Every item's plan is also posted as an
 "Implementation plan" comment on its own GitHub issue, and the owner's decisions
