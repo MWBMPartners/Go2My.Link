@@ -575,6 +575,14 @@ function g2ml_linkspageManageValidateSocialLinks(array $rawSocialLinks): array
             continue;
         }
 
+        // The stricter link check (numbers-only hosts, odd ports, look-alike
+        // converted addresses). A link that fails it is skipped, like any
+        // other bad social link.
+        if (g2ml_destinationProblem($sanitisedURL) !== null)
+        {
+            continue;
+        }
+
         $validated[$networkKey] = $sanitisedURL;
     }
 
@@ -1057,14 +1065,19 @@ function _g2ml_linkspageManageValidateFields(array $input): array
         // instead of guessing from how it looks in their own browser.
         // g2ml_sanitiseURL() already restricts the scheme to http or https,
         // so this only has to narrow that further down to https alone.
-        $avatarScheme = false;
+        $avatarScheme  = false;
+        $avatarProblem = null;
 
         if ($sanitisedAvatar !== false)
         {
             $avatarScheme = strtolower((string) parse_url($sanitisedAvatar, PHP_URL_SCHEME));
+
+            // The stricter link check. It runs on the already-cleaned
+            // address, which is always http or https here.
+            $avatarProblem = g2ml_destinationProblem($sanitisedAvatar);
         }
 
-        if ($sanitisedAvatar === false || mb_strlen($sanitisedAvatar) > 500 || $avatarScheme !== 'https')
+        if ($sanitisedAvatar === false || mb_strlen($sanitisedAvatar) > 500 || $avatarScheme !== 'https' || $avatarProblem !== null)
         {
             if (function_exists('__'))
             {
@@ -2036,7 +2049,16 @@ function g2ml_linkspageManageAddItem(int $userUID, int $pageUID, array $input): 
 
         $sanitisedManualURL = g2ml_sanitiseURL($manualURLRaw);
 
-        if ($sanitisedManualURL === false)
+        // The stricter link check, on the already-cleaned address. A failure
+        // gets the same "not a valid address" error as any other bad link.
+        $manualURLProblem = null;
+
+        if ($sanitisedManualURL !== false)
+        {
+            $manualURLProblem = g2ml_destinationProblem($sanitisedManualURL);
+        }
+
+        if ($sanitisedManualURL === false || $manualURLProblem !== null)
         {
             if (function_exists('__'))
             {
@@ -2177,14 +2199,18 @@ function g2ml_linkspageManageAddItem(int $userUID, int $pageUID, array $input): 
         // the creator has no way to tell which from their own screen. So
         // it is refused here on save, the same as the avatar, instead of
         // being accepted and left to fail quietly for someone else.
-        $iconScheme = false;
+        $iconScheme  = false;
+        $iconProblem = null;
 
         if ($sanitisedIcon !== false)
         {
             $iconScheme = strtolower((string) parse_url($sanitisedIcon, PHP_URL_SCHEME));
+
+            // The stricter link check, on the already-cleaned address.
+            $iconProblem = g2ml_destinationProblem($sanitisedIcon);
         }
 
-        if ($sanitisedIcon === false || mb_strlen($sanitisedIcon) > 500 || $iconScheme !== 'https')
+        if ($sanitisedIcon === false || mb_strlen($sanitisedIcon) > 500 || $iconScheme !== 'https' || $iconProblem !== null)
         {
             if (function_exists('__'))
             {
@@ -2420,14 +2446,18 @@ function g2ml_linkspageManageUpdateItem(int $userUID, int $itemUID, array $input
         // not), so it is refused on an update just as it is on an add —
         // the same rule as the avatar — rather than accepted and left to
         // fail quietly for someone else.
-        $iconScheme = false;
+        $iconScheme  = false;
+        $iconProblem = null;
 
         if ($sanitisedIcon !== false)
         {
             $iconScheme = strtolower((string) parse_url($sanitisedIcon, PHP_URL_SCHEME));
+
+            // The stricter link check, on the already-cleaned address.
+            $iconProblem = g2ml_destinationProblem($sanitisedIcon);
         }
 
-        if ($sanitisedIcon === false || mb_strlen($sanitisedIcon) > 500 || $iconScheme !== 'https')
+        if ($sanitisedIcon === false || mb_strlen($sanitisedIcon) > 500 || $iconScheme !== 'https' || $iconProblem !== null)
         {
             if (function_exists('__'))
             {
@@ -2460,7 +2490,16 @@ function g2ml_linkspageManageUpdateItem(int $userUID, int $itemUID, array $input
 
         $sanitisedManualURL = g2ml_sanitiseURL($manualURLRaw);
 
-        if ($sanitisedManualURL === false)
+        // The stricter link check, on the already-cleaned address. A failure
+        // gets the same "not a valid address" error as any other bad link.
+        $manualURLProblem = null;
+
+        if ($sanitisedManualURL !== false)
+        {
+            $manualURLProblem = g2ml_destinationProblem($sanitisedManualURL);
+        }
+
+        if ($sanitisedManualURL === false || $manualURLProblem !== null)
         {
             if (function_exists('__'))
             {
