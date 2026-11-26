@@ -43,11 +43,6 @@
 **Where things stand.** The working branch is `feat/2026-09-21-linkspage-and-sweep`. No pull
 request yet. The session was closed early at the owner's request.
 
-**This note and the decision records are not on GitHub yet.** They are a local commit on branch
-`docs/handoff-2026-11-26` in the worktree `.claude/worktrees/sx-212`: the push was refused by the
-session's permission check on 2026-11-26. With the owner's go-ahead, push that branch to the
-working branch.
-
 **The owner's instruction (2026-11-26):** carry on without stopping, raise questions as early as
 possible, use the dev-team plugin, keep the standing rules, and keep finding and queuing work from
 the project plan and GitHub issues **until the project is ready for a new install**.
@@ -58,17 +53,17 @@ bring the old links and accounts across (D-002); organisation links share the g2
 
 **In flight: #212 (SX-212), limits on sign-up, contact and password-reset forms.**
 
-- It is **local only**, on the owner's Mac: branch `wip/sx-212-port`, commit `5bbcc51`, in the
-  worktree `.claude/worktrees/sx-212`. It is not on GitHub.
+- It is on branch **`wip/sx-212-port`**, **not** on the working branch (on the owner's Mac: the
+  worktree `.claude/worktrees/sx-212`). Use that branch's latest commit.
 - Round 1 reviews (Codex, and a fresh Claude Opus agent) found real faults: requests sent together
   could pass the limit; one IPv6 user could bypass it; failed writes were ignored; day-old rows
   could stay for weeks; the Privacy Policy did not mention the records; two false statements.
-  **All fixed in `5bbcc51`.** After the fixes, lint, 1081 unit and 248 database tests passed on
+  **All fixed on that branch.** After the fixes, lint, 1081 unit and 248 database tests passed on
   PHP 8.4, 8.5 and 8.6.
 - **Not yet done:** the second review round (both reviewers), a browser check of the three forms,
   the handoff table row, `CHANGELOG.md`, the build plan's progress, then one commit pushed and the
-  issue updated. To finish: rebase `wip/sx-212-port` onto the working branch (it was cut before
-  this notes commit), review the whole diff, reword the commit.
+  issue updated. To finish: bring `wip/sx-212-port` up to date with the working branch, review the
+  whole diff, reword the commit.
 - **One finding deliberately not acted on:** the contact email's own words are English and not
   translated. The email goes to the support inbox, and no other email template is translated, so
   translating it in the visitor's language would be wrong. Filed as its own issue.
@@ -77,8 +72,9 @@ bring the old links and accounts across (D-002); organisation links share the g2
 **The main folder is stale.** The owner's main checkout is behind GitHub and still holds the
 original uncommitted #212 work (now superseded by `5bbcc51`) and a staged, unrelated folder
 `.claude/skills/prompt-cache-control/` that no session has reviewed or committed. A backup of both
-is in `.git/sx212-and-skill-backup-2026-11-26.patch`. Nothing there was changed or removed; clearing
-it needs the owner's go-ahead.
+is in `.git/sx212-and-skill-backup-2026-11-26.patch`. Nothing there was changed or removed. An
+attempt to update it was refused by the session's permission check, so the owner has to run it or
+allow it.
 
 **Next, in order:**
 
