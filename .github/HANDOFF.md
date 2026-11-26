@@ -69,6 +69,11 @@ bring the old links and accounts across (D-002); organisation links share the g2
   translating it in the visitor's language would be wrong. Filed as its own issue.
 - The Privacy Policy wording added for these records **needs the owner's legal review**.
 
+**`prompt-cache-control`** (a third-party Claude Code add-on showing the prompt cache countdown) is
+on branch `chore/prompt-cache-control`, not on the working branch. It was read for secrets and
+network calls (none found); its tests were not run and it has had no second review. Whether it
+belongs in this project is the owner's call.
+
 **The main folder is stale.** The owner's main checkout is behind GitHub and still holds the
 original uncommitted #212 work (now superseded by `5bbcc51`) and a staged, unrelated folder
 `.claude/skills/prompt-cache-control/` that no session has reviewed or committed. A backup of both
