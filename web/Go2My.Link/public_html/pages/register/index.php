@@ -91,47 +91,93 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         }
         else
         {
-            // Extract fields
-            $firstName       = trim(g2ml_sanitiseInput($_POST['first_name'] ?? ''));
-            $lastName         = trim(g2ml_sanitiseInput($_POST['last_name'] ?? ''));
-            $email           = trim($_POST['email'] ?? '');
-            $password        = $_POST['password'] ?? '';
-            $confirmPassword = $_POST['confirm_password'] ?? '';
+            // Rate limit check (#212). Registration had no rate limit of any
+            // kind before this fix — CAPTCHA (checked above) was the only
+            // brake, and only once CAPTCHA keys are configured. This counts
+            // attempts per IP address in tblFormAttempts, which also counts
+            // a visitor who has sent Do Not Track: the OTHER two forms this
+            // file's pattern is shared with (contact, forgot-password) used
+            // to count via tblActivityLog, which skips logging most actions
+            // for exactly that visitor. See web/_functions/form_rate_limit.php.
+            // 'unavailable' (also used if the limiter is not loaded) refuses.
+            $registerAttempt = 'unavailable';
 
-            // Check passwords match
-            if ($password !== $confirmPassword)
+            if (function_exists('g2ml_formRateLimitTake'))
+            {
+                $registerAttempt = g2ml_formRateLimitTake(
+                    'register',
+                    (int) getSetting('security.register_max_per_ip_per_hour', 10)
+                );
+            }
+
+            if ($registerAttempt === 'unavailable')
             {
                 if (function_exists('__')) {
-                    $formError = __('register.error_password_mismatch');
+                    $formError = __('form.error_unavailable');
                 } else {
-                    $formError = 'Passwords do not match.';
+                    $formError = 'We cannot process this form just now. Please try again later.';
                 }
+            }
+            elseif ($registerAttempt === 'limited')
+            {
+                if (function_exists('__')) {
+                    $formError = __('register.error_rate_limit');
+                } else {
+                    $formError = 'Too many sign-ups from your network in the last hour. Please try again later.';
+                }
+
+                // 'rate_limited' is on activity_logger.php's always-log
+                // list, so this line is recorded even for a Do-Not-Track
+                // visitor — unlike the counting itself, which never reads
+                // tblActivityLog at all, this is only the audit trail.
+                logActivity('rate_limited', 'failed', 429, [
+                    'logData' => ['form' => 'register'],
+                ]);
             }
             else
             {
-                // Attempt registration
-                $result = registerUser($email, $password, $firstName, $lastName);
+                // Extract fields
+                $firstName       = trim(g2ml_sanitiseInput($_POST['first_name'] ?? ''));
+                $lastName         = trim(g2ml_sanitiseInput($_POST['last_name'] ?? ''));
+                $email           = trim($_POST['email'] ?? '');
+                $password        = $_POST['password'] ?? '';
+                $confirmPassword = $_POST['confirm_password'] ?? '';
 
-                if ($result['success'])
+                // Check passwords match
+                if ($password !== $confirmPassword)
                 {
-                    // Send verification email
-                    $verifyURL = 'https://go2my.link/verify-email?token=' . urlencode($result['verifyToken']);
-
-                    g2ml_sendEmail(
-                        $email,
-                        'Verify Your Email — ' . getSetting('site.name', 'Go2My.Link'),
-                        'verify_email',
-                        [
-                            'firstName'       => $firstName,
-                            'verificationURL' => $verifyURL,
-                        ]
-                    );
-
-                    $formSuccess = true;
+                    if (function_exists('__')) {
+                        $formError = __('register.error_password_mismatch');
+                    } else {
+                        $formError = 'Passwords do not match.';
+                    }
                 }
                 else
                 {
-                    $formError = $result['error'];
+                    // Attempt registration
+                    $result = registerUser($email, $password, $firstName, $lastName);
+
+                    if ($result['success'])
+                    {
+                        // Send verification email
+                        $verifyURL = 'https://go2my.link/verify-email?token=' . urlencode($result['verifyToken']);
+
+                        g2ml_sendEmail(
+                            $email,
+                            'Verify Your Email — ' . getSetting('site.name', 'Go2My.Link'),
+                            'verify_email',
+                            [
+                                'firstName'       => $firstName,
+                                'verificationURL' => $verifyURL,
+                            ]
+                        );
+
+                        $formSuccess = true;
+                    }
+                    else
+                    {
+                        $formError = $result['error'];
+                    }
                 }
             }
         }

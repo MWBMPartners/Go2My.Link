@@ -372,6 +372,7 @@ $hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hid
                 </h3>
                 <ul>
                     <li><?php if (function_exists('__')) { echo __('legal.privacy_s3_security_rate'); } else { echo 'Rate limiting to prevent abuse of the URL creation service'; } ?></li>
+                    <li><?php if (function_exists('__')) { echo __('legal.privacy_s3_security_forms'); } else { echo 'Limiting how often the sign-up, contact and password-reset forms can be used from one connection, using a scrambled (keyed hash) form of your IP address'; } ?></li>
                     <li><?php if (function_exists('__')) { echo __('legal.privacy_s3_security_spam'); } else { echo 'Detecting and blocking spam, malicious URLs, and fraudulent activity'; } ?></li>
                     <li><?php if (function_exists('__')) { echo __('legal.privacy_s3_security_audit'); } else { echo 'Maintaining audit logs for security monitoring and incident response'; } ?></li>
                 </ul>
@@ -610,6 +611,11 @@ $hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hid
                                 <td><?php if (function_exists('__')) { echo __('legal.privacy_s7_activity'); } else { echo 'Activity/audit logs'; } ?></td>
                                 <td><?php if (function_exists('__')) { echo __('legal.privacy_s7_activity_period'); } else { echo '90 days'; } ?></td>
                                 <td><?php if (function_exists('__')) { echo __('legal.privacy_s7_activity_notes'); } else { echo 'System audit logs are automatically purged after 90 days. Security-critical logs may be retained longer if required for ongoing investigations.'; } ?></td>
+                            </tr>
+                            <tr>
+                                <td><?php if (function_exists('__')) { echo __('legal.privacy_s7_forms'); } else { echo 'Form attempt records'; } ?></td>
+                                <td><?php if (function_exists('__')) { echo __('legal.privacy_s7_forms_period'); } else { echo 'About 1 day'; } ?></td>
+                                <td><?php if (function_exists('__')) { echo __('legal.privacy_s7_forms_notes'); } else { echo 'Used only for 1 hour. Deleted after a day, when one of these forms is next used.'; } ?></td>
                             </tr>
                             <tr>
                                 <td><?php if (function_exists('__')) { echo __('legal.privacy_s7_session'); } else { echo 'Session data'; } ?></td>

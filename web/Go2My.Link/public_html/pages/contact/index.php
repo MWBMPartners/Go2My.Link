@@ -13,7 +13,7 @@
  * ============================================================================
  *
  * Contact form with CSRF protection, optional CAPTCHA, and rate limiting.
- * Sends email via PHP mail() function.
+ * Sends email via g2ml_sendEmail() (#212 — previously a raw PHP mail() call).
  *
  * @package    Go2My.Link
  * @subpackage ComponentA
@@ -136,25 +136,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         }
         else
         {
-            // Rate limit check (reuse anonymous rate limit logic on IP)
-            $clientIP  = g2ml_getClientIP();
-            $rateCheck = dbSelectOne(
-                "SELECT COUNT(*) AS cnt
-                 FROM tblActivityLog
-                 WHERE logAction = 'contact_form'
-                   AND ipAddress = ?
-                   AND createdAt >= DATE_SUB(NOW(), INTERVAL 1 HOUR)",
-                's',
-                [$clientIP]
-            );
+            // Rate limit check (#212). This USED TO count rows in
+            // tblActivityLog for logAction = 'contact_form'. That table is
+            // written by logActivity(), which SKIPS most actions for a
+            // visitor who has sent Do Not Track, and 'contact_form' was
+            // never on activity_logger.php's short "always log" list — so a
+            // visitor with Do Not Track on could send unlimited messages no
+            // matter how the limit was set. tblFormAttempts
+            // (web/_functions/form_rate_limit.php) records every attempt
+            // with no DNT check at all, which closes that gap. The message
+            // shown on refusal is unchanged.
+            // 'unavailable' (also used if the limiter is not loaded) refuses.
+            $contactAttempt = 'unavailable';
 
-            if (($rateCheck !== null && $rateCheck !== false)) {
-                $contactCount = (int) $rateCheck['cnt'];
-            } else {
-                $contactCount = 0;
+            if (function_exists('g2ml_formRateLimitTake'))
+            {
+                $contactAttempt = g2ml_formRateLimitTake(
+                    'contact',
+                    (int) getSetting('security.contact_max_per_ip_per_hour', 5)
+                );
             }
 
-            if ($contactCount >= 5)
+            if ($contactAttempt === 'unavailable')
+            {
+                if (function_exists('__')) {
+                    $formError = __('form.error_unavailable');
+                } else {
+                    $formError = 'We cannot process this form just now. Please try again later.';
+                }
+            }
+            elseif ($contactAttempt === 'limited')
             {
                 if (function_exists('__')) {
                     $formError = __('contact.error_rate_limit');
@@ -179,18 +190,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                     $subject = '[Go2My.Link Contact] New Message';
                 }
 
-                $body  = "Name: " . $contactName . "\r\n";
-                $body .= "Email: " . $contactEmail . "\r\n";
-                $body .= "Subject: " . $contactSubject . "\r\n";
-                $body .= "IP: " . $clientIP . "\r\n";
-                $body .= "\r\n---\r\n\r\n";
-                $body .= $contactMessage . "\r\n";
-
-                $headers  = "From: noreply@go2my.link\r\n";
-                $headers .= "Reply-To: " . $contactEmail . "\r\n";
-                $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
-
-                $mailSent = @mail($recipient, $subject, $body, $headers);
+                // Sent through the shared g2ml_sendEmail() (#212) instead of
+                // a raw @mail() call, so this message gets the same
+                // multipart HTML/plain-text body, From/List-Unsubscribe
+                // headers and CRLF-injection defences as every other
+                // outgoing email. The visitor's address is passed as a
+                // Reply-To override (see web/_functions/email.php) so
+                // replying from the support inbox reaches them directly,
+                // without making the message's own From address the
+                // visitor's (which would fail sender-authentication checks
+                // at the recipient's mail server). The visitor's IP address
+                // is deliberately NOT included any more — the old plain
+                // @mail() body put it in the message text, which is more
+                // than the message needs (data minimisation).
+                $mailSent = g2ml_sendEmail(
+                    $recipient,
+                    $subject,
+                    'contact_message',
+                    [
+                        'contactName'    => $contactName,
+                        'contactEmail'   => $contactEmail,
+                        'contactSubject' => $contactSubject,
+                        'contactMessage' => $contactMessage,
+                    ],
+                    '',
+                    ['Reply-To' => $contactEmail]
+                );
 
                 // Log the activity regardless of mail success
                 if ($mailSent) {
@@ -200,10 +225,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                     $logStatus = 'mail_failed';
                     $logCode = 500;
                 }
+
+                // The visitor's email address used to be stored here too
+                // ('senderEmail'). It is personal data that this log entry
+                // does not need — the address is not used for the rate
+                // limit (tblFormAttempts holds only a hashed IP address, not
+                // an email address) and is not needed to tell whether the
+                // send succeeded. Only whether a subject was given is kept.
                 logActivity('contact_form', $logStatus, $logCode, [
                     'logData' => [
-                        'senderEmail' => $contactEmail,
-                        'subject'     => $contactSubject,
+                        'hasSubject' => ($safeSubject !== ''),
                     ],
                 ]);
 

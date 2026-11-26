@@ -35,6 +35,15 @@
             "type": "string",
             "format": "uri",
             "description": "Destination URL (for redirect activities)"
+        },
+        "form": {
+            "type": "string",
+            "enum": ["register", "contact", "password_reset"],
+            "description": "Which public form a 'rate_limited' event was refused on (#212)"
+        },
+        "hasSubject": {
+            "type": "boolean",
+            "description": "Whether a contact_form submission included a subject line (#212; the subject text and the sender's email address are no longer stored here)"
         }
     },
     "additionalProperties": true

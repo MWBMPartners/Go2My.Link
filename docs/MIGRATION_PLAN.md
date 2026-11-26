@@ -28,10 +28,10 @@ Complete **all** items before beginning the migration:
 
 ### 📁 Application Files
 
-- [ ] All 16 schema files (`web/_sql/schema/` — `000`, `010`–`015`, `020`–`021`, `030`–`036`) are current and tested
-- [ ] All 37 seed files (`web/_sql/seeds/`, listed in Phase C below) are current and tested
+- [ ] All 17 schema files (`web/_sql/schema/` — `000`, `010`–`015`, `020`–`021`, `030`–`036`, `044`) are current and tested
+- [ ] All 38 seed files (`web/_sql/seeds/`, listed in Phase C below) are current and tested
 - [ ] Both stored procedures (`web/_sql/procedures/sp_generateShortCode.sql`, `sp_lookupShortURL.sql`) are current — ⚠️ `sp_logActivity.sql` no longer exists (DELETED; direct `INSERT` now)
-- [ ] All 18 migration scripts (`web/_sql/migrations/001-004,006,008-019` — there is no `005`) match legacy schema, with `016` and `019` confirmed MANDATORY (see Phase D). The other three files there (`020`, `021` and `042`) are covered in `docs/DEPLOYMENT.md`
+- [ ] All 18 migration scripts (`web/_sql/migrations/001-004,006,008-019` — there is no `005`) match legacy schema, with `016` and `019` confirmed MANDATORY (see Phase D). The other four files there (`020`, `021`, `042` and `043`) are covered in `docs/DEPLOYMENT.md`
 - [ ] `auth_creds.php` populated with production database credentials
 - [ ] `ENCRYPTION_SALT` generated: `php -r "echo bin2hex(random_bytes(32));"`
 - [ ] CAPTCHA keys configured (Turnstile or reCAPTCHA)
@@ -99,6 +99,7 @@ Step A13: web/_sql/schema/033_payments.sql
 Step A14: web/_sql/schema/034_legal_compliance.sql
 Step A15: web/_sql/schema/035_translations.sql
 Step A16: web/_sql/schema/036_pricing_engine.sql
+Step A17: web/_sql/schema/044_form_attempts.sql
 ```
 
 ⚠️ **A7 (`015_account_types.sql`) is not optional** — its absence was
@@ -145,28 +146,29 @@ Step C21:  web/_sql/seeds/021_missing_ui_translations.sql
 Step C22:  web/_sql/seeds/022_help_translations.sql
 Step C23:  web/_sql/seeds/023_linkspage_feature_registry.sql
 Step C24:  web/_sql/seeds/029_linkspage_privacy_translations.sql
-Step C25:  web/_sql/seeds/058_truthful_marketing_translations.sql
-Step C26:  web/_sql/seeds/059_link_destination_translations.sql
-Step C27:  web/_sql/seeds/064_linkspage_avatar_icon_translations.sql
-Step C28:  web/_sql/seeds/065_linkspage_manage_error_translations.sql
-Step C29:  web/_sql/seeds/066_org_members_unknown_action_translation.sql
-Step C30:  web/_sql/seeds/067_dashboard_access_translations.sql
-Step C31:  web/_sql/seeds/068_small_fixes_translations.sql
-Step C32:  web/_sql/seeds/069_home_meta_description_translation.sql
-Step C33:  web/_sql/seeds/070_offline_page_translations.sql
-Step C34:  web/_sql/seeds/071_form_feedback_translations.sql
-Step C35:  web/_sql/seeds/072_accessibility_translations.sql
-Step C36:  web/_sql/seeds/073_linkspage_layout_translations.sql
-Step C37:  web/_sql/seeds/074_destination_check.sql
+Step C25:  web/_sql/seeds/057_form_rate_limit_settings.sql
+Step C26:  web/_sql/seeds/058_truthful_marketing_translations.sql
+Step C27:  web/_sql/seeds/059_link_destination_translations.sql
+Step C28:  web/_sql/seeds/064_linkspage_avatar_icon_translations.sql
+Step C29:  web/_sql/seeds/065_linkspage_manage_error_translations.sql
+Step C30:  web/_sql/seeds/066_org_members_unknown_action_translation.sql
+Step C31:  web/_sql/seeds/067_dashboard_access_translations.sql
+Step C32:  web/_sql/seeds/068_small_fixes_translations.sql
+Step C33:  web/_sql/seeds/069_home_meta_description_translation.sql
+Step C34:  web/_sql/seeds/070_offline_page_translations.sql
+Step C35:  web/_sql/seeds/071_form_feedback_translations.sql
+Step C36:  web/_sql/seeds/072_accessibility_translations.sql
+Step C37:  web/_sql/seeds/073_linkspage_layout_translations.sql
+Step C38:  web/_sql/seeds/074_destination_check.sql
 ```
 
-⚠️ **All 37 must be loaded, in filename order.** The numbers have gaps (there
-is no `024`–`028`, `030`–`057` or `060`–`063`); that is expected. Many
+⚠️ **All 38 must be loaded, in filename order.** The numbers have gaps (there
+is no `024`–`028`, `030`–`056` or `060`–`063`); that is expected. Many
 features read settings these seeds define, and the later ones hold the words
 the pages show, so most pages without their seed show key names instead of
 text.
 This list matches `docs/DEPLOYMENT.md` → New Installation, step 5, as at
-2026-11-02; if the two ever differ, the files in `web/_sql/seeds/` win.
+2026-11-26; if the two ever differ, the files in `web/_sql/seeds/` win.
 
 ### Phase D: Data Migration & Schema Catch-Up
 
