@@ -13,6 +13,8 @@ only an old chat log.
 1. **[`.github/HANDOFF.md`](.github/HANDOFF.md)** — the one session handoff (read it where it is; it is
    deliberately not copied into `.OpenAI/`, because a second copy would drift). Its "START HERE" section says what is in
    progress, what was tried and rejected, and what to do next. Start here.
+   The owner's decisions are in [docs/decisions/](docs/decisions/README.md) and issue #243:
+   **search both before asking any question.**
 2. **[`.OpenAI/CONTEXT.md`](.OpenAI/CONTEXT.md)** — the project entry point (a generated copy of the
    root `CLAUDE.md`).
 3. **[`.OpenAI/memory/working-rules.md`](.OpenAI/memory/working-rules.md)** — the full standing

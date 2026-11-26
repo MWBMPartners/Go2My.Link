@@ -13,6 +13,7 @@
 ## Read these first
 
 - 🤝 **[.github/HANDOFF.md](.github/HANDOFF.md)** — live session pick-up point: what's done, in-flight, decisions pending, next steps. **Start here** — it is kept current every session; the docs below can lag it. It is the project's **one** handoff; never create a second, and never write it at the repository root (the root `HANDOFF.md` is the dev-team plugin's scratch card and is ignored by git). *(Moved from the repository root to `.claude/` on 2026-09-21, then to `.github/HANDOFF.md` on 2026-09-22 — owner decision 17, #243.)*
+- 🗳️ **[docs/decisions/](docs/decisions/README.md)** — the owner's decisions, one file each. **Search it (and issue #243) before asking any question.**
 - 🧭 **[.claude/memory/working-rules.md](.claude/memory/working-rules.md)** — the **standing working rules** (plain English, handoff kept current as you go, how to plan/build/review, cross-system review until clean, steps after each task, documentation sweep, one branch and one pull request, what to do when an AI service runs out). Read before starting work.
 - 🧠 **[.claude/memory/MEMORY.md](.claude/memory/MEMORY.md)** — current state, file map, gotchas, open-issue ranges.
 - 🔧 **[.claude/memory/patterns.md](.claude/memory/patterns.md)** — coding conventions (esp. the strict **no-shorthand** rule for all languages).
