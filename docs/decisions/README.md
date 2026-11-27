@@ -20,3 +20,15 @@ tracked on its own issue.
 | [D-002](D-002-install-starts-with-old-data.md) | 2026-11-26 | New install moves the old data too | In force |
 | [D-003](D-003-org-links-share-g2my-codes.md) | 2026-11-26 | Organisation links share the g2my.link codes | In force |
 | [D-004](D-004-dev-team-plugin-install.md) | 2026-11-26 | The owner installs the dev-team plugin | In force |
+| [D-005](D-005-push-to-working-branch.md) | 2026-11-27 | Finished work is pushed to the working branch | In force |
+| [D-006](D-006-dead-links-show-a-page.md) | 2026-11-27 | Dead short links show an explanation page | In force |
+| [D-007](D-007-deploy-separate-folder.md) | 2026-11-27 | Automatic upload goes to a folder used only by this service | In force |
+| [D-008](D-008-timed-jobs-trigger-configurable.md) | 2026-11-27 | The global admin chooses what starts the timed jobs | In force |
+| [D-009](D-009-update-main-folder.md) | 2026-11-27 | The old main folder on the owner's Mac was brought up to date | In force |
+| [D-010](D-010-old-data-export.md) | 2026-11-27 | The owner supplies an export of the old database | In force |
+| [D-011](D-011-debug-panel-global-admin.md) | 2026-11-27 | The debug panel is shown only to a signed-in global admin | In force |
+| [D-012](D-012-announce-linkspage.md) | 2026-11-27 | The first version announces LinksPage | In force |
+| [D-013](D-013-brand-spelling.md) | 2026-11-27 | Names are spelled Go2My.Link and Lnks.Page | In force |
+| [D-014](D-014-legal-review-before-launch.md) | 2026-11-27 | Launch waits for the owner's legal review | In force |
+| [D-015](D-015-old-database-password.md) | 2026-11-27 | The old database password is dealt with when that database is retired | In force |
+| [D-016](D-016-pull-request-after-essentials.md) | 2026-11-27 | The pull request is opened when the essentials are done | In force |
