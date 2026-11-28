@@ -569,6 +569,7 @@ function g2mlCsrfPoolTest_apiKeysDoubleSubmitScript(): string
     $script .= 'function canManageOrg($org) { return true; }' . "\n";
     $script .= 'function g2ml_apiValidScopesList() { return array(\'urls:read\', \'urls:write\'); }' . "\n";
     $script .= 'function g2ml_apiListKeys($org) { return array(); }' . "\n";
+    $script .= 'function g2ml_apiPlanAccess($userUID, $orgHandle) { return \'allowed\'; }' . "\n";
     $script .= 'function g2ml_apiValidateScopesInput($scopes) { return array(\'urls:read\'); }' . "\n";
     $script .= 'function g2ml_apiGenerateKey() { $GLOBALS[\'keysMade\']++; return array(\'success\' => true, \'plaintextKey\' => \'g2ml_live_key_number_\' . $GLOBALS[\'keysMade\'], \'apiKeyPrefix\' => \'g2ml_live\'); }' . "\n";
     $script .= '$_SERVER[\'REQUEST_METHOD\'] = \'POST\';' . "\n";

@@ -611,6 +611,63 @@ function changeMemberRole(string $orgHandle, int $userUID, string $newRole): arr
         return ['success' => false, 'error' => 'User is not a member of this organisation.'];
     }
 
+    // A global administrator's role is not an organisation role: it comes from
+    // the 'global-admin' account type, and changing it here would only leave
+    // tblUsers saying something else (#328).
+    $isGlobalAdministrator = ($member['role'] === 'GlobalAdmin');
+
+    if (!$isGlobalAdministrator && function_exists('getEffectiveRole'))
+    {
+        $isGlobalAdministrator = (getEffectiveRole($userUID) === 'GlobalAdmin');
+    }
+
+    if ($isGlobalAdministrator)
+    {
+        if (function_exists('__'))
+        {
+            return ['success' => false, 'error' => __('org.members_error_global_admin_role')];
+        }
+
+        return ['success' => false, 'error' => 'A global administrator\'s role cannot be changed here.'];
+    }
+
+    $usesAccountTypes = function_exists('assignAccountType')
+        && function_exists('revokeAccountType')
+        && function_exists('syncEffectiveRole');
+
+    if ($member['role'] === 'Admin')
+    {
+        $oldTypeID = 'admin';
+    }
+    else
+    {
+        $oldTypeID = 'user';
+    }
+
+    if ($newRole === 'Admin')
+    {
+        $newTypeID = 'admin';
+    }
+    else
+    {
+        $newTypeID = 'user';
+    }
+
+    // The new type is given BEFORE the old one is taken away, and nothing else
+    // changes unless it was given. The other way round, a member holding only
+    // one type could not have it revoked ("a user must always have at least
+    // one"), and the role was then worked out from the old type again, so a
+    // demotion silently undid itself (#328, D-033).
+    if ($usesAccountTypes)
+    {
+        $assigned = assignAccountType($userUID, $newTypeID, $orgHandle, $currentUser['userUID']);
+
+        if (!$assigned['success'])
+        {
+            return ['success' => false, 'error' => $assigned['error'] ?? 'Failed to change member role.'];
+        }
+    }
+
     $result = dbUpdate(
         "UPDATE tblUsers SET role = ? WHERE userUID = ? AND orgHandle = ?",
         'sis',
@@ -622,29 +679,34 @@ function changeMemberRole(string $orgHandle, int $userUID, string $newRole): arr
         return ['success' => false, 'error' => 'Failed to change member role.'];
     }
 
-    // Update account types in junction table
-    if (function_exists('revokeAccountType') && function_exists('assignAccountType'))
+    if ($usesAccountTypes)
     {
-        if ($member['role'] === 'Admin')
+        if ($oldTypeID !== $newTypeID)
         {
-            $oldTypeID = 'admin';
-        }
-        else
-        {
-            $oldTypeID = 'user';
+            // A refusal here ("not found" is normal for a member who never had
+            // the type) is judged by the role that results, checked below.
+            revokeAccountType($userUID, $oldTypeID, $orgHandle);
         }
 
-        if ($newRole === 'Admin')
-        {
-            $newTypeID = 'admin';
-        }
-        else
-        {
-            $newTypeID = 'user';
-        }
+        // Always work the role out again: assigning a type the member already
+        // holds does not, and revoking one can fail.
+        syncEffectiveRole($userUID);
 
-        revokeAccountType($userUID, $oldTypeID, $orgHandle);
-        assignAccountType($userUID, $newTypeID, $orgHandle, $currentUser['userUID']);
+        $after = dbSelectOne(
+            'SELECT `role` FROM `tblUsers` WHERE `userUID` = ? LIMIT 1',
+            'i',
+            [$userUID]
+        );
+
+        if (!is_array($after) || $after['role'] !== $newRole)
+        {
+            if (function_exists('__'))
+            {
+                return ['success' => false, 'error' => __('org.members_error_role_unchanged')];
+            }
+
+            return ['success' => false, 'error' => 'The role was not changed: this person may still hold another account type that gives them a different role.'];
+        }
     }
 
     logActivity('change_org_member_role', 'success', 200, [

@@ -45,6 +45,15 @@
  * separate, narrower authz path (and probably per-member key ownership
  * checks in addition to org scoping).
  *
+ * Plans (#328, owner decision D-025): API access is only part of some plans.
+ * When g2ml_apiPlanAccess() does not answer 'allowed' for the signed-in
+ * person, the page still opens (200) but says why in place of the create form,
+ * and offers a next step. Existing keys stay listed so they can be revoked; a
+ * key that the API would now refuse for its plan, or because its owner has
+ * left the organisation or is no longer an administrator (D-033), is not shown
+ * as "Active". The refusal
+ * itself is enforced by g2ml_apiGenerateKey() and by the API, not by this page.
+ *
  * @package    Go2My.Link
  * @subpackage ComponentA_Admin
  * @version    1.1.0
@@ -361,6 +370,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST'
 
 // Load data
 $apiKeys = g2ml_apiListKeys($orgHandle);
+
+// May the signed-in person make a key here (#328)?
+$createAccess = g2ml_apiPlanAccess((int) $currentUser['userUID'], (string) $orgHandle);
+
+// Would the API accept each key? A key counts by its own owner (a global
+// administrator's key works on any plan), so each owner is checked once.
+$accessByOwner = [(int) $currentUser['userUID'] => $createAccess];
+
+foreach ($apiKeys as $listedKey)
+{
+    $listedOwner = (int) $listedKey['userUID'];
+
+    if (!isset($accessByOwner[$listedOwner]))
+    {
+        $accessByOwner[$listedOwner] = g2ml_apiPlanAccess($listedOwner, (string) $orgHandle);
+    }
+}
 ?>
 
 <section class="py-4" aria-labelledby="apikeys-heading">
@@ -434,6 +460,42 @@ $apiKeys = g2ml_apiListKeys($orgHandle);
         </div>
         <?php } ?>
 
+        <?php if ($createAccess === 'not_included') { ?>
+        <!-- ================================================================ -->
+        <!-- This plan has no API access (#328)                                -->
+        <!-- ================================================================ -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-body p-4">
+                <h2 class="h4 mb-3">
+                    <i class="fas fa-circle-info" aria-hidden="true"></i>
+                    <?php if (function_exists('__')) { echo g2ml_sanitiseOutput(__('apikeys.plan_heading')); } else { echo 'API access is not part of your plan'; } ?>
+                </h2>
+                <p>
+                    <?php if (function_exists('__')) { echo g2ml_sanitiseOutput(__('apikeys.plan_message')); } else { echo 'Your organisation&#039;s current plan does not include API access. New keys cannot be created, and the API refuses any key made earlier.'; } ?>
+                </p>
+                <p>
+                    <?php if (function_exists('__')) { echo g2ml_sanitiseOutput(__('apikeys.plan_next_step')); } else { echo 'You can still create and manage your short links here in the dashboard. If you rely on an existing key, please contact us.'; } ?>
+                </p>
+                <a href="/links" class="btn btn-primary">
+                    <?php if (function_exists('__')) { echo g2ml_sanitiseOutput(__('apikeys.plan_links_button')); } else { echo 'Go to My Links'; } ?>
+                </a>
+                <a href="<?php echo g2ml_sanitiseOutput(g2ml_mainSiteURL('/contact')); ?>" class="btn btn-outline-secondary">
+                    <?php if (function_exists('__')) { echo g2ml_sanitiseOutput(__('apikeys.plan_contact_button')); } else { echo 'Contact us'; } ?>
+                </a>
+            </div>
+        </div>
+        <?php } elseif ($createAccess !== 'allowed') { ?>
+        <div class="alert alert-warning" role="alert">
+            <h2 class="h5">
+                <?php if (function_exists('__')) { echo g2ml_sanitiseOutput(__('apikeys.plan_check_heading')); } else { echo 'We could not check your plan'; } ?>
+            </h2>
+            <p><?php echo g2ml_sanitiseOutput(g2ml_apiPlanMessage($createAccess)); ?></p>
+            <a href="/api-keys" class="btn btn-primary">
+                <?php if (function_exists('__')) { echo g2ml_sanitiseOutput(__('apikeys.plan_check_retry')); } else { echo 'Try again'; } ?>
+            </a>
+        </div>
+        <?php } ?>
+
         <!-- ================================================================ -->
         <!-- API Keys Table                                                    -->
         <!-- ================================================================ -->
@@ -446,6 +508,11 @@ $apiKeys = g2ml_apiListKeys($orgHandle);
             <div class="card-body text-center text-body-secondary py-4">
                 <i class="fas fa-key fa-2x mb-2" aria-hidden="true"></i>
                 <p class="mb-0">No API keys created yet.</p>
+                <?php if ($createAccess === 'allowed') { ?>
+                <p class="mb-0 mt-2">
+                    <a href="#create-api-key"><?php if (function_exists('__')) { echo g2ml_sanitiseOutput(__('apikeys.empty_next_step')); } else { echo 'Create your first key'; } ?></a>
+                </p>
+                <?php } ?>
             </div>
             <?php } else { ?>
             <div class="table-responsive">
@@ -490,6 +557,42 @@ $apiKeys = g2ml_apiListKeys($orgHandle);
                         {
                             $statusLabel = 'Expired';
                             $statusBadge = 'bg-warning text-dark';
+                        }
+                        elseif (isset($keyRow['ownerBelongs']) && (int) $keyRow['ownerBelongs'] === 0)
+                        {
+                            if (function_exists('__')) {
+                                $statusLabel = __('apikeys.status_owner_left');
+                            } else {
+                                $statusLabel = 'Owner has left';
+                            }
+                            $statusBadge = 'bg-warning text-dark';
+                        }
+                        elseif (isset($keyRow['ownerIsAdmin']) && (int) $keyRow['ownerIsAdmin'] === 0)
+                        {
+                            if (function_exists('__')) {
+                                $statusLabel = __('apikeys.status_owner_not_admin');
+                            } else {
+                                $statusLabel = 'Owner is not an administrator';
+                            }
+                            $statusBadge = 'bg-warning text-dark';
+                        }
+                        elseif ($accessByOwner[(int) $keyRow['userUID']] === 'not_included')
+                        {
+                            if (function_exists('__')) {
+                                $statusLabel = __('apikeys.status_not_in_plan');
+                            } else {
+                                $statusLabel = 'Not in plan';
+                            }
+                            $statusBadge = 'bg-warning text-dark';
+                        }
+                        elseif ($accessByOwner[(int) $keyRow['userUID']] !== 'allowed')
+                        {
+                            if (function_exists('__')) {
+                                $statusLabel = __('apikeys.status_not_checked');
+                            } else {
+                                $statusLabel = 'Not checked';
+                            }
+                            $statusBadge = 'bg-secondary';
                         }
                         else
                         {
@@ -573,10 +676,11 @@ $apiKeys = g2ml_apiListKeys($orgHandle);
             <?php } ?>
         </div>
 
+        <?php if ($createAccess === 'allowed') { ?>
         <!-- ================================================================ -->
         <!-- Create API Key Form                                               -->
         <!-- ================================================================ -->
-        <div class="card shadow-sm">
+        <div class="card shadow-sm" id="create-api-key">
             <div class="card-header">
                 <h2 class="h5 mb-0">
                     <i class="fas fa-plus-circle" aria-hidden="true"></i> Create API Key
@@ -660,6 +764,7 @@ $apiKeys = g2ml_apiListKeys($orgHandle);
                 </form>
             </div>
         </div>
+        <?php } ?>
 
     </div>
 </section>

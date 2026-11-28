@@ -407,6 +407,7 @@ function g2mlFormFeedbackTest_apiKeysScript(bool $createSucceeds): string
     $script .= 'function canManageOrg($org) { return true; }' . "\n";
     $script .= 'function g2ml_apiValidScopesList() { return array(\'urls:read\', \'urls:write\', \'analytics:read\'); }' . "\n";
     $script .= 'function g2ml_apiListKeys($org) { return array(); }' . "\n";
+    $script .= 'function g2ml_apiPlanAccess($userUID, $orgHandle) { return \'allowed\'; }' . "\n";
 
     if ($createSucceeds)
     {

@@ -1,7 +1,7 @@
 # Go2My.Link — API Documentation
 
 > An overview of the public API, written for a person deciding whether and how to use it.
-> **Last checked against the code:** 2026-09-07.
+> **Last checked against the code:** 2026-09-07; plan rule added and checked 2026-11-28 (#328).
 
 ## 📋 Overview
 
@@ -55,6 +55,54 @@ Keys are created and withdrawn in the dashboard, under **API Keys**.
 > ⚠️ **A key is shown once, when it is created, and cannot be retrieved afterwards.** If it is
 > lost, withdraw it and make a new one.
 
+### 💷 Which plans include API access
+
+Not every plan includes API access (owner decision D-025, #328). The rule is checked **when a
+key is created** and **on every call**.
+
+| Who | API access |
+| --- | --- |
+| An organisation whose plan has `hasAPIAccess` on | Yes |
+| An organisation whose plan has it off (Free, as shipped) | No |
+| People with no organisation (the shared `[default]` organisation) | No: they count as Free |
+| Anyone who is not an administrator of the key's organisation (global administrators excepted) | No: see below |
+| A key owned by a global administrator | Yes, whatever the plan |
+| The owner or the plan cannot be read | No: refused until it can (`503`) |
+
+Without access, no key can be created, and a key made earlier is refused on every route,
+`ping` included: `403` with "The current plan does not include API access, so API keys cannot
+be created or used.", or `429` if it is over its rate limit, which is checked first. The key is
+not deleted, so it works again if the organisation moves to a
+plan with access. The API Keys page says the same and still lets keys be revoked.
+
+The plan read is the one stored on the organisation. A switched-off plan, or none, counts as
+the first active plan. With the pricing engine **off** (the launch state) the answer is
+`tblSubscriptionTiers.hasAPIAccess`; with it on, the engine's `api.access` feature, including
+any per-organisation grant or refusal, and a failure of the engine refuses.
+
+**Giving the CueRCode integration (or any partner) access.** CueRCode asks for no particular
+plan: it needs an ordinary API key with `urls:write` and `qr:link`, the setting
+`cuercode.integration_enabled` on, **and now a key that passes the rule above**. A global
+administrator can arrange that in either of two ways:
+
+1. Put CueRCode's organisation on a plan that includes API access, then create the key from
+   its **API Keys** page. The plan is chosen in **Organisation Settings** (administrator
+   section), which only shows the organisation the signed-in person belongs to; for any other
+   organisation, change `tblOrganisations.tierID` in the database.
+2. Have a global administrator create the key from their **API Keys** page. The key always
+   belongs to the organisation that administrator is in (the page offers no other, and is not
+   available to somebody with no organisation), so links made with it belong to that
+   organisation. It works whatever that organisation's plan. If the account loses the global
+   role, the key then works only if the account is still an administrator of that
+   organisation and its plan includes API access. It is also refused while the account is
+   switched off or suspended.
+
+**A key works only while its owner is an administrator of its organisation** (owner decision
+D-033; global administrators excepted). When the owner is demoted to ordinary member, removed,
+or moves to another organisation, their keys are answered `401` on every call, and the API Keys
+page shows "Owner is not an administrator" or "Owner has left". The keys are not revoked, so
+they work again if the role is restored; revoke them if that is not wanted.
+
 ### 🎫 Permissions
 
 Each key carries a list of permissions, and a route refuses a key that does not hold the right
@@ -84,7 +132,7 @@ from the organisation's tier:
 
 | Tier | Requests per rolling 24 hours |
 | --- | --- |
-| Free | 100 |
+| Free | 100 in the plan data, but Free has no API access (see above) |
 | Basic | 5,000 |
 | Premium | 50,000 |
 | Enterprise | no limit |
@@ -151,7 +199,7 @@ All 11, exactly as the code defines them.
 
 | Route | Permission needed | What it does |
 | --- | --- | --- |
-| `GET /api/v1/ping` | any valid key | Confirms the API is up and your key works |
+| `GET /api/v1/ping` | any valid key on a plan with API access | Confirms the API is up and your key works |
 | `GET /api/v1/account` | `account:read` | The key's own account: user, email, display name, organisation, key name, permissions |
 | `GET /api/v1/org` | `org:read` | The organisation: handle, name, tier, whether it is verified, when it was created |
 
@@ -225,13 +273,13 @@ The per-link route takes `from`, `to`, `bucket` (`day`, `week` or `month`), `lim
 | ✅ 200 | It worked |
 | ✨ 201 | Created — a new link, or a bulk batch |
 | ⚠️ 400 | The JSON body could not be read |
-| 🔒 401 | No key, or the key is invalid, expired, withdrawn, suspended, or its owner or organisation is inactive |
-| 🚫 403 | The key is valid but lacks the permission this route needs. Also returned if the request is not over HTTPS |
+| 🔒 401 | No key, or the key is invalid, expired, withdrawn, suspended, its owner or organisation is inactive, or its owner is no longer an administrator of the organisation |
+| 🚫 403 | The plan does not include API access, or the key lacks the permission this route needs. Also returned if the request is not over HTTPS |
 | 🔍 404 | No such route, or no such link *for you* |
 | ⚔️ 409 | Something clashes — usually a custom ending already in use |
 | 📋 422 | A value you sent is not acceptable. `error.field` names it |
 | ⏱️ 429 | Too many requests. Check `Retry-After` |
-| 🔧 503 | The operator has switched the public API off (`api.public_enabled`) |
+| 🔧 503 | The operator has switched the public API off (`api.public_enabled`), or the plan could not be checked (`Retry-After: 60`) |
 | 💥 500 | Something went wrong at our end. The cause is never revealed to the caller |
 
 ## 🔒 What happens before your request reaches a route
@@ -244,13 +292,14 @@ succeeded or not:
 3. The master switch `api.public_enabled` — `503` when the operator has switched the API off.
 4. The failed-attempt guard, by address, before any key is looked at — `429`.
 5. The key is read from `Authorization: Bearer`, or failing that `X-API-Key` — `401` if neither.
-6. The key is checked — `401` if invalid, expired, withdrawn, suspended, or its owner or
-   organisation is inactive.
+6. The key is checked — `401` if invalid, expired, withdrawn, suspended, its owner or
+   organisation is inactive, or its owner is no longer an administrator of the organisation.
 7. The rate limits — `429` with `Retry-After`.
-8. Route and permission — `404` for an unknown route, `403` for a missing permission.
-9. For `POST` and `PUT`, the JSON body is read — `400` if it cannot be. An empty body is
+8. The plan — `403` if it does not include API access, `503` if it cannot be checked.
+9. Route and permission — `404` for an unknown route, `403` for a missing permission.
+10. For `POST` and `PUT`, the JSON body is read — `400` if it cannot be. An empty body is
    treated as `{}`; a missing required field is then reported by the route itself as `422`.
-10. The route runs.
+11. The route runs.
 
 ## 📚 Related documentation
 

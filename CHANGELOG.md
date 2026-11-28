@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🔑 No programming access on the Free plan (2026-11-28)
+
+- 🔒 API keys can be created and used only on a plan with API access, and only while their maker is an
+  administrator of that organisation; people in no organisation count as Free. Keys of someone who
+  left or was demoted stop working, and work again if the role returns (#328, decisions D-025 and
+  D-033).
+- 🐛 Demoting a member could silently undo itself. Fixed (#328).
+- 🗄️ **On deploy:** apply seed `083_api_plan_access_translations.sql` and read checklist row A38
+  before uploading: some existing keys will stop working.
+
 ### 💷 The Free link limit applies to everyone (2026-11-28)
 
 - 🐛 People in no organisation are now limited to the Free plan's active links, and switching a link

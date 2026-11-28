@@ -185,8 +185,11 @@ function g2ml_cuercode_test_insert_user(mysqli $db, string $orgHandle, string $m
 {
     $statement = mysqli_prepare(
         $db,
-        'INSERT INTO `tblUsers` (`orgHandle`, `username`, `email`, `passwordHash`, `isActive`, `isSuspended`) '
-        . 'VALUES (?, ?, ?, ?, 1, 0)'
+        // The key owner is a global administrator so that these tests, which are
+        // not about plans, may make keys on any plan (#328). The plan rule has
+        // its own file, api_plan_access_test.php.
+        'INSERT INTO `tblUsers` (`orgHandle`, `username`, `email`, `passwordHash`, `isActive`, `isSuspended`, `role`) '
+        . "VALUES (?, ?, ?, ?, 1, 0, 'GlobalAdmin')"
     );
 
     if ($statement === false)

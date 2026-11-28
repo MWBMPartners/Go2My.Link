@@ -93,7 +93,7 @@ Schema files are located in `web/_sql/schema/`.
 
 | Table | Purpose |
 | --- | --- |
-| `tblAPIKeys` | 🔑 API key storage and metadata |
+| `tblAPIKeys` | 🔑 API key storage and metadata. Whether a key may be made or used also depends on the organisation's plan having API access (#328; see `docs/API.md`). Seed `083_api_plan_access_translations.sql` holds the words for it |
 | `tblAPIRequestLog` | 📋 API request audit trail |
 
 #### 📄 LinksPage

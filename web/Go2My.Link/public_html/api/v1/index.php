@@ -26,9 +26,11 @@
  *   5. Bearer/X-API-Key extraction   -> 401 (missing)
  *   6. g2ml_apiVerifyKey()           -> 401 (invalid/expired/revoked/suspended)
  *   7. g2ml_apiCheckRateLimit()      -> 429 + Retry-After
- *   8. Route + scope dispatch        -> 404 (unknown) / 403 (missing scope)
- *   9. Request body decode (POST/PUT)-> 400 (malformed JSON)
- *  10. Handler invocation (try/catch)-> expected 4xx via G2mlApiHandlerException,
+ *   8. g2ml_apiPlanAccess()          -> 403 (plan has no API access, #328) /
+ *                                       503 + Retry-After (plan not readable)
+ *   9. Route + scope dispatch        -> 404 (unknown) / 403 (missing scope)
+ *  10. Request body decode (POST/PUT)-> 400 (malformed JSON)
+ *  11. Handler invocation (try/catch)-> expected 4xx via G2mlApiHandlerException,
  *                                       else 500 (never leaks the underlying cause)
  *
  * #38 shipped ONLY the framework and two exerciser endpoints (ping, account).
@@ -346,6 +348,42 @@ if ($g2mlApiRateLimit['allowed'] === false)
         $g2mlApiRequestStart,
         null,
         ['Retry-After' => (string) $g2mlApiRateLimit['retryAfter']]
+    );
+}
+
+// ============================================================================
+// 💷 Step 8b: Does the plan include API access? (#328, owner decision D-025)
+// ============================================================================
+// Asked on EVERY call, so a key made before the rule, or before a change of
+// plan, stops working. It runs after the rate limit so that repeated calls with
+// a refused key are still limited. It runs before routing, so every route is
+// covered, including ping, and none can be added without it. A plan that cannot
+// be read refuses the call (503, "try again"), never lets it through.
+// ============================================================================
+$g2mlApiPlanAccess = g2ml_apiPlanAccess((int) $g2mlApiKeyRow['userUID'], (string) $g2mlApiKeyRow['orgHandle']);
+
+if ($g2mlApiPlanAccess !== 'allowed')
+{
+    if ($g2mlApiPlanAccess === 'not_included')
+    {
+        $g2mlApiPlanStatus  = 403;
+        $g2mlApiPlanHeaders = null;
+    }
+    else
+    {
+        $g2mlApiPlanStatus  = 503;
+        $g2mlApiPlanHeaders = ['Retry-After' => '60'];
+    }
+
+    g2mlApiV1FinishRequest(
+        g2ml_apiErrorBody($g2mlApiPlanStatus, g2ml_apiPlanMessage($g2mlApiPlanAccess)),
+        $g2mlApiPlanStatus,
+        $g2mlApiKeyUID,
+        $g2mlApiEndpointForLog,
+        $g2mlApiMethod,
+        $g2mlApiRequestStart,
+        null,
+        $g2mlApiPlanHeaders
     );
 }
 

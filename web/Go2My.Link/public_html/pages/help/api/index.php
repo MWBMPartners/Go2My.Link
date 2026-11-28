@@ -157,8 +157,16 @@ if (function_exists('__')) {
                         <?php if (function_exists('__')) { echo __('help.api.s3_warning'); } else { echo 'The key is shown to you exactly once, straight after you create it. Go2My.Link does not keep a copy of it anywhere — only a one-way scrambled version is stored, which cannot be turned back into the real key. If you close the page, navigate away, or lose the key, it is gone for good and cannot be shown again. Your only option at that point is to withdraw that key and create a new one.'; } ?>
                     </div>
 
-                    <p class="mb-0">
+                    <p>
                         <?php if (function_exists('__')) { echo __('help.api.s3_p2'); } else { echo 'Only an organisation administrator can create or withdraw API keys.'; } ?>
+                    </p>
+
+                    <p>
+                        <?php if (function_exists('__')) { echo __('help.api.s3_admin'); } else { echo 'A key works only while the person who made it is still an administrator of the organisation. If they stop being one, or leave, their keys are refused, and work again if the role is given back. Keys made by a platform administrator are not affected.'; } ?>
+                    </p>
+
+                    <p class="mb-0">
+                        <?php if (function_exists('__')) { echo __('help.api.s3_plan'); } else { echo 'Not every plan includes API access. The Free plan does not, and people who are not in an organisation count as being on the Free plan. Without API access you cannot create a key, and the API refuses any key made earlier, with a message saying so. Your short links and the dashboard are not affected.'; } ?>
                     </p>
                 </section>
 

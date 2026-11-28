@@ -32,10 +32,18 @@
  * Verification rejects (returns null, revealing nothing about WHICH check
  * failed) when: the key is malformed, the prefix is unknown, the secret does
  * not match, the key is inactive, the key has expired, the owning user is
- * inactive/suspended, or the owning organisation is inactive.
+ * inactive/suspended, the owner is no longer an administrator of the key's
+ * organisation (global administrators excepted, #328, owner decision D-033),
+ * or the owning organisation is inactive.
  *
- * Dependencies: db_query.php (dbSelect/dbSelectOne/dbUpdate/dbInsert),
- *               settings.php is NOT required by this file directly.
+ * Whether the plan allows API access at all (#328) is also decided here, by
+ * g2ml_apiPlanAccess(). It is separate from verification on purpose: a good key
+ * on a plan without API access gets a plain explanation, not "invalid key".
+ *
+ * Dependencies: db_query.php (dbSelect/dbSelectOne/dbUpdate/dbInsert), and, at
+ *               call time only, entitlements.php and pricing.php (for
+ *               g2ml_apiPlanAccess()). settings.php is NOT required by this
+ *               file directly.
  *
  * @package    Go2My.Link
  * @subpackage Functions
@@ -135,6 +143,195 @@ function _g2ml_apiGeneratePrefix(): string
 }
 
 // ============================================================================
+// 💷 Does the plan include API access? (#328, owner decision D-025)
+// ============================================================================
+// Asked in two places: when a key is made (g2ml_apiGenerateKey() below) and on
+// every call that presents a key (the /api/v1 front controller).
+//
+// Why this does not simply call g2ml_canUseFeature($orgHandle, 'hasAPIAccess'):
+// that function was built never to block anybody. It answers "yes" when the
+// plan cannot be read, "yes" for the shared "[default]" organisation, and "yes"
+// whenever the browser making the request is signed in as a global
+// administrator. For API access all three are wrong:
+//   - a plan that cannot be read must refuse (fail closed);
+//   - people with no organisation count as Free (decision 25 on #243);
+//   - what counts is who OWNS the key, not who is signed in to the browser
+//     that happens to send it.
+// The plan data it reads is the same: the plan's hasAPIAccess value, or, when
+// the pricing engine is switched on, the engine's answer for the same flag.
+// ============================================================================
+
+/**
+ * May this user's API key, belonging to this organisation, be made or used?
+ *
+ * Answers one of:
+ *   'allowed'       The organisation's plan includes API access, or the key's
+ *                   owner is a global administrator (who is never limited).
+ *   'not_included'  The plan does not include API access.
+ *   'check_failed'  The owner or the plan could not be read. Callers refuse.
+ *
+ * Which plan: the one on the organisation's own row, including the shared
+ * "[default]" organisation that people with no organisation belong to. As
+ * everywhere else, an organisation with no plan, or a plan that has been
+ * switched off, gets the first active plan (lowest sortOrder). No plan is
+ * named here.
+ *
+ * Pricing engine switched off (as at launch): the plan row's hasAPIAccess.
+ * Switched on: the engine's answer, which also applies any per-organisation
+ * grant or refusal. If the engine is on but cannot answer, the result is
+ * 'check_failed'; the older columns are not used instead, because they cannot
+ * see a per-organisation refusal.
+ *
+ * Nothing is cached, so a change of plan or role counts from the next call.
+ *
+ * @param  int    $userUID    The key's owner (or, when making a key, its maker).
+ * @param  string $orgHandle  The organisation the key belongs to.
+ * @return string             'allowed', 'not_included' or 'check_failed'.
+ */
+#[\NoDiscard('the answer says whether API access may be used; ignoring it skips the check')]
+function g2ml_apiPlanAccess(int $userUID, string $orgHandle): string
+{
+    try
+    {
+        $ownerRow = dbSelectOne(
+            'SELECT `role` FROM `tblUsers` WHERE `userUID` = ?',
+            'i',
+            [$userUID]
+        );
+
+        if ($ownerRow === false || $ownerRow === null)
+        {
+            error_log('[Go2My.Link] ERROR: API plan check - could not read user ' . $userUID . ' for org "' . $orgHandle . '" - refusing.');
+
+            return 'check_failed';
+        }
+
+        if ((string) $ownerRow['role'] === 'GlobalAdmin')
+        {
+            return 'allowed';
+        }
+
+        if (function_exists('g2ml_pricingEngineEnabled') && g2ml_pricingEngineEnabled() === true)
+        {
+            $engineTier = g2ml_pricingResolveOrgTier($orgHandle);
+
+            if (!is_array($engineTier))
+            {
+                error_log('[Go2My.Link] ERROR: API plan check - the pricing engine could not resolve org "' . $orgHandle . '" - refusing.');
+
+                return 'check_failed';
+            }
+
+            if (($engineTier['hasAPIAccess'] ?? false) === true)
+            {
+                return 'allowed';
+            }
+
+            return 'not_included';
+        }
+
+        $planRow = _g2ml_fetchOrgTierRow($orgHandle);
+
+        if ($planRow !== false && ($planRow === null || (int) ($planRow['isActive'] ?? 0) !== 1))
+        {
+            $planRow = _g2ml_fetchFallbackTierRow();
+        }
+
+        if ($planRow === false || $planRow === null)
+        {
+            error_log('[Go2My.Link] ERROR: API plan check - no plan could be read for org "' . $orgHandle . '" - refusing.');
+
+            return 'check_failed';
+        }
+
+        if ((int) ($planRow['hasAPIAccess'] ?? 0) === 1)
+        {
+            return 'allowed';
+        }
+
+        return 'not_included';
+    }
+    catch (Throwable $unexpectedError)
+    {
+        error_log('[Go2My.Link] ERROR: API plan check - unexpected exception for org "' . $orgHandle . '": ' . $unexpectedError->getMessage() . ' - refusing.');
+
+        return 'check_failed';
+    }
+}
+
+/**
+ * The plain sentence shown when API access is refused.
+ *
+ * Neither sentence offers an upgrade: there is no way to buy one yet. If the
+ * translation is missing (seed 083 not applied), the English below is used
+ * rather than the key name, because an API caller sees this text as it is.
+ *
+ * @param  string $access  'not_included' or 'check_failed', as returned by
+ *                         g2ml_apiPlanAccess(). Anything else is treated as
+ *                         'check_failed'.
+ * @return string          Plain text, not escaped.
+ */
+function g2ml_apiPlanMessage(string $access): string
+{
+    if ($access === 'not_included')
+    {
+        $translationKey = 'api.error_plan_not_included';
+        $english        = 'The current plan does not include API access, so API keys cannot be created or used.';
+    }
+    else
+    {
+        $translationKey = 'api.error_plan_check_failed';
+        $english        = 'We could not check whether the plan includes API access. Please try again shortly.';
+    }
+
+    if (function_exists('__'))
+    {
+        $translated = __($translationKey);
+
+        if ($translated !== $translationKey)
+        {
+            return $translated;
+        }
+    }
+
+    return $english;
+}
+
+// ============================================================================
+// 👤 May the owner still hold this key? (#328, owner decision D-033)
+// ============================================================================
+
+/**
+ * Whether a key's owner may still hold a key of this organisation: they must be
+ * an administrator of it now. A global administrator may act in any
+ * organisation. Nothing is stored on the key, so the key works again as soon as
+ * the person is an administrator of the organisation again.
+ *
+ * Handles are compared without regard to capitals, as the database compares
+ * them. Pure and database-free.
+ *
+ * @param  array  $ownerRow   The owner's `orgHandle` and `role` from tblUsers.
+ * @param  string $orgHandle  The key's organisation.
+ * @return bool
+ */
+function g2ml_apiOwnerMayHoldKey(array $ownerRow, string $orgHandle): bool
+{
+    $role = (string) ($ownerRow['role'] ?? '');
+
+    if ($role === 'GlobalAdmin')
+    {
+        return true;
+    }
+
+    if ($role === 'Admin' && strcasecmp((string) ($ownerRow['orgHandle'] ?? ''), $orgHandle) === 0)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+// ============================================================================
 // 🆕 Key generation
 // ============================================================================
 
@@ -154,6 +351,10 @@ function _g2ml_apiGeneratePrefix(): string
  *                                   'plaintextKey'=>string] on success, or
  *                                   ['success'=>false, 'error'=>string] on failure.
  *
+ * No key is made unless g2ml_apiPlanAccess() answers 'allowed' and the owner
+ * passes g2ml_apiOwnerMayHoldKey() (#328). The role is read from the database,
+ * because a signed-in person's session can still carry a role they have lost.
+ *
  * Usage example:
  *   $created = g2ml_apiGenerateKey(42, 'myorg', 'CI pipeline', ['urls:write'], null);
  *   if ($created['success']) {
@@ -172,6 +373,37 @@ function _g2ml_apiGeneratePrefix(): string
  */
 function g2ml_apiGenerateKey(int $userUID, string $orgHandle, string $keyName, array $scopes, ?string $expiresAt = null): array
 {
+    $planAccess = g2ml_apiPlanAccess($userUID, $orgHandle);
+
+    if ($planAccess !== 'allowed')
+    {
+        return [
+            'success' => false,
+            'error'   => g2ml_apiPlanMessage($planAccess),
+        ];
+    }
+
+    $ownerRow = dbSelectOne(
+        'SELECT `orgHandle`, `role` FROM `tblUsers` WHERE `userUID` = ?',
+        'i',
+        [$userUID]
+    );
+
+    if (!is_array($ownerRow) || !g2ml_apiOwnerMayHoldKey($ownerRow, $orgHandle))
+    {
+        $notAdminMessage = 'Only an administrator of the organisation can create API keys.';
+
+        if (function_exists('__') && __('apikeys.error_not_admin') !== 'apikeys.error_not_admin')
+        {
+            $notAdminMessage = __('apikeys.error_not_admin');
+        }
+
+        return [
+            'success' => false,
+            'error'   => $notAdminMessage,
+        ];
+    }
+
     $encodedScopes = json_encode(array_values($scopes));
 
     if ($encodedScopes === false)
@@ -429,7 +661,7 @@ function g2ml_apiVerifyKey(string $presented): ?array
     }
 
     $ownerRow = dbSelectOne(
-        'SELECT isActive, isSuspended FROM tblUsers WHERE userUID = ?',
+        'SELECT `isActive`, `isSuspended`, `orgHandle`, `role` FROM `tblUsers` WHERE `userUID` = ?',
         'i',
         [(int) $row['userUID']]
     );
@@ -440,6 +672,16 @@ function g2ml_apiVerifyKey(string $presented): ?array
     }
 
     if ((int) $ownerRow['isActive'] !== 1 || (int) $ownerRow['isSuspended'] !== 0)
+    {
+        return null;
+    }
+
+    // A key works only while its owner is an administrator of the key's
+    // organisation (#328, D-033). Removing or demoting a member, or a member
+    // moving to another organisation, leaves the key row in place, so without
+    // this the person could go on reading and changing the organisation's
+    // links.
+    if (!g2ml_apiOwnerMayHoldKey($ownerRow, (string) $row['orgHandle']))
     {
         return null;
     }
@@ -627,13 +869,22 @@ function g2ml_apiRevokeKey(int $apiKeyUID, string $orgHandle): bool
  * @param  string $orgHandle  The organisation to list keys for.
  * @return array               Rows with `permissions` decoded to an array;
  *                             `apiKey` (the hash) is never selected.
+ *                             `ownerBelongs` is 0 when the owner has left the
+ *                             organisation, and `ownerIsAdmin` is 0 when the
+ *                             owner is not an administrator (#328); both are 1
+ *                             for a global administrator. g2ml_apiVerifyKey()
+ *                             refuses a key if either is 0.
  */
 function g2ml_apiListKeys(string $orgHandle): array
 {
     $rows = dbSelect(
-        'SELECT apiKeyUID, userUID, orgHandle, apiKeyPrefix, keyName, permissions, '
-        . 'rateLimitOverride, lastUsedAt, expiresAt, isActive, createdAt, updatedAt '
-        . 'FROM tblAPIKeys WHERE orgHandle = ? ORDER BY createdAt DESC',
+        'SELECT `k`.`apiKeyUID`, `k`.`userUID`, `k`.`orgHandle`, `k`.`apiKeyPrefix`, `k`.`keyName`, `k`.`permissions`, '
+        . '`k`.`rateLimitOverride`, `k`.`lastUsedAt`, `k`.`expiresAt`, `k`.`isActive`, `k`.`createdAt`, `k`.`updatedAt`, '
+        . 'EXISTS (SELECT 1 FROM `tblUsers` AS `u` WHERE `u`.`userUID` = `k`.`userUID` '
+        . 'AND (`u`.`orgHandle` = `k`.`orgHandle` OR `u`.`role` = \'GlobalAdmin\')) AS `ownerBelongs`, '
+        . 'EXISTS (SELECT 1 FROM `tblUsers` AS `a` WHERE `a`.`userUID` = `k`.`userUID` '
+        . 'AND `a`.`role` IN (\'Admin\', \'GlobalAdmin\')) AS `ownerIsAdmin` '
+        . 'FROM `tblAPIKeys` AS `k` WHERE `k`.`orgHandle` = ? ORDER BY `k`.`createdAt` DESC',
         's',
         [$orgHandle]
     );

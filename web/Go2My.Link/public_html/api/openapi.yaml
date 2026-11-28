@@ -29,16 +29,20 @@ info:
     5. Bearer / `X-API-Key` extraction (`401` when neither header carries a
        key).
     6. Key verification (`401` when the key is invalid, expired, revoked,
-       suspended, or its owning user/organisation is inactive).
+       suspended, its owning user/organisation is inactive, or its owner is
+       no longer an administrator of that organisation).
     7. Rate limiting (`429` with `Retry-After`).
-    8. Route + scope dispatch (`404` for an unknown method/path combination,
+    8. Plan check (`403` when the organisation's plan does not include API
+       access; `503` with `Retry-After` when that cannot be checked — see
+       "Which plans include API access" below).
+    9. Route + scope dispatch (`404` for an unknown method/path combination,
        `403` when the authenticated key lacks the endpoint's required
        scope).
-    9. JSON body decoding for `POST`/`PUT` requests (`400` on malformed
+    10. JSON body decoding for `POST`/`PUT` requests (`400` on malformed
        JSON; an empty body decodes to `{}` rather than failing outright —
        the endpoint itself then rejects a missing *required* field with a
        field-specific `422`).
-    10. The endpoint runs. An expected, client-facing failure (`404`,
+    11. The endpoint runs. An expected, client-facing failure (`404`,
         `409`, `422`, etc.) comes back with a specific message and
         (optionally) the name of the offending field. Any other failure is
         reported generically as `500` and never reveals its underlying
@@ -62,9 +66,30 @@ info:
     compared in a timing-safe way.
 
     Every rejection path (unknown prefix, wrong secret, inactive key,
-    expired key, suspended/inactive owning user, inactive organisation)
+    expired key, suspended/inactive owning user, an owner who is no longer an
+    administrator of the organisation, inactive organisation)
     returns the identical generic `401` — a caller can never distinguish
     *why* a key was rejected, which prevents prefix/secret enumeration.
+
+    ### Which plans include API access
+
+    API access is part of some plans and not others. The Free plan does not
+    include it, and people who are not in an organisation count as being on
+    the Free plan. Without it, a key cannot be created, and every request
+    made with an existing key, `GET /ping` included, is refused. A valid key
+    is answered `403` with the message "The current plan does not include API
+    access, so API keys cannot be created or used.", unless it is over its
+    rate limit, which is checked first and answers `429`. The plan is checked
+    on every request, so a change of plan applies from the next one. Keys
+    owned by a platform administrator are not limited by plan.
+
+    If the plan cannot be checked, the request is refused with `503` and
+    `Retry-After: 60`.
+
+    A key works only while its owner is an administrator of the key's
+    organisation (platform administrators excepted). If the owner leaves or
+    stops being an administrator, the key is answered `401`; it works again if
+    the role is restored.
 
     ### Scopes
 
@@ -225,6 +250,8 @@ paths:
                 $ref: "#/components/schemas/PingSuccessEnvelope"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
         "429":
           $ref: "#/components/responses/TooManyRequests"
         "503":
@@ -898,8 +925,9 @@ components:
       description: |
         No API key was presented (neither `Authorization: Bearer` nor
         `X-API-Key`), or the presented key is invalid, expired, revoked,
-        or its owning user/organisation is inactive or suspended. Every
-        rejection reason maps to this identical generic message.
+        its owning user/organisation is inactive or suspended, or its owner
+        is no longer an administrator of the organisation. Every rejection
+        reason maps to this identical generic message.
       content:
         application/json:
           schema:
@@ -924,18 +952,28 @@ components:
             $ref: "#/components/schemas/ErrorEnvelope"
     Forbidden:
       description: |
-        The authenticated key does not carry the scope this endpoint
-        requires.
+        The organisation's plan does not include API access, or the
+        authenticated key does not carry the scope this endpoint requires.
+        (A request not made over HTTPS is also answered `403`.)
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorEnvelope"
-          example:
-            status: error
-            error:
-              code: 403
-              message: "This API key does not have the required scope."
-              field: null
+          examples:
+            missingScope:
+              value:
+                status: error
+                error:
+                  code: 403
+                  message: "This API key does not have the required scope."
+                  field: null
+            planWithoutAPIAccess:
+              value:
+                status: error
+                error:
+                  code: 403
+                  message: "The current plan does not include API access, so API keys cannot be created or used."
+                  field: null
         application/xml:
           schema:
             $ref: "#/components/schemas/ErrorEnvelope"
@@ -1015,17 +1053,34 @@ components:
           schema:
             $ref: "#/components/schemas/ErrorEnvelope"
     ServiceUnavailable:
-      description: The public API has been switched off.
+      description: |
+        The public API has been switched off, or the service could not check
+        whether the organisation's plan includes API access. The second case
+        sends `Retry-After: 60`.
+      headers:
+        Retry-After:
+          description: Sent only when the plan could not be checked. Seconds to wait before retrying.
+          schema:
+            type: integer
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorEnvelope"
-          example:
-            status: error
-            error:
-              code: 503
-              message: "The public API is temporarily unavailable."
-              field: null
+          examples:
+            switchedOff:
+              value:
+                status: error
+                error:
+                  code: 503
+                  message: "The public API is temporarily unavailable."
+                  field: null
+            planNotChecked:
+              value:
+                status: error
+                error:
+                  code: 503
+                  message: "We could not check whether the plan includes API access. Please try again shortly."
+                  field: null
         application/xml:
           schema:
             $ref: "#/components/schemas/ErrorEnvelope"
