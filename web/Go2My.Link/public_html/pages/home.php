@@ -269,6 +269,31 @@ $errorMsg = g2ml_flashTake('shorten_error');
 
 <?php
 // ============================================================================
+// 📋 Lnks.Page announcement (#320, D-012)
+// ============================================================================
+// Only say what the dashboard and lnks.page really do today.
+?>
+<section class="py-5 bg-body-tertiary text-center" aria-labelledby="home-linkspage-heading">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <h2 id="home-linkspage-heading" class="h3 mb-3">
+                    <?php if (function_exists('__')) { echo __('home.linkspage_heading'); } else { echo 'One page for all your links'; } ?>
+                </h2>
+                <p class="text-body-secondary mb-4">
+                    <?php if (function_exists('__')) { echo __('home.linkspage_text'); } else { echo 'With Lnks.Page you can put all your links on one page, pick a ready-made design and share a single address. It is included with a free account.'; } ?>
+                </p>
+                <a href="https://lnks.page/" class="btn btn-outline-primary">
+                    <i class="fas fa-address-card" aria-hidden="true"></i>
+                    <?php if (function_exists('__')) { echo __('home.linkspage_button'); } else { echo 'See what Lnks.Page does'; } ?>
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<?php
+// ============================================================================
 // 📦 Load CAPTCHA JavaScript SDK (conditional)
 // ============================================================================
 if ($captchaType === 'turnstile') {

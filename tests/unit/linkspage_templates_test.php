@@ -665,6 +665,48 @@ function lpTplPageCss(string $fileName): string
     return lpTplWithoutMedia(substr($text, $from + 7, $to - ($from + 7)));
 }
 
+/**
+ * The custom colour properties of a lnks.page page in light or dark mode: the
+ * plain :root block, then (dark mode only) the :root block inside
+ * "@media (prefers-color-scheme: dark)".
+ *
+ * @param  string $fileName  A file in web/Lnks.page/public_html.
+ * @param  string $mode      "light" or "dark".
+ * @return array<string, string>  Property => value.
+ */
+function lpTplPageVariables(string $fileName, string $mode): array
+{
+    $text      = (string) file_get_contents(dirname(__DIR__, 2) . '/web/Lnks.page/public_html/' . $fileName);
+    $variables = lpTplRule(lpTplPageCss($fileName), ':root');
+
+    if ($mode === 'dark' && preg_match('/@media \(prefers-color-scheme: dark\)\s*\{\s*:root\s*\{([^{}]*)\}/', $text, $matches) === 1)
+    {
+        foreach (lpTplDeclarations($matches[1]) as $property => $value)
+        {
+            $variables[$property] = $value;
+        }
+    }
+
+    return $variables;
+}
+
+/**
+ * Replace "var(--name)" by the property's value; other values pass unchanged.
+ *
+ * @param  string                $value
+ * @param  array<string, string> $variables
+ * @return string
+ */
+function lpTplResolveVariable(string $value, array $variables): string
+{
+    if (preg_match('/^var\((--[a-z0-9-]+)\)$/', $value, $matches) !== 1)
+    {
+        return $value;
+    }
+
+    return $variables[$matches[1]] ?? '';
+}
+
 test('lnks.page pages: no page uses #1E88E5 as a colour any more', function (): void
 {
     foreach (['index.php', '403.php', '404.php', '500.php'] as $fileName)
@@ -684,6 +726,8 @@ test('lnks.page pages: buttons, subtitle and message reach WCAG AA, and the big 
         ['index.php', '.lp-home-cta', '.lp-home-cta:hover', 4.5],
         ['index.php', '.lp-home-subtitle', 'body', 4.5],
         ['index.php', '.lp-home-message', 'body', 4.5],
+        ['index.php', '.lp-home-features', 'body', 4.5],
+        ['index.php', '.lp-home-link', 'body', 4.5],
         ['404.php', '.lp-404-cta', '.lp-404-cta', 4.5],
         ['404.php', '.lp-404-cta', '.lp-404-cta:hover', 4.5],
         ['404.php', '.lp-404-message', 'body', 4.5],
@@ -698,17 +742,23 @@ test('lnks.page pages: buttons, subtitle and message reach WCAG AA, and the big 
         ['500.php', '.lp-error-code', 'body', 3.0],
     ];
 
-    foreach ($checks as $check)
+    // The home page has a dark mode (#320); the error pages are light only,
+    // so for them both passes read the same colours.
+    foreach (['light', 'dark'] as $mode)
     {
-        $css            = lpTplPageCss($check[0]);
-        $textRule       = lpTplRule($css, $check[1]);
-        $backgroundRule = lpTplRule($css, $check[2]);
+        foreach ($checks as $check)
+        {
+            $css            = lpTplPageCss($check[0]);
+            $textRule       = lpTplRule($css, $check[1]);
+            $backgroundRule = lpTplRule($css, $check[2]);
+            $variables      = lpTplPageVariables($check[0], $mode);
 
-        $textRgb       = lpTplColour($textRule['color'] ?? '', [255, 255, 255]);
-        $backgroundRgb = lpTplColour($backgroundRule['background'] ?? '', [255, 255, 255]);
+            $textRgb       = lpTplColour(lpTplResolveVariable($textRule['color'] ?? '', $variables), [255, 255, 255]);
+            $backgroundRgb = lpTplColour(lpTplResolveVariable($backgroundRule['background'] ?? '', $variables), [255, 255, 255]);
 
-        assert_true($textRgb !== null && $backgroundRgb !== null, $check[0] . ': could not read the colours for ' . $check[1] . ' on ' . $check[2]);
-        assert_true(g2ml_linkspageContrastRatio($textRgb, $backgroundRgb) >= $check[3], $check[0] . ': ' . $check[1] . ' on ' . $check[2] . ' is below ' . $check[3] . ':1');
+            assert_true($textRgb !== null && $backgroundRgb !== null, $check[0] . ' (' . $mode . '): could not read the colours for ' . $check[1] . ' on ' . $check[2]);
+            assert_true(g2ml_linkspageContrastRatio($textRgb, $backgroundRgb) >= $check[3], $check[0] . ' (' . $mode . '): ' . $check[1] . ' on ' . $check[2] . ' is below ' . $check[3] . ':1');
+        }
     }
 });
 

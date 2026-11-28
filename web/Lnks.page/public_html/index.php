@@ -19,7 +19,7 @@
  * Flow:
  *   1. Bootstrap (auth_creds, component constants, page_init).
  *   2. Load the LinksPage resolver + renderer (web/Lnks.page/_functions/).
- *   3. No slug — show the (self-contained) "coming soon" page.
+ *   3. No slug — show the (self-contained) home page.
  *   4. A slug is present:
  *      a. Validate its charset/length BEFORE ever touching the database
  *         (g2ml_linkspageIsValidSlug()).
@@ -144,57 +144,157 @@ $slug = $_GET['slug'] ?? '';
 $slug = trim($slug);
 
 // ============================================================================
-// 🏠 Step 6: No Slug — Self-Contained "Coming Soon" Homepage
+// 🏠 Step 6: No Slug — Self-Contained Home Page
 // ============================================================================
-// Deliberately self-contained (no external CDN scripts/stylesheets) so it
-// renders correctly under this component's strict Content-Security-Policy
-// (see web/Lnks.page/public_html/.htaccess).
+// Says what Lnks.Page does and where to make a page (#320, D-012). Every
+// statement on it must be true of the code: if the dashboard or the public
+// renderer changes, change these words with it. The words are in seed
+// web/_sql/seeds/075_linkspage_announcement_translations.sql.
+//
+// Deliberately self-contained (no external CDN scripts/stylesheets, and no
+// script at all) so it renders correctly under this component's strict
+// Content-Security-Policy (see web/Lnks.page/public_html/.htaccess). With no
+// script there is no theme switch: dark mode follows the visitor's device.
 // ============================================================================
 
 if ($slug === '')
 {
-    if (function_exists('getSetting'))
-    {
-        $siteName = getSetting('site.name', 'Go2My.Link');
-    }
-    else
-    {
-        $siteName = 'Go2My.Link';
-    }
+    $lpHeading = g2ml_linkspageTranslate(
+        'linkspage.home.heading',
+        'Lnks.Page'
+    );
+    $lpPageTitle = g2ml_linkspageTranslate(
+        'linkspage.home.page_title',
+        'Lnks.Page — one page for all your links'
+    );
+    $lpDescription = g2ml_linkspageTranslate(
+        'linkspage.home.meta_description',
+        'Make one page that lists all your links, in a ready-made design. Included with a free Go2My.Link account.'
+    );
+    $lpSubtitle = g2ml_linkspageTranslate(
+        'linkspage.home.subtitle',
+        'One page for all your links'
+    );
+    $lpIntro = g2ml_linkspageTranslate(
+        'linkspage.home.intro',
+        'Lnks.Page gives you one web address that lists your links. Share it in a social media profile, an email signature or on printed material.'
+    );
+    $lpFeaturesHeading = g2ml_linkspageTranslate(
+        'linkspage.home.features_heading',
+        'What you can do'
+    );
+    $lpFeatureAddress = g2ml_linkspageTranslate(
+        'linkspage.home.feature_address',
+        'Choose your own ending for the address, such as lnks.page/yourname, if nobody else has taken it.'
+    );
+    $lpFeatureLinks = g2ml_linkspageTranslate(
+        'linkspage.home.feature_links',
+        'Add your Go2My.Link short links or any other web address, and change their order or hide them later.'
+    );
+    $lpFeatureDesigns = g2ml_linkspageTranslate(
+        'linkspage.home.feature_designs',
+        'Pick one of five ready-made designs and the font you like.'
+    );
+    $lpFeatureProfile = g2ml_linkspageTranslate(
+        'linkspage.home.feature_profile',
+        'Add a title, a short description, a picture that is already online, and links to your social media profiles.'
+    );
+    $lpFeaturePublish = g2ml_linkspageTranslate(
+        'linkspage.home.feature_publish',
+        'Preview your page, and publish or unpublish it whenever you like.'
+    );
+    $lpFeatureAgeGate = g2ml_linkspageTranslate(
+        'linkspage.home.feature_age_gate',
+        'Mark a link as adult content, and visitors must confirm they are 18 or older before they see the page.'
+    );
+    $lpStartHeading = g2ml_linkspageTranslate(
+        'linkspage.home.start_heading',
+        'Make your page'
+    );
+    $lpStartText = g2ml_linkspageTranslate(
+        'linkspage.home.start_text',
+        'Lnks.Page is part of Go2My.Link. Create a free account, then open LinksPage in your dashboard.'
+    );
+    $lpRegisterLabel = g2ml_linkspageTranslate(
+        'linkspage.home.register',
+        'Create a free account'
+    );
+    $lpDashboardLabel = g2ml_linkspageTranslate(
+        'linkspage.home.dashboard',
+        'Already have an account? Open your dashboard'
+    );
+    $lpAboutLabel = g2ml_linkspageTranslate(
+        'linkspage.home.about_link',
+        'Visit Go2My.Link'
+    );
 
-    if (function_exists('__'))
+    $lpLocale = 'en-GB';
+
+    if (function_exists('getLocale'))
     {
-        $comingSoonMessage = __('linkspage.coming_soon');
-        $learnMoreLabel    = __('linkspage.learn_more');
-    }
-    else
-    {
-        $comingSoonMessage = 'LinksPage is coming soon. Create your own customisable link listing page.';
-        $learnMoreLabel    = 'Learn More';
+        $lpLocale = getLocale();
     }
     ?>
     <!DOCTYPE html>
-    <html lang="en">
+    <html lang="<?php echo g2ml_linkspageEscape($lpLocale); ?>">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="robots" content="index, follow">
-        <title>LinksPage — <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?></title>
+        <meta name="color-scheme" content="light dark">
+        <title><?php echo g2ml_linkspageEscape($lpPageTitle); ?></title>
+        <meta name="description" content="<?php echo g2ml_linkspageEscape($lpDescription); ?>">
+        <link rel="canonical" href="https://lnks.page/">
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="<?php echo g2ml_linkspageEscape($lpPageTitle); ?>">
+        <meta property="og:description" content="<?php echo g2ml_linkspageEscape($lpDescription); ?>">
+        <meta property="og:url" content="https://lnks.page/">
+        <meta property="og:site_name" content="<?php echo g2ml_linkspageEscape($lpHeading); ?>">
+        <meta property="og:image" content="https://go2my.link/img/og-image.png">
+        <meta property="og:image:width" content="1200">
+        <meta property="og:image:height" content="630">
+        <meta property="og:image:alt" content="Go2My.Link">
+        <meta name="twitter:card" content="summary_large_image">
+        <link rel="icon" type="image/x-icon" href="/favicon.ico">
+        <link rel="icon" type="image/png" href="/favicon.png">
+        <link rel="manifest" href="/manifest.json">
         <style>
+            /* Every text colour below is at least 4.5:1 against its background. */
+            :root {
+                --g2ml-lp-background: #f8f9fa;
+                --g2ml-lp-text: #212529;
+                --g2ml-lp-muted: #495057;
+                --g2ml-lp-link: #0D47A1;
+                --g2ml-lp-button: #1565C0;
+                --g2ml-lp-button-hover: #0D47A1;
+                --g2ml-lp-button-text: #ffffff;
+            }
+            @media (prefers-color-scheme: dark) {
+                :root {
+                    --g2ml-lp-background: #121416;
+                    --g2ml-lp-text: #e9ecef;
+                    --g2ml-lp-muted: #ced4da;
+                    --g2ml-lp-link: #90CAF9;
+                }
+            }
             body {
                 margin: 0;
                 min-height: 100vh;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                background: #f8f9fa;
-                color: #212529;
+                background: var(--g2ml-lp-background);
+                color: var(--g2ml-lp-text);
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                line-height: 1.5;
+                overflow-wrap: anywhere;
             }
             .lp-home-container {
-                max-width: 560px;
+                box-sizing: border-box;
+                width: 100%;
+                max-width: 600px;
+                padding: 2rem 1.25rem;
                 text-align: center;
-                padding: 2rem 1.5rem;
             }
             .lp-home-title {
                 font-size: 2rem;
@@ -202,39 +302,76 @@ if ($slug === '')
                 margin: 0 0 0.25rem;
             }
             .lp-home-subtitle {
-                font-size: 1.1rem;
-                color: #5c636a;
+                font-size: 1.15rem;
+                font-weight: 600;
+                color: var(--g2ml-lp-text);
                 margin: 0 0 1rem;
             }
+            .lp-home-heading {
+                font-size: 1.25rem;
+                margin: 2rem 0 0.75rem;
+            }
             .lp-home-message {
-                font-size: 1rem;
-                color: #495057;
-                margin: 0 0 1.75rem;
+                color: var(--g2ml-lp-muted);
+                margin: 0 0 1rem;
+            }
+            .lp-home-features {
+                color: var(--g2ml-lp-muted);
+                margin: 0;
+                padding-left: 1.25rem;
+                text-align: left;
+            }
+            .lp-home-features li {
+                margin-bottom: 0.5rem;
             }
             .lp-home-cta {
                 display: inline-block;
                 padding: 0.65rem 1.5rem;
                 /* White on #1565C0 is 5.75:1 (white on the hover colour #0D47A1 is 8.63:1). */
-                background: #1565C0;
-                color: #fff;
+                background: var(--g2ml-lp-button);
+                color: var(--g2ml-lp-button-text);
                 text-decoration: none;
                 border-radius: 8px;
                 font-weight: 600;
             }
             .lp-home-cta:hover,
             .lp-home-cta:focus {
-                background: #0D47A1;
+                background: var(--g2ml-lp-button-hover);
+            }
+            .lp-home-link {
+                color: var(--g2ml-lp-link);
+            }
+            a:focus-visible {
+                outline: 3px solid var(--g2ml-lp-link);
+                outline-offset: 3px;
             }
         </style>
     </head>
     <body>
         <main class="lp-home-container">
-            <h1 class="lp-home-title"><?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?></h1>
-            <p class="lp-home-subtitle">LinksPage</p>
-            <p class="lp-home-message"><?php echo htmlspecialchars($comingSoonMessage, ENT_QUOTES, 'UTF-8'); ?></p>
-            <a class="lp-home-cta" href="https://go2my.link">
-                <?php echo htmlspecialchars($learnMoreLabel, ENT_QUOTES, 'UTF-8'); ?>
-            </a>
+            <h1 class="lp-home-title"><?php echo g2ml_linkspageEscape($lpHeading); ?></h1>
+            <p class="lp-home-subtitle"><?php echo g2ml_linkspageEscape($lpSubtitle); ?></p>
+            <p class="lp-home-message"><?php echo g2ml_linkspageEscape($lpIntro); ?></p>
+
+            <section aria-labelledby="lp-home-features-heading">
+                <h2 class="lp-home-heading" id="lp-home-features-heading"><?php echo g2ml_linkspageEscape($lpFeaturesHeading); ?></h2>
+                <ul class="lp-home-features">
+                    <li><?php echo g2ml_linkspageEscape($lpFeatureAddress); ?></li>
+                    <li><?php echo g2ml_linkspageEscape($lpFeatureLinks); ?></li>
+                    <li><?php echo g2ml_linkspageEscape($lpFeatureDesigns); ?></li>
+                    <li><?php echo g2ml_linkspageEscape($lpFeatureProfile); ?></li>
+                    <li><?php echo g2ml_linkspageEscape($lpFeaturePublish); ?></li>
+                    <li><?php echo g2ml_linkspageEscape($lpFeatureAgeGate); ?></li>
+                </ul>
+            </section>
+
+            <section aria-labelledby="lp-home-start-heading">
+                <h2 class="lp-home-heading" id="lp-home-start-heading"><?php echo g2ml_linkspageEscape($lpStartHeading); ?></h2>
+                <p class="lp-home-message"><?php echo g2ml_linkspageEscape($lpStartText); ?></p>
+                <p><a class="lp-home-cta" href="https://go2my.link/register"><?php echo g2ml_linkspageEscape($lpRegisterLabel); ?></a></p>
+                <p><a class="lp-home-link" href="https://admin.go2my.link/linkspage"><?php echo g2ml_linkspageEscape($lpDashboardLabel); ?></a></p>
+                <p><a class="lp-home-link" href="https://go2my.link/"><?php echo g2ml_linkspageEscape($lpAboutLabel); ?></a></p>
+            </section>
         </main>
     </body>
     </html>

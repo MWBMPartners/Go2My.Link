@@ -247,7 +247,7 @@ Go2My.Link/
 
 5. Import the two stored procedures from `web/_sql/procedures/`. Without `sp_lookupShortURL`, no short link redirects.
 
-6. Run the seed scripts from `web/_sql/seeds/` (37 files, in filename order). [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) lists them and says which migrations an existing database also needs.
+6. Run the seed scripts from `web/_sql/seeds/` (38 files, in filename order). [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) lists them and says which migrations an existing database also needs.
 
 7. Point your web server document roots to the appropriate `public_html/` directories.
 

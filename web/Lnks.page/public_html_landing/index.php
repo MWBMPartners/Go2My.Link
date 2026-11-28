@@ -12,15 +12,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lnks.page — Coming Soon</title>
-    <meta name="description" content="Lnks.page — Create beautiful, customisable link listing pages. A LinksPage service by MWservices. Coming soon.">
+    <title>Lnks.Page — one page for all your links</title>
+    <meta name="description" content="Make one page that lists all your links, in a ready-made design. Included with a free Go2My.Link account.">
     <meta name="robots" content="index, follow">
+    <meta name="color-scheme" content="light dark">
+    <link rel="canonical" href="https://lnks.page/">
 
     <?php // Open Graph ?>
-    <meta property="og:title" content="Lnks.page — Coming Soon">
-    <meta property="og:description" content="Create beautiful, customisable link listing pages. Your links, your way.">
+    <meta property="og:title" content="Lnks.Page — one page for all your links">
+    <meta property="og:description" content="Make one page that lists all your links, in a ready-made design. Included with a free Go2My.Link account.">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://lnks.page">
+    <meta property="og:url" content="https://lnks.page/">
+    <meta property="og:site_name" content="Lnks.Page">
+    <meta property="og:image" content="https://go2my.link/img/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Go2My.Link">
+    <meta name="twitter:card" content="summary_large_image">
 
     <?php // Favicon ?>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
@@ -29,8 +37,8 @@
 
     <style>
         /* =================================================================
-           Lnks.page — Coming Soon Landing Page
-           Sub-brand of Go2My.link, LinksPage service
+           Lnks.Page — Holding Page
+           Sub-brand of Go2My.Link, LinksPage service
            ================================================================= */
 
         *,
@@ -41,17 +49,13 @@
             padding: 0;
         }
 
+        /* Every text colour below is at least 4.5:1 against its background. */
         :root {
-            --brand-blue: #1E88E5;
-            --brand-blue-dark: #1565C0;
-            --brand-blue-light: #4FC3F7;
             --brand-green: #43A047;
-            --brand-green-dark: #2E7D32;
-            --brand-green-light: #66BB6A;
-            --brand-grey: #555555;
             --text-primary: #333333;
-            --text-secondary: #666666;
-            --bg-primary: #ffffff;
+            --text-secondary: #555555;
+            --link: #1B5E20;
+            --skip-background: #1B5E20;
             --bg-gradient-start: #f0faf0;
             --bg-gradient-end: #e8f5e9;
         }
@@ -59,10 +63,10 @@
         @media (prefers-color-scheme: dark) {
             :root {
                 --text-primary: #e0e0e0;
-                --text-secondary: #b0b0b0;
-                --bg-primary: #1a2e1a;
+                --text-secondary: #c4c4c4;
+                --link: #A5D6A7;
                 --bg-gradient-start: #162e16;
-                --bg-gradient-end: #0f3e0f;
+                --bg-gradient-end: #0f2e0f;
             }
         }
 
@@ -77,13 +81,14 @@
             justify-content: center;
             padding: 2rem;
             line-height: 1.6;
+            overflow-wrap: anywhere;
         }
 
         .skip-link {
             position: absolute;
             top: -100%;
             left: 0;
-            background: var(--brand-green);
+            background: var(--skip-background);
             color: #ffffff;
             padding: 0.5rem 1rem;
             z-index: 1000;
@@ -102,71 +107,43 @@
             margin-bottom: auto;
         }
 
-        /* Logo area */
-        .logo {
-            margin-bottom: 1.5rem;
-        }
-
-        .logo img {
-            width: 300px;
-            height: auto;
-            margin-bottom: 0.25rem;
-        }
-
-        .powered-by {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            margin-top: 0.25rem;
-        }
-
-        .powered-by a {
-            color: var(--brand-blue);
-            text-decoration: none;
-        }
-
-        .powered-by a:hover {
-            text-decoration: underline;
-        }
-
         h1 {
             font-size: 2rem;
             font-weight: 700;
             margin-bottom: 0.5rem;
-            background: linear-gradient(135deg, var(--brand-green) 0%, var(--brand-green-dark) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--link);
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            margin-bottom: 0.75rem;
         }
 
         .tagline {
             font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .message {
             color: var(--text-secondary);
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
 
         /* Features */
         .features {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-            justify-content: center;
-            margin-bottom: 2.5rem;
+            color: var(--text-secondary);
+            text-align: left;
+            padding-left: 1.25rem;
+            margin-bottom: 1.5rem;
         }
 
-        .feature {
-            background: rgba(255, 255, 255, 0.8);
-            border-radius: 8px;
-            padding: 0.65rem 1.1rem;
-            font-size: 0.85rem;
-            color: var(--text-primary);
-            border: 1px solid rgba(67, 160, 71, 0.15);
+        .features li {
+            margin-bottom: 0.5rem;
         }
 
-        @media (prefers-color-scheme: dark) {
-            .feature {
-                background: rgba(255, 255, 255, 0.08);
-                border-color: rgba(129, 199, 132, 0.2);
-            }
+        .message a {
+            color: var(--link);
         }
 
         /* Footer — pinned to bottom */
@@ -178,26 +155,21 @@
         }
 
         footer a {
-            color: var(--brand-green);
-            text-decoration: none;
+            color: var(--link);
         }
 
-        footer a:hover {
-            text-decoration: underline;
-        }
-
-        footer a:focus-visible {
-            outline: 2px solid var(--brand-green);
-            outline-offset: 2px;
+        a:focus-visible {
+            outline: 3px solid var(--link);
+            outline-offset: 3px;
         }
 
         @media (max-width: 480px) {
-            h1 {
-                font-size: 1.5rem;
+            body {
+                padding: 1.25rem;
             }
 
-            .logo img {
-                width: 240px;
+            h1 {
+                font-size: 1.5rem;
             }
         }
 
@@ -226,47 +198,33 @@
                 transition: none !important;
             }
         }
-
-        @media (forced-colors: active) {
-            h1 {
-                -webkit-text-fill-color: currentColor;
-                background: none;
-                color: CanvasText;
-            }
-        }
     </style>
 </head>
 <body>
     <a href="#main" class="skip-link">Skip to main content</a>
 
     <main id="main" class="container" role="main">
-        <?php // Logo ?>
-        <div class="logo" aria-label="Lnks.page logo">
-            <picture>
-                <source srcset="https://lnks.page/img/logo.svg" type="image/svg+xml">
-                <img src="https://lnks.page/img/logo.png"
-                     alt="Lnks.page"
-                     width="300"
-                     height="auto"
-                     loading="eager">
-            </picture>
-            <div class="powered-by">by <a href="https://go2my.link">Go2My.link</a></div>
-        </div>
+        <?php
+        // This page is served when the domain points at this folder. It has no
+        // application behind it, so its words are plain English here, and the
+        // logo (which lives in public_html) is not used. Only list what the
+        // product really does (#320, D-012).
+        ?>
+        <h1>Lnks.Page</h1>
+        <p class="tagline">One page for all your links</p>
+        <p class="message">Lnks.Page gives you one web address that lists your links. Share it in a social media profile, an email signature or on printed material.</p>
 
-        <?php // Heading ?>
-        <h1>Coming Soon</h1>
-        <p class="tagline">Create beautiful, customisable link listing pages</p>
+        <h2>What you can do</h2>
+        <ul class="features">
+            <li>Choose your own ending for the address, such as lnks.page/yourname, if nobody else has taken it.</li>
+            <li>Add your Go2My.Link short links or any other web address, and change their order or hide them later.</li>
+            <li>Pick one of five ready-made designs and the font you like.</li>
+            <li>Add a title, a short description, a picture that is already online, and links to your social media profiles.</li>
+            <li>Preview your page, and publish or unpublish it whenever you like.</li>
+            <li>Mark a link as adult content, and visitors must confirm they are 18 or older before they see the page.</li>
+        </ul>
 
-        <?php // Features ?>
-        <div class="features" aria-label="Upcoming features">
-            <span class="feature">Customisable Templates</span>
-            <span class="feature">Custom Domains</span>
-            <span class="feature">WYSIWYG Editor</span>
-            <span class="feature">Click Tracking</span>
-            <?php
-            // #210: "Auto Favicons" removed — favicon fetching is not built (#45).
-            ?>
-        </div>
+        <p class="message">Lnks.Page is part of Go2My.Link and is included with a free account. <a href="https://go2my.link/">Visit Go2My.Link</a></p>
 
         <?php // A sign-up form used to be here. It posted to "#" and every address typed in was lost (#211). Add it back only with a real handler that stores the address with consent wording, CSRF protection and a rate limit. ?>
     </main>

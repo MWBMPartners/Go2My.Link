@@ -282,17 +282,18 @@ The application detects its environment from the hostname:
    `070_offline_page_translations.sql`,
    `071_form_feedback_translations.sql`,
    `072_accessibility_translations.sql`,
-   `073_linkspage_layout_translations.sql` and
-   `074_destination_check.sql` (see the table below for
+   `073_linkspage_layout_translations.sql`,
+   `074_destination_check.sql` and
+   `075_linkspage_announcement_translations.sql` (see the table below for
    what each one adds). Importing "in order" means by filename, so a plain
    `for f in web/_sql/seeds/*.sql` loop picks up all 38 without needing to
    know about the gap in the numbers.
 
-> 📝 Counts as at 2026-11-26: 17 schema files, 2 stored procedures, 38 seeds,
+> 📝 Counts as at 2026-11-28: 17 schema files, 2 stored procedures, 39 seeds,
 > 22 migrations. Import order is schema → procedures → seeds, which is the
 > order `.github/workflows/ci.yml` uses. (Seed `023` and migration `021`, the
 > LinksPage feature registry, were added on 2026-09-21; seeds `029`, `058`,
-> `059`, `064`, `065`, `066`, `067`, `068`, `069`, `070`, `071`, `072`, `073` and `074` were added later still, outside the 001-023 run —
+> `059`, `064`, `065`, `066`, `067`, `068`, `069`, `070`, `071`, `072`, `073`, `074` and `075` were added later still, outside the 001-023 run —
 > see below. Seed `057`, schema `044` and migration `043`, the form
 > rate-limit table, were added for #212 — see below.)
 
@@ -383,9 +384,10 @@ key names instead of words:
 | `072_accessibility_translations.sql` | 3 strings for #287: the screen-reader notice "(opens in a new tab)" on links that open a new tab, the "Copied!" label of copy buttons, and the end of the cookie banner's link name ("… about our cookie policy") | Screen readers hear `common.opens_new_tab` on new-tab links; copy buttons say `common.copied`; the cookie banner's link is named with the key `cookie.learn_more_suffix` |
 | `073_linkspage_layout_translations.sql` | 1 string: "Profile picture", the alt text of an uploaded LinksPage avatar (#287) | Nothing a visitor sees breaks: the renderer falls back to the English words when the translation is missing |
 | `074_destination_check.sql` | The setting `redirect.enforce_destination_check` (off) and 3 strings for #308: the refusal page's title and message, and the info page's "destination is not valid" line. The setting decides whether a short link that fails the stricter link check is refused when followed | Nothing a visitor sees breaks: until it is applied the setting counts as off, and the code's own English is used. Apply it before you switch the setting on |
+| `075_linkspage_announcement_translations.sql` | 33 strings for #320: the lnks.page home page, and the Lnks.Page mentions on go2my.link (home, features, pricing, help and the footer) | The go2my.link home, features, pricing and help pages, and the footer on every main-site and dashboard page, show key names such as `footer.linkspage`; the lnks.page home page shows its built-in English instead |
 
-All seventeen are safe to run more than once and safe on a database that already has them.
-Fifteen are plain `INSERT IGNORE`. `057` and `074` write their settings with
+All eighteen are safe to run more than once and safe on a database that already has them.
+Sixteen are plain `INSERT IGNORE`. `057` and `074` write their settings with
 `ON DUPLICATE KEY UPDATE`, so a value you chose is kept (their texts are `INSERT IGNORE`).
 
 **Also re-import `004_linkspage_templates.sql` on an existing database (#287), after the new code is
@@ -532,7 +534,7 @@ once, including on a database that already has the table.
    **DELETED** — the app now performs a direct `INSERT` into `tblActivityLog`
    instead (`web/_functions/activity_logger.php`); do not look for or try to
    import this file
-4. 🌱 Import all 38 seed files in filename order (the list is in step 5 of
+4. 🌱 Import all 39 seed files in filename order (the list is in step 5 of
    **New Installation** above)
 5. 🧪 Run dry-run verification: `web/_sql/dry_run.sql`
 6. ▶️ Run migration scripts from `web/_sql/migrations/` in order — `001`–`004`,

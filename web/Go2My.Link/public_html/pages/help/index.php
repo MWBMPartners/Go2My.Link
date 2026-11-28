@@ -172,6 +172,14 @@ if (function_exists('__')) {
                 </p>
 
                 <h3 class="h6 fw-bold mt-4 mb-2">
+                    <?php if (function_exists('__')) { echo __('help.home.qa_linkspage_q'); } else { echo 'Can I make one page that lists all my links?'; } ?>
+                </h3>
+                <p class="text-body-secondary">
+                    <?php if (function_exists('__')) { echo __('help.home.qa_linkspage_a'); } else { echo 'Yes. Sign in, open LinksPage in your dashboard and create a page. Choose its address on lnks.page, add your links and publish it. Visitors cannot see the page until it is published.'; } ?>
+                    <a href="https://lnks.page/"><?php if (function_exists('__')) { echo __('help.home.qa_linkspage_link'); } else { echo 'More about Lnks.Page'; } ?></a>
+                </p>
+
+                <h3 class="h6 fw-bold mt-4 mb-2">
                     <?php if (function_exists('__')) { echo __('help.home.qa6_q'); } else { echo 'How do I get help if something is wrong?'; } ?>
                 </h3>
                 <p class="text-body-secondary">

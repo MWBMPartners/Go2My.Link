@@ -71,6 +71,7 @@ if (function_exists('__')) {
                             <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.free_feature_1'); } else { echo 'Unlimited short links'; } ?></li>
                             <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.free_feature_2'); } else { echo 'Basic click analytics'; } ?></li>
                             <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.free_feature_3'); } else { echo 'g2my.link short domain'; } ?></li>
+                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.free_feature_linkspage'); } else { echo 'A link page on Lnks.Page'; } ?></li>
                         </ul>
                         <a href="/" class="btn btn-outline-primary">
                             <?php if (function_exists('__')) { echo __('pricing.get_started'); } else { echo 'Get Started Free'; } ?>

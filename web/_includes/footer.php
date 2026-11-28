@@ -92,6 +92,7 @@ if (function_exists('getSetting')) {
                     <li><a href="<?php echo g2ml_mainSiteURL('/about'); ?>" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('nav.about'); } else { echo 'About'; } ?></a></li>
                     <li><a href="<?php echo g2ml_mainSiteURL('/features'); ?>" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('nav.features'); } else { echo 'Features'; } ?></a></li>
                     <li><a href="<?php echo g2ml_mainSiteURL('/pricing'); ?>" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('nav.pricing'); } else { echo 'Pricing'; } ?></a></li>
+                    <li><a href="https://lnks.page/" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.linkspage'); } else { echo 'Lnks.Page link pages'; } ?></a></li>
                     <li><a href="<?php echo g2ml_mainSiteURL('/help'); ?>" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.help'); } else { echo 'Help &amp; Guides'; } ?></a></li>
                     <li><a href="<?php echo g2ml_mainSiteURL('/contact'); ?>" class="text-body-secondary text-decoration-none"><?php if (function_exists('__')) { echo __('footer.contact'); } else { echo 'Contact'; } ?></a></li>
                 </ul>

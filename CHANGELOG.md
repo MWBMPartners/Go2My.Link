@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 📣 Lnks.Page is announced (2026-11-28)
+
+- ✨ The lnks.page pages no longer say "coming soon". They, and the go2my.link home, features, pricing
+  and help pages and the footer, say what a LinksPage does (#320, decision D-012).
+- 🗄️ **On deploy:** apply seed `075_linkspage_announcement_translations.sql` (checklist row A31).
+
 ### 🔒 Passwords kept out of error logs (2026-11-28)
 
 - 🔒 Error logs no longer record the values passed to functions, which could include passwords and

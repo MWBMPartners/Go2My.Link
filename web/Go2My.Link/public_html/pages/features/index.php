@@ -164,6 +164,40 @@ if (function_exists('__')) {
     </div>
 </section>
 
+<?php
+// ============================================================================
+// 📋 Lnks.Page link pages (#320, D-012)
+// ============================================================================
+// Only list what the dashboard and lnks.page really do today.
+?>
+<section class="pb-5" aria-labelledby="features-linkspage-heading">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+                <h2 id="features-linkspage-heading" class="h3 mb-3">
+                    <?php if (function_exists('__')) { echo __('features.linkspage_title'); } else { echo 'Link pages on Lnks.Page'; } ?>
+                </h2>
+                <p class="text-body-secondary">
+                    <?php if (function_exists('__')) { echo __('features.linkspage_desc'); } else { echo 'Make one page that lists all your links. It is included with a free account, and you manage it from your dashboard.'; } ?>
+                </p>
+                <ul class="list-unstyled text-start d-inline-block mb-4">
+                    <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('features.linkspage_item_address'); } else { echo 'Your own ending for the address, such as lnks.page/yourname, if it is free'; } ?></li>
+                    <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('features.linkspage_item_links'); } else { echo 'Your short links or any other web address, in the order you choose'; } ?></li>
+                    <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('features.linkspage_item_designs'); } else { echo 'Five ready-made designs and your choice of font'; } ?></li>
+                    <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('features.linkspage_item_publish'); } else { echo 'Preview first, then publish or unpublish whenever you like'; } ?></li>
+                    <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('features.linkspage_item_age_gate'); } else { echo 'An 18-or-older confirmation for pages with links marked as adult content'; } ?></li>
+                </ul>
+                <div>
+                    <a href="https://lnks.page/" class="btn btn-outline-primary">
+                        <i class="fas fa-address-card" aria-hidden="true"></i>
+                        <?php if (function_exists('__')) { echo __('features.linkspage_button'); } else { echo 'See what Lnks.Page does'; } ?>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- ====================================================================== -->
 <!-- CTA Section                                                             -->
 <!-- ====================================================================== -->

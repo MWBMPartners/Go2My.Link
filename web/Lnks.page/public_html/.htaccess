@@ -47,7 +47,7 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
     # LinksPage (Component C) is a PUBLIC render surface for third-party-
     # authored content (page title/bio, item links, social links, theme
     # colours — see web/Lnks.page/_functions/linkspage_renderer.php). Every
-    # page this component serves (the "coming soon" homepage, the branded
+    # page this component serves (the home page, the branded
     # 404, and the rendered LinksPage itself) is fully self-contained —
     # no CDN scripts/stylesheets — so the policy below intentionally has NO
     # third-party origins for scripts, stylesheets or fonts; images are the
@@ -80,8 +80,8 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
     # per-response policy (script-src 'none' — see index.php Step 9.5 and
     # g2ml_linkspageCustomHtmlCSP()) set from PHP WITHOUT this baseline
     # clobbering it. setifempty applies this baseline ONLY when PHP has not
-    # already set a CSP, so no other page is weakened — the coming-soon
-    # homepage, the 404, and system-template pages still receive this baseline.
+    # already set a CSP, so no other page is weakened — the
+    # home page, the 404, and system-template pages still receive this baseline.
     # 📖 Reference: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP
     Header setifempty Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; font-src 'self'; object-src 'none'; connect-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'"
 
