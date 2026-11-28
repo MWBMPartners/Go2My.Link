@@ -38,68 +38,43 @@
 
 ---
 
-## ⏯️ RESUME HERE (2026-11-26) — read this section first
+## ⏯️ RESUME HERE (2026-11-28) — read this section first
 
-**Where things stand.** The working branch is `feat/2026-09-21-linkspage-and-sweep`. No pull
-request yet. The session was closed early at the owner's request.
+**Goal (owner):** carry on without stopping until the first version of the service can be installed
+and launched; put every question to the owner as a question. **Scope:** essentials first (D-001),
+with the old data moved across (D-002). **Decisions:** `docs/decisions/` D-001 to D-021.
 
-**The owner's instruction (2026-11-26):** carry on without stopping, raise questions as early as
-possible, use the dev-team plugin, keep the standing rules, and keep finding and queuing work from
-the project plan and GitHub issues **until the project is ready for a new install**.
+**Working branch:** `feat/2026-09-21-linkspage-and-sweep` (push finished pieces to it, D-005). One
+pull request to `alpha` when the essentials are done (D-016).
 
-**Decisions taken that day** (`docs/decisions/`): essentials first (D-001); the new install must
-bring the old links and accounts across (D-002); organisation links share the g2my.link codes,
-#289 (D-003); the owner installs the dev-team plugin (D-004).
+**Done:** #212 form limits (`560d813`).
 
-**In flight: #212 (SX-212), limits on sign-up, contact and password-reset forms.**
+**In flight** (each in its own worktree `.claude/worktrees/w<issue>`, branch `wip/launch-<issue>`,
+uncommitted until reviewed): in review #316 installer, #312 passwords in logs, #320 LinksPage
+announcement; being built #289 organisation links (migration 044, seed 076), #246 links on erasure
+(migration 045, seed 077, checklist A32), #291 form tokens (seed 078). Seed 075 and checklist A31
+belong to #320.
 
-- It is on branch **`wip/sx-212-port`**, **not** on the working branch (on the owner's Mac: the
-  worktree `.claude/worktrees/sx-212`). Use that branch's latest commit.
-- Round 1 reviews (Codex, and a fresh Claude Opus agent) found real faults: requests sent together
-  could pass the limit; one IPv6 user could bypass it; failed writes were ignored; day-old rows
-  could stay for weeks; the Privacy Policy did not mention the records; two false statements.
-  **All fixed on that branch.** After the fixes, lint, 1081 unit and 248 database tests passed on
-  PHP 8.4, 8.5 and 8.6.
-- **Not yet done:** the second review round (both reviewers), a browser check of the three forms,
-  the handoff table row, `CHANGELOG.md`, the build plan's progress, then one commit pushed and the
-  issue updated. To finish: bring `wip/sx-212-port` up to date with the working branch, review the
-  whole diff, reword the commit.
-- **One finding deliberately not acted on:** the contact email's own words are English and not
-  translated. The email goes to the support inbox, and no other email template is translated, so
-  translating it in the visitor's language would be wrong. Filed as its own issue.
-- The Privacy Policy wording added for these records **needs the owner's legal review**.
+**Queue after those, in order:** #290 dead-link page (after #289) → #317 old-data move (after #289,
+#316) → #247 full erasure (after #246) → #178 timed-jobs admin screen (D-008) → #253 clean-up on at
+launch → #311 → #319 debug panel (after #312) → #213 rest (no-store headers) → #229 age gate on
+custom domains → #292 failure pages → #209 pricing page (D-020) → #293 dead controls → #158 deploy
+(D-007, D-019; also pin the server's identity, the workflow turns checking off) → #321 spelling
+(alone) → #318 install runbook → #322 legal-box list → merge `origin/alpha` (small conflict in
+`sftp-deploy.yml`), open the pull request, read the first CI run → full rehearsal with the owner's
+data.
 
-**`prompt-cache-control`** (a third-party Claude Code add-on showing the prompt cache countdown) is
-on branch `chore/prompt-cache-control`, not on the working branch. It was read for secrets and
-network calls (none found); its tests were not run and it has had no second review. Whether it
-belongs in this project is the owner's call.
+**Waiting on the owner:** the export of the old `mwtools_mwlink` database (D-010, D-018); email
+sending for `noreply@go2my.link` with SPF and DKIM before launch; legal review (D-014); the Dreamhost
+folder (D-007); retiring the old database user (D-015).
 
-**The main folder is stale.** The owner's main checkout is behind GitHub and still holds the
-original uncommitted #212 work (now superseded by `5bbcc51`) and a staged, unrelated folder
-`.claude/skills/prompt-cache-control/` that no session has reviewed or committed. A backup of both
-is in `.git/sx212-and-skill-backup-2026-11-26.patch`. Nothing there was changed or removed. An
-attempt to update it was refused by the session's permission check, so the owner has to run it or
-allow it.
+**Verification so far:** lint, 1081 unit and 251 database tests on PHP 8.4, 8.5 and 8.6
+(`sh .claude/programme/run-tests.sh all`). No page has been looked at in the owner's browser (the
+Chrome extension was not connected; the owner said carry on). Nothing has run on GitHub.
 
-**Next, in order:**
-
-1. Finish #212 as above.
-2. Build the "ready for a new install" queue from the open issues (146 open on 2026-11-26; many
-   are built and wait only for the merge). Apply D-001 and D-002. Post the queue as a table.
-3. Early candidates, not yet checked against the code: #289 (organisation links, decided), #290
-   (dead links redirect to the homepage; needs a decision), #213, #246 and #247 (account erasure),
-   PF-13, #253, #114, #158 (deploy; needs three owner answers), #178 (scheduled jobs), #93 (the
-   owner must change a leaked password), and the old-data migration scripts (D-002).
-4. Ask the owner early about: #294 (visible wording, brand spelling, debug panel on alpha and beta),
-   #290, #158.
-5. Housekeeping: add the decision-register check and copy the #243 decisions in; shorten this
-   handoff to one screen (the older sections belong in `.claude/HISTORY.md`).
-
-**Codex** was available and ran on 2026-11-26 (`-c model="gpt-6-astra"`, read-only). It still owes
-the catch-up reviews listed further down.
-
-**dev-team plugin:** not loaded in the 2026-11-26 session (installed only for other projects). Check
-whether it now loads. Its rules here are in `.claude/memory/working-rules.md`, rule 5.
+**Machine notes:** local rehearsal containers `g2ml-local-web` (https on 127.0.0.1:8443, reach it as
+go2my.link) and `g2ml-local-mysql` were made on 2026-11-27 for browser-free checks. Codex needs
+`-c model="gpt-6-astra"` and has a small allowance.
 
 ---
 
