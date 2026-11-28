@@ -32,3 +32,8 @@ tracked on its own issue.
 | [D-014](D-014-legal-review-before-launch.md) | 2026-11-27 | Launch waits for the owner's legal review | In force |
 | [D-015](D-015-old-database-password.md) | 2026-11-27 | The old database password is dealt with when that database is retired | In force |
 | [D-016](D-016-pull-request-after-essentials.md) | 2026-11-27 | The pull request is opened when the essentials are done | In force |
+| [D-017](D-017-erased-account-links.md) | 2026-11-28 | Erasing an account switches its links off unless the person chooses otherwise | In force |
+| [D-018](D-018-old-history-copied-exactly.md) | 2026-11-28 | The old click history is copied across complete and unchanged | In force |
+| [D-019](D-019-test-sites-own-copy.md) | 2026-11-28 | Alpha and beta each get their own full copy of the program files | In force |
+| [D-020](D-020-pricing-page-only-true.md) | 2026-11-28 | The pricing page says only what is true at launch | In force |
+| [D-021](D-021-kept-links-one-choice.md) | 2026-11-28 | One choice with set periods covers all of a person's links | In force |
