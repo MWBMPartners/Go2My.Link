@@ -37,3 +37,5 @@ tracked on its own issue.
 | [D-019](D-019-test-sites-own-copy.md) | 2026-11-28 | Alpha and beta each get their own full copy of the program files | In force |
 | [D-020](D-020-pricing-page-only-true.md) | 2026-11-28 | The pricing page says only what is true at launch | In force |
 | [D-021](D-021-kept-links-one-choice.md) | 2026-11-28 | One choice with set periods covers all of a person's links | In force |
+| [D-022](D-022-team-links-stay-with-team.md) | 2026-11-28 | A team keeps its links when a member leaves | In force |
+| [D-023](D-023-admin-link-switch-before-launch.md) | 2026-11-28 | A screen to switch any short link off is built before launch | In force |
