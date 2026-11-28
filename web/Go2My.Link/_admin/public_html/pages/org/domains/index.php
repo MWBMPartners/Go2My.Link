@@ -83,10 +83,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     // ========================================================================
     // "verify" and "remove" are rendered once PER ROW (one form per custom
     // domain), so their CSRF tokens must be namespaced by the row's own
-    // domainUID. Otherwise g2ml_generateCSRFToken() (single-slot-per-form-name,
-    // see security.php) overwrites the previous row's token every time the
-    // loop renders the next row's form, and only the LAST-rendered row's
-    // action would still validate.
+    // domainUID. Otherwise g2ml_generateCSRFToken() (which keeps only the
+    // newest few tokens per form name, see security.php) pushes out earlier
+    // rows' tokens as the loop renders later rows' forms, and on a long list
+    // the first rows' actions would fail. (Before #291 it kept only one, so
+    // only the LAST-rendered row worked.)
     // ========================================================================
 
     if ($actionType === 'verify_domain')

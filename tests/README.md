@@ -48,6 +48,11 @@ addresses by hand, for example
 `docker run --rm --add-host example.com:93.184.215.14 --add-host en.wikipedia.org:185.15.59.224 -v "$PWD":/app -w /app g2ml-php:8.5-test php tests/run.php`
 (check the current addresses first, from a machine that can look them up).
 
+One test in `tests/unit/csrf_token_pool_test.php` (#291) runs the cookie banner's script,
+`js/cookie-consent.js`, with `node` to check the security token its fallback form sends. It runs
+only where `node` is installed and prints `SKIPPED: node is not installed` elsewhere. The Docker test
+images have no `node`, so on them only the text checks of that script run.
+
 ### 🐳 Running on PHP 8.4, 8.5 and 8.6 in Docker (#308)
 
 The code is tested on PHP 8.4, 8.5 and 8.6 (8.4 is the minimum).

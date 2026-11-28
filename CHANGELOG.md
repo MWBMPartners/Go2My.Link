@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🧾 Forms keep working with a second tab (2026-11-28)
+
+- 🐛 Opening a second tab no longer makes the first tab's forms answer "Session expired", and a
+  double click while creating an API key still shows the new key (#291).
+- 🐛 The cookie banner's buttons now work without JavaScript, and its fallback sends a valid token
+  (#291).
+
 ### 🔒 Debug details only for a global administrator (2026-11-28)
 
 - 🔒 On every address, including alpha and beta, the debug panel and on-screen error details are now

@@ -52,10 +52,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     // ========================================================================
     // This delete form is rendered once PER ROW (one form per short link), so
     // its CSRF token must be namespaced by the row's own urlUID. Otherwise
-    // g2ml_generateCSRFToken() (single-slot-per-form-name, see security.php)
-    // overwrites the previous row's token every time the loop renders the next
-    // row's form, and only the LAST-rendered row's delete action would still
-    // validate — every earlier row would fail with "Session expired".
+    // g2ml_generateCSRFToken() (which keeps only the newest few tokens per
+    // form name, see security.php) pushes out earlier rows' tokens as the
+    // loop renders later rows' forms, and the first rows would fail with
+    // "Session expired". (Before #291 it kept only one, so every row except
+    // the LAST-rendered one failed.)
     // ========================================================================
 
     $urlUID = (int) ($_POST['url_uid'] ?? 0);

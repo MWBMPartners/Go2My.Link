@@ -95,35 +95,39 @@ if (function_exists('g2ml_generateCSRFToken')) {
      aria-describedby="cookie-banner-desc"
      style="z-index:1040;">
     <div class="container">
-        <div class="row align-items-center g-2">
-            <div class="col-lg-8">
-                <?php // Below the large breakpoint the title and icon are hidden from sight (style.css, section 14) to save a line; the banner is still named by the title for screen readers. ?>
-                <p class="small mb-0">
-                    <span class="g2ml-cookie-heading d-lg-block mb-lg-1">
-                        <i class="fas fa-cookie-bite" aria-hidden="true"></i>
-                        <strong id="cookie-banner-title" class="me-1"><?php if (function_exists('__')) { echo __('cookie.banner_title'); } else { echo 'We Use Cookies'; } ?></strong>
-                    </span>
-                    <span id="cookie-banner-desc" class="text-body-secondary"><?php if (function_exists('__')) { echo __('cookie.banner_message'); } else { echo 'We use cookies to improve your experience. Essential cookies are required for the site to function. You can choose which optional cookies to allow.'; } ?></span>
-                    <a href="<?php echo g2ml_mainSiteURL('/legal/cookies'); ?>" class="text-decoration-underline"><?php if (function_exists('__')) { echo __('cookie.learn_more'); } else { echo 'Learn more'; } ?><span class="visually-hidden"> <?php if (function_exists('__')) { echo __('cookie.learn_more_suffix'); } else { echo 'about our cookie policy'; } ?></span></a>
-                </p>
-            </div>
-            <div class="col-lg-4">
-                <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
-                    <button type="button" class="btn btn-primary btn-sm flex-fill flex-lg-grow-0" id="g2ml-cookie-accept-all">
-                        <?php if (function_exists('__')) { echo __('cookie.accept_all'); } else { echo 'Accept All'; } ?>
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm flex-fill flex-lg-grow-0" id="g2ml-cookie-reject">
-                        <?php if (function_exists('__')) { echo __('cookie.reject_optional'); } else { echo 'Essential Only'; } ?>
-                    </button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm flex-fill flex-lg-grow-0"
-                            data-bs-toggle="modal" data-bs-target="#g2ml-cookie-modal">
-                        <?php if (function_exists('__')) { echo __('cookie.customise'); } else { echo 'Customise'; } ?>
-                    </button>
+        <?php // A real form, so the two main choices work even without JavaScript (#291). With JavaScript, cookie-consent.js stops the form and sends the same choice in the background instead. The form sits inside .container, not around it, because style.css styles "#g2ml-cookie-banner > .container". ?>
+        <form id="g2ml-cookie-banner-form" method="post" action="/api/consent/">
+            <div class="row align-items-center g-2">
+                <div class="col-lg-8">
+                    <?php // Below the large breakpoint the title and icon are hidden from sight (style.css, section 14) to save a line; the banner is still named by the title for screen readers. ?>
+                    <p class="small mb-0">
+                        <span class="g2ml-cookie-heading d-lg-block mb-lg-1">
+                            <i class="fas fa-cookie-bite" aria-hidden="true"></i>
+                            <strong id="cookie-banner-title" class="me-1"><?php if (function_exists('__')) { echo __('cookie.banner_title'); } else { echo 'We Use Cookies'; } ?></strong>
+                        </span>
+                        <span id="cookie-banner-desc" class="text-body-secondary"><?php if (function_exists('__')) { echo __('cookie.banner_message'); } else { echo 'We use cookies to improve your experience. Essential cookies are required for the site to function. You can choose which optional cookies to allow.'; } ?></span>
+                        <a href="<?php echo g2ml_mainSiteURL('/legal/cookies'); ?>" class="text-decoration-underline"><?php if (function_exists('__')) { echo __('cookie.learn_more'); } else { echo 'Learn more'; } ?><span class="visually-hidden"> <?php if (function_exists('__')) { echo __('cookie.learn_more_suffix'); } else { echo 'about our cookie policy'; } ?></span></a>
+                    </p>
+                </div>
+                <div class="col-lg-4">
+                    <div class="d-flex flex-wrap gap-2 justify-content-lg-end">
+                        <button type="submit" name="consent_choice" value="all" class="btn btn-primary btn-sm flex-fill flex-lg-grow-0" id="g2ml-cookie-accept-all">
+                            <?php if (function_exists('__')) { echo __('cookie.accept_all'); } else { echo 'Accept All'; } ?>
+                        </button>
+                        <button type="submit" name="consent_choice" value="essential" class="btn btn-outline-secondary btn-sm flex-fill flex-lg-grow-0" id="g2ml-cookie-reject">
+                            <?php if (function_exists('__')) { echo __('cookie.reject_optional'); } else { echo 'Essential Only'; } ?>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm flex-fill flex-lg-grow-0"
+                                data-bs-toggle="modal" data-bs-target="#g2ml-cookie-modal">
+                            <?php if (function_exists('__')) { echo __('cookie.customise'); } else { echo 'Customise'; } ?>
+                        </button>
+                    </div>
                 </div>
             </div>
-        </div>
+            <?php // The security token travels with the form under the name the consent endpoint reads (#291). Before #291 this field had no name, so only the script could send it. ?>
+            <input type="hidden" id="g2ml-consent-csrf" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+        </form>
     </div>
-    <input type="hidden" id="g2ml-consent-csrf" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
 </div>
 
 <?php // 🍪 Cookie Preferences Modal ?>

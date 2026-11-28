@@ -600,6 +600,15 @@ function loginUser(string $email, string $password): array
     session_regenerate_id(true);
     $_SESSION['_g2ml_session_created'] = time();
 
+    // A new person may be signing in on a browser someone else used. Throw
+    // away any form result remembered for the previous person (#291, for
+    // example a new API key kept for a double click).
+    // 📖 Reference: security.php → g2ml_csrfForgetResults()
+    if (function_exists('g2ml_csrfForgetResults'))
+    {
+        g2ml_csrfForgetResults();
+    }
+
     // Create a database-backed session
     $sessionToken = createUserSession($user['userUID']);
 

@@ -14,6 +14,12 @@
  * Handles cookie banner interactions and sends consent preferences to the
  * server via AJAX (POST /api/consent/).
  *
+ * The banner's "Accept All" and "Essential Only" buttons are real submit
+ * buttons in a real form, so they also work without JavaScript (#291). This
+ * script stops that form and sends the same choice in the background, so
+ * the page does not reload. If the background request cannot be made, it
+ * sends a form instead (submitViaForm), carrying the same security token.
+ *
  * @package    Go2My.Link
  * @subpackage JavaScript
  * @version    0.7.0
@@ -112,6 +118,10 @@
 
     /**
      * Fallback: submit consent via a hidden form POST.
+     *
+     * The security token (csrf_token) is sent exactly as the page gave it.
+     * Until #291 this loop turned every value into "1" or "0", the token
+     * included, so the server refused every fallback form.
      */
     function submitViaForm(data) {
         var form = document.createElement('form');
@@ -124,7 +134,9 @@
                 var input = document.createElement('input');
                 input.type = 'hidden';
                 input.name = key;
-                if (data[key]) {
+                if (key === 'csrf_token') {
+                    input.value = data[key];
+                } else if (data[key]) {
                     input.value = '1';
                 } else {
                     input.value = '0';
@@ -163,16 +175,19 @@
     // Event Listeners
     // ========================================================================
 
-    // Accept All
+    // Accept All. The button is a submit button (it works without this
+    // script, #291), so the normal form send is stopped here first.
     if (acceptAllBtn) {
-        acceptAllBtn.addEventListener('click', function () {
+        acceptAllBtn.addEventListener('click', function (event) {
+            event.preventDefault();
             submitConsent({ analytics: true, functional: true, marketing: true });
         });
     }
 
-    // Reject Non-Essential
+    // Reject Non-Essential (also a submit button, as above)
     if (rejectBtn) {
-        rejectBtn.addEventListener('click', function () {
+        rejectBtn.addEventListener('click', function (event) {
+            event.preventDefault();
             submitConsent({ analytics: false, functional: false, marketing: false });
         });
     }

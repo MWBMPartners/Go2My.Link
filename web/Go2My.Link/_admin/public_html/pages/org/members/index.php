@@ -67,10 +67,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     // change_role, remove_member and cancel_invitation are each rendered
     // once PER ROW (one form per member, or per invitation for "cancel"),
     // so each row's CSRF token must be namespaced by the row's own id.
-    // Otherwise g2ml_generateCSRFToken() (single-slot-per-form-name, see
-    // security.php) overwrites the previous row's token every time the loop
-    // renders the next row's form, and only the LAST-rendered row's action
-    // would still validate. add_account_type and remove_account_type have
+    // Otherwise g2ml_generateCSRFToken() (which keeps only the newest few
+    // tokens per form name, see security.php) pushes out earlier rows' tokens
+    // as the loop renders later rows' forms, and on a long list the first
+    // rows' actions would fail. (Before #291 it kept only one, so only the
+    // LAST-rendered row worked.) add_account_type and remove_account_type have
     // no form on this page yet, but are namespaced the same way now so a
     // future form for them is safe by default.
     // ========================================================================

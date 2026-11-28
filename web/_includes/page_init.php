@@ -518,6 +518,12 @@ if (isset($_SESSION['user_uid']) && (int) $_SESSION['user_uid'] > 0)
         unset($_SESSION['user_first_name'], $_SESSION['user_last_name'], $_SESSION['user_role']);
         unset($_SESSION['user_org_handle'], $_SESSION['user_avatar'], $_SESSION['user_timezone']);
         unset($_SESSION['email_verified'], $_SESSION['session_token']);
+
+        // And any form result remembered for that person (#291).
+        if (function_exists('g2ml_csrfForgetResults'))
+        {
+            g2ml_csrfForgetResults();
+        }
     }
     elseif (function_exists('refreshUserSession'))
     {

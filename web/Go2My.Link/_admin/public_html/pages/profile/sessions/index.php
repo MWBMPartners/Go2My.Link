@@ -54,12 +54,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     // ========================================================================
     // "Revoke" is rendered once PER ROW (one form per session), so its CSRF
     // token must be namespaced by the row's own sessionUID. Otherwise
-    // g2ml_generateCSRFToken() (single-slot-per-form-name, see security.php)
-    // overwrites the previous row's token every time the loop renders the
-    // next row's form, and only the LAST-rendered row's action would still
-    // validate — which also meant "Sign Out All Others" (rendered above the
-    // list) always failed as soon as the list below it rendered any session
-    // row, because that row's token silently replaced its own. "Sign Out
+    // g2ml_generateCSRFToken() (which keeps only the newest few tokens per
+    // form name, see security.php) pushes out earlier rows' tokens as the
+    // loop renders later rows' forms. Before #291 it kept only ONE token per
+    // name, so only the LAST-rendered row's action would validate — which
+    // also meant "Sign Out All Others" (rendered above the list) always
+    // failed as soon as the list below it rendered any session row, because
+    // that row's token silently replaced its own. "Sign Out
     // All Others" now keeps its own distinct, stable form name instead of
     // sharing one with every row.
     // ========================================================================

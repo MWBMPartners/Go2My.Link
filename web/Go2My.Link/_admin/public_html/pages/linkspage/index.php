@@ -63,9 +63,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     $pageUID    = (int) ($_POST['page_uid'] ?? 0);
 
     // 🔒 Each row on this list renders its OWN publish/unpublish/delete form,
-    // and g2ml_generateCSRFToken() overwrites the single session slot for a
-    // given form name every time it is called — so a form name shared across
-    // every row would leave only the LAST-rendered row's token valid. The
+    // and g2ml_generateCSRFToken() keeps only the newest few tokens for a
+    // given form name (see security.php) — so a form name shared across
+    // every row would leave only the last few rows' tokens valid. The
     // form name is therefore namespaced by pageUID + action, matching
     // exactly what g2ml_csrfField() below is called with when the form was
     // rendered, so every row's own token stays independently valid.

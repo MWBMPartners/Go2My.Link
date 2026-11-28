@@ -26,8 +26,15 @@
  *     "marketing":  true|false
  *   }
  *
+ * Without JavaScript (#291) the banner's own form is sent instead, form-encoded,
+ * with csrf_token and consent_choice ("all" or "essential", from the button
+ * that was pressed) in place of the three yes/no answers. The script's
+ * fallback form sends csrf_token and the three answers as "1" or "0".
+ *
  * Response:
  *   { "success": true } or { "success": false, "error": "..." }
+ *   A form-encoded request is sent back to the page it came from, whether it
+ *   succeeded or its security token was refused (nothing is recorded then).
  *
  * @package    Go2My.Link
  * @subpackage API
@@ -106,22 +113,73 @@ else
 }
 
 // ============================================================================
+// ↩️ Where a form-encoded request is sent back to
+// ============================================================================
+// The page the form came from, as a path on THIS host only (for example
+// "/pricing"), or the home page "/" when the Referer is missing, names
+// another host, or looks like a trick ("/\evil.com", "https:evil.com",
+// "user@host"). The banner posts to "/api/consent/" on the site it is
+// shown on, so the page it came from is always on the same host. Until
+// #291 any full address on a list of our hosts was used as it was.
+// 📖 Reference: security.php → g2ml_safeSameHostReturnPath()
+$refererHeader = null;
+
+if (isset($_SERVER['HTTP_REFERER']) && is_string($_SERVER['HTTP_REFERER']))
+{
+    $refererHeader = $_SERVER['HTTP_REFERER'];
+}
+
+$requestHost = '';
+
+if (isset($_SERVER['HTTP_HOST']) && is_string($_SERVER['HTTP_HOST']))
+{
+    $requestHost = $_SERVER['HTTP_HOST'];
+}
+
+if (function_exists('g2ml_safeSameHostReturnPath'))
+{
+    $referer = g2ml_safeSameHostReturnPath($refererHeader, $requestHost);
+}
+else
+{
+    $referer = '/';
+}
+
+// ============================================================================
 // 🔒 CSRF Validation
 // ============================================================================
 $csrfToken = $data['csrf_token'] ?? '';
 
+// A token that is not text (a list or a number in the JSON, say) is treated
+// as no token, rather than stopping with a type error.
+if (!is_string($csrfToken))
+{
+    $csrfToken = '';
+}
+
 if (!function_exists('g2ml_validateCSRFToken') || !g2ml_validateCSRFToken($csrfToken, 'cookie_consent'))
 {
-    http_response_code(403);
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
-
     if (function_exists('logActivity'))
     {
         logActivity('csrf_failure', 'error', 403, [
             'logData' => ['endpoint' => 'api/consent'],
         ]);
     }
+
+    // A form sent by a browser (no JavaScript, or the script's fallback) is
+    // sent back to its page rather than shown a page of raw JSON (#291).
+    // Nothing is recorded. If consent is still needed there, the banner
+    // comes back with a fresh token and the visitor can choose again; if
+    // another request has just recorded it, the banner is simply gone.
+    if (!$isJSON)
+    {
+        header('Location: ' . $referer, true, 303);
+        exit;
+    }
+
+    http_response_code(403);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['success' => false, 'error' => 'Invalid CSRF token']);
 
     exit;
 }
@@ -133,6 +191,16 @@ $categories = ['analytics', 'functional', 'marketing'];
 $results    = [];
 $allSuccess = true;
 
+// The banner's own buttons, used without JavaScript (#291), name the whole
+// choice in one word instead of sending the three answers. Any other value
+// is ignored, and the answers below are read as usual.
+$bannerChoice = '';
+
+if (isset($data['consent_choice']) && is_string($data['consent_choice']))
+{
+    $bannerChoice = $data['consent_choice'];
+}
+
 // Always record essential consent
 g2ml_recordConsent('essential', true, 'banner');
 
@@ -140,7 +208,15 @@ foreach ($categories as $category)
 {
     $given = false;
 
-    if (isset($data[$category]))
+    if ($bannerChoice === 'all')
+    {
+        $given = true;
+    }
+    elseif ($bannerChoice === 'essential')
+    {
+        $given = false;
+    }
+    elseif (isset($data[$category]))
     {
         $given = filter_var($data[$category], FILTER_VALIDATE_BOOLEAN);
     }
@@ -168,15 +244,7 @@ if ($isJSON)
     exit;
 }
 
-// Form POST fallback — redirect back to previous page (validated to same origin)
-$referer      = $_SERVER['HTTP_REFERER'] ?? '/';
-$refererHost  = parse_url($referer, PHP_URL_HOST);
-$allowedHosts = ['go2my.link', 'www.go2my.link', 'admin.go2my.link', 'g2my.link', 'lnks.page'];
-
-if ($refererHost !== null && !in_array(strtolower($refererHost), $allowedHosts, true))
-{
-    $referer = '/'; // Fall back to homepage for unrecognised origins
-}
-
+// Form POST fallback — redirect back to the previous page (a same-host
+// path, worked out above)
 header('Location: ' . $referer);
 exit;

@@ -21,6 +21,8 @@
  *   - Tokens are single-use: a second validation of the same token is false.
  *   - A token validated against the WRONG form name returns false.
  *   - A tampered token value returns false.
+ *   - Since #291, showing the same form name again does not break the copy
+ *     already shown (several tokens are kept per form name).
  *
  * @package    Go2My.Link
  * @subpackage Tests
@@ -78,21 +80,23 @@ test('g2ml_csrfField: produces a hidden input carrying a token', function (): vo
 });
 
 // ============================================================================
-// ⚠️ Same-form-name reuse across multiple rendered forms (documented gotcha)
+// 🗂️ Same form name shown more than once (#291)
 // ============================================================================
-// g2ml_generateCSRFToken() OVERWRITES $_SESSION['_csrf_tokens'][$formName]
-// every time it is called with the same form name. A page that renders
-// SEVERAL forms sharing one form name (e.g. a "delete" form repeated once
-// per row in a list) ends up with only the LAST-rendered form's embedded
-// token still matching the session — every earlier form's token goes stale
-// before the page even reaches the browser. This is exactly why
-// web/_functions/linkspage_manage.php's admin pages (#48) namespace each
-// form's name by the row's own pageUID/itemUID (see
-// web/Go2My.Link/_admin/public_html/pages/linkspage/index.php and
-// pages/linkspage/edit/index.php) rather than reusing one shared form name.
+// Until #291, g2ml_generateCSRFToken() kept ONE token per form name and
+// replaced it on every call, so showing a form a second time (another tab,
+// or the browser fetching the page in the background) broke the first copy.
+// The two tests that pinned that behaviour were replaced by these, which pin
+// the new rule: several tokens per form name, each usable once. The full set
+// of checks for the new scheme is in tests/unit/csrf_token_pool_test.php.
+//
+// Pages that render one action per table row still name each row's form
+// after the row (#147): five tokens for a shared name would only make the
+// last five rows work. See web/_functions/linkspage_manage.php's admin pages
+// (#48), web/Go2My.Link/_admin/public_html/pages/linkspage/index.php and
+// pages/linkspage/edit/index.php.
 // ============================================================================
 
-test('CSRF gotcha: reusing ONE form name for two forms invalidates the FIRST (stale) token', function (): void
+test('CSRF #291: showing ONE form name twice keeps the FIRST token valid', function (): void
 {
     $firstToken  = g2ml_csrfField('shared_repeated_form_alpha');
     $secondToken = g2ml_csrfField('shared_repeated_form_alpha');
@@ -103,29 +107,20 @@ test('CSRF gotcha: reusing ONE form name for two forms invalidates the FIRST (st
     $firstValue = $firstMatches[1];
 
     assert_true($firstValue !== $secondMatches[1], 'Setup: the two calls must produce different token values');
-
-    // The FIRST form's embedded token no longer matches what is stored in
-    // the session — it was clobbered by the second call before the page
-    // ever reached a browser. (Note: g2ml_validateCSRFToken() consumes
-    // whatever IS stored regardless of the outcome, which is why this is
-    // checked in its own test — checking the second/valid token afterwards
-    // in the SAME test would find the slot already emptied by this call,
-    // not by the original overwrite the gotcha is about.)
-    assert_false(g2ml_validateCSRFToken($firstValue, 'shared_repeated_form_alpha'), 'The first-rendered form\'s token must have been invalidated by the second call sharing its form name');
+    assert_true(g2ml_validateCSRFToken($firstValue, 'shared_repeated_form_alpha'), 'The first copy of the form must still work after a second copy was shown');
 });
 
-test('CSRF gotcha: reusing ONE form name for two forms — the LAST-rendered token is the one actually stored', function (): void
+test('CSRF #291: showing ONE form name twice keeps the SECOND token valid too, after the first is used', function (): void
 {
     $firstToken  = g2ml_csrfField('shared_repeated_form_beta');
     $secondToken = g2ml_csrfField('shared_repeated_form_beta');
 
+    preg_match('/value="([^"]+)"/', $firstToken, $firstMatches);
     preg_match('/value="([^"]+)"/', $secondToken, $secondMatches);
-    $secondValue = $secondMatches[1];
 
-    // Only the LAST-rendered form's token is validated in this test (never
-    // the first) — validating the first is single-use and would otherwise
-    // consume this exact session slot before this assertion runs.
-    assert_true(g2ml_validateCSRFToken($secondValue, 'shared_repeated_form_beta'), 'The last-rendered form\'s token remains the one stored in the session');
+    assert_true(g2ml_validateCSRFToken($firstMatches[1], 'shared_repeated_form_beta'), 'The first copy works');
+    assert_true(g2ml_validateCSRFToken($secondMatches[1], 'shared_repeated_form_beta'), 'Using the first copy must not use up the second');
+    assert_false(g2ml_validateCSRFToken($firstMatches[1], 'shared_repeated_form_beta'), 'Each token still works once only');
 });
 
 test('CSRF fix pattern: namespacing the form name by a row/item ID keeps BOTH tokens independently valid', function (): void

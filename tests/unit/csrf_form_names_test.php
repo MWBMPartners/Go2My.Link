@@ -12,13 +12,14 @@
  * 🧪 Check — no page renders the same literal CSRF form name twice (#147)
  * ============================================================================
  *
- * g2ml_generateCSRFToken() (web/_functions/security.php) keeps exactly ONE
- * token per form name and overwrites it on every call; g2ml_validateCSRFToken()
- * is single-use (it removes the token once checked). So a page that calls
+ * g2ml_generateCSRFToken() (web/_functions/security.php) keeps only the
+ * newest few tokens per form name (five since #291; exactly ONE before it),
+ * pushing out the oldest on each call; g2ml_validateCSRFToken() is
+ * single-use (it removes the token once checked). So a page that calls
  * g2ml_csrfField('some_name') more than once — for example once per row in a
- * table — has every earlier call's token overwritten by the next one, and
- * only the LAST-rendered form on the page still validates; every earlier row
- * fails with "Session expired". Admin pages had exactly this fault (#147);
+ * table — has its earlier calls' tokens pushed out by the later ones, and on
+ * a long list the early rows fail with "Session expired". Before #291 every
+ * row but the LAST-rendered one failed. Admin pages had exactly this fault (#147);
  * this check reads every page under the two admin/public page trees and
  * fails the build if another page writes the same literal name twice, or
  * writes it once from inside a loop (see the two scans below).

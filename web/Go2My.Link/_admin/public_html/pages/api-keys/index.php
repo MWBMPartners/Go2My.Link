@@ -18,12 +18,23 @@
  * web/_functions/api_auth.php (#38); this page only handles the form/CSRF/
  * authz plumbing and rendering.
  *
- * The plaintext key returned by g2ml_apiGenerateKey() is shown exactly ONCE,
- * immediately after creation, in a dedicated "copy it now" panel. It is held
- * only in a local PHP variable for the lifetime of this single request/
- * response — never written to the session, a cookie, a log, or the database
- * (only its SHA-256 hash is persisted, by the backend). Reloading this page
+ * The plaintext key returned by g2ml_apiGenerateKey() is shown immediately
+ * after creation, in a dedicated "copy it now" panel. It is never written in
+ * readable form to the session, a cookie, a log, or the database (only its
+ * SHA-256 hash is persisted, by the backend). Loading this page again
  * cannot bring it back.
+ *
+ * One exception, for a form sent twice (#291): a double click sends the
+ * create form twice with the same security token. The first request makes
+ * the key; the second used to fail with "Session expired", and as the
+ * browser shows the LAST response, the new key was never seen and a stray
+ * key was left behind. Now, for two minutes, an ENCRYPTED copy of the result
+ * is kept in the session, locked with a key worked out from that form's own
+ * token and from the signed-in user and organisation
+ * (g2ml_csrfRememberResult() in security.php). If the same token comes back
+ * from the same user in the same organisation, the page shows the same key
+ * again and does not make another one. Nothing that lacks the token the
+ * browser sent can read the copy, and a different user cannot find it.
  *
  * Authorisation matches the org/domains page exactly: the caller must belong
  * to a real organisation (not the shared "[default]" org) and must pass
@@ -101,6 +112,11 @@ $scopeLabels = [
 
 $availableScopes = g2ml_apiValidScopesList();
 
+// Who a remembered "key created" result belongs to (#291): this user in this
+// organisation. Someone else signing in on the same browser cannot get the
+// result back, even with the old form (see g2ml_csrfRememberResult()).
+$createResultOwner = 'user:' . (int) $currentUser['userUID'] . '|org:' . (string) $orgHandle;
+
 // ============================================================================
 // Handle POST actions
 // ============================================================================
@@ -115,11 +131,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     // ========================================================================
     // The "revoke" action is rendered once PER ROW (one form per API key), so
     // its CSRF token must be namespaced by the row's own apiKeyUID. Otherwise
-    // g2ml_generateCSRFToken() (single-slot-per-form-name, see security.php)
-    // overwrites the previous row's token every time the loop renders the next
-    // row's form, and only the LAST-rendered row's revoke action would still
-    // validate. The "create" action has exactly one form on the page, so it
-    // keeps its own distinct, stable form name.
+    // g2ml_generateCSRFToken() (which keeps only the newest few tokens per
+    // form name, see security.php) would push out earlier rows' tokens as the
+    // loop renders later rows' forms, and on a long list the first rows'
+    // revoke actions would fail. The "create" action has exactly one form on
+    // the page, so it keeps its own distinct, stable form name.
     // ========================================================================
 
     // Computed unconditionally (rather than only inside the "revoke_key"
@@ -140,7 +156,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         $csrfFormName = 'api_keys_create';
     }
 
-    if (!g2ml_validateCSRFToken($csrfToken, $csrfFormName))
+    $csrfIsValid = g2ml_validateCSRFToken($csrfToken, $csrfFormName);
+
+    // ========================================================================
+    // 🔁 #291 — the create form sent twice
+    // ========================================================================
+    // A refused token on the create form may be the second copy of a form
+    // that has just made a key (a double click). If a result was remembered
+    // for this exact token, show that same key again instead of "Session
+    // expired", and do not make another key. See the file header.
+    $recalledCreate = null;
+
+    if (!$csrfIsValid && $actionType === 'create_key')
+    {
+        $recalledJSON = g2ml_csrfRecallResult($csrfToken, 'api_keys_create', $createResultOwner);
+
+        if ($recalledJSON !== null)
+        {
+            $recalledCreate = json_decode($recalledJSON, true);
+        }
+    }
+
+    if (is_array($recalledCreate)
+        && isset($recalledCreate['plaintextKey'], $recalledCreate['apiKeyPrefix'], $recalledCreate['keyName'])
+        && is_string($recalledCreate['plaintextKey'])
+        && is_string($recalledCreate['apiKeyPrefix'])
+        && is_string($recalledCreate['keyName']))
+    {
+        $createdKeyPlaintext = $recalledCreate['plaintextKey'];
+        $createdKeyPrefix    = $recalledCreate['apiKeyPrefix'];
+        $createdKeyName      = $recalledCreate['keyName'];
+        $actionSuccess       = 'API key created.';
+    }
+    elseif (!$csrfIsValid)
     {
         $actionError = 'Session expired. Please try again.';
     }
@@ -215,6 +263,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                         $createdKeyPrefix    = $created['apiKeyPrefix'];
                         $createdKeyName      = $keyName;
                         $actionSuccess       = 'API key created.';
+
+                        // Remember this result, encrypted, for a second copy
+                        // of the same form (#291, see the file header). If it
+                        // cannot be stored, the key is still shown here; only
+                        // the double-click rescue is lost.
+                        $rememberedJSON = json_encode([
+                            'plaintextKey' => $createdKeyPlaintext,
+                            'apiKeyPrefix' => $createdKeyPrefix,
+                            'keyName'      => $createdKeyName,
+                        ]);
+
+                        if (is_string($rememberedJSON))
+                        {
+                            $rememberedStored = g2ml_csrfRememberResult($csrfToken, 'api_keys_create', $createResultOwner, $rememberedJSON);
+
+                            if (!$rememberedStored)
+                            {
+                                error_log('[Go2My.Link] WARNING: could not remember a new API key result for a repeated form (#291).');
+                            }
+                        }
                     }
                     else
                     {

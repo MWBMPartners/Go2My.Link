@@ -316,18 +316,264 @@ function g2ml_passwordNeedsRehash(string $hash): bool
 // ============================================================================
 // 🛡️ CSRF Token Management
 // ============================================================================
-// Generates and validates single-use CSRF tokens stored in the session.
-// Tokens are per-form (keyed by form name) and expire after a configurable
-// duration.
+// A CSRF token ("cross-site request forgery" token) is a long random secret
+// put into each form. When the form comes back, its token must match one this
+// visitor's session handed out. Another website cannot read our pages, so it
+// cannot know the token, and so it cannot send a form in the visitor's name.
+//
+// How the tokens are kept (#291):
+//
+//   - Each form name keeps up to G2ML_CSRF_TOKENS_PER_FORM tokens (five),
+//     oldest first. Showing a form again ADDS a token instead of replacing
+//     the only one. So a form left open in a second tab still works. Until
+//     #291 there was one token per form name, and opening the form anywhere
+//     else (another tab, or the browser fetching the page in the background)
+//     broke the copy that was already open.
+//   - Each token still works once only. A successful check removes that one
+//     token, so the same form cannot be replayed. The other tokens for the
+//     same form name are left alone.
+//   - Each token expires (one hour unless the caller asks for another time).
+//   - Tokens are compared with hash_equals(), which takes the same time
+//     whether the first character differs or the last, so the time taken
+//     gives nothing away.
+//   - The whole store is limited to G2ML_CSRF_MAX_STORED_TOKENS. Once in each
+//     request, just before the first new token is made, expired tokens are
+//     removed and, if there are still too many, the ones that would expire
+//     soonest are dropped. So the session cannot grow without limit. Until
+//     #291 expired tokens were never removed at all.
+//
+// A page that shows the same action once per row still needs one form name
+// per row (#147). Each new row's token pushes out the oldest, so five tokens
+// for a shared name would only make the LAST five rows of a long list work.
 //
 // 📖 Reference: https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
 // ============================================================================
 
+if (!defined('G2ML_CSRF_TOKENS_PER_FORM'))
+{
+    // Five copies of one form open at once is already unusual. A sixth copy
+    // pushes out the oldest, which then gets the "please reload" message.
+    define('G2ML_CSRF_TOKENS_PER_FORM', 5);
+}
+
+if (!defined('G2ML_CSRF_MAX_STORED_TOKENS'))
+{
+    // The busiest page is the LinksPage editor: up to 200 links (see
+    // G2ML_LINKSPAGE_MAX_ITEMS_PER_PAGE in linkspage_manage.php), each with
+    // five small forms, so about 1,005 tokens for one view of it. Two tabs
+    // of it are exactly the case #291 is for, so the limit holds two full
+    // views (about 2,010) with room to spare for the visitor's other pages.
+    //
+    // The cost, measured on PHP 8.5: 3,000 tokens take about 400 KB of
+    // session data, read and written on every request while they last.
+    // Tidying happens before a request's first new token, so between
+    // requests the store can briefly hold the limit plus one page's worth
+    // (about 4,000 tokens, roughly 540 KB). Only someone who keeps opening
+    // the biggest editors gets near this; ordinary use stays at a few
+    // dozen tokens, a few kilobytes, and every token is gone within an hour.
+    define('G2ML_CSRF_MAX_STORED_TOKENS', 3000);
+}
+
+if (!defined('G2ML_CSRF_RESULTS_PER_FORM'))
+{
+    // How many remembered results (see g2ml_csrfRememberResult()) one form
+    // name keeps. Only the API key form uses this, and only for two minutes.
+    define('G2ML_CSRF_RESULTS_PER_FORM', 5);
+}
+
+/**
+ * The tokens stored for one form name that are still usable.
+ *
+ * Reads $_SESSION['_csrf_tokens'][$formName] and returns its entries, oldest
+ * first, leaving out any that have expired or are not in the expected shape.
+ * It also understands the shape used before #291 (a single
+ * ['token' => ..., 'expires' => ...] entry rather than a list of them), so a
+ * visitor whose session was started before this change was deployed can
+ * still send the form they already have open.
+ *
+ * Nothing is written back; the callers decide what to store.
+ *
+ * @param  string $formName  The form identifier
+ * @param  int    $now       The current time (Unix seconds)
+ * @return array<int, array{token: string, expires: int}>
+ */
+function g2ml_csrfLiveTokens(string $formName, int $now): array
+{
+    if (!isset($_SESSION['_csrf_tokens']) || !is_array($_SESSION['_csrf_tokens']))
+    {
+        return [];
+    }
+
+    if (!isset($_SESSION['_csrf_tokens'][$formName]) || !is_array($_SESSION['_csrf_tokens'][$formName]))
+    {
+        return [];
+    }
+
+    $slot = $_SESSION['_csrf_tokens'][$formName];
+
+    // The shape used before #291: one entry, not a list of entries.
+    if (isset($slot['token']))
+    {
+        $slot = [$slot];
+    }
+
+    $liveTokens = [];
+
+    foreach ($slot as $entry)
+    {
+        if (!is_array($entry))
+        {
+            continue;
+        }
+
+        if (!isset($entry['token']) || !is_string($entry['token']) || $entry['token'] === '')
+        {
+            continue;
+        }
+
+        if (!isset($entry['expires']) || !is_int($entry['expires']))
+        {
+            continue;
+        }
+
+        // A token is usable up to and including its expiry second, the same
+        // rule as before #291.
+        if ($entry['expires'] < $now)
+        {
+            continue;
+        }
+
+        $liveTokens[] = [
+            'token'   => $entry['token'],
+            'expires' => $entry['expires'],
+        ];
+    }
+
+    return $liveTokens;
+}
+
+/**
+ * Store the tokens for one form name, or remove the name if none are left.
+ *
+ * @param string                                        $formName  The form identifier
+ * @param array<int, array{token: string, expires: int}> $tokens    The tokens to keep, oldest first
+ */
+function g2ml_csrfStoreTokens(string $formName, array $tokens): void
+{
+    if (!isset($_SESSION['_csrf_tokens']) || !is_array($_SESSION['_csrf_tokens']))
+    {
+        $_SESSION['_csrf_tokens'] = [];
+    }
+
+    if (count($tokens) === 0)
+    {
+        unset($_SESSION['_csrf_tokens'][$formName]);
+        return;
+    }
+
+    $_SESSION['_csrf_tokens'][$formName] = array_values($tokens);
+}
+
+/**
+ * Tidy the whole token store: drop expired tokens, then cap its size.
+ *
+ * g2ml_generateCSRFToken() calls this once in each request, before it makes
+ * the first new token. Tidying before, not after, means a page with many
+ * forms is never cut short by its own tokens: the store can hold the limit
+ * plus one page's worth until the next request tidies it again.
+ *
+ * When the store is still over G2ML_CSRF_MAX_STORED_TOKENS after expired
+ * tokens are gone, the tokens that would expire soonest are dropped first.
+ * Almost every token has the same one-hour lifetime, so in practice those
+ * are the oldest ones, from pages the visitor has most likely left.
+ *
+ * @param int|null $now  The current time (Unix seconds); null means now. Tests
+ *                       pass a later time to see what happens after expiry.
+ */
+function g2ml_pruneCSRFTokens(?int $now = null): void
+{
+    if ($now === null)
+    {
+        $now = time();
+    }
+
+    if (!isset($_SESSION['_csrf_tokens']) || !is_array($_SESSION['_csrf_tokens']))
+    {
+        $_SESSION['_csrf_tokens'] = [];
+        return;
+    }
+
+    // 1. Drop expired and broken entries, and names with nothing left.
+    $liveStore   = [];
+    $totalTokens = 0;
+
+    foreach (array_keys($_SESSION['_csrf_tokens']) as $formName)
+    {
+        $formName   = (string) $formName;
+        $liveTokens = g2ml_csrfLiveTokens($formName, $now);
+
+        if (count($liveTokens) > 0)
+        {
+            $liveStore[$formName] = $liveTokens;
+            $totalTokens += count($liveTokens);
+        }
+    }
+
+    // 2. Still too many: drop the ones that would expire soonest.
+    if ($totalTokens > G2ML_CSRF_MAX_STORED_TOKENS)
+    {
+        $everyToken = [];
+
+        foreach ($liveStore as $formName => $liveTokens)
+        {
+            foreach ($liveTokens as $position => $entry)
+            {
+                $everyToken[] = [
+                    'formName' => (string) $formName,
+                    'position' => $position,
+                    'expires'  => $entry['expires'],
+                ];
+            }
+        }
+
+        // 📖 Reference: https://www.php.net/manual/en/function.usort.php
+        // (sorting is stable since PHP 8.0, so equal times keep their order)
+        usort($everyToken, function (array $left, array $right): int
+        {
+            return $left['expires'] <=> $right['expires'];
+        });
+
+        $dropCount = $totalTokens - G2ML_CSRF_MAX_STORED_TOKENS;
+
+        for ($index = 0; $index < $dropCount; $index++)
+        {
+            $dropped = $everyToken[$index];
+            unset($liveStore[$dropped['formName']][$dropped['position']]);
+        }
+
+        foreach (array_keys($liveStore) as $formName)
+        {
+            if (count($liveStore[$formName]) === 0)
+            {
+                unset($liveStore[$formName]);
+            }
+            else
+            {
+                $liveStore[$formName] = array_values($liveStore[$formName]);
+            }
+        }
+    }
+
+    $_SESSION['_csrf_tokens'] = $liveStore;
+}
+
 /**
  * Generate a CSRF token for a specific form.
  *
- * Stores the token and its expiry time in the session. Returns the token
- * string for embedding in a hidden form field.
+ * Adds a new token to the ones already kept for this form name (up to
+ * G2ML_CSRF_TOKENS_PER_FORM; the oldest is pushed out after that) and
+ * returns it for embedding in a hidden form field. See the section comment
+ * above for the whole scheme.
  *
  * @param  string $formName   Unique form identifier (e.g., 'login', 'create_link')
  * @param  int    $lifetime   Token lifetime in seconds (default: 3600 = 1 hour)
@@ -337,15 +583,37 @@ function g2ml_passwordNeedsRehash(string $hash): bool
  */
 function g2ml_generateCSRFToken(string $formName = 'default', int $lifetime = 3600): string
 {
+    // Tidy the store once per request, before the first new token (see
+    // g2ml_pruneCSRFTokens() for why it is before and not after).
+    // 📖 Reference: https://www.php.net/manual/en/language.variables.scope.php#language.variables.scope.static
+    static $storeTidiedThisRequest = false;
+
+    if ($storeTidiedThisRequest === false)
+    {
+        g2ml_pruneCSRFTokens();
+        $storeTidiedThisRequest = true;
+    }
+
+    $now = time();
+
     // Generate a cryptographically secure random token
     // 📖 Reference: https://www.php.net/manual/en/function.bin2hex.php
     $token = bin2hex(random_bytes(32));
 
-    // Store in session with expiry timestamp
-    $_SESSION['_csrf_tokens'][$formName] = [
+    $tokens   = g2ml_csrfLiveTokens($formName, $now);
+    $tokens[] = [
         'token'   => $token,
-        'expires' => time() + $lifetime,
+        'expires' => $now + $lifetime,
     ];
+
+    // Keep only the newest few for this form name.
+    // 📖 Reference: https://www.php.net/manual/en/function.array-slice.php
+    if (count($tokens) > G2ML_CSRF_TOKENS_PER_FORM)
+    {
+        $tokens = array_slice($tokens, count($tokens) - G2ML_CSRF_TOKENS_PER_FORM);
+    }
+
+    g2ml_csrfStoreTokens($formName, $tokens);
 
     return $token;
 }
@@ -353,8 +621,16 @@ function g2ml_generateCSRFToken(string $formName = 'default', int $lifetime = 36
 /**
  * Validate a submitted CSRF token against the session.
  *
- * The token is consumed (removed from session) after validation to prevent
- * replay attacks.
+ * The token is valid when it matches one of the unexpired tokens kept for
+ * this form name. A matching token is removed (used once), so the same
+ * submission cannot be replayed. The other tokens for the form name stay,
+ * so another open copy of the form still works.
+ *
+ * A token that matches nothing removes nothing except expired tokens. Before
+ * #291 any failed check also threw away the one stored token. Now that there
+ * are several, throwing them all away would break the visitor's other open
+ * tabs, and gives no extra protection: a 64-character random token cannot be
+ * guessed, however many tries are made.
  *
  * @param  string $token     The submitted token from the form
  * @param  string $formName  The form identifier used during generation
@@ -363,26 +639,36 @@ function g2ml_generateCSRFToken(string $formName = 'default', int $lifetime = 36
 #[\NoDiscard('the answer says whether the CSRF token is valid; ignoring it skips the check')]
 function g2ml_validateCSRFToken(string $token, string $formName = 'default'): bool
 {
-    // Check if a token exists for this form
-    if (!isset($_SESSION['_csrf_tokens'][$formName]))
+    if ($token === '')
     {
         return false;
     }
 
-    $stored = $_SESSION['_csrf_tokens'][$formName];
+    $liveTokens = g2ml_csrfLiveTokens($formName, time());
+    $isValid    = false;
+    $keptTokens = [];
 
-    // Consume the token regardless of outcome (single-use)
-    unset($_SESSION['_csrf_tokens'][$formName]);
-
-    // Check expiry
-    if ($stored['expires'] < time())
+    // Every stored token is compared; the loop never stops early, so the
+    // time taken does not show which stored token matched, if any.
+    foreach ($liveTokens as $entry)
     {
-        return false;
+        // Timing-safe comparison
+        // 📖 Reference: https://www.php.net/manual/en/function.hash-equals.php
+        if (hash_equals($entry['token'], $token))
+        {
+            // Used once: the matching token is not kept.
+            $isValid = true;
+        }
+        else
+        {
+            $keptTokens[] = $entry;
+        }
     }
 
-    // Timing-safe comparison
-    // 📖 Reference: https://www.php.net/manual/en/function.hash-equals.php
-    return hash_equals($stored['token'], $token);
+    // Writing back also drops any tokens for this form name that expired.
+    g2ml_csrfStoreTokens($formName, $keptTokens);
+
+    return $isValid;
 }
 
 /**
@@ -401,6 +687,366 @@ function g2ml_csrfField(string $formName = 'default'): string
     return '<input type="hidden" name="_csrf_token" value="'
         . htmlspecialchars($token, ENT_QUOTES, 'UTF-8')
         . '">';
+}
+
+// ============================================================================
+// 🔁 Remembering what a form did, for a form sent twice (#291)
+// ============================================================================
+// A double click sends the same form twice with the same token. The first
+// request uses the token up and does the work; the second finds the token
+// already used and fails. The browser shows the response to the LAST
+// request, so the person sees "Session expired" and never sees what the
+// first request did. For most forms that is only annoying. For the API key
+// form it loses something that can never be shown again: the new key itself.
+//
+// So a form can ask for its result to be remembered for a short time, tied
+// to the token it was sent with. If the same token comes back, the page can
+// show the same result again instead of failing, and does not do the work a
+// second time.
+//
+// The result is stored ENCRYPTED, with a key worked out from the form's
+// token. The session itself no longer holds that token once it is used, so
+// the stored copy is unreadable to anything that has the session file but
+// not the form the browser sent. Only someone sending the exact same token
+// within the time limit can get it back, and that is the person who sent the
+// form a moment ago.
+//
+// It is also tied to an OWNER the caller names (for the API key form: the
+// signed-in user and their organisation). The owner is mixed into both the
+// lookup value and the encryption key, so if a different person signs in
+// in the same browser within the two minutes, the copy cannot be found or
+// read, even with the old token. As a second guard, signing in
+// (loginUser() in auth.php) and losing a signed-in session (page_init.php)
+// both throw away every remembered result.
+//
+// The requests cannot overlap: PHP's standard file-based sessions, which this
+// site uses, let only one request at a time open a given session, so the
+// second click waits until the first has finished and saved its result.
+// ============================================================================
+
+/**
+ * The text that ties a remembered result to its form and owner. The lengths
+ * are written in, so no two different form-and-owner pairs can give the
+ * same text (for example "a|b" + "c" against "a" + "b|c").
+ *
+ * @param  string $formName  The form identifier
+ * @param  string $owner     Who the result belongs to (see the section comment)
+ * @return string
+ */
+function g2ml_csrfResultContext(string $formName, string $owner): string
+{
+    return strlen($formName) . ':' . $formName . '|' . strlen($owner) . ':' . $owner;
+}
+
+/**
+ * The lookup value for a remembered result: a keyed hash of the token, so
+ * the token itself is never stored.
+ *
+ * @param  string $token     The form's token
+ * @param  string $formName  The form identifier
+ * @param  string $owner     Who the result belongs to
+ * @return string            64 hexadecimal characters
+ *
+ * 📖 Reference: https://www.php.net/manual/en/function.hash-hmac.php
+ */
+function g2ml_csrfResultLookup(string $token, string $formName, string $owner): string
+{
+    return hash_hmac('sha256', 'g2ml-csrf-result-lookup|' . g2ml_csrfResultContext($formName, $owner), $token);
+}
+
+/**
+ * The encryption key for a remembered result, worked out from the token.
+ * It is different from the lookup value, so knowing one gives nothing about
+ * the other.
+ *
+ * @param  string $token     The form's token
+ * @param  string $formName  The form identifier
+ * @param  string $owner     Who the result belongs to
+ * @return string            64 hexadecimal characters, passed to g2ml_encrypt()
+ *
+ * 📖 Reference: https://www.php.net/manual/en/function.hash-hkdf.php
+ */
+function g2ml_csrfResultKey(string $token, string $formName, string $owner): string
+{
+    return bin2hex(hash_hkdf('sha256', $token, 32, 'g2ml-csrf-result-key|' . g2ml_csrfResultContext($formName, $owner)));
+}
+
+/**
+ * The remembered results for one form name that have not expired yet.
+ *
+ * @param  string $formName  The form identifier
+ * @param  int    $now       The current time (Unix seconds)
+ * @return array<int, array{lookup: string, sealed: string, expires: int}>
+ */
+function g2ml_csrfLiveResults(string $formName, int $now): array
+{
+    if (!isset($_SESSION['_csrf_results']) || !is_array($_SESSION['_csrf_results']))
+    {
+        return [];
+    }
+
+    if (!isset($_SESSION['_csrf_results'][$formName]) || !is_array($_SESSION['_csrf_results'][$formName]))
+    {
+        return [];
+    }
+
+    $liveResults = [];
+
+    foreach ($_SESSION['_csrf_results'][$formName] as $entry)
+    {
+        if (!is_array($entry))
+        {
+            continue;
+        }
+
+        if (!isset($entry['lookup'], $entry['sealed'], $entry['expires']))
+        {
+            continue;
+        }
+
+        if (!is_string($entry['lookup']) || !is_string($entry['sealed']) || !is_int($entry['expires']))
+        {
+            continue;
+        }
+
+        if ($entry['expires'] < $now)
+        {
+            continue;
+        }
+
+        $liveResults[] = [
+            'lookup'  => $entry['lookup'],
+            'sealed'  => $entry['sealed'],
+            'expires' => $entry['expires'],
+        ];
+    }
+
+    return $liveResults;
+}
+
+/**
+ * Store the remembered results for one form name, or remove the name.
+ *
+ * @param string                                                      $formName  The form identifier
+ * @param array<int, array{lookup: string, sealed: string, expires: int}> $results   The results to keep
+ */
+function g2ml_csrfStoreResults(string $formName, array $results): void
+{
+    if (!isset($_SESSION['_csrf_results']) || !is_array($_SESSION['_csrf_results']))
+    {
+        $_SESSION['_csrf_results'] = [];
+    }
+
+    if (count($results) === 0)
+    {
+        unset($_SESSION['_csrf_results'][$formName]);
+        return;
+    }
+
+    $_SESSION['_csrf_results'][$formName] = array_values($results);
+}
+
+/**
+ * Remember what a form did, so a second copy of the same submission can be
+ * answered with the same result (see the section comment above).
+ *
+ * Call it only AFTER g2ml_validateCSRFToken() has accepted $token and the
+ * work has been done.
+ *
+ * @param  string $token     The token the form was sent with
+ * @param  string $formName  The form identifier
+ * @param  string $owner     Who the result belongs to, for example the user
+ *                           and organisation; it must not be empty
+ * @param  string $result    What to show again (for example a JSON string)
+ * @param  int    $lifetime  How long to remember it, in seconds (default two minutes)
+ * @return bool              True if it was stored
+ */
+function g2ml_csrfRememberResult(string $token, string $formName, string $owner, string $result, int $lifetime = 120): bool
+{
+    if ($token === '' || $owner === '')
+    {
+        return false;
+    }
+
+    $sealed = g2ml_encrypt($result, g2ml_csrfResultKey($token, $formName, $owner));
+
+    if ($sealed === false)
+    {
+        return false;
+    }
+
+    $now       = time();
+    $results   = g2ml_csrfLiveResults($formName, $now);
+    $results[] = [
+        'lookup'  => g2ml_csrfResultLookup($token, $formName, $owner),
+        'sealed'  => $sealed,
+        'expires' => $now + $lifetime,
+    ];
+
+    if (count($results) > G2ML_CSRF_RESULTS_PER_FORM)
+    {
+        $results = array_slice($results, count($results) - G2ML_CSRF_RESULTS_PER_FORM);
+    }
+
+    g2ml_csrfStoreResults($formName, $results);
+
+    return true;
+}
+
+/**
+ * Get back a result remembered for this exact token, if there is one.
+ *
+ * Call it only when g2ml_validateCSRFToken() has REFUSED the token: a token
+ * that is still valid has not done its work yet, so there is nothing to
+ * recall. The result stays remembered until it expires, so a third click
+ * gets the same answer as the second.
+ *
+ * @param  string $token     The token the form was sent with
+ * @param  string $formName  The form identifier
+ * @param  string $owner     Who is asking; it must be the same owner the
+ *                           result was remembered for, or nothing is found
+ * @return string|null       The remembered result, or null if there is none
+ */
+function g2ml_csrfRecallResult(string $token, string $formName, string $owner): ?string
+{
+    if ($token === '' || $owner === '')
+    {
+        return null;
+    }
+
+    $results = g2ml_csrfLiveResults($formName, time());
+    $lookup  = g2ml_csrfResultLookup($token, $formName, $owner);
+    $sealed  = null;
+
+    foreach ($results as $entry)
+    {
+        if (hash_equals($entry['lookup'], $lookup))
+        {
+            $sealed = $entry['sealed'];
+        }
+    }
+
+    // Writing back drops any expired results for this form name.
+    g2ml_csrfStoreResults($formName, $results);
+
+    if ($sealed === null)
+    {
+        return null;
+    }
+
+    $result = g2ml_decrypt($sealed, g2ml_csrfResultKey($token, $formName, $owner));
+
+    if ($result === false)
+    {
+        return null;
+    }
+
+    return $result;
+}
+
+/**
+ * Throw away every remembered form result (see g2ml_csrfRememberResult()).
+ *
+ * Called when the person using the session changes: at sign-in, and when a
+ * signed-in session turns out to be no longer valid.
+ */
+function g2ml_csrfForgetResults(): void
+{
+    unset($_SESSION['_csrf_results']);
+}
+
+// ============================================================================
+// ↩️ Sending a browser back to the page it came from (#291)
+// ============================================================================
+
+/**
+ * The path to send a browser back to, taken from the page it came from (the
+ * Referer header), but only when that page is on THIS site.
+ *
+ * The answer is always a path that starts with one "/" (for example
+ * "/pricing?plan=pro"), never a full address, so the browser can only be
+ * sent somewhere on the host it is already talking to. Anything doubtful
+ * gives "/", the home page:
+ *   - no Referer, or one that is not a full http or https address;
+ *   - a different host or port from the one this request was sent to;
+ *   - a user name or password in the address ("user@host");
+ *   - a backslash, a space or a control character anywhere in it (some
+ *     browsers read "/\evil.com" as another website);
+ *   - a path that does not start with "/", or starts with "//".
+ *
+ * @param  string|null $referer      The Referer header, or null if none was sent
+ * @param  string      $currentHost  The host this request was sent to (HTTP_HOST)
+ * @return string                    A same-host path, or "/"
+ *
+ * 📖 Reference: https://www.php.net/manual/en/function.parse-url.php
+ */
+function g2ml_safeSameHostReturnPath(?string $referer, string $currentHost): string
+{
+    if ($referer === null || $referer === '' || $currentHost === '')
+    {
+        return '/';
+    }
+
+    // A backslash, any space or any control character: refuse outright.
+    if (preg_match('/[\\\\\s\x00-\x1F\x7F]/', $referer) === 1 || preg_match('/[\\\\\s\x00-\x1F\x7F]/', $currentHost) === 1)
+    {
+        return '/';
+    }
+
+    $parts = parse_url($referer);
+
+    if (!is_array($parts))
+    {
+        return '/';
+    }
+
+    if (!isset($parts['scheme'], $parts['host']))
+    {
+        return '/';
+    }
+
+    $scheme = strtolower($parts['scheme']);
+
+    if ($scheme !== 'http' && $scheme !== 'https')
+    {
+        return '/';
+    }
+
+    if (isset($parts['user']) || isset($parts['pass']))
+    {
+        return '/';
+    }
+
+    $refererAuthority = strtolower($parts['host']);
+
+    if (isset($parts['port']))
+    {
+        $refererAuthority .= ':' . $parts['port'];
+    }
+
+    if (!hash_equals(strtolower($currentHost), $refererAuthority))
+    {
+        return '/';
+    }
+
+    $path = '/';
+
+    if (isset($parts['path']))
+    {
+        $path = $parts['path'];
+    }
+
+    if (!str_starts_with($path, '/') || str_starts_with($path, '//'))
+    {
+        return '/';
+    }
+
+    if (isset($parts['query']) && $parts['query'] !== '')
+    {
+        $path .= '?' . $parts['query'];
+    }
+
+    return $path;
 }
 
 // ============================================================================

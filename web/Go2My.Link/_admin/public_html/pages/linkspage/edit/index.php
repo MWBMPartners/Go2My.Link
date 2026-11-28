@@ -162,10 +162,10 @@ if ($pageData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
 
     // 🔒 This view renders MANY forms on one page (the page-settings form,
     // the add-link form, and — per item — move-up, move-down, toggle, delete,
-    // and inline-edit forms). g2ml_generateCSRFToken() overwrites the single
-    // session slot for a given form name every time it is called, so sharing
-    // one form name across all of these would leave only the LAST-rendered
-    // form's token valid. Each logical form is therefore namespaced by
+    // and inline-edit forms). g2ml_generateCSRFToken() keeps only the newest
+    // few tokens for a given form name (see security.php), so sharing one
+    // form name across all of these would leave only the last few forms'
+    // tokens valid. Each logical form is therefore namespaced by
     // pageUID or itemUID + its specific action, matching exactly what
     // g2ml_csrfField() is called with when that form was rendered below.
     switch ($actionType)

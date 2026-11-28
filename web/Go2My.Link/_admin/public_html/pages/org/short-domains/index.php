@@ -80,8 +80,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     $postDomainUID = (int) ($_POST['domain_uid'] ?? 0);
 
     // Per-row actions use a CSRF form name namespaced by the domain UID so that
-    // a page rendering many rows does not overwrite a single shared token slot
-    // (see #147). The add form keeps its own stable name.
+    // a page rendering many rows does not push earlier rows' tokens out of the
+    // few kept for one shared name (see #147 and #291). The add form keeps its
+    // own stable name.
     if ($actionType === 'add_short_domain')
     {
         $csrfFormName = 'org_short_domains_add';
