@@ -58,3 +58,7 @@ tracked on its own issue.
 | [D-040](D-040-org-choice-asked-later.md) | 2026-11-28 | The account is erased on time; an unanswered organisation choice is asked for by e-mail | In force |
 | [D-041](D-041-deleted-organisation-keeps-links-inactive.md) | 2026-11-28 | A deleted organisation keeps its links and QR codes, marked inactive | In force |
 | [D-042](D-042-fix-captcha-before-launch.md) | 2026-11-28 | The CAPTCHA is fixed before launch, allowing the provider's addresses | In force |
+| [D-043](D-043-free-click-counts-30-days.md) | 2026-11-28 | Free click counts show the last 30 days | In force |
+| [D-044](D-044-dated-tallies-for-no-tracking-visits.md) | 2026-11-28 | Visits that ask not to be tracked are counted in dated daily totals | In force |
+| [D-045](D-045-plan-fault-shows-30-days.md) | 2026-11-28 | If the plan cannot be read, only 30 days of statistics are shown | In force |
+| [D-046](D-046-hide-countries-on-free-before-launch.md) | 2026-11-28 | Country figures are hidden from Free accounts before launch | In force |
