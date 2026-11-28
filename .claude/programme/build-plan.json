@@ -2884,7 +2884,20 @@
     "issue": 212,
     "commit": "560d813",
     "what": "per-connection limits on sign-up, contact and password reset; five review rounds, the last by Codex (clean)"
-   }
+   },
+   {"key": "SX-316", "issue": 316, "commit": "2e83207", "what": "fix(installer): let a fresh install create its first administrator and finish (#316)"},
+   {"key": "SX-312", "issue": 312, "commit": "c0f3d97", "what": "fix(security): keep function argument values out of error logs; save long errors (#312)"},
+   {"key": "SX-320", "issue": 320, "commit": "e4d49e5", "what": "feat(linkspage): announce Lnks.Page in the first version (#320)"},
+   {"key": "SX-246", "issue": 246, "commit": "302824f", "what": "fix(privacy): switch off an erased account's links unless the person chooses to keep them (#246)"},
+   {"key": "SX-323", "issue": 323, "commit": "682afec", "what": "fix(security): redact secrets in web addresses before logging them (#323)"},
+   {"key": "SX-289", "issue": 289, "commit": "bc83833", "what": "fix(links): make organisation members' g2my.link links work (#289)"},
+   {"key": "SX-319", "issue": 319, "commit": "3e97169", "what": "fix(security): show debug output only to a signed-in global administrator (#319)"},
+   {"key": "SX-291", "issue": 291, "commit": "21b4cd3", "what": "fix(forms): keep forms working with several tabs; keep a new API key on double click (#291)"},
+   {"key": "SX-325", "issue": 325, "commit": "ad0905a", "what": "feat(admin): a staff screen to switch any short link off, and to remove that block (#325)"},
+   {"key": "SX-213", "issue": 213, "commit": "6ef5e82", "what": "fix(security): do not let browsers store signed-in, dashboard or one-time-link pages (#213)"},
+   {"key": "SX-290", "issue": 290, "commit": "398945a", "what": "fix(redirect): show a page explaining a dead short link instead of going to the homepage (#290)"},
+   {"key": "SX-209", "issue": 209, "commit": "3133ef4", "what": "fix(pricing): say only what is true on the pricing and other public pages (#209)"},
+   {"key": "SX-330", "issue": 330, "commit": "33b077a", "what": "test(db): run the database tests on MariaDB too, and fix what failed there (#330)"}
   ],
   "next": [
    "PF-13",

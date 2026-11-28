@@ -38,43 +38,47 @@
 
 ---
 
-## ⏯️ RESUME HERE (2026-11-28) — read this section first
+## ⏯️ RESUME HERE (2026-11-28, morning) — read this section first
 
 **Goal (owner):** carry on without stopping until the first version of the service can be installed
 and launched; put every question to the owner as a question. **Scope:** essentials first (D-001),
-with the old data moved across (D-002). **Decisions:** `docs/decisions/` D-001 to D-021.
+with the old data moved across (D-002). **Decisions:** `docs/decisions/` D-001 to D-040.
 
 **Working branch:** `feat/2026-09-21-linkspage-and-sweep` (push finished pieces to it, D-005). One
 pull request to `alpha` when the essentials are done (D-016).
 
-**Done:** #212 form limits (`560d813`).
+**Done and pushed:** #212, #316, #312, #320, #246, #323, #289, #319, #291, #325, #213, #290, #209
+(launch part), #330 (database tests now run on MariaDB too).
 
-**In flight** (each in its own worktree `.claude/worktrees/w<issue>`, branch `wip/launch-<issue>`,
-uncommitted until reviewed): in review #316 installer, #312 passwords in logs, #320 LinksPage
-announcement; being built #289 organisation links (migration 044, seed 076), #246 links on erasure
-(migration 045, seed 077, checklist A32), #291 form tokens (seed 078). Seed 075 and checklist A31
-belong to #320.
+**In flight** (each in `.claude/worktrees/w<issue>`, branch `wip/launch-<issue>`, uncommitted until
+reviewed): #247 full erasure (D-030, D-031, D-038 to D-040; migration 047, seed 080) · #317 old-data
+move (D-028, D-034) · #327 Free link limits (D-024, D-035 to D-037; seed 084, row A40) · #328 no API
+on Free (D-025, D-033; seed 083, row A38) · #158 upload set-up (D-007, D-019, D-029, D-032; row A39)
+· #331 bad text dropping audit rows.
 
-**Queue after those, in order:** #290 dead-link page (after #289) → #317 old-data move (after #289,
-#316) → #247 full erasure (after #246) → #178 timed-jobs admin screen (D-008) → #253 clean-up on at
-launch → #311 → #319 debug panel (after #312) → #213 rest (no-store headers) → #229 age gate on
-custom domains → #292 failure pages → #209 pricing page (D-020) → #293 dead controls → #158 deploy
-(D-007, D-019; also pin the server's identity, the workflow turns checking off) → #321 spelling
-(alone) → #318 install runbook → #322 legal-box list → merge `origin/alpha` (small conflict in
-`sftp-deploy.yml`), open the pull request, read the first CI run → full rehearsal with the owner's
-data.
+**Queue after those:** #259 30-day statistics window (D-025) · #178 timed-jobs admin screen (D-008)
+and the D-040 period setting · #253 clean-up on at launch · #311 · #229 age gate on custom domains ·
+#292 failure pages · #293 dead controls · D-029 separate fields for test sites (detail to confirm) ·
+#321 spelling (alone) · #318 install runbook · #322 legal-box list · merge `origin/alpha` (one small
+conflict in `sftp-deploy.yml`, resolve with #158), open the pull request, read the first CI run ·
+full rehearsal with the owner's old-database export.
+
+**Codex catch-up owed** (reviewed by Claude only): #319, #291, #213, #290, #209, #330, and the
+Claude-resolved merges. Codex needs `-c model="gpt-6-astra"` and has a small allowance.
 
 **Waiting on the owner:** the export of the old `mwtools_mwlink` database (D-010, D-018); email
-sending for `noreply@go2my.link` with SPF and DKIM before launch; legal review (D-014); the Dreamhost
-folder (D-007); retiring the old database user (D-015).
+sending for `noreply@go2my.link` with SPF and DKIM; legal review (D-014); the Dreamhost folder and
+GitHub environment for uploads (D-007, in `docs/DEPLOYMENT.md` once #158 lands); retiring the old
+database user (D-015).
 
-**Verification so far:** lint, 1081 unit and 251 database tests on PHP 8.4, 8.5 and 8.6
-(`sh .claude/programme/run-tests.sh all`). No page has been looked at in the owner's browser (the
-Chrome extension was not connected; the owner said carry on). Nothing has run on GitHub.
+**Verification so far:** strict lint and 1183 unit tests on PHP 8.4, 8.5 and 8.6; 327 database tests
+on each, on MySQL 8.4 and MariaDB 11.4 (`sh .claude/programme/run-tests.sh all`). No page has been
+looked at in the owner's browser. Nothing has run on GitHub.
 
-**Machine notes:** local rehearsal containers `g2ml-local-web` (https on 127.0.0.1:8443, reach it as
-go2my.link) and `g2ml-local-mysql` were made on 2026-11-27 for browser-free checks. Codex needs
-`-c model="gpt-6-astra"` and has a small allowance.
+**Merging a finished worktree:** apply `git diff --cached` onto `main-line` with `git apply --3way
+--index`; expect conflicts in the seed and migration lists and counts in `docs/DEPLOYMENT.md` and
+`docs/MIGRATION_PLAN.md` and the checklist; add the CHANGELOG entry; run all tests; commit with
+`G2ML_ALLOW_COMMIT=1`, push with `G2ML_ALLOW_PUSH=1`.
 
 ---
 
