@@ -224,6 +224,8 @@ function g2mlDebugTest_site(): array
                 '-d', 'html_errors=0',
                 '-d', 'expose_php=1',
                 '-d', 'session.save_path=' . $sessions,
+                // Some tests rewrite a file in the copy; read it afresh.
+                '-d', 'opcache.enable=0',
                 '-S', '127.0.0.1:' . $port,
                 '-t', $root,
             ),

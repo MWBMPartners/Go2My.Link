@@ -216,6 +216,15 @@ Users can hold **multiple account types** simultaneously via the `tblUserAccount
 - ✅ Content Security Policy (CSP) headers
 - ✅ HTTPS enforcement via `.htaccess`
 
+### 🗄️ Browser Storage of Private Pages
+
+Pages for a signed-in visitor, every dashboard response (downloads included) and
+pages opened with a one-time token are sent with `Cache-Control: no-store, private`,
+so the browser does not keep a copy. `web/_functions/cache_headers.php` decides, and
+`page_init.php` sends the headers after `session_start()`, which sends cache headers
+of its own. A response that sets its own `Cache-Control` must use the same value.
+Other public pages and static files are not changed by this.
+
 ### 🔧 Credential Override Pattern
 
 ```php

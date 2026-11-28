@@ -110,7 +110,7 @@ $g2mlApiRequestStart = microtime(true);
 // ============================================================================
 // 🧾 Step 3: Every /api/v1 response is uncacheable (it may be authenticated)
 // ============================================================================
-header('Cache-Control: no-store');
+header('Cache-Control: no-store, private');
 
 // ============================================================================
 // 📝 Helper: log the request, emit the envelope, and terminate.

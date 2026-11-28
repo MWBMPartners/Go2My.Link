@@ -363,7 +363,7 @@ function g2ml_streamCsvDownload(string $csv, string $filename): void
     header('Content-Disposition: attachment; filename="' . $safeFilename . '"');
     header('Content-Length: ' . (string) strlen($payload));
     header('X-Content-Type-Options: nosniff');
-    header('Cache-Control: no-store');
+    header('Cache-Control: no-store, private');
 
     echo $payload;
 }

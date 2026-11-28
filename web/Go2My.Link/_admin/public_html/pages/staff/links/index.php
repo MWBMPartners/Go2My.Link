@@ -58,7 +58,7 @@ if (!hasMinimumRole($staffUserRole, 'GlobalAdmin'))
 }
 
 // The page shows people's e-mail addresses, so it is not to be cached.
-header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Cache-Control: no-store, private');
 header('Pragma: no-cache');
 
 if (!function_exists('getDefaultShortDomain') && file_exists($staffFunctionsDir . 'shorturl_create.php'))

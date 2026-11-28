@@ -465,7 +465,7 @@ function g2ml_streamExportDownload(array $requestRow, int $userUID): void
     header('Content-Disposition: attachment; filename="' . $downloadFilename . '"');
     header('Content-Length: ' . (string) strlen($jsonContent));
     header('X-Content-Type-Options: nosniff');
-    header('Cache-Control: no-store');
+    header('Cache-Control: no-store, private');
 
     echo $jsonContent;
 

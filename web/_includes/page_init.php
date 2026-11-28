@@ -337,6 +337,14 @@ if (file_exists(G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'debug_access.php'))
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'org.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'account_types.php';
 
+// Which pages must not be stored by the browser (#213). Guarded: on a
+// partly-deployed tree missing this file the page still loads, with only PHP's
+// own session cache headers.
+if (file_exists(G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'cache_headers.php'))
+{
+    require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'cache_headers.php';
+}
+
 // Optional pricing-engine resolver (#TBD — scaffold). Only DEFINES functions;
 // nothing runs merely by loading it. Two places in entitlements.php call it:
 //
@@ -505,6 +513,15 @@ if (session_status() === PHP_SESSION_NONE)
         session_regenerate_id(true);
         $_SESSION['_g2ml_session_created'] = time();
     }
+}
+
+// Stop private pages being stored by the browser (#213). This must come after
+// session_start(), which sends cache headers of its own, and before the session
+// is checked below, so a visitor whose sign-in has just run out is still
+// covered.
+if (function_exists('g2ml_sendPrivatePageCacheHeaders'))
+{
+    g2ml_sendPrivatePageCacheHeaders();
 }
 
 // Validate and refresh authenticated sessions against the database

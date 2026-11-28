@@ -53,6 +53,10 @@ if (function_exists('header_remove'))
     header_remove('X-Powered-By');
 }
 
+// The shared endpoint names itself part of the main site, so say here that this
+// answer comes from the dashboard: it must not be stored by the browser (#213).
+$GLOBALS['g2mlAdminArea'] = true;
+
 $mainSiteConsentEndpoint = dirname(__DIR__, 4)
     . DIRECTORY_SEPARATOR . 'public_html'
     . DIRECTORY_SEPARATOR . 'api'
@@ -63,6 +67,7 @@ if (!file_exists($mainSiteConsentEndpoint))
 {
     error_log('[Go2My.Link] Cookie consent endpoint not found at: ' . $mainSiteConsentEndpoint);
     http_response_code(500);
+    header('Cache-Control: no-store, private');
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['success' => false, 'error' => 'Consent endpoint unavailable']);
     exit;

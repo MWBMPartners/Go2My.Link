@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🔒 Private pages are not saved by the browser (2026-11-28)
+
+- 🔒 Signed-in pages, every dashboard page and download, and pages opened with a one-time link are
+  now sent with "do not store". The lnks.page offline worker no longer saves whole pages (#213).
+
 ### 🛡️ Staff can switch any short link off (2026-11-28)
 
 - ✨ A global administrator can find any short link at `/staff/links` in the dashboard, switch it

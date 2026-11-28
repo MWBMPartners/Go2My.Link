@@ -9,14 +9,16 @@
 
 /**
  * ============================================================================
- * 🧪 Check — service workers cache static files only (#283)
+ * 🧪 Check — service workers cache static files only (#283, #213)
  * ============================================================================
  *
  * The old workers saved every page they fetched, including sign-in pages,
  * one-time links with their token in the address and signed-in dashboard
  * pages, and precached "/", whose cookie banner issued a fresh form token.
- * This check reads both workers (main site and dashboard) and fails if:
- *   - the precache list holds anything but listed static files and /offline,
+ * This check reads all three workers (main site, dashboard, lnks.page) and
+ * fails if:
+ *   - the precache list holds anything but listed static files and the
+ *     offline page,
  *     or names a file that does not exist in that web root;
  *   - the worker stores a response anywhere except the one static-file branch,
  *     or loses one of its guards: GET only, same site only, no query string,
@@ -64,7 +66,7 @@ function _g2mlServiceWorkerTestStaticFiles(string $source): array
 
 test('service workers: only static files and /offline are precached, and each exists (#283)', function (): void
 {
-    $roots = array('web/Go2My.Link/public_html', 'web/Go2My.Link/_admin/public_html');
+    $roots = array('web/Go2My.Link/public_html', 'web/Go2My.Link/_admin/public_html', 'web/Lnks.page/public_html');
 
     foreach ($roots as $root)
     {
@@ -76,6 +78,12 @@ test('service workers: only static files and /offline are precached, and each ex
 
         foreach ($files as $file)
         {
+            if ($file === '/offline.html')
+            {
+                assert_true(is_file($folder . $file), $root . ' precaches /offline.html but has no such file');
+                continue;
+            }
+
             if ($file === '/offline')
             {
                 assert_true(is_file($folder . '/offline.php'), $root . ' precaches /offline but has no offline.php');
@@ -90,7 +98,7 @@ test('service workers: only static files and /offline are precached, and each ex
 
 test('service workers: pages go to the network, only static files are stored, and the old cache is retired (#283)', function (): void
 {
-    $roots = array('web/Go2My.Link/public_html', 'web/Go2My.Link/_admin/public_html');
+    $roots = array('web/Go2My.Link/public_html', 'web/Go2My.Link/_admin/public_html', 'web/Lnks.page/public_html');
 
     foreach ($roots as $root)
     {
@@ -101,11 +109,21 @@ test('service workers: pages go to the network, only static files are stored, an
         assert_same(0, substr_count($source, '.add('), $root . '/sw.js should not add single responses to the cache');
         assert_true(strpos($source, "request.mode === 'navigate'") !== false, $root . '/sw.js should handle pages separately');
 
+        // The main site and dashboard print their offline page with PHP at
+        // /offline. lnks.page uses a plain English file, which leaves the name
+        // "offline" free for a LinksPage.
+        $offlinePage = '/offline';
+
+        if ($root === 'web/Lnks.page/public_html')
+        {
+            $offlinePage = '/offline.html';
+        }
+
         $guards = array(
             "if (request.method !== 'GET')"                                  => 'only GET requests are handled',
             'if (url.origin !== self.location.origin)'                       => 'other sites are left alone',
             "if (url.search !== '' || STATIC_FILES.indexOf(url.pathname) === -1)" => 'query strings and unlisted files are left alone',
-            "const OFFLINE_PAGE = '/offline';"                               => '/offline is the offline page',
+            "const OFFLINE_PAGE = '" . $offlinePage . "';"                   => 'the offline page is set',
             'return caches.delete(name);'                                    => 'old caches are deleted on activation',
             "new Request(path, { cache: 'reload' })"                         => 'install asks the server, not the browser cache',
             "fetch(request, { cache: 'no-cache' })"                          => 'the background refresh asks the server',
@@ -116,9 +134,24 @@ test('service workers: pages go to the network, only static files are stored, an
             assert_true(strpos($source, $fragment) !== false, $root . '/sw.js has lost a guard (' . $meaning . '): ' . $fragment);
         }
 
-        assert_true(in_array('/offline', _g2mlServiceWorkerTestStaticFiles($source), true), $root . '/sw.js should precache /offline');
+        assert_true(in_array($offlinePage, _g2mlServiceWorkerTestStaticFiles($source), true), $root . '/sw.js should precache ' . $offlinePage);
         assert_false(preg_match("/const CACHE_NAME = '[^']*-v1';/", $source) === 1, $root . '/sw.js still uses the old v1 cache, which held stored pages');
     }
+});
+
+test('offline page: the lnks.page file is self-contained, with no scripts (#213)', function (): void
+{
+    $path = dirname(__DIR__, 2) . '/web/Lnks.page/public_html/offline.html';
+
+    assert_true(is_file($path), 'web/Lnks.page/public_html/offline.html is missing');
+
+    $source = (string) file_get_contents($path);
+
+    assert_contains('<html lang="en-GB">', $source);
+    assert_contains('<h1>You are offline</h1>', $source);
+    assert_contains('<a href="/">Try again</a>', $source);
+    assert_false(stripos($source, '<script') !== false, 'The offline page must run no script');
+    assert_false(preg_match('#(src|href)="(https?:)?//#i', $source) === 1, 'The offline page must load nothing from other sites');
 });
 
 test('offline page: each /offline sets up its own site and prints the shared page (#283)', function (): void

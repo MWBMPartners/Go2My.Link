@@ -62,7 +62,7 @@ if (!hasMinimumRole($breachUserRole, 'GlobalAdmin'))
 }
 
 // 🛡️ Prevent caching of this sensitive page (salt may be displayed)
-header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Cache-Control: no-store, private');
 header('Pragma: no-cache');
 
 // ============================================================================

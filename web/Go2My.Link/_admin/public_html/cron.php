@@ -225,6 +225,6 @@ finally
 
 http_response_code(200);
 header('Content-Type: application/json; charset=utf-8');
-header('Cache-Control: no-store');
+header('Cache-Control: no-store, private');
 echo json_encode($report, JSON_PRETTY_PRINT);
 exit;
