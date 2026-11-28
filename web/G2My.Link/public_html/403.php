@@ -46,27 +46,23 @@ if (!defined('G2ML_COMPONENT'))
 // ============================================================================
 // 📋 Set Default Values
 // ============================================================================
-$errorTitle   = $errorTitle ?? '403 — Forbidden';
-$errorMessage = $errorMessage ?? 'You do not have permission to access this resource.';
+if (!isset($errorTitle)) {
+    $errorTitle = g2ml_shortlinkText('error.403_title', '403 — Forbidden');
+}
+if (!isset($errorMessage)) {
+    $errorMessage = g2ml_shortlinkText('error.403_message', 'You do not have permission to access this resource.');
+}
 if (function_exists('getSetting')) {
     $siteName = getSetting('site.name', 'Go2My.Link');
 } else {
     $siteName = 'Go2My.Link';
 }
-if (function_exists('__')) {
-    $goHomeLabel = __('error.go_home');
-} else {
-    $goHomeLabel = 'Go Home';
-}
-if (function_exists('__')) {
-    $poweredByLabel = __('error.powered_by');
-} else {
-    $poweredByLabel = 'Powered by';
-}
+$goHomeLabel    = g2ml_shortlinkText('error.go_home', 'Go Home');
+$poweredByLabel = g2ml_shortlinkText('error.powered_by', 'Powered by');
 $mainSiteURL  = 'https://go2my.link';
 ?>
 <!DOCTYPE html>
-<html lang="en-GB" dir="ltr" data-bs-theme="light">
+<html lang="<?php echo htmlspecialchars(g2ml_shortlinkLocale(), ENT_QUOTES, 'UTF-8'); ?>" dir="<?php echo htmlspecialchars(g2ml_shortlinkDirection(), ENT_QUOTES, 'UTF-8'); ?>" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -125,6 +121,9 @@ $mainSiteURL  = 'https://go2my.link';
             justify-content: center;
         }
         .error-container {
+            box-sizing: border-box;
+            width: 100%;
+            overflow-wrap: anywhere;
             max-width: 500px;
             text-align: center;
             padding: 2rem;
@@ -162,8 +161,7 @@ $mainSiteURL  = 'https://go2my.link';
         <!-- 📋 Powered By -->
         <p class="text-body-secondary small">
             <?php echo htmlspecialchars($poweredByLabel, ENT_QUOTES, 'UTF-8'); ?>
-            <a href="<?php echo htmlspecialchars($mainSiteURL, ENT_QUOTES, 'UTF-8'); ?>"
-               class="text-decoration-none">
+            <a href="<?php echo htmlspecialchars($mainSiteURL, ENT_QUOTES, 'UTF-8'); ?>">
                 <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>
             </a>
         </p>

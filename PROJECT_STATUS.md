@@ -139,7 +139,7 @@ Comprehensive security, WCAG, and W3C compliance audit across all components. **
 
 - [x] 3.1 — 🔀 Redirect resolver & domain resolver functions: `resolveShortCode()`, `validateDestination()`, `getOrgByDomain()`, `getDomainFallbackURL()` (#10)
 - [x] 3.2 — 🔀 Redirect processor refactor: resolver-based flow, DNT respect, destination validation gate, `lastClickAt` tracking (#8)
-- [x] 3.3 — 🚫 Branded error/fallback pages: 404, expired/scheduled, validation failure — self-contained HTML with countdown timers (#11)
+- [x] 3.3 — 🚫 Branded error/fallback pages: 404, expired/scheduled, validation failure — self-contained HTML (#11; the countdown on the expired page was removed in #290)
 - [x] 3.4 — 🤖 Dynamic robots.txt & favicon handlers: settings-based, org-specific favicon support (#13)
 - [x] 3.5 — ✨ Anonymous short URL creation: `createShortURL()`, rate limiting, CAPTCHA verification (#16)
 - [x] 3.6 — 📡 Internal API endpoint: `POST /api/create/` with CSRF, CAPTCHA, rate limiting, no-JS fallback (#18)

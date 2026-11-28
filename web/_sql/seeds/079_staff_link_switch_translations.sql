@@ -9,16 +9,13 @@
 -- =============================================================================
 -- Words for the staff "Find a Short Link" page (owner decisions D-023 and
 -- D-026), the notices a link's owner sees when staff have switched it off, the
--- information page's blocked-link wording (D-027), and the changed
--- visitor and help wording, which no longer says a disabled link was disabled
--- by its owner.
---
--- Changed wording uses a new key name, so INSERT IGNORE is enough. The old key
--- help.short_links.s7_p2 from seed 022 stays in place but is no longer used.
+-- information page's blocked-link wording (D-027), and the visitor
+-- wording for a disabled link, which does not say who disabled it. The matching
+-- help paragraph is in seed 081.
 --
 -- Apply this file to an EXISTING database too. Without it the redirect error
--- page, the information page, the help page, the menu and My Links can show key names instead of
--- words. Safe to run more than once.
+-- page, the information page, the menu and My Links can show key names instead
+-- of words. Safe to run more than once.
 --
 -- Dependencies: web/_sql/schema/035_translations.sql and
 -- web/_sql/seeds/005_languages.sql (tblTranslations, en-GB).
@@ -35,7 +32,6 @@ USE `mwtools_Go2MyLink`;
 INSERT IGNORE INTO `tblTranslations` (`localeCode`, `translationKey`, `translationValue`, `context`, `isVerified`)
 VALUES
 ('en-GB', 'edit_link.staff_disabled_notice', 'Go2My.Link staff have switched this link off, so it does not redirect. You cannot switch it back on. If you think this is a mistake, please contact us.', 'Edit link', 1),
-('en-GB', 'help.short_links.s7_p2_v2', 'While a link is switched off, anyone who visits its short address sees a page saying the link has been disabled — this is a different message from the one shown for a link that simply has not started yet or has already ended (see Start and end dates above). Go2My.Link staff can also switch a link off. If they do, your dashboard says so and you cannot switch it back on. If staff remove the block, the link goes back to how it was before, so a link you had switched off stays off.', 'Help — Short Links', 1),
 ('en-GB', 'info.staff_blocked_destination', 'Go2My.Link staff have switched this link off, so its destination is not shown.', 'Link info page', 1),
 ('en-GB', 'info.status_staff_blocked', 'Switched off by staff', 'Link info page', 1),
 ('en-GB', 'links.status_staff_disabled', 'Switched off by staff', 'My Links', 1),

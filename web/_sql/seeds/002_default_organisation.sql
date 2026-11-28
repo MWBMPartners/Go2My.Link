@@ -20,6 +20,13 @@
 USE `mwtools_Go2MyLink`;
 
 -- Default organisation (used for links not assigned to any org)
+--
+-- #290 / decision D-006: orgFallbackURL is NULL on purpose. It used to be
+-- https://go2my.link, so a short link that did not exist, had expired or was
+-- switched off silently sent the visitor to the homepage. With no fallback,
+-- g2my.link shows a page saying why. An owner may still set one in the
+-- organisation settings. Existing databases: migration 048 clears the old
+-- seeded value.
 INSERT INTO `tblOrganisations` (
     `orgHandle`, `orgName`, `orgURL`, `orgDomain`, `orgFallbackURL`,
     `tierID`, `isVerified`, `isActive`, `orgNotes`
@@ -28,7 +35,7 @@ INSERT INTO `tblOrganisations` (
     'Go2My.Link (Default)',
     'https://go2my.link',
     'go2my.link',
-    'https://go2my.link',
+    NULL,
     'free',
     1,
     1,

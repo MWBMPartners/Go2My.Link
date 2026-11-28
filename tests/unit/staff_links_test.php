@@ -293,7 +293,6 @@ test('staff links: seed 079 holds every new key with the same English as the cod
         'info.staff_blocked_destination'  => 'Go2My.Link/public_html/pages/info/index.php',
         'info.status_staff_blocked'       => 'Go2My.Link/public_html/pages/info/index.php',
         'edit_link.staff_disabled_notice' => 'Go2My.Link/_admin/public_html/pages/links/edit/index.php',
-        'help.short_links.s7_p2_v2'       => 'Go2My.Link/public_html/pages/help/short-links/index.php',
         'links.status_staff_disabled'     => 'Go2My.Link/_admin/public_html/pages/links/index.php',
         'nav.staff_links'                 => '_includes/nav.php',
         'redirect.link_disabled_message'  => 'G2My.Link/public_html/index.php',

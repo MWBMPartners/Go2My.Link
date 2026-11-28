@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🔗 Dead short links explain themselves (2026-11-28)
+
+- 🐛 A short link that does not exist, has expired, has not started or is switched off now shows a
+  page saying why, with the right "missing" status, instead of silently going to the homepage. A
+  trailing slash is accepted, the g2my.link pages are translated, and a database outage answers
+  "try again shortly" (#290, decision D-006).
+- 🗄️ **On deploy to an existing database:** migration `048_default_org_dead_link_page.sql` and seed
+  `081` (checklist row A36).
+
 ### 🔒 Private pages are not saved by the browser (2026-11-28)
 
 - 🔒 Signed-in pages, every dashboard page and download, and pages opened with a one-time link are

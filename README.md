@@ -121,7 +121,7 @@ Go2My.Link is a URL shortening platform comprising three interconnected web prop
 ### ✅ Phase 3 — Core Product (v0.4.0)
 
 - 🔀 Redirect engine with resolver functions + stored procedure lookup
-- 🚫 Branded error pages (404, expired, validating) with countdown timers
+- 🚫 Branded error pages (404, expired, validating); only the safety check page has a countdown (the expired page's was removed in #290)
 - 🤖 Dynamic robots.txt + org-specific favicon handlers
 - ✨ Anonymous URL creation with rate limiting + CAPTCHA (Turnstile/reCAPTCHA)
 - 📡 Internal API (`POST /api/create/`) with CSRF + CAPTCHA + no-JS fallback
@@ -247,7 +247,7 @@ Go2My.Link/
 
 5. Import the two stored procedures from `web/_sql/procedures/`. Without `sp_lookupShortURL`, no short link redirects.
 
-6. Run the seed scripts from `web/_sql/seeds/` (42 files, in filename order). [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) lists them and says which migrations an existing database also needs.
+6. Run the seed scripts from `web/_sql/seeds/` (43 files, in filename order). [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) lists them and says which migrations an existing database also needs.
 
 7. Point your web server document roots to the appropriate `public_html/` directories.
 

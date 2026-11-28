@@ -12,14 +12,19 @@
  * ⏰ Go2My.Link — Expired / Not Yet Active Link Page (Component B)
  * ============================================================================
  *
- * Branded error page for short links that have expired or are not yet active.
- * Includes a countdown timer that redirects to the fallback URL after a
- * configurable delay (default: 5 seconds).
+ * Branded page for short links that have expired or are not yet active. It
+ * says why and links to the homepage.
+ *
+ * It used to count down for a few seconds and then send the visitor to the
+ * fallback address. That was removed in #290: decision D-006 rules out
+ * sending visitors to the homepage without being asked, and a page that moves
+ * on by itself leaves slow readers behind (WCAG 2.2.1). An organisation that
+ * set its own fallback address never reaches this page; index.php redirects
+ * there first.
  *
  * Expected variables from the including file (index.php):
  *   - $errorTitle   (string) — Error heading text
  *   - $errorMessage (string) — Descriptive error message
- *   - $orgHandle    (string|null) — Organisation handle for fallback
  *   - $status       (string) — SP status: 'expired' or 'not_yet_active'
  *
  * @package    Go2My.Link
@@ -40,30 +45,22 @@ if (!defined('G2ML_COMPONENT'))
 }
 
 // ============================================================================
-// 📋 Set Default Values and Determine Fallback
+// 📋 Set Default Values
 // ============================================================================
-$errorTitle   = $errorTitle ?? 'Link Expired';
-$errorMessage = $errorMessage ?? 'This short link has expired and is no longer available.';
+if (!isset($errorTitle)) {
+    $errorTitle = g2ml_shortlinkText('shortlink.expired_title', 'Link Expired');
+}
+if (!isset($errorMessage)) {
+    $errorMessage = g2ml_shortlinkText('shortlink.expired_message', 'This short link has expired and is no longer available.');
+}
 if (function_exists('getSetting')) {
     $siteName = getSetting('site.name', 'Go2My.Link');
 } else {
     $siteName = 'Go2My.Link';
 }
-$mainSiteURL  = 'https://go2my.link';
-
-// Get the fallback URL via the cascade (category → org → system → default)
-if (function_exists('getDomainFallbackURL')) {
-    $fallbackURL = getDomainFallbackURL($orgHandle ?? '[default]');
-} else {
-    $fallbackURL = $mainSiteURL;
-}
-
-// Countdown delay from settings (default: 5 seconds)
-if (function_exists('getSetting')) {
-    $countdownDelay = (int) getSetting('redirect.fallback_delay', 5);
-} else {
-    $countdownDelay = 5;
-}
+$mainSiteURL    = 'https://go2my.link';
+$homeLinkLabel  = g2ml_shortlinkText('shortlink.home_link', 'Go to the {site} homepage', ['site' => $siteName]);
+$poweredByLabel = g2ml_shortlinkText('error.powered_by', 'Powered by');
 
 // Choose appropriate icon based on status
 if (($status ?? 'expired') === 'not_yet_active') {
@@ -71,53 +68,14 @@ if (($status ?? 'expired') === 'not_yet_active') {
 } else {
     $statusIcon = 'fa-calendar-xmark';
 }
-
-// ============================================================================
-// 🛡️ Scheme-guard the fallback URL before it reaches an href / JS sink (F-003 / #99)
-// ============================================================================
-// The org/category fallback could be a migrated legacy URL carrying a
-// javascript:/data:/vbscript: scheme, which would become a live XSS /
-// open-redirect vector once emitted into an href or window.location.href.
-// g2ml_sanitiseURL() (loaded by page_init.php for Component B) returns false
-// for anything that is not a valid http(s) URL; on rejection we drop back to
-// the safe main site. htmlspecialchars(..., ENT_QUOTES) is still applied at
-// every sink.
-
-if (function_exists('g2ml_sanitiseURL'))
-{
-    $safeFallbackURL = g2ml_sanitiseURL($fallbackURL);
-
-    if ($safeFallbackURL === false)
-    {
-        $safeFallbackURL = $mainSiteURL;
-    }
-}
-else
-{
-    // Defensive fallback if the shared helper is ever unavailable in this
-    // include path: an http(s)-only scheme guard consistent with house style.
-    if (preg_match('#^https?://#i', $fallbackURL) === 1)
-    {
-        $safeFallbackURL = $fallbackURL;
-    }
-    else
-    {
-        $safeFallbackURL = $mainSiteURL;
-    }
-}
 ?>
 <!DOCTYPE html>
-<html lang="en-GB" dir="ltr" data-bs-theme="light">
+<html lang="<?php echo htmlspecialchars(g2ml_shortlinkLocale(), ENT_QUOTES, 'UTF-8'); ?>" dir="<?php echo htmlspecialchars(g2ml_shortlinkDirection(), ENT_QUOTES, 'UTF-8'); ?>" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
     <title><?php echo htmlspecialchars($errorTitle, ENT_QUOTES, 'UTF-8'); ?> — <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?></title>
-
-    <!-- ♿ No-JS fallback: meta refresh to fallback URL -->
-    <noscript>
-        <meta http-equiv="refresh" content="<?php echo $countdownDelay; ?>;url=<?php echo htmlspecialchars($safeFallbackURL, ENT_QUOTES, 'UTF-8'); ?>">
-    </noscript>
 
     <?php // Bootstrap 5.3 CSS: CDN first; a local copy in /vendor/ if the CDN fails. ?>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
@@ -171,6 +129,9 @@ else
             justify-content: center;
         }
         .error-container {
+            box-sizing: border-box;
+            width: 100%;
+            overflow-wrap: anywhere;
             max-width: 500px;
             text-align: center;
             padding: 2rem;
@@ -179,10 +140,6 @@ else
             font-size: 4rem;
             opacity: 0.6;
             margin-bottom: 1.5rem;
-        }
-        .countdown-number {
-            font-size: 1.5rem;
-            font-weight: bold;
         }
     </style>
 </head>
@@ -200,88 +157,23 @@ else
         <!-- 📋 Error Message -->
         <p class="text-body-secondary mb-4"><?php echo htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8'); ?></p>
 
-        <!-- ⏱️ Countdown -->
+        <!-- 🔗 Link to the homepage -->
         <div class="mb-4">
-            <p class="text-body-secondary">
-                Redirecting in <span id="countdown" class="countdown-number"><?php echo $countdownDelay; ?></span> seconds...
-            </p>
-            <div class="progress" role="progressbar" aria-label="Redirect countdown"
-                 aria-valuenow="<?php echo $countdownDelay; ?>" aria-valuemin="0" aria-valuemax="<?php echo $countdownDelay; ?>"
-                 style="height: 4px;">
-                <div id="countdown-bar" class="progress-bar" style="width: 100%;"></div>
-            </div>
-        </div>
-
-        <!-- 🔗 Manual Fallback Link -->
-        <div class="mb-4">
-            <a href="<?php echo htmlspecialchars($safeFallbackURL, ENT_QUOTES, 'UTF-8'); ?>"
-               class="btn btn-primary">
-                <i class="fas fa-arrow-right" aria-hidden="true"></i>
-                Continue
+            <a href="<?php echo htmlspecialchars($mainSiteURL, ENT_QUOTES, 'UTF-8'); ?>"
+               class="btn btn-primary btn-lg">
+                <i class="fas fa-home" aria-hidden="true"></i>
+                <?php echo htmlspecialchars($homeLinkLabel, ENT_QUOTES, 'UTF-8'); ?>
             </a>
         </div>
 
-        <!-- ♿ No-JS Manual Link -->
-        <noscript>
-            <p class="text-body-secondary">
-                <a href="<?php echo htmlspecialchars($safeFallbackURL, ENT_QUOTES, 'UTF-8'); ?>">
-                    Continue to <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?> if you are not redirected automatically.
-                </a>
-            </p>
-        </noscript>
-
         <!-- 📋 Powered By -->
         <p class="text-body-secondary small">
-            Powered by
-            <a href="<?php echo htmlspecialchars($mainSiteURL, ENT_QUOTES, 'UTF-8'); ?>"
-               class="text-decoration-none">
+            <?php echo htmlspecialchars($poweredByLabel, ENT_QUOTES, 'UTF-8'); ?>
+            <a href="<?php echo htmlspecialchars($mainSiteURL, ENT_QUOTES, 'UTF-8'); ?>">
                 <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>
             </a>
         </p>
     </main>
-
-    <!-- ♿ ARIA Live Region for Countdown Announcements (polite: a countdown is not urgent) -->
-    <div id="countdown-status" class="visually-hidden" aria-live="polite" role="status"></div>
-
-    <!-- ⏱️ Countdown Timer Script -->
-    <script>
-        (function() {
-            var remaining   = <?php echo (int) $countdownDelay; ?>;
-            var total       = remaining;
-            var fallbackURL = <?php echo json_encode($safeFallbackURL, JSON_UNESCAPED_SLASHES); ?>;
-            var countdownEl = document.getElementById('countdown');
-            var progressEl  = document.getElementById('countdown-bar');
-            var statusEl    = document.getElementById('countdown-status');
-
-            var timer = setInterval(function() {
-                remaining--;
-
-                if (countdownEl) {
-                    countdownEl.textContent = remaining;
-                }
-
-                if (progressEl) {
-                    progressEl.style.width = ((remaining / total) * 100) + '%';
-                }
-
-                // Announce at key moments for screen readers
-                if (statusEl && (remaining === 3 || remaining === 1)) {
-                    var secondLabel;
-                    if (remaining === 1) {
-                        secondLabel = ' second';
-                    } else {
-                        secondLabel = ' seconds';
-                    }
-                    statusEl.textContent = 'Redirecting in ' + remaining + secondLabel;
-                }
-
-                if (remaining <= 0) {
-                    clearInterval(timer);
-                    window.location.href = fallbackURL;
-                }
-            }, 1000);
-        })();
-    </script>
 
 </body>
 </html>

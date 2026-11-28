@@ -29,9 +29,9 @@ Complete **all** items before beginning the migration:
 ### 📁 Application Files
 
 - [ ] All 17 schema files (`web/_sql/schema/` — `000`, `010`–`015`, `020`–`021`, `030`–`036`, `044`) are current and tested
-- [ ] All 42 seed files (`web/_sql/seeds/`, listed in Phase C below) are current and tested
+- [ ] All 43 seed files (`web/_sql/seeds/`, listed in Phase C below) are current and tested
 - [ ] Both stored procedures (`web/_sql/procedures/sp_generateShortCode.sql`, `sp_lookupShortURL.sql`) are current — ⚠️ `sp_logActivity.sql` no longer exists (DELETED; direct `INSERT` now)
-- [ ] All 18 migration scripts (`web/_sql/migrations/001-004,006,008-019` — there is no `005`) match legacy schema, with `016` and `019` confirmed MANDATORY (see Phase D). The other seven files there (`020`, `021`, `042`, `043`, `044`, `045` and `046`) are covered in `docs/DEPLOYMENT.md`
+- [ ] All 19 migration scripts (`web/_sql/migrations/001-004,006,008-019,048` — there is no `005`) match legacy schema, with `016` and `019` confirmed MANDATORY (see Phase D). The other seven files there (`020`, `021`, `042`, `043`, `044`, `045` and `046`) are covered in `docs/DEPLOYMENT.md`
 - [ ] `auth_creds.php` populated with production database credentials
 - [ ] `ENCRYPTION_SALT` generated: `php -r "echo bin2hex(random_bytes(32));"`
 - [ ] CAPTCHA keys configured (Turnstile or reCAPTCHA)
@@ -164,10 +164,11 @@ Step C39:  web/_sql/seeds/075_linkspage_announcement_translations.sql
 Step C40:  web/_sql/seeds/076_shared_g2my_codes_translations.sql
 Step C41:  web/_sql/seeds/077_deletion_link_choice_translations.sql
 Step C42:  web/_sql/seeds/079_staff_link_switch_translations.sql
+Step C43:  web/_sql/seeds/081_dead_link_page_translations.sql
 ```
 
-⚠️ **All 42 must be loaded, in filename order.** The numbers have gaps (there
-is no `024`–`028`, `030`–`056`, `060`–`063` or `078`); that is expected. Many
+⚠️ **All 43 must be loaded, in filename order.** The numbers have gaps (there
+is no `024`–`028`, `030`–`056`, `060`–`063`, `078` or `080`); that is expected. Many
 features read settings these seeds define, and the later ones hold the words
 the pages show, so most pages without their seed show key names instead of
 text.
@@ -204,6 +205,7 @@ Step D14: web/_sql/migrations/016_linkspage_custom_html.sql        🚨 MANDATOR
 Step D15: web/_sql/migrations/017_apikey_prefix_unique.sql         (idempotent no-op if already applied)
 Step D16: web/_sql/migrations/018_deprecate_org_domains.sql        (Part 1 only — table COMMENT; Part 2 is a manual, owner-reviewed audit, never auto-run)
 Step D17: web/_sql/migrations/019_settings_scope_dedupe.sql        🚨 MANDATORY — see below
+Step D18: web/_sql/migrations/048_default_org_dead_link_page.sql   (#290; safe to repeat; needed if the default organisation still has the homepage as its fallback address)
 ```
 
 🚨 **`016` and `019` are MANDATORY at this cutover — do not skip them even

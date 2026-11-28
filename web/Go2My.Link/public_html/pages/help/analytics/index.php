@@ -111,7 +111,7 @@ if (function_exists('__')) {
                     </p>
 
                     <p>
-                        <?php if (function_exists('__')) { echo __('help.analytics.s1_p2'); } else { echo 'If a short link does not exist, has been switched off, has expired, or has not started yet, following it does not add to your click count — the visitor sees an error or "not available" page instead of being sent anywhere, so there is nothing meaningful to count.'; } ?>
+                        <?php if (function_exists('__')) { echo __('help.analytics.s1_p2_v2'); } else { echo 'If a short link does not exist, has been switched off, has expired, or has not started yet, following it does not add to your click count. The visitor sees a page saying why, or is sent to your organisation\'s fallback address if it has set one. Either way they never reach your destination, so there is nothing to count.'; } ?>
                     </p>
                 </section>
 

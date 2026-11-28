@@ -12,9 +12,11 @@
  * ❌ Go2My.Link — 404 Error Page (Component B)
  * ============================================================================
  *
- * Branded error page for short links that cannot be found, are disabled,
- * or have configuration issues. Self-contained HTML — does not use the
- * shared header/nav/footer templates (Component B is performance-critical).
+ * Branded page for short links that cannot be found, are switched off, have
+ * configuration issues, or cannot be looked up just now. It says why and
+ * links to the homepage. It never moves the visitor on by itself (#290).
+ * Self-contained HTML — does not use the shared header/nav/footer templates
+ * (Component B is performance-critical).
  *
  * Expected variables from the including file (index.php):
  *   - $errorTitle   (string) — Error heading text
@@ -42,17 +44,23 @@ if (!defined('G2ML_COMPONENT'))
 // ============================================================================
 // 📋 Set Default Values
 // ============================================================================
-$errorTitle   = $errorTitle ?? '404 — Link Not Found';
-$errorMessage = $errorMessage ?? 'The short link you requested does not exist or has been removed.';
+if (!isset($errorTitle)) {
+    $errorTitle = g2ml_shortlinkText('shortlink.not_found_title', 'Link Not Found');
+}
+if (!isset($errorMessage)) {
+    $errorMessage = g2ml_shortlinkText('shortlink.not_found_message', 'This short link does not exist, or it has been removed. Check that the address was typed correctly.');
+}
 if (function_exists('getSetting')) {
     $siteName = getSetting('site.name', 'Go2My.Link');
 } else {
     $siteName = 'Go2My.Link';
 }
-$mainSiteURL  = 'https://go2my.link';
+$mainSiteURL    = 'https://go2my.link';
+$homeLinkLabel  = g2ml_shortlinkText('shortlink.home_link', 'Go to the {site} homepage', ['site' => $siteName]);
+$poweredByLabel = g2ml_shortlinkText('error.powered_by', 'Powered by');
 ?>
 <!DOCTYPE html>
-<html lang="en-GB" dir="ltr" data-bs-theme="light">
+<html lang="<?php echo htmlspecialchars(g2ml_shortlinkLocale(), ENT_QUOTES, 'UTF-8'); ?>" dir="<?php echo htmlspecialchars(g2ml_shortlinkDirection(), ENT_QUOTES, 'UTF-8'); ?>" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -111,6 +119,9 @@ $mainSiteURL  = 'https://go2my.link';
             justify-content: center;
         }
         .error-container {
+            box-sizing: border-box;
+            width: 100%;
+            overflow-wrap: anywhere;
             max-width: 500px;
             text-align: center;
             padding: 2rem;
@@ -140,16 +151,15 @@ $mainSiteURL  = 'https://go2my.link';
         <div class="mb-4">
             <a href="<?php echo htmlspecialchars($mainSiteURL, ENT_QUOTES, 'UTF-8'); ?>"
                class="btn btn-primary btn-lg">
-                <i class="fas fa-plus-circle" aria-hidden="true"></i>
-                Create a Short Link
+                <i class="fas fa-home" aria-hidden="true"></i>
+                <?php echo htmlspecialchars($homeLinkLabel, ENT_QUOTES, 'UTF-8'); ?>
             </a>
         </div>
 
         <!-- 📋 Powered By -->
         <p class="text-body-secondary small">
-            Powered by
-            <a href="<?php echo htmlspecialchars($mainSiteURL, ENT_QUOTES, 'UTF-8'); ?>"
-               class="text-decoration-none">
+            <?php echo htmlspecialchars($poweredByLabel, ENT_QUOTES, 'UTF-8'); ?>
+            <a href="<?php echo htmlspecialchars($mainSiteURL, ENT_QUOTES, 'UTF-8'); ?>">
                 <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>
             </a>
         </p>

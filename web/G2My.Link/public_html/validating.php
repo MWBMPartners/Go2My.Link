@@ -49,6 +49,22 @@ if (function_exists('getSetting')) {
 }
 $mainSiteURL  = 'https://go2my.link';
 
+// The page's words (#290). {seconds} is left in place here and filled in where
+// it is printed, so the visible number can sit in its own element.
+$pageTitle         = g2ml_shortlinkText('shortlink.checking_title', 'Checking Link Safety');
+$pageMessage       = g2ml_shortlinkText('shortlink.checking_message', 'We could not verify the safety of the destination for this short link.');
+$destinationLabel  = g2ml_shortlinkText('shortlink.checking_destination', 'Destination:');
+$cautionLabel      = g2ml_shortlinkText('shortlink.checking_caution', 'Proceed with caution.');
+$cautionText       = g2ml_shortlinkText('shortlink.checking_advice', 'The destination may be temporarily unavailable or may have moved. If you do not trust this link, use the safe alternative below.');
+$proceedingText    = g2ml_shortlinkText('shortlink.checking_proceeding', 'Proceeding in {seconds} seconds...');
+$announceOneText   = g2ml_shortlinkText('shortlink.checking_announce_one', 'Proceeding in 1 second');
+$announceManyText  = g2ml_shortlinkText('shortlink.checking_announce_many', 'Proceeding in {seconds} seconds');
+$countdownLabel    = g2ml_shortlinkText('shortlink.checking_countdown_label', 'Redirect countdown');
+$proceedLabel      = g2ml_shortlinkText('shortlink.checking_proceed', 'Proceed Anyway');
+$safeLabel         = g2ml_shortlinkText('shortlink.checking_safe', 'Go Somewhere Safe');
+$safeNoScriptLabel = g2ml_shortlinkText('shortlink.checking_safe_noscript', 'Go to a safe page if you are not redirected automatically.');
+$poweredByLabel    = g2ml_shortlinkText('error.powered_by', 'Powered by');
+
 // Fallback URL goes to the org fallback (NOT the unverified destination)
 if (function_exists('getDomainFallbackURL')) {
     $fallbackURL = getDomainFallbackURL($orgHandle ?? '[default]');
@@ -122,12 +138,12 @@ if ($safeDestination !== '')
 }
 ?>
 <!DOCTYPE html>
-<html lang="en-GB" dir="ltr" data-bs-theme="light">
+<html lang="<?php echo htmlspecialchars(g2ml_shortlinkLocale(), ENT_QUOTES, 'UTF-8'); ?>" dir="<?php echo htmlspecialchars(g2ml_shortlinkDirection(), ENT_QUOTES, 'UTF-8'); ?>" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>Checking Link Safety — <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?></title>
+    <title><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?> — <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?></title>
 
     <!-- ♿ No-JS fallback: meta refresh to fallback URL (safe URL, not destination) -->
     <noscript>
@@ -186,6 +202,9 @@ if ($safeDestination !== '')
             justify-content: center;
         }
         .validation-container {
+            box-sizing: border-box;
+            width: 100%;
+            overflow-wrap: anywhere;
             max-width: 550px;
             text-align: center;
             padding: 2rem;
@@ -213,33 +232,32 @@ if ($safeDestination !== '')
         </div>
 
         <!-- 📋 Title -->
-        <h1 class="h3 mb-3">Checking Link Safety</h1>
+        <h1 class="h3 mb-3"><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
 
         <!-- 📋 Message -->
         <p class="text-body-secondary mb-2">
-            We could not verify the safety of the destination for this short link.
+            <?php echo htmlspecialchars($pageMessage, ENT_QUOTES, 'UTF-8'); ?>
         </p>
 
         <?php if ($destinationDomain !== '') { ?>
         <p class="text-body-secondary mb-4">
-            Destination: <span class="destination-domain"><?php echo htmlspecialchars($destinationDomain, ENT_QUOTES, 'UTF-8'); ?></span>
+            <?php echo htmlspecialchars($destinationLabel, ENT_QUOTES, 'UTF-8'); ?> <span class="destination-domain"><?php echo htmlspecialchars($destinationDomain, ENT_QUOTES, 'UTF-8'); ?></span>
         </p>
         <?php } ?>
 
         <!-- ⚠️ Warning -->
         <div class="alert alert-warning text-start mb-4" role="alert">
             <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
-            <strong>Proceed with caution.</strong>
-            The destination may be temporarily unavailable or may have moved.
-            If you do not trust this link, use the safe alternative below.
+            <strong><?php echo htmlspecialchars($cautionLabel, ENT_QUOTES, 'UTF-8'); ?></strong>
+            <?php echo htmlspecialchars($cautionText, ENT_QUOTES, 'UTF-8'); ?>
         </div>
 
         <!-- ⏱️ Countdown -->
         <div class="mb-3">
             <p class="text-body-secondary">
-                Proceeding in <span id="countdown" class="countdown-number"><?php echo $countdownDelay; ?></span> seconds...
+                <?php echo str_replace('{seconds}', '<span id="countdown" class="countdown-number">' . (int) $countdownDelay . '</span>', htmlspecialchars($proceedingText, ENT_QUOTES, 'UTF-8')); ?>
             </p>
-            <div class="progress" role="progressbar" aria-label="Redirect countdown"
+            <div class="progress" role="progressbar" aria-label="<?php echo htmlspecialchars($countdownLabel, ENT_QUOTES, 'UTF-8'); ?>"
                  aria-valuenow="<?php echo $countdownDelay; ?>" aria-valuemin="0" aria-valuemax="<?php echo $countdownDelay; ?>"
                  style="height: 4px;">
                 <div id="countdown-bar" class="progress-bar bg-warning" style="width: 100%;"></div>
@@ -253,14 +271,14 @@ if ($safeDestination !== '')
                class="btn btn-warning text-dark"
                rel="noopener noreferrer">
                 <i class="fas fa-external-link-alt" aria-hidden="true"></i>
-                Proceed Anyway
+                <?php echo htmlspecialchars($proceedLabel, ENT_QUOTES, 'UTF-8'); ?>
             </a>
             <?php } ?>
 
             <a href="<?php echo htmlspecialchars($safeFallbackURL, ENT_QUOTES, 'UTF-8'); ?>"
                class="btn btn-primary">
                 <i class="fas fa-shield-alt" aria-hidden="true"></i>
-                Go Somewhere Safe
+                <?php echo htmlspecialchars($safeLabel, ENT_QUOTES, 'UTF-8'); ?>
             </a>
         </div>
 
@@ -268,16 +286,15 @@ if ($safeDestination !== '')
         <noscript>
             <p class="text-body-secondary">
                 <a href="<?php echo htmlspecialchars($safeFallbackURL, ENT_QUOTES, 'UTF-8'); ?>">
-                    Go to a safe page if you are not redirected automatically.
+                    <?php echo htmlspecialchars($safeNoScriptLabel, ENT_QUOTES, 'UTF-8'); ?>
                 </a>
             </p>
         </noscript>
 
         <!-- 📋 Powered By -->
         <p class="text-body-secondary small">
-            Powered by
-            <a href="<?php echo htmlspecialchars($mainSiteURL, ENT_QUOTES, 'UTF-8'); ?>"
-               class="text-decoration-none">
+            <?php echo htmlspecialchars($poweredByLabel, ENT_QUOTES, 'UTF-8'); ?>
+            <a href="<?php echo htmlspecialchars($mainSiteURL, ENT_QUOTES, 'UTF-8'); ?>">
                 <?php echo htmlspecialchars($siteName, ENT_QUOTES, 'UTF-8'); ?>
             </a>
         </p>
@@ -293,6 +310,8 @@ if ($safeDestination !== '')
             var total         = remaining;
             var destinationURL = <?php echo json_encode($safeDestination, JSON_UNESCAPED_SLASHES); ?>;
             var fallbackURL   = <?php echo json_encode($safeFallbackURL, JSON_UNESCAPED_SLASHES); ?>;
+            var announceOne   = <?php echo json_encode($announceOneText, JSON_HEX_TAG | JSON_HEX_AMP | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
+            var announceMany  = <?php echo json_encode($announceManyText, JSON_HEX_TAG | JSON_HEX_AMP | JSON_INVALID_UTF8_SUBSTITUTE); ?>;
             var countdownEl   = document.getElementById('countdown');
             var progressEl    = document.getElementById('countdown-bar');
             var statusEl      = document.getElementById('countdown-status');
@@ -318,13 +337,13 @@ if ($safeDestination !== '')
 
                 // Announce at key moments for screen readers
                 if (statusEl && (remaining === 3 || remaining === 1)) {
-                    var secondLabel;
+                    var announcement;
                     if (remaining === 1) {
-                        secondLabel = ' second';
+                        announcement = announceOne;
                     } else {
-                        secondLabel = ' seconds';
+                        announcement = announceMany.replace('{seconds}', remaining);
                     }
-                    statusEl.textContent = 'Proceeding in ' + remaining + secondLabel;
+                    statusEl.textContent = announcement;
                 }
 
                 if (remaining <= 0) {

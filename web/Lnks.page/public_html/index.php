@@ -155,7 +155,15 @@ require_once $componentFunctionsDir
 // ============================================================================
 
 $slug = $_GET['slug'] ?? '';
-$slug = trim($slug);
+
+if (!is_string($slug))
+{
+    $slug = '';
+}
+
+// A slash on the end is not part of the name: lnks.page/yourname/ shows the
+// same page as lnks.page/yourname (#290).
+$slug = rtrim(trim($slug), '/');
 
 // ============================================================================
 // 🏠 Step 6: No Slug — Self-Contained Home Page

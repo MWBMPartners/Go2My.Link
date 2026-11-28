@@ -198,7 +198,7 @@ if (function_exists('__')) {
                     </p>
 
                     <p>
-                        <?php if (function_exists('__')) { echo __('help.short_links.s4_p3'); } else { echo 'If somebody clicks the link before its start date, or after its end date, they do not reach your destination address. Instead they see a short page saying the link is not yet active, or has expired, with a button to continue to Go2My.Link — and if they do nothing, that page moves on by itself after five seconds.'; } ?>
+                        <?php if (function_exists('__')) { echo __('help.short_links.s4_p3_v2'); } else { echo 'If somebody clicks the link before its start date, or after its end date, they do not reach your destination address. Instead they see a page saying the link is not yet active, or has expired, with a link to the Go2My.Link homepage. If your organisation has set its own fallback address, they are sent there instead.'; } ?>
                     </p>
                 </section>
 
@@ -257,7 +257,7 @@ if (function_exists('__')) {
                     </p>
 
                     <p>
-                        <?php if (function_exists('__')) { echo __('help.short_links.s7_p2_v2'); } else { echo 'While a link is switched off, anyone who visits its short address sees a page saying the link has been disabled — this is a different message from the one shown for a link that simply has not started yet or has already ended (see Start and end dates above). Go2My.Link staff can also switch a link off. If they do, your dashboard says so and you cannot switch it back on. If staff remove the block, the link goes back to how it was before, so a link you had switched off stays off.'; } ?>
+                        <?php if (function_exists('__')) { echo __('help.short_links.s7_p2_v3'); } else { echo 'While a link is switched off, anyone who visits its short address sees a page saying so. This is a different message from the one shown for a link that has not started yet or has already ended (see Start and end dates above). If your organisation has set its own fallback address, visitors are sent there instead. Go2My.Link staff can also switch a link off. If they do, your dashboard says so, visitors are not sent anywhere else, and you cannot switch it back on. If staff remove the block, the link goes back to how it was before, so a link you had switched off stays off.'; } ?>
                     </p>
 
                     <p>

@@ -31,9 +31,13 @@
  *      and a total no-op unless a GeoIP database is also deployed)
  *   5. Optionally forward the link's own configured UTM params onto the
  *      destination (#92, OFF by default — redirect.forward_utm_params)
- *   6. Issue 302 redirect, OR — for an otherwise-404 'not_found' code on a
- *      verified custom domain with a designated published LinksPage (#46) —
- *      render that LinksPage; otherwise show the branded error page
+ *   6. Issue 302 redirect. When the link does not open: go to the owning
+ *      organisation's own fallback address if it has set one; otherwise, for
+ *      a 'not_found' code on a verified custom domain with a designated
+ *      published LinksPage (#46), render that LinksPage; otherwise show a
+ *      branded page saying why, with a link to the homepage and a 404 or 410
+ *      status (#290, decision D-006). If the lookup itself fails (database
+ *      down), answer 503 with Retry-After.
  *
  * @package    Go2My.Link
  * @subpackage ComponentB
@@ -95,6 +99,12 @@ require_once G2ML_ROOT
     . DIRECTORY_SEPARATOR . '_includes'
     . DIRECTORY_SEPARATOR . 'page_init.php';
 
+// The words for this component's own pages (#290). Loaded here because the
+// ErrorDocument branch below needs it too.
+require_once dirname(__DIR__)
+    . DIRECTORY_SEPARATOR . '_functions'
+    . DIRECTORY_SEPARATOR . 'error_text.php';
+
 // ============================================================================
 // 🧯 Step 3b: Apache ErrorDocument Dispatch (#114)
 // ============================================================================
@@ -118,16 +128,8 @@ if ($httpErrorCode === '403' || $httpErrorCode === '404' || $httpErrorCode === '
     {
         http_response_code(403);
 
-        if (function_exists('__'))
-        {
-            $errorTitle   = __('error.403_title');
-            $errorMessage = __('error.403_message');
-        }
-        else
-        {
-            $errorTitle   = '403 — Forbidden';
-            $errorMessage = 'You do not have permission to access this resource.';
-        }
+        $errorTitle   = g2ml_shortlinkText('error.403_title', '403 — Forbidden');
+        $errorMessage = g2ml_shortlinkText('error.403_message', 'You do not have permission to access this resource.');
 
         require __DIR__ . DIRECTORY_SEPARATOR . '403.php';
     }
@@ -135,16 +137,8 @@ if ($httpErrorCode === '403' || $httpErrorCode === '404' || $httpErrorCode === '
     {
         http_response_code(500);
 
-        if (function_exists('__'))
-        {
-            $errorTitle   = __('error.500_title');
-            $errorMessage = __('error.500_message');
-        }
-        else
-        {
-            $errorTitle   = '500 — Server Error';
-            $errorMessage = 'Something went wrong on our end. Please try again later.';
-        }
+        $errorTitle   = g2ml_shortlinkText('error.500_title', '500 — Server Error');
+        $errorMessage = g2ml_shortlinkText('error.500_message', 'Something went wrong on our end. Please try again later.');
 
         require __DIR__ . DIRECTORY_SEPARATOR . '500.php';
     }
@@ -153,7 +147,7 @@ if ($httpErrorCode === '403' || $httpErrorCode === '404' || $httpErrorCode === '
         http_response_code(404);
 
         // Deliberately does NOT set $errorTitle/$errorMessage here — 404.php
-        // already supplies its own '404 — Link Not Found' default via `??`
+        // already supplies its own 'Link Not Found' default when they are unset
         // (see its "Set Default Values" step below), so leaving both unset
         // reuses that default instead of duplicating the string here.
 
@@ -220,7 +214,17 @@ if (strpos($requestDomain, ':') !== false)
 // 🔀 Step 7: Extract Short Code
 // ============================================================================
 
-$shortCode = trim($_GET['code'] ?? '');
+$shortCode = $_GET['code'] ?? '';
+
+if (!is_string($shortCode))
+{
+    $shortCode = '';
+}
+
+// A slash on the end is not part of the code: g2my.link/abc/ opens the same
+// link as g2my.link/abc (#290). Some programs add one when they copy or
+// tidy an address.
+$shortCode = rtrim(trim($shortCode), '/');
 
 // No short code provided (a root / bare-domain request).
 if ($shortCode === '')
@@ -273,7 +277,8 @@ if ($shortCode === '')
 //   - Alias chain resolution (max 3 hops)
 //   - Date range validation (startDate / endDate)
 //   - Active status check (isActive flag)
-//   - Fallback URL provision
+//   - Fallback URL provision (only an address the organisation set itself;
+//     the default organisation has none unless an owner sets one, #290)
 //
 // 📖 Reference: web/G2My.Link/_functions/redirect_resolver.php
 // 📖 Reference: web/_sql/procedures/sp_lookupShortURL.sql
@@ -300,15 +305,21 @@ if ($status === 'error')
 {
     if ($shouldLog)
     {
-        logActivity('redirect', 'error', 500, [
+        logActivity('redirect', 'error', 503, [
             'shortCode' => $shortCode,
             'logData'   => ['reason' => 'SP call failed'],
         ]);
     }
 
-    http_response_code(500);
-    $errorTitle   = 'Service Temporarily Unavailable';
-    $errorMessage = 'Please try again in a few moments.';
+    // 503 with Retry-After (#290) tells browsers, search engines and link
+    // checkers that the fault is temporary and the link has not gone. A 500
+    // says nothing about trying again.
+    http_response_code(503);
+    header('Retry-After: 120');
+    header('Cache-Control: no-store, private');
+
+    $errorTitle   = g2ml_shortlinkText('shortlink.unavailable_title', 'Service Temporarily Unavailable');
+    $errorMessage = g2ml_shortlinkText('shortlink.unavailable_message', 'We cannot look up this link just now. Please try again in a few minutes.');
     require __DIR__ . DIRECTORY_SEPARATOR . '404.php';
     exit;
 }
@@ -580,22 +591,28 @@ if ($status === 'success' && $destination !== null && $destination !== '')
 // ❌ Step 10: Handle Error States
 // ============================================================================
 
-// Determine HTTP status code and error messaging
+// Determine HTTP status code and error messaging.
+// 404 = there is nothing to go to; 410 = there was, and it has been ended.
 switch ($status)
 {
     case 'not_found':
         http_response_code(404);
-        $errorTitle   = '404 — Link Not Found';
-        $errorMessage = 'The short link you requested does not exist or has been removed.';
+        $errorTitle   = g2ml_shortlinkText('shortlink.not_found_title', 'Link Not Found');
+        $errorMessage = g2ml_shortlinkText('shortlink.not_found_message', 'This short link does not exist, or it has been removed. Check that the address was typed correctly.');
         break;
 
     case 'inactive':
     case 'staff_disabled':
         http_response_code(410);
-        $errorTitle   = 'Link Disabled';
-        // The owner or Go2My.Link staff may have switched it off (#325), so
-        // the message does not say who did.
-        if (function_exists('__'))
+        // A link its owner or Go2My.Link staff switched off (#325). A staff
+        // block keeps the wording that does not say who did it.
+        $errorTitle = g2ml_shortlinkText('shortlink.inactive_title', 'Link Switched Off');
+
+        if ($status !== 'staff_disabled')
+        {
+            $errorMessage = g2ml_shortlinkText('shortlink.inactive_message', 'This short link has been switched off, so it no longer goes anywhere.');
+        }
+        elseif (function_exists('__'))
         {
             $errorMessage = __('redirect.link_disabled_message');
         }
@@ -607,26 +624,29 @@ switch ($status)
 
     case 'not_yet_active':
         http_response_code(404);
-        $errorTitle   = 'Link Not Yet Active';
-        $errorMessage = 'This short link is not yet active. Please try again later.';
+        $errorTitle   = g2ml_shortlinkText('shortlink.not_yet_active_title', 'Link Not Yet Active');
+        $errorMessage = g2ml_shortlinkText('shortlink.not_yet_active_message', 'This short link is not active yet. Please try again later.');
         break;
 
     case 'expired':
         http_response_code(410);
-        $errorTitle   = 'Link Expired';
-        $errorMessage = 'This short link has expired and is no longer available.';
+        $errorTitle   = g2ml_shortlinkText('shortlink.expired_title', 'Link Expired');
+        $errorMessage = g2ml_shortlinkText('shortlink.expired_message', 'This short link has expired and is no longer available.');
         break;
 
     case 'max_hops_exceeded':
-        http_response_code(500);
-        $errorTitle   = 'Redirect Error';
-        $errorMessage = 'This link could not be resolved due to a configuration issue.';
+        // The link is set up wrongly (it points at other short links too many
+        // times), so there is nothing to go to. 404, not 500: our server is
+        // working, and a 500 would send people looking for a fault in it.
+        http_response_code(404);
+        $errorTitle   = g2ml_shortlinkText('shortlink.max_hops_title', 'Link Cannot Be Followed');
+        $errorMessage = g2ml_shortlinkText('shortlink.max_hops_message', 'This short link points to other short links too many times, so we cannot work out where it should go. Its owner needs to correct it.');
         break;
 
     case 'no_destination':
         http_response_code(404);
-        $errorTitle   = 'Link Not Configured';
-        $errorMessage = 'This short link has no destination URL configured.';
+        $errorTitle   = g2ml_shortlinkText('shortlink.no_destination_title', 'Link Not Configured');
+        $errorMessage = g2ml_shortlinkText('shortlink.no_destination_message', 'This short link has no destination address set.');
         break;
 
     case 'domain_not_configured':
@@ -637,16 +657,20 @@ switch ($status)
         // response a caller of this Host can ever see; no short-code lookup
         // in any org's namespace happened at all.
         http_response_code(404);
-        $errorTitle   = 'Domain Not Configured';
-        $errorMessage = 'This domain is not yet verified for use with Go2My.Link. If you are the domain owner, finish DNS verification from your dashboard.';
+        $errorTitle   = g2ml_shortlinkText('shortlink.domain_not_configured_title', 'Domain Not Configured');
+        $errorMessage = g2ml_shortlinkText('shortlink.domain_not_configured_message', 'This domain is not yet verified for use with Go2My.Link. If you own the domain, finish the DNS verification from your dashboard.');
         break;
 
     default:
         http_response_code(404);
-        $errorTitle   = 'Link Not Found';
-        $errorMessage = 'The requested link could not be found.';
+        $errorTitle   = g2ml_shortlinkText('shortlink.not_found_title', 'Link Not Found');
+        $errorMessage = g2ml_shortlinkText('shortlink.not_found_message', 'This short link does not exist, or it has been removed. Check that the address was typed correctly.');
         break;
 }
+
+// A link can be switched back on, or start tomorrow, so no browser or proxy
+// may keep this answer (404 and 410 answers can otherwise be cached).
+header('Cache-Control: no-store, private');
 
 // Log the error
 if ($shouldLog)
@@ -659,7 +683,9 @@ if ($shouldLog)
     ]);
 }
 
-// If the SP returned a fallback destination, redirect to it
+// If the SP returned a fallback destination, redirect to it. It is only ever
+// an address an organisation set for itself: the default organisation has none
+// unless an owner chose one (#290, seed 002 and migration 048).
 if ($destination !== null && $destination !== '')
 {
     buildRedirectResponse($destination, 302);

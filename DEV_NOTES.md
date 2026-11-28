@@ -344,7 +344,7 @@ Two comprehensive security audits have been performed:
 **Accessibility refinements:**
 
 - `aria-hidden="true"` on navbar toggler icon (decorative element)
-- `aria-live="assertive"` on Component B expired page countdown (time-sensitive notification)
+- `aria-live="assertive"` on Component B expired page countdown (time-sensitive notification; the countdown was later removed altogether in #290)
 - Debug panel row number contrast (#666 → #999, 5.16:1 ratio)
 - Footer link hover/focus state with `var(--bs-light)` + underline (WCAG 1.4.1)
 - Bootstrap `text-muted` → `text-body-secondary` migration in footer
