@@ -19,7 +19,10 @@
  *   - createShortURL()           — Create a new short URL
  *   - checkAnonymousRateLimit()  — Check IP-based rate limits
  *   - getDefaultShortDomain()    — Get the default short domain for an org
- *   - verifyCaptcha()            — Verify Turnstile/reCAPTCHA response
+ *   - g2ml_linkUsesSharedShortCodes() — Whether a new link uses the shared
+ *                                  g2my.link codes (#289)
+ *   - g2ml_findLinkForInfo()     — Find the link the public info page shows (#289)
+ *   - verifyCaptcha()           — Verify Turnstile/reCAPTCHA response
  *
  * Dependencies: db_query.php, settings.php, security.php, activity_logger.php
  *               (all loaded via page_init.php)
@@ -903,6 +906,29 @@ function createShortURL(string $longURL, array $options = []): array
     }
 
     // ========================================================================
+    // 🔗 Step 3d: Which set of codes does this link use? (#289, D-003)
+    // ========================================================================
+    // The short domain the new link's address is printed with decides it,
+    // so the address we hand back is always one that opens:
+    //   • g2my.link (the default organisation, anybody with no organisation,
+    //     and a member of an organisation with no verified default short
+    //     domain of its own) — the shared codes, where each code is used
+    //     once across everybody. The row stores its code in sharedShortCode
+    //     as well, and the unique key on that column refuses a second link
+    //     with the same code, whoever makes it.
+    //   • the organisation's own verified default short domain — the
+    //     organisation's own codes only; sharedShortCode stays NULL, so
+    //     these codes never use up anybody's g2my.link codes.
+    // Worked out once here, before the insert, and used again in Step 6 to
+    // build the address, so the two can never disagree.
+    //
+    // 📖 Reference: g2ml_linkUsesSharedShortCodes() below
+    // 📖 Reference: web/_sql/schema/020_shorturls_categories_tags.sql (sharedShortCode)
+    // ========================================================================
+    $shortDomain          = getDefaultShortDomain($orgHandle);
+    $usesSharedShortCodes = g2ml_linkUsesSharedShortCodes($orgHandle, $shortDomain);
+
+    // ========================================================================
     // 🎲 + 💾 Steps 4 & 5: Obtain a short code and insert
     // ========================================================================
     // Two paths share one INSERT:
@@ -943,14 +969,15 @@ function createShortURL(string $longURL, array $options = []): array
     }
 
     // Insert SQL is static; only the bound short code changes between attempts.
+    // Every identifier is in backticks (house rule for new and changed SQL).
     // 📖 Reference: web/_functions/db_query.php — dbInsert()
-    $insertSQL = "INSERT INTO tblShortURLs
-        (orgHandle, shortCode, destinationURL, destinationType,
-         createdByUserUID, title, categoryID, urlNotes,
-         startDate, endDate, isActive, createdVia, createdViaAPIKeyUID,
-         qrCodeExternalID, qrCodeExternalUUID, qrCodeLinkedAt, createdAt, updatedAt)
+    $insertSQL = "INSERT INTO `tblShortURLs`
+        (`orgHandle`, `shortCode`, `sharedShortCode`, `destinationURL`, `destinationType`,
+         `createdByUserUID`, `title`, `categoryID`, `urlNotes`,
+         `startDate`, `endDate`, `isActive`, `createdVia`, `createdViaAPIKeyUID`,
+         `qrCodeExternalID`, `qrCodeExternalUUID`, `qrCodeLinkedAt`, `createdAt`, `updatedAt`)
         VALUES
-        (?, ?, ?, 'url',
+        (?, ?, ?, ?, 'url',
          ?, ?, ?, ?,
          ?, ?, ?, ?, ?,
          ?, ?, ?, NOW(), NOW())";
@@ -994,10 +1021,21 @@ function createShortURL(string $longURL, array $options = []): array
             $shortCode = $spResult['@outputCode'];
         }
 
+        // A link on g2my.link holds its code in sharedShortCode as well; a
+        // link on its organisation's own domain leaves it NULL (Step 3d).
+        if ($usesSharedShortCodes === true)
+        {
+            $sharedShortCodeValue = $shortCode;
+        }
+        else
+        {
+            $sharedShortCodeValue = null;
+        }
+
         // Build the types string and params array for this candidate.
         // s = string, i = integer (nullable userUID handled as string for NULL)
-        $types  = 'sss';
-        $params = [$orgHandle, $shortCode, $sanitisedURL];
+        $types  = 'ssss';
+        $params = [$orgHandle, $shortCode, $sharedShortCodeValue, $sanitisedURL];
 
         // createdByUserUID (nullable integer)
         if ($userUID !== null)
@@ -1079,10 +1117,13 @@ function createShortURL(string $longURL, array $options = []): array
             break;
         }
 
-        // The insert failed on a duplicate key (1062). Two DIFFERENT unique
+        // The insert failed on a duplicate key (1062). Three DIFFERENT unique
         // constraints can produce this SAME errno — UQ_shortcode_org (the
-        // short code) and, when qrCodeExternalUUID was supplied, the QR-UUID
-        // uniqueness guard (UQ_url_qr_uuid, #145) — and they must be handled
+        // code inside this organisation), UQ_url_shared_code (the code on
+        // g2my.link, already used by somebody else — #289) and, when
+        // qrCodeExternalUUID was supplied, the QR-UUID uniqueness guard
+        // (UQ_url_qr_uuid, #145). The first two both mean "this code is
+        // taken" and are handled the same way; the QR one must be handled
         // completely differently: a QR-UUID collision means CueRCode's QR is
         // ALREADY linked to a (different) short URL, which regenerating a new
         // random short code would never fix, so it must fail outright rather
@@ -1192,8 +1233,9 @@ function createShortURL(string $longURL, array $options = []): array
     // ========================================================================
     // 🔗 Step 6: Build the full short URL
     // ========================================================================
-    $shortDomain = getDefaultShortDomain($orgHandle);
-    $shortURL    = 'https://' . $shortDomain . '/' . $shortCode;
+    // $shortDomain was worked out in Step 3d, and decided which set of codes
+    // the link went into, so this address is always one that opens.
+    $shortURL = 'https://' . $shortDomain . '/' . $shortCode;
 
     // ========================================================================
     // 🏷️ Step 6b: Attach optional tags (authenticated dashboard — FG-002)
@@ -1355,6 +1397,133 @@ function getDefaultShortDomain(string $orgHandle): string
 
     // Fallback to the default domain
     return 'g2my.link';
+}
+
+// ============================================================================
+// 🔗 g2ml_linkUsesSharedShortCodes — does a new link use the g2my.link codes?
+// ============================================================================
+// Owner decision D-003 (#289): a member of an organisation that has no short
+// web address of its own gets g2my.link links that work like anybody
+// else's, and each code on g2my.link is used only once across everybody. An
+// organisation WITH its own verified default short domain keeps its own set
+// of codes on that domain.
+//
+// The answer follows the domain the link's address is printed with (from
+// getDefaultShortDomain() above), so the address handed back always opens:
+// a link printed as g2my.link/CODE must be findable by the g2my.link lookup,
+// which reads tblShortURLs.sharedShortCode. The default organisation always
+// uses the shared codes, whatever its domain rows say, because g2my.link IS
+// its domain.
+//
+// Pure function — no database access — so the unit suite can test it.
+//
+// @param  string $orgHandle    The organisation the link belongs to.
+// @param  string $shortDomain  What getDefaultShortDomain($orgHandle) returned.
+// @return bool                 True: store the code in sharedShortCode too.
+// ============================================================================
+function g2ml_linkUsesSharedShortCodes(string $orgHandle, string $shortDomain): bool
+{
+    if ($orgHandle === '[default]')
+    {
+        return true;
+    }
+
+    if (strtolower($shortDomain) === 'g2my.link')
+    {
+        return true;
+    }
+
+    return false;
+}
+
+// ============================================================================
+// 🔍 g2ml_findLinkForInfo — find the link the public info page describes
+// ============================================================================
+// The info page (/info/CODE, or a pasted short address) must show the same
+// link that following the address would open, so this mirrors the redirect
+// lookup in web/_sql/procedures/sp_lookupShortURL.sql (#289):
+//   • no domain, or g2my.link — the shared g2my.link codes (sharedShortCode),
+//     whichever organisation owns the link. Before #289 this looked only at
+//     the default organisation's links, so an organisation member's link
+//     was "not found" here.
+//   • an organisation's own domain — only when that domain is verified and
+//     active (the same rule the redirect uses, #91); then the code is looked
+//     up among that organisation's own links. An unverified domain finds
+//     nothing, exactly as following the address would.
+//
+// Every query is a prepared statement and every identifier is in backticks.
+//
+// @param  string $shortCode     A code already checked by
+//                               g2ml_infoNormaliseShortCode().
+// @param  string $lookupDomain  The pasted address's domain in lower case, or
+//                               '' for g2my.link / a bare code.
+// @return array|null            The link row plus 'shortDomain' (the domain to
+//                               show it with), or null when there is none.
+// ============================================================================
+function g2ml_findLinkForInfo(string $shortCode, string $lookupDomain): ?array
+{
+    $selectColumns = "SELECT s.`shortCode`, s.`destinationURL`, s.`destinationType`,
+                s.`isActive`, s.`title`, s.`createdAt`,
+                s.`startDate`, s.`endDate`, s.`orgHandle`,
+                c.`categoryName`
+         FROM `tblShortURLs` s
+         LEFT JOIN `tblCategories` c ON s.`categoryID` = c.`categoryID` AND c.`orgHandle` = s.`orgHandle`";
+
+    $useSharedCodes = true;
+    $domainOrg      = '';
+    $displayDomain  = 'g2my.link';
+
+    if ($lookupDomain !== '')
+    {
+        $domainRow = dbSelectOne(
+            "SELECT `orgHandle`
+             FROM `tblOrgShortDomains`
+             WHERE `shortDomain` = ?
+               AND `verificationStatus` = 'verified'
+               AND `isActive` = 1
+             LIMIT 1",
+            's',
+            [$lookupDomain]
+        );
+
+        if ($domainRow === null || $domainRow === false)
+        {
+            return null;
+        }
+
+        if ((string) $domainRow['orgHandle'] !== '[default]')
+        {
+            $useSharedCodes = false;
+            $domainOrg      = (string) $domainRow['orgHandle'];
+            $displayDomain  = $lookupDomain;
+        }
+    }
+
+    if ($useSharedCodes === true)
+    {
+        $linkRow = dbSelectOne(
+            $selectColumns . " WHERE s.`sharedShortCode` = ? LIMIT 1",
+            's',
+            [$shortCode]
+        );
+    }
+    else
+    {
+        $linkRow = dbSelectOne(
+            $selectColumns . " WHERE s.`shortCode` = ? AND s.`orgHandle` = ? LIMIT 1",
+            'ss',
+            [$shortCode, $domainOrg]
+        );
+    }
+
+    if ($linkRow === null || $linkRow === false)
+    {
+        return null;
+    }
+
+    $linkRow['shortDomain'] = $displayDomain;
+
+    return $linkRow;
 }
 
 // ============================================================================

@@ -96,13 +96,36 @@
 -- checks the resolver's status set (redirect_resolver.php) sees the same
 -- behaviour it always did.
 --
+-- 🔗 #289 / owner decision D-003 — the shared g2my.link codes. When the
+-- Host is g2my.link itself (its tblOrgShortDomains row belongs to
+-- '[default]'), or a host nobody has claimed, the FIRST lookup is by
+-- tblShortURLs.sharedShortCode, which holds every link that opens on
+-- g2my.link whichever organisation owns it. Before #289 this lookup was
+-- "shortCode in the '[default]' organisation", so a link made by a member of
+-- an organisation with no short domain of its own was given a g2my.link
+-- address that never opened. Once that first row is found:
+--   - outputOrgHandle is the organisation that OWNS the link, not
+--     '[default]'. The redirect page uses it to count the click and to log
+--     it, so the organisation sees its own link's statistics. For a code
+--     that is not found at all it is still '[default]', as before.
+--   - any further alias hops are looked up inside that same owning
+--     organisation (shortCode + orgHandle), exactly as an organisation's own
+--     domain does, so an alias can never jump into somebody else's link.
+--   - when the link does not open (disabled, expired and so on), the visitor
+--     goes to the owning organisation's own fallback address when it has
+--     set one, and to the default organisation's fallback when it has not.
+-- On an organisation's own verified domain nothing changes: every hop is
+-- looked up by shortCode + that organisation's handle, which finds the
+-- organisation's own links and also any it made on g2my.link before it had
+-- a domain of its own.
+--
 -- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
--- @version    0.7.0
+-- @version    0.8.0
 -- @since      Phase 1 (ownership-verification gate added v1.1.0 / #91; UTM
 --             projection added v1.1.0 / #92; catch-all error handler
---             removed #197)
+--             removed #197; shared g2my.link codes #289)
 --
 -- Reference: https://dev.mysql.com/doc/refman/8.0/en/create-procedure.html
 -- =============================================================================
@@ -150,6 +173,13 @@ BEGIN
     DECLARE v_utmCampaign     VARCHAR(255)    DEFAULT NULL;
     DECLARE v_utmTerm         VARCHAR(255)    DEFAULT NULL;
     DECLARE v_utmContent      VARCHAR(255)    DEFAULT NULL;
+    -- #289: 1 when this request is for the shared g2my.link codes (see the
+    -- header); the owner found by that first lookup; whether the owner is a
+    -- different organisation from '[default]'; and the owner's own fallback.
+    DECLARE v_sharedLookup    TINYINT         DEFAULT 0;
+    DECLARE v_linkOrgHandle   VARCHAR(50)     DEFAULT NULL;
+    DECLARE v_ownerChanged    TINYINT         DEFAULT 0;
+    DECLARE v_ownerFallback   VARCHAR(500)    DEFAULT NULL;
 
     -- Ensure UTC timezone for date comparisons
     SET time_zone = '+00:00';
@@ -191,6 +221,12 @@ BEGIN
     -- =========================================================================
     IF outputStatus IS NULL THEN
 
+        -- #289: g2my.link itself (its row belongs to '[default]') and any
+        -- host nobody has claimed both use the shared g2my.link codes.
+        IF v_orgHandle = '[default]' THEN
+            SET v_sharedLookup = 1;
+        END IF;
+
         -- Get org fallback URL
         SELECT o.orgFallbackURL
         INTO   v_orgFallback
@@ -215,35 +251,81 @@ BEGIN
             SET v_utmCampaign = NULL;
             SET v_utmTerm = NULL;
             SET v_utmContent = NULL;
+            SET v_linkOrgHandle = NULL;
 
-            SELECT
-                s.destinationURL,
-                s.redirectAlias,
-                s.isActive,
-                s.startDate,
-                s.endDate,
-                s.utmSource,
-                s.utmMedium,
-                s.utmCampaign,
-                s.utmTerm,
-                s.utmContent,
-                1
-            INTO
-                v_destination,
-                v_alias,
-                v_isActive,
-                v_startDate,
-                v_endDate,
-                v_utmSource,
-                v_utmMedium,
-                v_utmCampaign,
-                v_utmTerm,
-                v_utmContent,
-                v_found
-            FROM   tblShortURLs s
-            WHERE  s.shortCode = CONVERT(v_currentCode USING utf8mb4) COLLATE utf8mb4_unicode_ci
-               AND s.orgHandle = CONVERT(v_orgHandle USING utf8mb4) COLLATE utf8mb4_unicode_ci
-            LIMIT  1;
+            IF v_sharedLookup = 1 AND v_hopCount = 0 THEN
+                -- #289: the first code asked for on g2my.link is looked up
+                -- in the shared codes (one indexed lookup on
+                -- UQ_url_shared_code), and the row says who owns it.
+                SELECT
+                    s.`destinationURL`,
+                    s.`redirectAlias`,
+                    s.`isActive`,
+                    s.`startDate`,
+                    s.`endDate`,
+                    s.`utmSource`,
+                    s.`utmMedium`,
+                    s.`utmCampaign`,
+                    s.`utmTerm`,
+                    s.`utmContent`,
+                    s.`orgHandle`,
+                    1
+                INTO
+                    v_destination,
+                    v_alias,
+                    v_isActive,
+                    v_startDate,
+                    v_endDate,
+                    v_utmSource,
+                    v_utmMedium,
+                    v_utmCampaign,
+                    v_utmTerm,
+                    v_utmContent,
+                    v_linkOrgHandle,
+                    v_found
+                FROM   `tblShortURLs` s
+                WHERE  s.`sharedShortCode` = CONVERT(v_currentCode USING utf8mb4) COLLATE utf8mb4_unicode_ci
+                LIMIT  1;
+
+                -- From here on the link's owner is the organisation: its
+                -- click is counted for it, and any alias hop is looked up
+                -- among its own links only.
+                IF v_found = 1 AND v_linkOrgHandle IS NOT NULL THEN
+                    IF v_linkOrgHandle <> v_orgHandle THEN
+                        SET v_ownerChanged = 1;
+                    END IF;
+                    SET v_orgHandle = v_linkOrgHandle;
+                END IF;
+            ELSE
+                SELECT
+                    s.`destinationURL`,
+                    s.`redirectAlias`,
+                    s.`isActive`,
+                    s.`startDate`,
+                    s.`endDate`,
+                    s.`utmSource`,
+                    s.`utmMedium`,
+                    s.`utmCampaign`,
+                    s.`utmTerm`,
+                    s.`utmContent`,
+                    1
+                INTO
+                    v_destination,
+                    v_alias,
+                    v_isActive,
+                    v_startDate,
+                    v_endDate,
+                    v_utmSource,
+                    v_utmMedium,
+                    v_utmCampaign,
+                    v_utmTerm,
+                    v_utmContent,
+                    v_found
+                FROM   `tblShortURLs` s
+                WHERE  s.`shortCode` = CONVERT(v_currentCode USING utf8mb4) COLLATE utf8mb4_unicode_ci
+                   AND s.`orgHandle` = CONVERT(v_orgHandle USING utf8mb4) COLLATE utf8mb4_unicode_ci
+                LIMIT  1;
+            END IF;
 
             -- Short code not found
             IF v_found = 0 THEN
@@ -343,6 +425,23 @@ BEGIN
             SET outputUtmCampaign = NULL;
             SET outputUtmTerm = NULL;
             SET outputUtmContent = NULL;
+        END IF;
+
+        -- #289: a g2my.link link owned by another organisation that did not
+        -- open sends the visitor to that organisation's own fallback
+        -- address, when it has set one (the same address its own domain
+        -- would use). This extra lookup only happens when the link did NOT
+        -- open, so a normal redirect pays nothing for it.
+        IF v_ownerChanged = 1 AND outputStatus <> 'success' THEN
+            SELECT o.`orgFallbackURL`
+            INTO   v_ownerFallback
+            FROM   `tblOrganisations` o
+            WHERE  o.`orgHandle` = CONVERT(v_orgHandle USING utf8mb4) COLLATE utf8mb4_unicode_ci
+            LIMIT  1;
+
+            IF v_ownerFallback IS NOT NULL AND v_ownerFallback <> '' THEN
+                SET outputDestination = v_ownerFallback;
+            END IF;
         END IF;
 
     END IF;

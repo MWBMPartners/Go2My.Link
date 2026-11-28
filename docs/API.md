@@ -174,7 +174,7 @@ describes the key being used.
 | Field | Required | Notes |
 | --- | --- | --- |
 | `destination_url` | ✅ | Where the link should send people |
-| `custom_code` | ❌ | Your own ending instead of random letters |
+| `custom_code` | ❌ | Your own ending instead of random letters. Refused with `409` when it is taken: on g2my.link each ending is used once across everybody, so one somebody else holds there is taken for you too, unless your organisation has its own verified default short domain, where only your organisation's own endings count (#289) |
 | `title` | ❌ | A label, for your own benefit |
 | `tags` | ❌ | Tags to file it under |
 | `qr_external_id` | ❌ | Only for the QR integration; needs `qr:link` as well |

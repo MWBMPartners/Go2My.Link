@@ -26,6 +26,17 @@ deliberate: an unverified domain must never be able to read another
 organisation's (or the shared `g2my.link` default's) short-code namespace
 just by pointing DNS at us.
 
+**Your own set of endings.** Once your domain is verified **and set as your
+organisation's default short domain**, new links made by your members are
+given addresses on your domain, and their endings are your organisation's
+own: an ending somebody else already uses on `g2my.link` can still be used on
+your domain. Until then, your members' links are ordinary `g2my.link` links:
+each ending on `g2my.link` is used once across everybody, your members'
+links included, and your organisation still sees those links and their click
+statistics (#289, owner decision D-003). Links your members made on
+`g2my.link` before your domain was set up keep working there, and also open
+on your own domain.
+
 ## 1. 🏢 Add the domain in your dashboard
 
 1. Sign in to **admin.go2my.link**.

@@ -73,7 +73,7 @@ Schema files are located in `web/_sql/schema/`.
 
 | Table | Purpose |
 | --- | --- |
-| `tblShortURLs` | 🔗 Enhanced short URL records (`createdByUserUID` FK, `isActive`, `clickCount` cache) + CueRCode provenance/QR columns (`createdVia`, `createdViaAPIKeyUID`, `qrCodeExternalID`/`qrCodeExternalUUID`, `qrCodeLinkedAt`) |
+| `tblShortURLs` | 🔗 Enhanced short URL records (`createdByUserUID` FK, `isActive`, `clickCount` cache) + CueRCode provenance/QR columns (`createdVia`, `createdViaAPIKeyUID`, `qrCodeExternalID`/`qrCodeExternalUUID`, `qrCodeLinkedAt`). **Two sets of codes (#289, owner decision D-003):** `sharedShortCode` holds a copy of `shortCode` for every link that opens on g2my.link, and its unique key `UQ_url_shared_code` lets each code be used there only once across everybody — the default organisation, people with no organisation, and members of an organisation without its own verified default short domain. It is `NULL` for a link that lives only on its organisation's own domain, so those codes are the organisation's own. The check `CK_url_shared_code_matches` keeps it empty or equal to `shortCode`. `UQ_shortcode_org (shortCode, orgHandle)` is kept, so the dashboard, API and statistics still find one row by code and organisation. The g2my.link redirect looks up `sharedShortCode` and reports the owning organisation, so the click is counted for it. Existing databases: migration `044_shared_g2my_codes.sql` |
 | `tblCategories` | 🏷️ Link categories |
 | `tblTags` | 🏷️ Link tags |
 | `tblShortURLTags` | 🔀 Junction table (short URLs ↔ tags) |

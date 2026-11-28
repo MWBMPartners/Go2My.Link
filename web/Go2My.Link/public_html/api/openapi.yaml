@@ -448,8 +448,10 @@ paths:
                 $ref: "#/components/schemas/ErrorEnvelope"
         "409":
           description: |
-            `custom_code` is already taken in this organisation
-            (`field: "custom_code"`), OR — CueRCode create only —
+            `custom_code` is already taken (`field: "custom_code"`): on
+            g2my.link by anybody, or, when your organisation has its own
+            verified default short domain, by your organisation on that
+            domain. OR — CueRCode create only —
             `qr_external_uuid` is already linked to a different short URL
             (`field: "qr_external_uuid"`).
           content:
@@ -1348,8 +1350,13 @@ components:
           type: string
           description: |
             A caller-chosen short code, 3–50 characters
-            (`[A-Za-z0-9_-]`). Rejected with `409` if already taken in
-            this organisation. On a CueRCode create this is only honoured
+            (`[A-Za-z0-9_-]`). Rejected with `409` if already taken.
+            When your organisation has no verified default short domain of
+            its own, the link is a g2my.link link, and each code on
+            g2my.link is used only once across everybody, so a code someone
+            else holds there is taken for you too. When it does have one,
+            the link is on that domain and only your organisation's own
+            codes count. On a CueRCode create this is only honoured
             when the service has been set to allow externally chosen short
             codes; otherwise it is silently ignored.
           example: "launch-2026"

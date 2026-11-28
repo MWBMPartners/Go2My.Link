@@ -230,13 +230,22 @@ function g2ml_cdv_delete_shorturl(mysqli $db, string $shortCode): void
  */
 function g2ml_cdv_seed_shorturl(mysqli $db, string $orgHandle, string $shortCode, string $destinationURL): void
 {
+    // #289: a default-organisation link opens on g2my.link only when it also
+    // holds its code in sharedShortCode, which createShortURL() writes.
+    $sharedShortCode = null;
+
+    if ($orgHandle === '[default]')
+    {
+        $sharedShortCode = $shortCode;
+    }
+
     $statement = mysqli_prepare(
         $db,
         'INSERT INTO `tblShortURLs` '
-        . '(`orgHandle`, `shortCode`, `destinationURL`, `destinationType`, `createdByUserUID`, `isActive`, `createdAt`, `updatedAt`) '
-        . "VALUES (?, ?, ?, 'url', NULL, 1, NOW(), NOW())"
+        . '(`orgHandle`, `shortCode`, `sharedShortCode`, `destinationURL`, `destinationType`, `createdByUserUID`, `isActive`, `createdAt`, `updatedAt`) '
+        . "VALUES (?, ?, ?, ?, 'url', NULL, 1, NOW(), NOW())"
     );
-    mysqli_stmt_bind_param($statement, 'sss', $orgHandle, $shortCode, $destinationURL);
+    mysqli_stmt_bind_param($statement, 'ssss', $orgHandle, $shortCode, $sharedShortCode, $destinationURL);
     $ok = mysqli_stmt_execute($statement);
     mysqli_stmt_close($statement);
 

@@ -169,6 +169,10 @@ if (function_exists('__')) {
                     </p>
 
                     <p>
+                        <?php if (function_exists('__')) { echo __('help.short_links.s3_shared_codes'); } else { echo 'Each ending on g2my.link can be used only once, by anybody. That includes links made by members of an organisation: if your organisation does not have a short web address of its own, your links are g2my.link links like everybody else\'s, and your organisation still sees them and their click statistics. If your organisation does have its own verified short web address, the links made there have their own separate set of endings, so an ending that is taken on g2my.link may still be free on your address.'; } ?>
+                    </p>
+
+                    <p>
                         <?php if (function_exists('__')) { echo __('help.short_links.s3_p3'); } else { echo 'Leave the Custom alias field blank to get a random ending instead, exactly like the homepage box gives you.'; } ?>
                     </p>
 

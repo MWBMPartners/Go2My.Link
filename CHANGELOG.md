@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🔗 Organisation members' short links work (2026-11-28)
+
+- 🐛 A link made by a member of an organisation with no web address of its own was shown as a
+  g2my.link address that never opened. Each code on g2my.link is now used once across everybody, and
+  the organisation sees the link's statistics (#289, decision D-003).
+- 🗄️ **On deploy to an existing database:** migration `044_shared_g2my_codes.sql`, then the code, then
+  both stored procedures, then `044` again, then seed `076` (checklist row A33).
+
 ### 🔒 Secret links kept out of logs (2026-11-28)
 
 - 🔒 Password-reset, email-verification and invitation tokens, and other secrets in web addresses,

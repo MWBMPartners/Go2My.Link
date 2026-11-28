@@ -56,6 +56,11 @@ $shortCode  = '';
 $linkData   = null;
 $infoError  = '';
 
+// #289: the short domain of a pasted address (lower case), when one was
+// pasted. '' means g2my.link, or a bare code, or /info/CODE — all of which
+// are looked up in the shared g2my.link codes, like the redirect does.
+$infoLookupDomain = '';
+
 // Priority 1: ?code= parameter (from .htaccess rewrite or direct)
 if (isset($_GET['code']) && is_string($_GET['code']) && $_GET['code'] !== '')
 {
@@ -121,6 +126,13 @@ elseif (isset($_GET['url']) && is_string($_GET['url']) && $_GET['url'] !== '')
             if ($normalisedCodePart !== null)
             {
                 $shortCode = $normalisedCodePart;
+
+                // Remember an organisation's own domain, so the code is
+                // looked up among that organisation's links (#289).
+                if ($domain !== 'g2my.link' && $domain !== 'www.g2my.link')
+                {
+                    $infoLookupDomain = $domain;
+                }
             }
             break;
         }
@@ -159,21 +171,17 @@ if ($shortCode !== '')
     // (#282). $shortCode only ever holds letters, digits, "-" and "_".
     $pageURLPath = '/info/' . $shortCode;
 
-    $linkData = dbSelectOne(
-        "SELECT s.shortCode, s.destinationURL, s.destinationType,
-                s.isActive, s.title, s.createdAt,
-                s.startDate, s.endDate, s.orgHandle,
-                c.categoryName
-         FROM tblShortURLs s
-         LEFT JOIN tblCategories c ON s.categoryID = c.categoryID AND c.orgHandle = s.orgHandle
-         WHERE s.shortCode = ?
-           AND s.orgHandle = '[default]'
-         LIMIT 1",
-        's',
-        [$shortCode]
-    );
+    // #289: the same link the address would open — the shared g2my.link
+    // codes, whoever owns the link, or an organisation's own verified
+    // domain. See g2ml_findLinkForInfo() in shorturl_create.php.
+    $linkData = null;
 
-    if ($linkData === null || $linkData === false)
+    if (function_exists('g2ml_findLinkForInfo'))
+    {
+        $linkData = g2ml_findLinkForInfo($shortCode, $infoLookupDomain);
+    }
+
+    if ($linkData === null)
     {
         if (function_exists('__')) {
             $infoError = __('info.error_not_found');
@@ -314,14 +322,13 @@ if ($linkData !== null)
 $shortURL = '';
 if ($linkData !== null)
 {
-    // Use the default short domain for the org
-    if (function_exists('getDefaultShortDomain'))
+    // The domain the link was found on (#289): g2my.link for the shared
+    // codes, or the organisation's own domain that was pasted.
+    $shortDomain = 'g2my.link';
+
+    if (isset($linkData['shortDomain']) && is_string($linkData['shortDomain']) && $linkData['shortDomain'] !== '')
     {
-        $shortDomain = getDefaultShortDomain($linkData['orgHandle']);
-    }
-    else
-    {
-        $shortDomain = 'g2my.link';
+        $shortDomain = $linkData['shortDomain'];
     }
     $shortURL = 'https://' . $shortDomain . '/' . $linkData['shortCode'];
 }

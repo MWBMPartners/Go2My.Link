@@ -225,9 +225,10 @@ function g2ml_linkchoice_test_link(mysqli $db, array $world, string $suffix, int
     $shortCode = $world['marker'] . $suffix;
     g2ml_linkchoice_test_run(
         $db,
-        'INSERT INTO `tblShortURLs` (`orgHandle`, `shortCode`, `destinationURL`, `title`, `urlNotes`, `createdByUserUID`, `isActive`, `endDate`) '
-        . 'VALUES (?, ?, \'https://example.com/kept\', \'My own title\', \'Private note\', ?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? DAY))',
-        [$orgHandle, $shortCode, $userUID, $isActive, $endInDays]
+        'INSERT INTO `tblShortURLs` (`orgHandle`, `shortCode`, `sharedShortCode`, `destinationURL`, `title`, `urlNotes`, `createdByUserUID`, `isActive`, `endDate`) '
+        . 'VALUES (?, ?, ?, \'https://example.com/kept\', \'My own title\', \'Private note\', ?, ?, DATE_ADD(UTC_TIMESTAMP(), INTERVAL ? DAY))',
+        // sharedShortCode: these links open on g2my.link (#289).
+        [$orgHandle, $shortCode, $shortCode, $userUID, $isActive, $endInDays]
     );
 
     return $shortCode;

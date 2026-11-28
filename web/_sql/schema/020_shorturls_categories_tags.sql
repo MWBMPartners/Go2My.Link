@@ -107,6 +107,22 @@ CREATE TABLE IF NOT EXISTS `tblShortURLs` (
     `shortCode`             VARCHAR(50)         NOT NULL
         COMMENT 'Short URL code (migrated from urlID)',
 
+    -- 🔗 #289 / owner decision D-003: the shared g2my.link codes.
+    -- Every link that opens on g2my.link holds its code here as well as in
+    -- shortCode, and the unique key UQ_url_shared_code below lets each code
+    -- be used only once there, by everybody together: the default
+    -- organisation, people with no organisation, and members of an
+    -- organisation that has no verified short web address of its own.
+    -- NULL means the link lives only in its own organisation's set of codes,
+    -- which is the case for an organisation that has its own verified
+    -- default short domain (acme.link, say): its links open on that domain
+    -- and their codes do not use up anybody's g2my.link codes.
+    -- shortCode + orgHandle stays unique too (UQ_shortcode_org), so the
+    -- dashboard, the API and the statistics, which all find a link by its
+    -- code and its organisation, still find exactly one row.
+    `sharedShortCode`       VARCHAR(50)         DEFAULT NULL
+        COMMENT 'The same value as shortCode when this link opens on g2my.link, where each code is used once across everybody (#289, D-003); NULL when the link lives only in its own organisation''s codes on that organisation''s verified short domain',
+
     `destinationURL`        TEXT                DEFAULT NULL
         COMMENT 'Full destination URL including protocol (migrated from urlLong)',
 
@@ -183,6 +199,12 @@ CREATE TABLE IF NOT EXISTS `tblShortURLs` (
 
     PRIMARY KEY (`urlUID`),
     UNIQUE KEY `UQ_shortcode_org` (`shortCode`, `orgHandle`),
+    -- #289: one row per code on g2my.link. Many rows may hold NULL (links
+    -- that live on an organisation's own domain); MySQL and MariaDB both
+    -- allow any number of NULLs in a unique key. This key is also what makes
+    -- two people creating the same code at the same moment safe: the second
+    -- INSERT fails with a duplicate-key error instead of both succeeding.
+    UNIQUE KEY `UQ_url_shared_code` (`sharedShortCode`),
     INDEX `IDX_url_org` (`orgHandle`),
     INDEX `IDX_url_category` (`categoryID`, `orgHandle`),
     INDEX `IDX_url_creator` (`createdByUserUID`),
@@ -204,7 +226,14 @@ CREATE TABLE IF NOT EXISTS `tblShortURLs` (
         FOREIGN KEY (`createdByUserUID`)
         REFERENCES `tblUsers` (`userUID`)
         ON UPDATE CASCADE
-        ON DELETE SET NULL
+        ON DELETE SET NULL,
+
+    -- #289: sharedShortCode is either empty or a copy of shortCode, never a
+    -- different code, so a link can never open on g2my.link under a code
+    -- other than its own. (Enforced by MySQL 8.0.16 or newer and by
+    -- MariaDB 10.2 or newer; an older server accepts and ignores it.)
+    CONSTRAINT `CK_url_shared_code_matches`
+        CHECK (`sharedShortCode` IS NULL OR `sharedShortCode` = `shortCode`)
 
     -- NOTE: categoryID is a logical FK to tblCategories.categoryID but cannot
     -- be enforced as a database constraint because tblCategories uses a composite

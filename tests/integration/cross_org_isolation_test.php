@@ -184,11 +184,20 @@ function g2ml_iso_delete(mysqli $db, string $shortCode): void
  */
 function g2ml_iso_seed_link(mysqli $db, string $orgHandle, string $shortCode, ?int $createdByUserUID, int $isActive): void
 {
+    // #289: a default-organisation link also holds its code among the shared
+    // g2my.link codes, exactly as createShortURL() writes it.
+    $sharedShortCode = null;
+
+    if ($orgHandle === '[default]')
+    {
+        $sharedShortCode = $shortCode;
+    }
+
     $statement = mysqli_prepare(
         $db,
         'INSERT INTO `tblShortURLs` '
-        . '(`orgHandle`, `shortCode`, `destinationURL`, `destinationType`, `createdByUserUID`, `isActive`, `createdAt`, `updatedAt`) '
-        . "VALUES (?, ?, ?, 'url', ?, ?, NOW(), NOW())"
+        . '(`orgHandle`, `shortCode`, `sharedShortCode`, `destinationURL`, `destinationType`, `createdByUserUID`, `isActive`, `createdAt`, `updatedAt`) '
+        . "VALUES (?, ?, ?, ?, 'url', ?, ?, NOW(), NOW())"
     );
 
     if ($statement === false)
@@ -199,7 +208,7 @@ function g2ml_iso_seed_link(mysqli $db, string $orgHandle, string $shortCode, ?i
     $destinationURL = 'https://example.com/' . $orgHandle . '/' . $shortCode;
     // A null creator binds as SQL NULL under the 'i' type (FK_url_creator is
     // ON DELETE SET NULL, so the column is nullable).
-    mysqli_stmt_bind_param($statement, 'sssii', $orgHandle, $shortCode, $destinationURL, $createdByUserUID, $isActive);
+    mysqli_stmt_bind_param($statement, 'ssssii', $orgHandle, $shortCode, $sharedShortCode, $destinationURL, $createdByUserUID, $isActive);
     $ok = mysqli_stmt_execute($statement);
     mysqli_stmt_close($statement);
 
@@ -283,8 +292,12 @@ function g2ml_iso_get_active(mysqli $db, string $orgHandle, string $shortCode): 
 
 // ----------------------------------------------------------------------------
 // Shared setup: the free tier, two organisations (A = [default], B = orgbiso),
-// and a default short domain for A. createShortURL falls back to 'g2my.link'
-// for an org without its own short domain, so B needs no domain row.
+// and a default short domain for each. Since #289 (owner decision D-003) an
+// organisation WITHOUT its own short domain shares the g2my.link codes with
+// [default], so it can no longer reuse A's code at all; B is given its own
+// verified short domain so that it has its own set of codes, which is the
+// case where two organisations can still hold the same code and the
+// isolation test below still means something.
 // ----------------------------------------------------------------------------
 g2ml_iso_exec(
     $db,
@@ -312,6 +325,13 @@ g2ml_iso_exec(
     "INSERT INTO `tblOrgShortDomains` (`orgHandle`, `shortDomain`, `isDefault`, `isActive`) "
     . "VALUES ('[default]', 'g2my.link', 1, 1) "
     . "ON DUPLICATE KEY UPDATE `isActive` = 1"
+);
+
+g2ml_iso_exec(
+    $db,
+    "INSERT INTO `tblOrgShortDomains` (`orgHandle`, `shortDomain`, `isDefault`, `isActive`, `verificationStatus`, `verifiedAt`) "
+    . "VALUES ('orgbiso', 'orgbiso-iso.test', 1, 1, 'verified', NOW()) "
+    . "ON DUPLICATE KEY UPDATE `isActive` = 1, `isDefault` = 1, `verificationStatus` = 'verified'"
 );
 
 // Clean any leftovers so the suite is repeatable.
@@ -368,7 +388,7 @@ test('SEC-RECHECK-01: creating an inactive alias in org B leaves org A active li
         'isActive'   => false,
     ]);
 
-    assert_true($result['success'], 'Per-org uniqueness permits org B to reuse the code as its own alias');
+    assert_true($result['success'], 'Org B, with its own verified short domain, may reuse the code as its own alias');
 
     // The crown-jewel assertion: org A's link is STILL active.
     assert_same(1, g2ml_iso_get_active($db, '[default]', 'crossiso'), 'Org A link must remain active (no cross-tenant deactivation)');

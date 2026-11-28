@@ -175,10 +175,12 @@ function g2ml_utmredirect_seed_link(mysqli $db, string $shortCode, string $desti
     mysqli_stmt_execute($deleteStatement);
     mysqli_stmt_close($deleteStatement);
 
+    // #289: a default-organisation link opens on g2my.link only when it also
+    // holds its code in sharedShortCode, which createShortURL() writes.
     $sql = 'INSERT INTO `tblShortURLs` '
-        . '(`orgHandle`, `shortCode`, `destinationURL`, `destinationType`, `isActive`, '
+        . '(`orgHandle`, `shortCode`, `sharedShortCode`, `destinationURL`, `destinationType`, `isActive`, '
         . '`utmSource`, `utmMedium`, `utmCampaign`, `utmTerm`, `utmContent`) '
-        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+        . 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 
     $statement       = mysqli_prepare($db, $sql);
     $destinationType = 'url';
@@ -186,8 +188,9 @@ function g2ml_utmredirect_seed_link(mysqli $db, string $shortCode, string $desti
 
     mysqli_stmt_bind_param(
         $statement,
-        'ssssisssss',
+        'sssssisssss',
         $orgHandle,
+        $shortCode,
         $shortCode,
         $destinationURL,
         $destinationType,

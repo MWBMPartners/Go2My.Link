@@ -8,7 +8,11 @@
 -- Go2My.Link — Stored Procedure: sp_generateShortCode
 -- =============================================================================
 -- Generates a unique random alphanumeric short code.
--- Checks for collisions against existing codes in the given org.
+-- Checks for collisions against existing codes in the given org AND against
+-- the shared g2my.link codes, which every organisation without its own
+-- verified short domain uses (#289, owner decision D-003). This check is
+-- only a first filter: the unique keys on tblShortURLs are the real guard,
+-- and createShortURL() retries when an INSERT still collides.
 --
 -- 🔤 #196 — the collision check below wraps its local variable and its
 -- parameter in CONVERT(... USING utf8mb4) COLLATE utf8mb4_unicode_ci. A
@@ -36,8 +40,9 @@
 -- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
--- @version    0.5.0
--- @since      Phase 1 (collation safeguard added #196; error handler removed #197)
+-- @version    0.6.0
+-- @since      Phase 1 (collation safeguard added #196; error handler removed #197;
+--             shared g2my.link codes checked #289)
 -- =============================================================================
 
 USE `mwtools_Go2MyLink`;
@@ -86,12 +91,24 @@ BEGIN
             SET v_i = v_i + 1;
         END WHILE;
 
-        -- Check if this code already exists in the org
-        SELECT COUNT(*)
-        INTO   v_exists
-        FROM   tblShortURLs
-        WHERE  shortCode = CONVERT(v_candidate USING utf8mb4) COLLATE utf8mb4_unicode_ci
-           AND orgHandle = CONVERT(inputOrgHandle USING utf8mb4) COLLATE utf8mb4_unicode_ci;
+        -- Check if this code is already used, in either of the two places a
+        -- new link's code must be free (#289):
+        --   1. inside this organisation (UQ_shortcode_org), and
+        --   2. on g2my.link, where each code is used once across everybody
+        --      (UQ_url_shared_code on sharedShortCode).
+        -- The second check is not strictly needed for an organisation with
+        -- its own verified short domain, whose links do not use the shared
+        -- codes, but it costs one indexed lookup and keeps this procedure
+        -- from having to know which kind of organisation it is working for.
+        SELECT
+            (SELECT COUNT(*)
+             FROM   `tblShortURLs`
+             WHERE  `shortCode` = CONVERT(v_candidate USING utf8mb4) COLLATE utf8mb4_unicode_ci
+                AND `orgHandle` = CONVERT(inputOrgHandle USING utf8mb4) COLLATE utf8mb4_unicode_ci)
+          + (SELECT COUNT(*)
+             FROM   `tblShortURLs`
+             WHERE  `sharedShortCode` = CONVERT(v_candidate USING utf8mb4) COLLATE utf8mb4_unicode_ci)
+        INTO   v_exists;
 
         SET v_attempts = v_attempts + 1;
     END WHILE;
