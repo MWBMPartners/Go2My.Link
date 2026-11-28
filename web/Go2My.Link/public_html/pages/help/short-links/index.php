@@ -257,7 +257,7 @@ if (function_exists('__')) {
                     </p>
 
                     <p>
-                        <?php if (function_exists('__')) { echo __('help.short_links.s7_p2'); } else { echo 'While a link is switched off, anyone who visits its short address sees a page saying the link has been disabled by its owner — this is a different message from the one shown for a link that simply has not started yet or has already ended (see Start and end dates above).'; } ?>
+                        <?php if (function_exists('__')) { echo __('help.short_links.s7_p2_v2'); } else { echo 'While a link is switched off, anyone who visits its short address sees a page saying the link has been disabled — this is a different message from the one shown for a link that simply has not started yet or has already ended (see Start and end dates above). Go2My.Link staff can also switch a link off. If they do, your dashboard says so and you cannot switch it back on. If staff remove the block, the link goes back to how it was before, so a link you had switched off stays off.'; } ?>
                     </p>
 
                     <p>

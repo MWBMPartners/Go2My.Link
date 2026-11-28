@@ -13,7 +13,8 @@
  * ============================================================================
  *
  * Edit an existing short link. Ownership-checked — only the creator can edit.
- * Short code is read-only; all other fields are editable.
+ * Short code is read-only; all other fields are editable. A link that staff
+ * have switched off (#325) cannot be switched on here.
  *
  * @package    Go2My.Link
  * @subpackage ComponentA_Admin
@@ -61,16 +62,16 @@ if ($shortCode === '')
 }
 else
 {
-    $linkData = dbSelectOne(
-        "SELECT s.urlUID, s.shortCode, s.destinationURL, s.title,
+    // Used again after a save, to show what is really stored.
+    $linkSQL = "SELECT s.urlUID, s.shortCode, s.destinationURL, s.title,
                 s.urlNotes AS notes, s.categoryID, s.startDate, s.endDate,
-                s.isActive, s.createdAt, s.clickCount, s.orgHandle
+                s.isActive, s.createdAt, s.clickCount, s.orgHandle,
+                s.`staffDisabledAt`
          FROM tblShortURLs s
          WHERE s.shortCode = ? AND s.createdByUserUID = ?
-         LIMIT 1",
-        'si',
-        [$shortCode, $userUID]
-    );
+         LIMIT 1";
+
+    $linkData = dbSelectOne($linkSQL, 'si', [$shortCode, $userUID]);
 
     if ($linkData === null || $linkData === false)
     {
@@ -118,6 +119,23 @@ if ($linkData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
             $isActive = 1;
         } else {
             $isActive = 0;
+        }
+        // 1 when the person saw a working Active switch and left it off. On a
+        // link staff blocked since the form was opened, that means it stays off
+        // when the block is removed (#325, D-026). A disabled switch posts
+        // nothing, and is not a choice.
+        if ($isActive === 0 && isset($_POST['active_switch_shown'])) {
+            $ownerSwitchedOff = 1;
+        } else {
+            $ownerSwitchedOff = 0;
+        }
+        // A form opened during a staff block has no working switch, so it says
+        // nothing about the link being on or off: the stored state is kept, even
+        // if the block has been removed since.
+        if ($isActive === 1 || isset($_POST['active_switch_shown'])) {
+            $switchSubmitted = 1;
+        } else {
+            $switchSubmitted = 0;
         }
 
         // Validate destination URL — the shared check (#205): sanitise it,
@@ -176,9 +194,11 @@ if ($linkData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
             $result = dbUpdate(
                 "UPDATE tblShortURLs SET
                     destinationURL = ?, title = ?, urlNotes = ?, categoryID = ?,
-                    startDate = ?, endDate = ?, isActive = ?
+                    startDate = ?, endDate = ?,
+                    `isActive` = IF(`staffDisabledAt` IS NOT NULL, 0, IF(? = 1, ?, `isActive`)),
+                    `staffPreviousIsActive` = IF(`staffDisabledAt` IS NOT NULL AND ? = 1, 0, `staffPreviousIsActive`)
                  WHERE shortCode = ? AND createdByUserUID = ?",
-                'ssssssisi',
+                'ssssssiiisi',
                 [
                     $sanitisedURL,
                     $titleVal,
@@ -186,7 +206,9 @@ if ($linkData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
                     $categoryIDVal,
                     $startDateVal,
                     $endDateVal,
+                    $switchSubmitted,
                     $isActive,
+                    $ownerSwitchedOff,
                     $shortCode,
                     $userUID,
                 ]
@@ -194,34 +216,13 @@ if ($linkData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
 
             if ($result !== false)
             {
-                // Refresh link data
-                $linkData['destinationURL'] = $sanitisedURL;
-                if ($title !== '') {
-                    $linkData['title'] = $title;
-                } else {
-                    $linkData['title'] = null;
+                // Show what is really stored: staff may have blocked the link
+                // since this page loaded it (#325).
+                $savedData = dbSelectOne($linkSQL, 'si', [$shortCode, $userUID]);
+
+                if (is_array($savedData)) {
+                    $linkData = $savedData;
                 }
-                if ($notes !== '') {
-                    $linkData['notes'] = $notes;
-                } else {
-                    $linkData['notes'] = null;
-                }
-                if ($categoryID !== '') {
-                    $linkData['categoryID'] = $categoryID;
-                } else {
-                    $linkData['categoryID'] = null;
-                }
-                if ($startDate !== '') {
-                    $linkData['startDate'] = $startDate;
-                } else {
-                    $linkData['startDate'] = null;
-                }
-                if ($endDate !== '') {
-                    $linkData['endDate'] = $endDate;
-                } else {
-                    $linkData['endDate'] = null;
-                }
-                $linkData['isActive']       = $isActive;
 
                 $formSuccess = true;
 
@@ -282,6 +283,13 @@ if (function_exists('getDefaultShortDomain')) {
                 <div class="alert alert-danger" role="alert">
                     <i class="fas fa-exclamation-circle" aria-hidden="true"></i>
                     <?php echo g2ml_sanitiseOutput($formError); ?>
+                </div>
+                <?php } ?>
+
+                <?php if (!empty($linkData['staffDisabledAt'])) { ?>
+                <div class="alert alert-warning" role="alert" id="staff-disabled-notice">
+                    <i class="fas fa-ban" aria-hidden="true"></i>
+                    <?php if (function_exists('__')) { echo __('edit_link.staff_disabled_notice'); } else { echo 'Go2My.Link staff have switched this link off, so it does not redirect. You cannot switch it back on. If you think this is a mistake, please contact us.'; } ?>
                 </div>
                 <?php } ?>
 
@@ -389,8 +397,12 @@ if (function_exists('getDefaultShortDomain')) {
 
                             <!-- Active Toggle -->
                             <div class="form-check form-switch mb-3">
+                                <?php if (empty($linkData['staffDisabledAt'])) { ?>
+                                <input type="hidden" name="active_switch_shown" value="1">
+                                <?php } ?>
                                 <input class="form-check-input" type="checkbox" id="is-active" name="is_active" value="1"
-                                    <?php if ((int) $linkData['isActive']) { echo 'checked'; } ?>>
+                                    <?php if ((int) $linkData['isActive']) { echo 'checked'; } ?>
+                                    <?php if (!empty($linkData['staffDisabledAt'])) { echo 'disabled="disabled" aria-describedby="staff-disabled-notice"'; } ?>>
                                 <label class="form-check-label" for="is-active">Active</label>
                             </div>
 

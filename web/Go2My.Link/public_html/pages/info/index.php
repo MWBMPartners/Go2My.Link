@@ -213,7 +213,26 @@ if (function_exists('isAuthenticated'))
 
 $destinationDisplay = '';
 
-if ($linkData !== null && function_exists('g2ml_infoDisplayDestination'))
+// A link staff have switched off (#325, D-027): its destination is not shown to
+// anybody, signed in or not, and neither is its title, which the owner wrote
+// and which may repeat the address.
+$staffBlocked = ($linkData !== null && !empty($linkData['staffDisabledAt']));
+
+if ($staffBlocked)
+{
+    $linkData['destinationURL'] = null;
+    $linkData['title']          = null;
+
+    if (function_exists('__'))
+    {
+        $destinationDisplay = __('info.staff_blocked_destination');
+    }
+    else
+    {
+        $destinationDisplay = 'Go2My.Link staff have switched this link off, so its destination is not shown.';
+    }
+}
+elseif ($linkData !== null && function_exists('g2ml_infoDisplayDestination'))
 {
     $destinationDisplay = g2ml_infoDisplayDestination($linkData, $isViewerAuthenticated);
 }
@@ -280,7 +299,16 @@ if ($linkData !== null)
 {
     $now = time();
 
-    if (!$linkData['isActive'])
+    if ($staffBlocked)
+    {
+        if (function_exists('__')) {
+            $statusBadge = __('info.status_staff_blocked');
+        } else {
+            $statusBadge = 'Switched off by staff';
+        }
+        $statusClass = 'bg-danger text-wrap';
+    }
+    elseif (!$linkData['isActive'])
     {
         if (function_exists('__')) {
             $statusBadge = __('info.status_inactive');
@@ -458,7 +486,7 @@ if ($linkData !== null)
                             <dd class="col-sm-8">
                                 <i class="fas fa-external-link-alt text-body-secondary" aria-hidden="true"></i>
                                 <span class="text-break"><?php echo g2ml_sanitiseOutput($destinationDisplay); ?></span>
-                                <?php if (!$isViewerAuthenticated && $destinationDisplay !== '' && !$destinationRefused) { ?>
+                                <?php if (!$isViewerAuthenticated && $destinationDisplay !== '' && !$destinationRefused && !$staffBlocked) { ?>
                                 <div class="small mt-1">
                                     <a href="/login">
                                         <i class="fas fa-lock" aria-hidden="true"></i>

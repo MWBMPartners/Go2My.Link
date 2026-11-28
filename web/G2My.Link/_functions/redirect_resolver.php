@@ -75,7 +75,7 @@ require_once dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . '_functions'
 //                          'utmTerm' => ?string, 'utmContent' => ?string]
 //                         Status values: success, not_found, inactive, expired,
 //                         not_yet_active, no_destination, max_hops_exceeded,
-//                         domain_not_configured, error
+//                         domain_not_configured, staff_disabled (#325), error
 //
 //                         domain_not_configured (#91): the requesting Host has
 //                         been claimed as an org's custom short domain but has

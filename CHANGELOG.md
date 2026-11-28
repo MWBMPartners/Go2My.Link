@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🛡️ Staff can switch any short link off (2026-11-28)
+
+- ✨ A global administrator can find any short link at `/staff/links` in the dashboard, switch it
+  off, and later remove that block; the link then returns to how it was before. A blocked link sends
+  visitors nowhere, its destination is hidden on the information page, and its owner cannot switch it
+  back on (#325, decisions D-023, D-026, D-027).
+- 🗄️ **On deploy to an existing database:** after migration `044` (row A33): migration
+  `046_staff_link_switch.sql`, then `sp_lookupShortURL.sql`, then seed `079`, then the code
+  (checklist row A34).
+
 ### 🧾 Forms keep working with a second tab (2026-11-28)
 
 - 🐛 Opening a second tab no longer makes the first tab's forms answer "Session expired", and a

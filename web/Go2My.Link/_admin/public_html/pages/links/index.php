@@ -69,9 +69,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     {
         $deleteCode = g2ml_sanitiseInput($_POST['short_code'] ?? '');
 
-        // Ownership check + soft delete (set isActive = 0)
+        // Ownership check + soft delete (set isActive = 0). On a link staff
+        // have blocked, it also stays off when the block is removed (D-026).
         $result = dbUpdate(
-            "UPDATE tblShortURLs SET isActive = 0 WHERE shortCode = ? AND createdByUserUID = ?",
+            "UPDATE tblShortURLs SET isActive = 0,
+                `staffPreviousIsActive` = IF(`staffDisabledAt` IS NULL, NULL, 0)
+             WHERE shortCode = ? AND createdByUserUID = ?",
             'si',
             [$deleteCode, $userUID]
         );
@@ -149,6 +152,7 @@ $linksParams[] = $offset;
 $links = dbSelect(
     "SELECT s.urlUID, s.shortCode, s.destinationURL, s.title, s.clickCount,
             s.isActive, s.createdAt, s.startDate, s.endDate,
+            s.`staffDisabledAt`,
             c.categoryName
      FROM tblShortURLs s
      LEFT JOIN tblCategories c ON s.categoryID = c.categoryID AND c.orgHandle = s.orgHandle
@@ -362,8 +366,15 @@ if (function_exists('getDefaultShortDomain')) {
                                             $linkStatus = 'expired';
                                         }
                                     }
+                                    // Staff switched it off (#325).
+                                    if (!empty($link['staffDisabledAt']))
+                                    {
+                                        $linkStatus = 'staff_disabled';
+                                    }
                                     ?>
-                                    <?php if ($linkStatus === 'active') { ?>
+                                    <?php if ($linkStatus === 'staff_disabled') { ?>
+                                    <span class="badge bg-danger text-wrap"><?php if (function_exists('__')) { echo __('links.status_staff_disabled'); } else { echo 'Switched off by staff'; } ?></span>
+                                    <?php } elseif ($linkStatus === 'active') { ?>
                                     <span class="badge bg-success">Active</span>
                                     <?php } elseif ($linkStatus === 'expired') { ?>
                                     <span class="badge bg-warning text-dark"><?php if (function_exists('__')) { echo __('links.status_expired'); } else { echo 'Expired'; } ?></span>

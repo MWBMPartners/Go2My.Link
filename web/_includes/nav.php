@@ -289,6 +289,14 @@ if (function_exists('getCurrentRoute')) {
                             <?php if (function_exists('__')) { echo __('nav.organisation'); } else { echo 'Organisation'; } ?>
                         </a></li>
 
+                        <?php // Staff only: find and switch off any short link (#325) ?>
+                        <?php if (function_exists('hasMinimumRole') && hasMinimumRole($_SESSION['user_role'] ?? 'User', 'GlobalAdmin')) { ?>
+                        <li><a class="dropdown-item" href="https://admin.go2my.link/staff/links">
+                            <i class="fas fa-shield-alt fa-fw" aria-hidden="true"></i>
+                            <?php if (function_exists('__')) { echo __('nav.staff_links'); } else { echo 'Staff: find a link'; } ?>
+                        </a></li>
+                        <?php } ?>
+
                         <?php // API Keys ?>
                         <li><a class="dropdown-item" href="https://admin.go2my.link/api-keys">
                             <i class="fas fa-key fa-fw" aria-hidden="true"></i>

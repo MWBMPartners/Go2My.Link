@@ -295,9 +295,9 @@ PHP may take a few minutes to notice a new or changed `.user.ini`.
 3. 📋 Import all **17** schema files from `web/_sql/schema/`, in filename order
 4. 🔧 Import both stored procedures from `web/_sql/procedures/`
    (`sp_generateShortCode.sql`, `sp_lookupShortURL.sql`)
-5. 🌱 Import all **41** seed files from `web/_sql/seeds/`, in order — the
+5. 🌱 Import all **42** seed files from `web/_sql/seeds/`, in order — the
    numbering is not continuous: `001` through `023` run in sequence, then
-   seventeen later additions sit outside that run, `029_linkspage_privacy_translations.sql`,
+   eighteen later additions sit outside that run, `029_linkspage_privacy_translations.sql`,
    `057_form_rate_limit_settings.sql`,
    `058_truthful_marketing_translations.sql`,
    `059_link_destination_translations.sql`,
@@ -314,20 +314,23 @@ PHP may take a few minutes to notice a new or changed `.user.ini`.
    `074_destination_check.sql` and
     `075_linkspage_announcement_translations.sql`,
    `076_shared_g2my_codes_translations.sql`,
-   `077_deletion_link_choice_translations.sql` (see the table below for
+   `077_deletion_link_choice_translations.sql`,
+   `079_staff_link_switch_translations.sql` (see the table below for
    what each one adds). Importing "in order" means by filename, so a plain
-   `for f in web/_sql/seeds/*.sql` loop picks up all 41 without needing to
+   `for f in web/_sql/seeds/*.sql` loop picks up all 42 without needing to
    know about the gap in the numbers.
 
-> 📝 Counts as at 2026-11-28: 17 schema files, 2 stored procedures, 41 seeds,
-> 24 migrations. Import order is schema → procedures → seeds, which is the
+> 📝 Counts as at 2026-11-28: 17 schema files, 2 stored procedures, 42 seeds,
+> 25 migrations. Import order is schema → procedures → seeds, which is the
 > order `.github/workflows/ci.yml` uses. (Seed `023` and migration `021`, the
 > LinksPage feature registry, were added on 2026-09-21; seeds `029`, `058`,
-> `059`, `064`, `065`, `066`, `067`, `068`, `069`, `070`, `071`, `072`, `073`, `074`, `075`, `076` and `077` were added later still, outside the 001-023 run —
+> `059`, `064`, `065`, `066`, `067`, `068`, `069`, `070`, `071`, `072`, `073`, `074`, `075`, `076`, `077` and `079` were added later still, outside the 001-023 run —
 > see below. Seed `057`, schema `044` and migration `043`, the form
 > rate-limit table, were added for #212 — see below. Migration `044` and seed
 > `076`, the shared g2my.link codes, were added for #289 — see below. Seed `077` and migration
-> `045`, the link choice on account deletion, were added for #246 — see below.)
+> `045`, the link choice on account deletion, were added for #246 — see below.
+> Seed `079` and migration `046`, the staff screen for switching links off, were
+> added for #325 — see below.)
 
 #### 🚨 The collation check — do this first, every time
 
@@ -419,9 +422,10 @@ key names instead of words:
 | `075_linkspage_announcement_translations.sql` | 33 strings for #320: the lnks.page home page, and the Lnks.Page mentions on go2my.link (home, features, pricing, help and the footer) | The go2my.link home, features, pricing and help pages, and the footer on every main-site and dashboard page, show key names such as `footer.linkspage`; the lnks.page home page shows its built-in English instead |
 | `076_shared_g2my_codes_translations.sql` | 1 string for #289: a paragraph on the Short Links help page saying that each ending on g2my.link is used once by anybody, organisation members included, and that an organisation with its own verified short web address has its own set of endings | Nothing breaks: the help page shows the English written in the page itself |
 | `077_deletion_link_choice_translations.sql` | 20 strings for #246: the choice of what happens to short links on the Delete Account page, the sentence describing it (also used in the confirmation email), the corrected warning line and Privacy dashboard card, and two Privacy Policy retention texts (new legal wording, needs the owner's review) | The Delete Account page, the Privacy dashboard and the Privacy Policy show key names instead of words |
+| `079_staff_link_switch_translations.sql` | 57 strings for #325: the staff "Find a Short Link" page, the menu entry, the notices an owner sees when staff have switched a link off, and the changed visitor and help wording for a disabled link | The staff page and its menu entry show built-in English or a key name; the disabled-link error page, the help page and My Links show key names such as `redirect.link_disabled_message` |
 
-All twenty are safe to run more than once and safe on a database that already has them.
-Eighteen are plain `INSERT IGNORE`. `057` and `074` write their settings with
+All twenty-one are safe to run more than once and safe on a database that already has them.
+Nineteen are plain `INSERT IGNORE`. `057` and `074` write their settings with
 `ON DUPLICATE KEY UPDATE`, so a value you chose is kept (their texts are `INSERT IGNORE`).
 
 **Also re-import `004_linkspage_templates.sql` on an existing database (#287), after the new code is
@@ -622,6 +626,26 @@ cannot run. The migration checks for the column first, so it is safe to run
 more than once. See owner action **A32** in
 [PRE_LAUNCH_CHECKLIST.md](../PRE_LAUNCH_CHECKLIST.md).
 
+#### 🧩 Migration `046` — the staff block on short links (needed on an EXISTING database)
+
+`web/_sql/migrations/046_staff_link_switch.sql` adds the columns
+`staffDisabledAt`, `staffDisabledByUserUID`, `staffDisableReason` and
+`staffPreviousIsActive` to `tblShortURLs`, and the check
+`CK_url_staff_disabled_off`, which refuses any attempt to switch on a link
+while staff have it switched off (#325, owner decisions D-023 and D-026). No
+existing link changes. A fresh install gets all of it from schema
+`020_shorturls_categories_tags.sql`, so it does not need this file.
+
+**Do migration `044` first** (owner action **A33**): the procedure re-imported
+below also reads its `sharedShortCode` column. **Then run `046`, re-import
+`web/_sql/procedures/sp_lookupShortURL.sql`, seed
+`079_staff_link_switch_translations.sql`, and upload the code.** My Links, link
+editing and switching off, the link information page, the staff page and account
+erasure use the new columns, so without them they fail. The migration checks for
+each part first, so it is safe to run more than once. It changes
+`tblShortURLs`, so run it at a quiet time. See owner action **A34** in
+[PRE_LAUNCH_CHECKLIST.md](../PRE_LAUNCH_CHECKLIST.md).
+
 ### 🔄 Migration (from MWlink)
 
 > 📋 **See [MIGRATION_PLAN.md](MIGRATION_PLAN.md) for the comprehensive step-by-step migration execution plan**, including pre-migration checklist, DNS cutover, rollback procedures, and post-launch monitoring.
@@ -637,7 +661,7 @@ more than once. See owner action **A32** in
    **DELETED** — the app now performs a direct `INSERT` into `tblActivityLog`
    instead (`web/_functions/activity_logger.php`); do not look for or try to
    import this file
-4. 🌱 Import all 41 seed files in filename order (the list is in step 5 of
+4. 🌱 Import all 42 seed files in filename order (the list is in step 5 of
    **New Installation** above)
 5. 🧪 Run dry-run verification: `web/_sql/dry_run.sql`
 6. ▶️ Run migration scripts from `web/_sql/migrations/` in order — `001`–`004`,

@@ -1464,7 +1464,7 @@ function g2ml_findLinkForInfo(string $shortCode, string $lookupDomain): ?array
 {
     $selectColumns = "SELECT s.`shortCode`, s.`destinationURL`, s.`destinationType`,
                 s.`isActive`, s.`title`, s.`createdAt`,
-                s.`startDate`, s.`endDate`, s.`orgHandle`,
+                s.`startDate`, s.`endDate`, s.`orgHandle`, s.`staffDisabledAt`,
                 c.`categoryName`
          FROM `tblShortURLs` s
          LEFT JOIN `tblCategories` c ON s.`categoryID` = c.`categoryID` AND c.`orgHandle` = s.`orgHandle`";

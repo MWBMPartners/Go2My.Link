@@ -29,9 +29,9 @@ Complete **all** items before beginning the migration:
 ### 📁 Application Files
 
 - [ ] All 17 schema files (`web/_sql/schema/` — `000`, `010`–`015`, `020`–`021`, `030`–`036`, `044`) are current and tested
-- [ ] All 41 seed files (`web/_sql/seeds/`, listed in Phase C below) are current and tested
+- [ ] All 42 seed files (`web/_sql/seeds/`, listed in Phase C below) are current and tested
 - [ ] Both stored procedures (`web/_sql/procedures/sp_generateShortCode.sql`, `sp_lookupShortURL.sql`) are current — ⚠️ `sp_logActivity.sql` no longer exists (DELETED; direct `INSERT` now)
-- [ ] All 18 migration scripts (`web/_sql/migrations/001-004,006,008-019` — there is no `005`) match legacy schema, with `016` and `019` confirmed MANDATORY (see Phase D). The other six files there (`020`, `021`, `042`, `043`, `044` and `045`) are covered in `docs/DEPLOYMENT.md`
+- [ ] All 18 migration scripts (`web/_sql/migrations/001-004,006,008-019` — there is no `005`) match legacy schema, with `016` and `019` confirmed MANDATORY (see Phase D). The other seven files there (`020`, `021`, `042`, `043`, `044`, `045` and `046`) are covered in `docs/DEPLOYMENT.md`
 - [ ] `auth_creds.php` populated with production database credentials
 - [ ] `ENCRYPTION_SALT` generated: `php -r "echo bin2hex(random_bytes(32));"`
 - [ ] CAPTCHA keys configured (Turnstile or reCAPTCHA)
@@ -163,10 +163,11 @@ Step C38:  web/_sql/seeds/074_destination_check.sql
 Step C39:  web/_sql/seeds/075_linkspage_announcement_translations.sql
 Step C40:  web/_sql/seeds/076_shared_g2my_codes_translations.sql
 Step C41:  web/_sql/seeds/077_deletion_link_choice_translations.sql
+Step C42:  web/_sql/seeds/079_staff_link_switch_translations.sql
 ```
 
-⚠️ **All 41 must be loaded, in filename order.** The numbers have gaps (there
-is no `024`–`028`, `030`–`056`, `060`–`063`); that is expected. Many
+⚠️ **All 42 must be loaded, in filename order.** The numbers have gaps (there
+is no `024`–`028`, `030`–`056`, `060`–`063` or `078`); that is expected. Many
 features read settings these seeds define, and the later ones hold the words
 the pages show, so most pages without their seed show key names instead of
 text.

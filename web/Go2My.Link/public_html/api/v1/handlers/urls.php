@@ -824,8 +824,11 @@ function g2ml_apiHandleUrlsDelete(array $keyRow, array $context): array
     $code      = _g2ml_apiUrlsRequireRouteCode($context);
     $orgHandle = (string) $keyRow['orgHandle'];
 
+    // On a link staff have blocked, it also stays off when the block is
+    // removed (#325, D-026).
     $affectedRows = dbUpdate(
-        'UPDATE tblShortURLs SET isActive = 0 WHERE shortCode = ? AND orgHandle = ?',
+        'UPDATE tblShortURLs SET isActive = 0, `staffPreviousIsActive` = IF(`staffDisabledAt` IS NULL, NULL, 0) '
+        . 'WHERE shortCode = ? AND orgHandle = ?',
         'ss',
         [$code, $orgHandle]
     );

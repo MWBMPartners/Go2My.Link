@@ -622,6 +622,10 @@ function g2ml_linkChoiceSummary(string $linkChoice): string
  * link cannot work without the address). Personal data inside them, and in
  * the activity log, is part of #247.
  *
+ * A link staff have blocked (#325) counts as switched on when it was on before
+ * the block (staffPreviousIsActive = 1), so the choice still applies to it once
+ * the block is removed (D-026).
+ *
  * Running this twice is harmless: after the first run no link carries the
  * person's userUID, so a later run changes nothing and no period is restarted.
  *
@@ -657,16 +661,17 @@ function g2ml_applyLinkChoiceOnErasure(mysqli $db, int $userUID, string $linkCho
         $sql = "UPDATE `tblShortURLs` AS `s`
                 SET `s`.`endDate` = " . $newEnd . "
                 WHERE `s`.`createdByUserUID` = ?
-                  AND `s`.`isActive` = 1
+                  AND (`s`.`isActive` = 1 OR `s`.`staffPreviousIsActive` = 1)
                   AND (`s`.`endDate` IS NULL OR `s`.`endDate` > " . $newEnd . ")
                   AND " . $theirOwnLink;
     }
     elseif ($linkChoice !== 'forever')
     {
         $sql = "UPDATE `tblShortURLs` AS `s`
-                SET `s`.`isActive` = 0
+                SET `s`.`isActive` = 0,
+                    `s`.`staffPreviousIsActive` = IF(`s`.`staffDisabledAt` IS NULL, NULL, 0)
                 WHERE `s`.`createdByUserUID` = ?
-                  AND `s`.`isActive` = 1
+                  AND (`s`.`isActive` = 1 OR `s`.`staffPreviousIsActive` = 1)
                   AND " . $theirOwnLink;
     }
 

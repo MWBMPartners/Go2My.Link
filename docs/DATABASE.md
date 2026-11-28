@@ -351,6 +351,27 @@ PHP, where `dbCallProcedure()` (`web/_functions/db_query.php`) logs the
 real MySQL message; their normal, non-error outcomes (`not_found`,
 `expired`, running out of random codes to try, and so on) are unchanged.
 
+## 🛡️ Staff Block on Short Links (#325)
+
+A global administrator can switch any short link off (owner decision D-023).
+`tblShortURLs` records this in `staffDisabledAt` (UTC time, empty when there is
+no block), `staffDisabledByUserUID`, `staffDisableReason` and
+`staffPreviousIsActive`. Switching off also sets `isActive` to 0. While the
+block is there `sp_lookupShortURL` returns `staff_disabled` with no fallback
+address, so an organisation cannot send the blocked link's visitors somewhere
+else, and the information page shows no destination (D-027). The check
+`CK_url_staff_disabled_off` stops `isActive` being set back to 1 while the block
+is there, whichever code tries.
+
+Removing the block puts `isActive` back to `staffPreviousIsActive` (D-026). My
+Links, the edit page, the API's delete and account erasure set that value to 0
+when they switch off a blocked link, so it stays off. Erasure also applies a
+"keep for a period" end date to a blocked link that was on before the block.
+
+Every block and removal is written to `tblActivityLog` (`staff_link_disabled`,
+`staff_link_unblocked`), even when activity logging is switched off. Existing
+databases: `web/_sql/migrations/046_staff_link_switch.sql`, after `044`.
+
 ## 🚀 Migration Strategy
 
 Migration scripts are located in `web/_sql/migrations/`.

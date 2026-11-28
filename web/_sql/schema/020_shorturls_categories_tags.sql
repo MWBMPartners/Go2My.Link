@@ -176,6 +176,22 @@ CREATE TABLE IF NOT EXISTS `tblShortURLs` (
     `isActive`              TINYINT(1) UNSIGNED NOT NULL DEFAULT 1
         COMMENT 'Whether this short URL is active (soft delete)',
 
+    -- 🛡️ #325 / owner decision D-023: Go2My.Link staff can switch any link
+    -- off. staffDisabledAt is set while a staff block is in place, and the
+    -- check CK_url_staff_disabled_off below stops the link being switched on
+    -- until staff lift the block, whichever code tries.
+    `staffDisabledAt`       DATETIME            DEFAULT NULL
+        COMMENT 'UTC time Go2My.Link staff switched this link off (#325); NULL when there is no staff block',
+
+    `staffDisabledByUserUID` BIGINT UNSIGNED    DEFAULT NULL
+        COMMENT 'tblUsers.userUID of the staff member who switched it off (#325); no foreign key, kept as a record',
+
+    `staffDisableReason`    VARCHAR(500)        DEFAULT NULL
+        COMMENT 'Optional reason the staff member gave (#325); not shown to the link''s owner',
+
+    `staffPreviousIsActive` TINYINT(1) UNSIGNED DEFAULT NULL
+        COMMENT 'What isActive goes back to when staff remove the block (#325, D-026): 1 on, 0 off; set to 0 if the owner or account erasure switches the link off meanwhile; NULL when there is no staff block',
+
     -- Date range
     `startDate`             DATETIME            DEFAULT NULL
         COMMENT 'When this short URL becomes active (NULL = immediately)',
@@ -233,7 +249,11 @@ CREATE TABLE IF NOT EXISTS `tblShortURLs` (
     -- other than its own. (Enforced by MySQL 8.0.16 or newer and by
     -- MariaDB 10.2 or newer; an older server accepts and ignores it.)
     CONSTRAINT `CK_url_shared_code_matches`
-        CHECK (`sharedShortCode` IS NULL OR `sharedShortCode` = `shortCode`)
+        CHECK (`sharedShortCode` IS NULL OR `sharedShortCode` = `shortCode`),
+    -- #325: a link under a staff block is always switched off. (Enforced by
+    -- MySQL 8.0.16 or newer and by MariaDB 10.2 or newer.)
+    CONSTRAINT `CK_url_staff_disabled_off`
+        CHECK (`staffDisabledAt` IS NULL OR `isActive` = 0)
 
     -- NOTE: categoryID is a logical FK to tblCategories.categoryID but cannot
     -- be enforced as a database constraint because tblCategories uses a composite

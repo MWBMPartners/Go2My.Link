@@ -285,6 +285,13 @@ $destination = $result['destination'];
 $status      = $result['status'];
 $orgHandle   = $result['orgHandle'];
 
+// 🛡️ A link staff have switched off (#325) never sends the visitor anywhere,
+// not even to a fallback address its owner may have chosen.
+if ($status === 'staff_disabled')
+{
+    $destination = null;
+}
+
 // ============================================================================
 // ❌ Handle SP Error (database failure)
 // ============================================================================
@@ -583,9 +590,19 @@ switch ($status)
         break;
 
     case 'inactive':
+    case 'staff_disabled':
         http_response_code(410);
         $errorTitle   = 'Link Disabled';
-        $errorMessage = 'This short link has been disabled by its owner.';
+        // The owner or Go2My.Link staff may have switched it off (#325), so
+        // the message does not say who did.
+        if (function_exists('__'))
+        {
+            $errorMessage = __('redirect.link_disabled_message');
+        }
+        else
+        {
+            $errorMessage = 'This short link has been disabled.';
+        }
         break;
 
     case 'not_yet_active':

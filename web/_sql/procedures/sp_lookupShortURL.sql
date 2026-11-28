@@ -119,6 +119,13 @@
 -- organisation's own links and also any it made on g2my.link before it had
 -- a domain of its own.
 --
+-- 🛡️ #325 — a link Go2My.Link staff have switched off (staffDisabledAt is set)
+-- gives its own status, 'staff_disabled', and NO fallback address. An
+-- organisation chooses its own fallback address, so sending the visitor there
+-- would let the owner of a blocked link still decide where visitors go. This
+-- applies at every hop of an alias chain. Needs the column from schema 020 or
+-- migration 046.
+--
 -- @package    Go2My.Link
 -- @subpackage Database
 -- @author     MWBM Partners Ltd (MWservices)
@@ -157,6 +164,7 @@ BEGIN
     DECLARE v_destination     TEXT            DEFAULT NULL;
     DECLARE v_alias           VARCHAR(50)     DEFAULT NULL;
     DECLARE v_isActive        TINYINT         DEFAULT 0;
+    DECLARE v_staffDisabledAt DATETIME        DEFAULT NULL;
     DECLARE v_startDate       DATETIME        DEFAULT NULL;
     DECLARE v_endDate         DATETIME        DEFAULT NULL;
     DECLARE v_hopCount        INT             DEFAULT 0;
@@ -244,6 +252,7 @@ BEGIN
             SET v_destination = NULL;
             SET v_alias = NULL;
             SET v_isActive = 0;
+            SET v_staffDisabledAt = NULL;
             SET v_startDate = NULL;
             SET v_endDate = NULL;
             SET v_utmSource = NULL;
@@ -261,6 +270,7 @@ BEGIN
                     s.`destinationURL`,
                     s.`redirectAlias`,
                     s.`isActive`,
+                    s.`staffDisabledAt`,
                     s.`startDate`,
                     s.`endDate`,
                     s.`utmSource`,
@@ -274,6 +284,7 @@ BEGIN
                     v_destination,
                     v_alias,
                     v_isActive,
+                    v_staffDisabledAt,
                     v_startDate,
                     v_endDate,
                     v_utmSource,
@@ -301,6 +312,7 @@ BEGIN
                     s.`destinationURL`,
                     s.`redirectAlias`,
                     s.`isActive`,
+                    s.`staffDisabledAt`,
                     s.`startDate`,
                     s.`endDate`,
                     s.`utmSource`,
@@ -313,6 +325,7 @@ BEGIN
                     v_destination,
                     v_alias,
                     v_isActive,
+                    v_staffDisabledAt,
                     v_startDate,
                     v_endDate,
                     v_utmSource,
@@ -331,6 +344,19 @@ BEGIN
             IF v_found = 0 THEN
                 SET outputDestination = v_orgFallback;
                 SET outputStatus = 'not_found';
+                SET outputOrgHandle = v_orgHandle;
+                SET outputUtmSource = NULL;
+                SET outputUtmMedium = NULL;
+                SET outputUtmCampaign = NULL;
+                SET outputUtmTerm = NULL;
+                SET outputUtmContent = NULL;
+                LEAVE resolve_loop;
+            END IF;
+
+            -- Switched off by staff (#325): no fallback address
+            IF v_staffDisabledAt IS NOT NULL THEN
+                SET outputDestination = NULL;
+                SET outputStatus = 'staff_disabled';
                 SET outputOrgHandle = v_orgHandle;
                 SET outputUtmSource = NULL;
                 SET outputUtmMedium = NULL;
@@ -432,7 +458,7 @@ BEGIN
         -- address, when it has set one (the same address its own domain
         -- would use). This extra lookup only happens when the link did NOT
         -- open, so a normal redirect pays nothing for it.
-        IF v_ownerChanged = 1 AND outputStatus <> 'success' THEN
+        IF v_ownerChanged = 1 AND outputStatus NOT IN ('success', 'staff_disabled') THEN
             SELECT o.`orgFallbackURL`
             INTO   v_ownerFallback
             FROM   `tblOrganisations` o

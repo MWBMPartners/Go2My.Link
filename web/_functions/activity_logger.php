@@ -89,8 +89,13 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'log_redaction.php';
  */
 function logActivity(string $action, ?string $status = null, ?int $statusCode = null, array $context = []): bool
 {
+    // A record of what staff did to somebody's link (#325) is always kept:
+    // neither the logging setting nor a staff member's own tracking preference
+    // may leave "who switched this off" unrecorded.
+    $isStaffAction = in_array($action, ['staff_link_disabled', 'staff_link_unblocked'], true);
+
     // Check if activity logging is enabled
-    if (function_exists('getSetting'))
+    if (!$isStaffAction && function_exists('getSetting'))
     {
         $loggingEnabled = getSetting('analytics.log_activity', true);
 
@@ -103,7 +108,7 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
     // DNT/GPC check — skip non-critical logging if user has opted out of tracking.
     // Critical security actions are always logged regardless of DNT preference.
     // 📖 Reference: web/_functions/dnt.php
-    if (function_exists('g2ml_shouldTrack') && !g2ml_shouldTrack())
+    if (!$isStaffAction && function_exists('g2ml_shouldTrack') && !g2ml_shouldTrack())
     {
         $alwaysLogActions = [
             'login_failed', 'login_blocked', 'csrf_failure',
