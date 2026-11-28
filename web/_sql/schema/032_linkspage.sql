@@ -219,9 +219,21 @@ CREATE TABLE IF NOT EXISTS `tblLinksPageItems` (
 -- domain's designation (reverting to the existing 404 behaviour) rather than
 -- blocking the delete or cascading anything.
 -- =============================================================================
-ALTER TABLE `tblOrgShortDomains`
-    ADD CONSTRAINT `FK_short_domain_linkspage`
-        FOREIGN KEY (`linksPageUID`)
-        REFERENCES `tblLinksPages` (`pageUID`)
-        ON UPDATE CASCADE
-        ON DELETE SET NULL;
+-- Added only if it is not there already, so that running this file a second
+-- time (an import that stopped part way and was started again) does not fail
+-- with "duplicate foreign key" (#316). MySQL has no "ADD CONSTRAINT IF NOT
+-- EXISTS", so the statement is chosen first and then run.
+SET @g2mlConstraintStatement = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE `tblOrgShortDomains` ADD CONSTRAINT `FK_short_domain_linkspage` FOREIGN KEY (`linksPageUID`) REFERENCES `tblLinksPages` (`pageUID`) ON UPDATE CASCADE ON DELETE SET NULL',
+        'DO 0'
+    )
+    FROM `information_schema`.`TABLE_CONSTRAINTS`
+    WHERE `CONSTRAINT_SCHEMA` = DATABASE()
+      AND `TABLE_NAME` = 'tblOrgShortDomains'
+      AND `CONSTRAINT_NAME` = 'FK_short_domain_linkspage'
+);
+PREPARE g2mlConstraint FROM @g2mlConstraintStatement;
+EXECUTE g2mlConstraint;
+DEALLOCATE PREPARE g2mlConstraint;

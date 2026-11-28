@@ -106,9 +106,9 @@ function _g2mlInstallerLockedRemove(string $folder): void
  * child process could not be run here.
  *
  * @param  bool $withLockFile
- * @return array{output: string, status: string}|null
+ * @return array{output: string, status: string, authFolderExists: bool}|null
  */
-function _g2mlInstallerLockedRun(bool $withLockFile): ?array
+function _g2mlInstallerLockedRun(bool $withLockFile, bool $withAuthFolder = true): ?array
 {
     if (!function_exists('shell_exec'))
     {
@@ -128,7 +128,10 @@ function _g2mlInstallerLockedRun(bool $withLockFile): ?array
     $authDir    = $base . '/web/_auth_keys';
 
     mkdir($installDir, 0777, true);
-    mkdir($authDir, 0777, true);
+    if ($withAuthFolder)
+    {
+        mkdir($authDir, 0777, true);
+    }
 
     file_put_contents($installDir . '/index.php', _g2mlInstallerLockedSource());
 
@@ -146,6 +149,8 @@ function _g2mlInstallerLockedRun(bool $withLockFile): ?array
 
     $output = shell_exec(escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($base . '/wrapper.php') . ' 2>&1');
 
+    $authFolderExists = is_dir($authDir);
+
     _g2mlInstallerLockedRemove($base);
 
     if (!is_string($output))
@@ -162,7 +167,7 @@ function _g2mlInstallerLockedRun(bool $withLockFile): ?array
         $output = (string) preg_replace('/\n\[status=\d+\]$/', '', $output);
     }
 
-    return array('output' => $output, 'status' => $status);
+    return array('output' => $output, 'status' => $status, 'authFolderExists' => $authFolderExists);
 }
 
 test('installer: the lock check runs before the session starts, and no page names the lock file path (#285)', function (): void
@@ -213,4 +218,18 @@ test('installer: with no lock file the installer still answers (so the guard is 
 
     assert_not_same('404', $result['status'], 'The installer answered 404 although no lock file exists');
     assert_contains('Go2My.Link Installer', $result['output'], 'The installer page was not printed');
+});
+
+test('installer: on a new server with no web/_auth_keys folder, the installer creates it (#316)', function (): void
+{
+    $result = _g2mlInstallerLockedRun(false, false);
+
+    if ($result === null)
+    {
+        assert_true(true);
+
+        return;
+    }
+
+    assert_true($result['authFolderExists'], 'The folder was not created. Output: ' . $result['output']);
 });

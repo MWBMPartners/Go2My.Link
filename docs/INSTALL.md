@@ -68,7 +68,9 @@
   > stays — which is exactly the case the installer's own check above catches.
 - The repository deployed so that `web/_auth_keys/` is **writable** by PHP and
   **outside** every public web root (it already sits above each
-  `public_html/`).
+  `public_html/`). The automatic deploy does not upload this folder, so on a
+  new server the installer creates it; for that, `web/` itself must be
+  writable (or create the folder by hand).
 - Each component directory (`Go2My.Link/`, `G2My.Link/`, `Lnks.page/` —
   the parent of each `public_html/`) is also **writable** by PHP: the
   installer creates a `.auth/` subdirectory (`0700`) under each one to hold
@@ -90,11 +92,17 @@
    2. **Database** — enter the connection details; the installer tests them
       live.
    3. **Import** — imports every schema table, stored procedure, and seed file
-      into your database (`CREATE TABLE IF NOT EXISTS`, so it is safe to re-run).
-   4. **Admin** — create the system-wide **GlobalAdmin** account.
+      into your database. It is safe to run again if it stopped part way.
+   4. **Admin** — create the system-wide **GlobalAdmin** account. If an earlier
+      attempt got this far but never finished (for example the browser session
+      ran out), work through the steps again and enter the **same** username,
+      email and password: the installer recognises the account and carries on.
+      Any other details are refused, so a second GlobalAdmin cannot be made.
    5. **Finish** — the installer **generates fresh encryption keys**, writes the
       shared `web/_auth_keys/auth_creds.php`, ensures each component includes
-      it, and locks itself.
+      it, and locks itself. If any of these files cannot be written, it says
+      which one, does **not** lock itself, and lets you press the button again.
+      Encryption keys already in an existing credentials file are kept.
 
 The installer writes **one** shared credentials file
 (`web/_auth_keys/auth_creds.php`); each component's
@@ -114,8 +122,10 @@ step the installer, per component:
    world-readable (the installer writes it `0600`).
 3. Sign in to the admin dashboard at **`https://admin.go2my.link/`** with the
    GlobalAdmin account you created.
-4. Configure third-party keys (Turnstile/reCAPTCHA, OAuth) from **Admin →
-   Settings**, or add them to `auth_creds.php`.
+4. Bot protection (Turnstile or reCAPTCHA) is switched on by database
+   settings in `tblSettings` (for example `captcha.turnstile_secret_key`).
+   The admin dashboard has no settings page yet, and nothing reads the
+   third-party key constants in `auth_creds.php`.
 5. 🛡️ **Behind a reverse proxy?** Only then, define the OPTIONAL
    `TRUSTED_PROXIES` constant in `auth_creds.php` (comma-separated proxy
    IPs/CIDRs). Left undefined (the Dreamhost default), `g2ml_getClientIP()`

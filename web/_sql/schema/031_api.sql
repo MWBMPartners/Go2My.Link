@@ -137,9 +137,21 @@ CREATE TABLE IF NOT EXISTS `tblAPIRequestLog` (
 -- Records which API key (e.g. the CueRCode integration) minted a short code;
 -- ON DELETE SET NULL so removing a key never deletes live links.
 -- =============================================================================
-ALTER TABLE `tblShortURLs`
-    ADD CONSTRAINT `FK_url_apikey`
-        FOREIGN KEY (`createdViaAPIKeyUID`)
-        REFERENCES `tblAPIKeys` (`apiKeyUID`)
-        ON UPDATE CASCADE
-        ON DELETE SET NULL;
+-- Added only if it is not there already, so that running this file a second
+-- time (an import that stopped part way and was started again) does not fail
+-- with "duplicate foreign key" (#316). MySQL has no "ADD CONSTRAINT IF NOT
+-- EXISTS", so the statement is chosen first and then run.
+SET @g2mlConstraintStatement = (
+    SELECT IF(
+        COUNT(*) = 0,
+        'ALTER TABLE `tblShortURLs` ADD CONSTRAINT `FK_url_apikey` FOREIGN KEY (`createdViaAPIKeyUID`) REFERENCES `tblAPIKeys` (`apiKeyUID`) ON UPDATE CASCADE ON DELETE SET NULL',
+        'DO 0'
+    )
+    FROM `information_schema`.`TABLE_CONSTRAINTS`
+    WHERE `CONSTRAINT_SCHEMA` = DATABASE()
+      AND `TABLE_NAME` = 'tblShortURLs'
+      AND `CONSTRAINT_NAME` = 'FK_url_apikey'
+);
+PREPARE g2mlConstraint FROM @g2mlConstraintStatement;
+EXECUTE g2mlConstraint;
+DEALLOCATE PREPARE g2mlConstraint;

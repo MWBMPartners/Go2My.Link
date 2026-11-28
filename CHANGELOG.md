@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🧰 The web installer can finish (2026-11-28)
+
+- 🐛 A new install could not create its first administrator, so it could never finish. Fixed (#316).
+- 🐛 The database import can now be run again after stopping part way; the installer creates the
+  shared credentials folder if it is missing, refuses to lock itself after an incomplete install, and
+  can be resumed by entering the same administrator details (#316).
+
 ### 🚦 Limits on the public forms (2026-11-27)
 
 - 🔒 Sign-up, the contact form and forgot-password now limit how often one connection can use them

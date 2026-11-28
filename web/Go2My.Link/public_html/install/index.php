@@ -62,6 +62,21 @@ declare(strict_types=1);
 date_default_timezone_set('UTC');
 
 // ============================================================================
+// 🧪 Functions only (used by the database test, #316)
+// ============================================================================
+// tests/integration/installer_test.php loads this file to call the installer's
+// own import, first-administrator and finish functions. It defines the constant
+// below first, so nothing on this page runs: no session, no output. PHP still
+// declares every top-level function in the file, including those written after
+// this point. A web request cannot define a constant.
+// ============================================================================
+
+if (defined('G2ML_INSTALLER_FUNCTIONS_ONLY'))
+{
+    return;
+}
+
+// ============================================================================
 // 📁 Paths
 // ============================================================================
 // install/ is at: web/<Component>/public_html/install/
@@ -111,6 +126,15 @@ if (file_exists($g2mlLockFile))
     header('X-Robots-Tag: noindex, nofollow');
     echo 'Not Found';
     exit;
+}
+
+// The deploy never uploads web/_auth_keys (it holds live credentials), so on a
+// new server the folder does not exist yet and must be made here (#316). If
+// that is not possible, the requirements step below says the folder is not
+// writable.
+if (!is_dir($g2mlAuthDir) && is_writable($g2mlWebRoot))
+{
+    @mkdir($g2mlAuthDir, 0700);
 }
 
 // Harden the session cookie before the session starts.
@@ -725,15 +749,32 @@ function g2ml_install_write_file(string $path, string $contents): bool
 
 /**
  * Create the system-wide GlobalAdmin user with a hashed password and the
- * 'globaladmin' account type. Returns ['ok' => bool, 'error' => string].
+ * 'global-admin' account type (web/_sql/seeds/011_account_types.sql).
+ *
+ * If a GlobalAdmin already exists, no second one is made. The one exception
+ * to refusing is an installation that was interrupted after this step (for
+ * example the browser session ran out before "Finish"): entering the SAME
+ * username, email and password as the existing administrator carries on, with
+ * 'resumed' set to true. Nothing in the database is changed in that case.
+ *
+ * @return array{ok: bool, error: string, resumed?: bool}
  */
 function g2ml_install_create_admin(mysqli $db, array $admin, string $securityPath): array
 {
     // Refuse if a GlobalAdmin already exists — prevents minting extra super-admins.
-    $existing = $db->query("SELECT 1 FROM tblUsers WHERE role = 'GlobalAdmin' LIMIT 1");
+    $existing = $db->query("SELECT 1 FROM `tblUsers` WHERE `role` = 'GlobalAdmin' LIMIT 1");
     if ($existing !== false && $existing->num_rows > 0)
     {
-        return ['ok' => false, 'error' => 'A GlobalAdmin account already exists. Refusing to create another.'];
+        if (g2ml_install_admin_matches($db, $admin))
+        {
+            return ['ok' => true, 'error' => '', 'resumed' => true];
+        }
+
+        return [
+            'ok'    => false,
+            'error' => 'A GlobalAdmin account already exists. Refusing to create another. To finish an '
+                . 'interrupted installation, enter that account\'s own username, email and password.',
+        ];
     }
 
     // Hash the password with the project's canonical hasher when available.
@@ -804,11 +845,13 @@ function g2ml_install_create_admin(mysqli $db, array $admin, string $securityPat
     $newUserUID = $db->insert_id;
     $insertUser->close();
 
-    // Assign the 'globaladmin' account type within the [default] org.
+    // Assign the 'global-admin' account type within the [default] org. The
+    // spelling must match the seed file: the column has a foreign key to
+    // tblAccountTypes, and a wrong value rolls the whole account back (#316).
     $insertType = $db->prepare(
-        "INSERT INTO tblUserAccountTypes
-            (userUID, orgHandle, accountTypeID, grantedByUserUID, grantedAt, expiresAt, isActive)
-         VALUES (?, '[default]', 'globaladmin', NULL, NOW(), NULL, 1)"
+        "INSERT INTO `tblUserAccountTypes`
+            (`userUID`, `orgHandle`, `accountTypeID`, `grantedByUserUID`, `grantedAt`, `expiresAt`, `isActive`)
+         VALUES (?, '[default]', 'global-admin', NULL, NOW(), NULL, 1)"
     );
 
     if ($insertType === false)
@@ -831,6 +874,277 @@ function g2ml_install_create_admin(mysqli $db, array $admin, string $securityPat
     $db->commit();
 
     return ['ok' => true, 'error' => ''];
+}
+
+/**
+ * Say whether the details entered belong to an active GlobalAdmin that is
+ * already in the database: same username, same email and the right password.
+ */
+function g2ml_install_admin_matches(mysqli $db, array $admin): bool
+{
+    $statement = $db->prepare(
+        "SELECT `passwordHash` FROM `tblUsers`
+         WHERE `role` = 'GlobalAdmin' AND `isActive` = 1 AND `username` = ? AND `email` = ?
+         LIMIT 1"
+    );
+
+    if ($statement === false)
+    {
+        return false;
+    }
+
+    $statement->bind_param('ss', $admin['username'], $admin['email']);
+    $statement->execute();
+    $statement->bind_result($passwordHash);
+    $found = $statement->fetch();
+    $statement->close();
+
+    if ($found !== true)
+    {
+        return false;
+    }
+
+    return password_verify($admin['password'], (string) $passwordHash);
+}
+
+/**
+ * Import every .sql file in web/_sql/schema, then procedures, then seeds, each
+ * folder in file name order. New numbered files are picked up with no change
+ * here. Migrations are not run: a new database gets the same result from the
+ * schema and seed files. Stops at the first file that fails.
+ *
+ * @return array{ok: bool, log: array<int, array<string, mixed>>}
+ */
+function g2ml_install_import(mysqli $db, string $sqlDir): array
+{
+    $importLog = [];
+
+    $groups = [
+        'Schema'             => $sqlDir . DIRECTORY_SEPARATOR . 'schema',
+        'Stored procedures'  => $sqlDir . DIRECTORY_SEPARATOR . 'procedures',
+        'Seed data'          => $sqlDir . DIRECTORY_SEPARATOR . 'seeds',
+    ];
+
+    foreach ($groups as $groupLabel => $dir)
+    {
+        $files = glob($dir . DIRECTORY_SEPARATOR . '*.sql');
+
+        // A folder that is missing or empty means part of the code was not
+        // uploaded. Carrying on would report success for a database with
+        // pieces missing.
+        if ($files === false || count($files) === 0)
+        {
+            $importLog[] = [
+                'group'     => $groupLabel,
+                'file'      => basename($dir) . '/*.sql',
+                'ok'        => false,
+                'count'     => 0,
+                'error'     => 'No SQL files were found in this folder. Upload web/_sql in full.',
+                'statement' => '',
+            ];
+
+            return ['ok' => false, 'log' => $importLog];
+        }
+
+        sort($files);
+
+        foreach ($files as $file)
+        {
+            $result = g2ml_install_run_sql_file($db, $file);
+            $entry  = [
+                'group' => $groupLabel,
+                'file'  => basename($file),
+                'ok'    => $result['ok'],
+                'count' => $result['count'],
+            ];
+
+            if (!$result['ok'])
+            {
+                $entry['error']     = $result['error'] ?? 'Unknown error';
+                $entry['statement'] = $result['statement'] ?? '';
+                $importLog[]        = $entry;
+
+                return ['ok' => false, 'log' => $importLog];
+            }
+
+            $importLog[] = $entry;
+        }
+    }
+
+    return ['ok' => true, 'log' => $importLog];
+}
+
+/**
+ * Read an encryption key out of a credentials file that is already there, so
+ * that finishing a second time never replaces a key that may have been used.
+ * Returns null when there is no file, no such key, or only the template's
+ * "CHANGE_ME" placeholder.
+ */
+function g2ml_install_existing_key(string $credsFile, string $constantName): ?string
+{
+    if (!is_file($credsFile))
+    {
+        return null;
+    }
+
+    $contents = file_get_contents($credsFile);
+
+    if ($contents === false)
+    {
+        return null;
+    }
+
+    $pattern = "/^\s*define\(\s*'" . preg_quote($constantName, '/') . "'\s*,\s*'([^'\\\\]{32,})'\s*\)/m";
+
+    if (preg_match($pattern, $contents, $matches) !== 1)
+    {
+        return null;
+    }
+
+    if (strpos($matches[1], 'CHANGE_ME') === 0)
+    {
+        return null;
+    }
+
+    return $matches[1];
+}
+
+/**
+ * The last step: write the shared credentials file, make sure each component
+ * has its include file, and only then write the lock file.
+ *
+ * If anything fails, no lock file is written, so the problem can be put right
+ * and the step run again. Locking a half-finished installation would leave a
+ * site that cannot start and an installer that refuses to run.
+ *
+ * @param  array<string, string> $components  Component name => component folder.
+ * @return array{ok: bool, errors: array<int, string>, notices: array<int, string>, components: array<string, string>}
+ */
+function g2ml_install_finalise(array $dbCreds, string $authDir, array $components): array
+{
+    $result = ['ok' => false, 'errors' => [], 'notices' => [], 'components' => []];
+
+    if (!is_dir($authDir) || !is_writable($authDir))
+    {
+        $result['errors'][] = 'The credentials directory (web/_auth_keys) is not writable. Fix permissions and retry.';
+
+        return $result;
+    }
+
+    $credsFile = $authDir . DIRECTORY_SEPARATOR . 'auth_creds.php';
+    $lockFile  = $authDir . DIRECTORY_SEPARATOR . '.installed';
+
+    $salt = g2ml_install_existing_key($credsFile, 'ENCRYPTION_SALT');
+    if ($salt === null)
+    {
+        $salt = g2ml_install_generate_key();
+    }
+
+    $secondary = g2ml_install_existing_key($credsFile, 'ENCRYPTION_KEY_SECONDARY');
+    if ($secondary === null)
+    {
+        $secondary = g2ml_install_generate_key();
+    }
+
+    $credsBody = g2ml_install_render_creds($dbCreds, $salt, $secondary);
+
+    if (!g2ml_install_write_file($credsFile, $credsBody))
+    {
+        $result['errors'][] = 'Failed to write the credentials file.';
+
+        return $result;
+    }
+
+    // Defence-in-depth: drop a deny-all guard into _auth_keys/ in case the
+    // directory is ever mis-mapped into a web root.
+    $authHtaccess = $authDir . DIRECTORY_SEPARATOR . '.htaccess';
+    if (!file_exists($authHtaccess))
+    {
+        @file_put_contents($authHtaccess, "Require all denied\n<IfModule !mod_authz_core.c>\n    Deny from all\n</IfModule>\n");
+    }
+
+    $authIndex = $authDir . DIRECTORY_SEPARATOR . 'index.php';
+    if (!file_exists($authIndex))
+    {
+        @file_put_contents($authIndex, "<?php\nheader('Location: https://go2my.link');\nexit;\n");
+    }
+
+    // Verify the credentials file is not group/other-readable.
+    clearstatcache();
+    $credsMode = @fileperms($credsFile);
+    if ($credsMode !== false && ($credsMode & 0077) !== 0)
+    {
+        $result['notices'][] = 'Credentials written, but the file is group/other-readable — tighten it now (chmod 600 web/_auth_keys/auth_creds.php).';
+    }
+
+    // Ensure each component has its thin include (create only if missing).
+    $allIncludesReady = true;
+
+    foreach ($components as $componentName => $componentDir)
+    {
+        $includeDir  = $componentDir . DIRECTORY_SEPARATOR . '.auth';
+        $includeFile = $includeDir . DIRECTORY_SEPARATOR . 'auth_creds.php';
+
+        // The .auth/ directory is deliberately NOT tracked in git (it holds
+        // credentials), and the SFTP mirror excludes it, so on a fresh deploy
+        // it will not exist yet. Create it rather than reporting
+        // 'missing-dir' — otherwise the component has no thin include and the
+        // site cannot boot.
+        if (!file_exists($includeFile) && !is_dir($includeDir))
+        {
+            @mkdir($includeDir, 0700, true);
+        }
+
+        if (file_exists($includeFile))
+        {
+            $result['components'][$componentName] = 'present';
+        }
+        elseif (is_dir($includeDir) && is_writable($includeDir))
+        {
+            $body = g2ml_install_render_component_include($componentName);
+
+            if (g2ml_install_write_file($includeFile, $body))
+            {
+                $result['components'][$componentName] = 'created';
+            }
+            else
+            {
+                $result['components'][$componentName] = 'write-failed';
+                $allIncludesReady                     = false;
+            }
+        }
+        else
+        {
+            $result['components'][$componentName] = 'missing-dir';
+            $allIncludesReady                     = false;
+        }
+
+        if ($result['components'][$componentName] === 'write-failed' || $result['components'][$componentName] === 'missing-dir')
+        {
+            $result['errors'][] = 'Could not create ' . $componentName . '/.auth/auth_creds.php ('
+                . $result['components'][$componentName] . '). Make the ' . $componentName
+                . ' folder writable, then press the button again.';
+        }
+    }
+
+    if (!$allIncludesReady)
+    {
+        return $result;
+    }
+
+    // Write the lock file to disable the installer.
+    if (@file_put_contents($lockFile, 'Installed ' . gmdate('Y-m-d H:i:s') . " UTC\n") === false)
+    {
+        $result['errors'][] = 'Could not write the lock file in web/_auth_keys, so the installer is still open. Fix permissions and press the button again.';
+
+        return $result;
+    }
+
+    @chmod($lockFile, 0600);
+
+    $result['ok'] = true;
+
+    return $result;
 }
 
 // ============================================================================
@@ -970,51 +1284,9 @@ if (!$alreadyInstalled)
                     }
                     else
                     {
-                        $importLog = [];
-                        $importOk  = true;
-
-                        $groups = [
-                            'Schema'             => $g2mlSqlDir . DIRECTORY_SEPARATOR . 'schema',
-                            'Stored procedures'  => $g2mlSqlDir . DIRECTORY_SEPARATOR . 'procedures',
-                            'Seed data'          => $g2mlSqlDir . DIRECTORY_SEPARATOR . 'seeds',
-                        ];
-
-                        foreach ($groups as $groupLabel => $dir)
-                        {
-                            $files = glob($dir . DIRECTORY_SEPARATOR . '*.sql');
-
-                            if ($files === false)
-                            {
-                                $files = [];
-                            }
-
-                            sort($files);
-
-                            foreach ($files as $file)
-                            {
-                                if (!$importOk)
-                                {
-                                    break;
-                                }
-
-                                $result = g2ml_install_run_sql_file($connection, $file);
-                                $entry  = [
-                                    'group' => $groupLabel,
-                                    'file'  => basename($file),
-                                    'ok'    => $result['ok'],
-                                    'count' => $result['count'],
-                                ];
-
-                                if (!$result['ok'])
-                                {
-                                    $entry['error']     = $result['error'] ?? 'Unknown error';
-                                    $entry['statement'] = $result['statement'] ?? '';
-                                    $importOk           = false;
-                                }
-
-                                $importLog[] = $entry;
-                            }
-                        }
+                        $imported  = g2ml_install_import($connection, $g2mlSqlDir);
+                        $importLog = $imported['log'];
+                        $importOk  = $imported['ok'];
 
                         $connection->close();
                         $_SESSION['g2ml_install_import_log'] = $importLog;
@@ -1094,8 +1366,16 @@ if (!$alreadyInstalled)
                         if ($created['ok'])
                         {
                             $_SESSION['g2ml_install_admin_done'] = true;
-                            $notices[] = 'GlobalAdmin account created.';
-                            $step      = 4;
+                            if (!empty($created['resumed']))
+                            {
+                                $notices[] = 'The existing GlobalAdmin account was confirmed. Nothing was changed.';
+                            }
+                            else
+                            {
+                                $notices[] = 'GlobalAdmin account created.';
+                            }
+
+                            $step = 4;
                         }
                         else
                         {
@@ -1119,97 +1399,32 @@ if (!$alreadyInstalled)
                     $errors[] = 'Earlier steps are incomplete. Please start again.';
                     $step     = 0;
                 }
-                elseif (!is_dir($g2mlAuthDir) || !is_writable($g2mlAuthDir))
-                {
-                    $errors[] = 'The credentials directory (web/_auth_keys) is not writable. Fix permissions and retry.';
-                    $step     = 4;
-                }
                 else
                 {
-                    $salt      = g2ml_install_generate_key();
-                    $secondary = g2ml_install_generate_key();
-                    $credsBody = g2ml_install_render_creds($_SESSION['g2ml_install_db'], $salt, $secondary);
+                    $finished = g2ml_install_finalise($_SESSION['g2ml_install_db'], $g2mlAuthDir, $g2mlComponents);
 
-                    if (!g2ml_install_write_file($g2mlCredsFile, $credsBody))
+                    foreach ($finished['notices'] as $notice)
                     {
-                        $errors[] = 'Failed to write the credentials file.';
-                        $step     = 4;
+                        $notices[] = $notice;
                     }
-                    else
+
+                    if ($finished['ok'])
                     {
-                        // Defence-in-depth: drop a deny-all guard into _auth_keys/
-                        // in case the directory is ever mis-mapped into a web root.
-                        $authHtaccess = $g2mlAuthDir . DIRECTORY_SEPARATOR . '.htaccess';
-                        if (!file_exists($authHtaccess))
-                        {
-                            @file_put_contents($authHtaccess, "Require all denied\n<IfModule !mod_authz_core.c>\n    Deny from all\n</IfModule>\n");
-                        }
-
-                        $authIndex = $g2mlAuthDir . DIRECTORY_SEPARATOR . 'index.php';
-                        if (!file_exists($authIndex))
-                        {
-                            @file_put_contents($authIndex, "<?php\nheader('Location: https://go2my.link');\nexit;\n");
-                        }
-
-                        // Verify the credentials file is not group/other-readable.
-                        clearstatcache();
-                        $credsMode = @fileperms($g2mlCredsFile);
-                        if ($credsMode !== false && ($credsMode & 0077) !== 0)
-                        {
-                            $notices[] = 'Credentials written, but the file is group/other-readable — tighten it now (chmod 600 web/_auth_keys/auth_creds.php).';
-                        }
-
-                        // Ensure each component has its thin include (create only if missing).
-                        $componentResults = [];
-
-                        foreach ($g2mlComponents as $componentName => $componentDir)
-                        {
-                            $includeDir  = $componentDir . DIRECTORY_SEPARATOR . '.auth';
-                            $includeFile = $includeDir . DIRECTORY_SEPARATOR . 'auth_creds.php';
-
-                            // The .auth/ directory is deliberately NOT tracked in git
-                            // (it holds credentials), and the SFTP mirror excludes it,
-                            // so on a fresh deploy it will not exist yet. Create it
-                            // rather than reporting 'missing-dir' — otherwise the
-                            // component has no thin include and the site cannot boot.
-                            if (!file_exists($includeFile) && !is_dir($includeDir))
-                            {
-                                @mkdir($includeDir, 0700, true);
-                            }
-
-                            if (file_exists($includeFile))
-                            {
-                                $componentResults[$componentName] = 'present';
-                            }
-                            elseif (is_dir($includeDir) && is_writable($includeDir))
-                            {
-                                $body = g2ml_install_render_component_include($componentName);
-
-                                if (g2ml_install_write_file($includeFile, $body))
-                                {
-                                    $componentResults[$componentName] = 'created';
-                                }
-                                else
-                                {
-                                    $componentResults[$componentName] = 'write-failed';
-                                }
-                            }
-                            else
-                            {
-                                $componentResults[$componentName] = 'missing-dir';
-                            }
-                        }
-
-                        // Write the lock file to disable the installer.
-                        @file_put_contents($g2mlLockFile, 'Installed ' . gmdate('Y-m-d H:i:s') . " UTC\n");
-                        @chmod($g2mlLockFile, 0600);
-
                         // Clear secrets from the session.
                         unset($_SESSION['g2ml_install_db']);
 
-                        $_SESSION['g2ml_install_components'] = $componentResults;
+                        $_SESSION['g2ml_install_components'] = $finished['components'];
                         $alreadyInstalled                    = true;
                         $step                                = 5;
+                    }
+                    else
+                    {
+                        foreach ($finished['errors'] as $finishError)
+                        {
+                            $errors[] = $finishError;
+                        }
+
+                        $step = 4;
                     }
                 }
             }
@@ -1236,7 +1451,7 @@ if (!$alreadyInstalled)
 // 🌍 Environment checks (step 0)
 // ============================================================================
 
-function g2ml_install_requirements(string $authDir, string $sqlDir): array
+function g2ml_install_requirements(string $authDir, string $sqlDir, array $components): array
 {
     $checks = [];
 
@@ -1272,6 +1487,28 @@ function g2ml_install_requirements(string $authDir, string $sqlDir): array
     $checks[] = ['label' => 'Argon2id password hashing', 'ok' => defined('PASSWORD_ARGON2ID')];
     $checks[] = ['label' => 'Credentials dir writable (web/_auth_keys)', 'ok' => is_dir($authDir) && is_writable($authDir)];
     $checks[] = ['label' => 'SQL directory readable (web/_sql)', 'ok' => is_dir($sqlDir) && is_readable($sqlDir)];
+
+    // The last step writes <component>/.auth/auth_creds.php, so find out now,
+    // not after everything else is done, whether that will be possible.
+    foreach ($components as $componentName => $componentDir)
+    {
+        $includeDir = $componentDir . DIRECTORY_SEPARATOR . '.auth';
+
+        if (file_exists($includeDir . DIRECTORY_SEPARATOR . 'auth_creds.php'))
+        {
+            $ready = true;
+        }
+        elseif (is_dir($includeDir))
+        {
+            $ready = is_writable($includeDir);
+        }
+        else
+        {
+            $ready = is_dir($componentDir) && is_writable($componentDir);
+        }
+
+        $checks[] = ['label' => 'Credentials include can be written (' . $componentName . '/.auth)', 'ok' => $ready];
+    }
 
     return $checks;
 }
@@ -1428,7 +1665,7 @@ header('Content-Type: text/html; charset=UTF-8');
         // ====================================================================
         elseif ($step === 0)
         {
-            $checks   = g2ml_install_requirements($g2mlAuthDir, $g2mlSqlDir);
+            $checks   = g2ml_install_requirements($g2mlAuthDir, $g2mlSqlDir, $g2mlComponents);
             $allReady = true;
 
             foreach ($checks as $check)
@@ -1561,6 +1798,7 @@ header('Content-Type: text/html; charset=UTF-8');
         ?>
         <h2>4. Create the GlobalAdmin</h2>
         <p class="lead">This is the system-wide super-administrator account.</p>
+        <p class="hint">If you already created it in an earlier, unfinished attempt, enter the same details to carry on.</p>
         <form method="POST" action="?">
             <input type="hidden" name="_csrf" value="<?php echo g2ml_install_e($csrf); ?>">
             <input type="hidden" name="step" value="3">
@@ -1611,11 +1849,9 @@ header('Content-Type: text/html; charset=UTF-8');
         // ====================================================================
         elseif ($step === 5)
         {
-            // $step can only ever become 5 via the finalize block above
-            // (line ~1018), which always sets this exact session key
-            // immediately beforehand in the same request — the GET/
-            // $requestedStep path clamps $step to 0-4 (see ~line 1028), so
-            // there is no route to $step === 5 where this key is unset.
+            // $step can only become 5 through the "finalise" action above, which
+            // sets this session key just before, in the same request. A GET
+            // request clamps $step to 0-4, so there is no other way here.
             $componentResults = $_SESSION['g2ml_install_components'];
         ?>
         <h2>🎉 Installation complete</h2>
