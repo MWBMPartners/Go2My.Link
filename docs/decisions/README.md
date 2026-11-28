@@ -50,3 +50,7 @@ tracked on its own issue.
 | [D-032](D-032-release-candidate-own-copy.md) | 2026-11-28 | Release-candidate gets its own copy and web address | In force |
 | [D-033](D-033-demoted-admin-keys-stop.md) | 2026-11-28 | API keys stop working when their owner is no longer an administrator | In force |
 | [D-034](D-034-old-accounts-arrive-confirmed.md) | 2026-11-28 | Moved accounts arrive switched on with confirmed email addresses | In force |
+| [D-035](D-035-home-page-links-own-allowance.md) | 2026-11-28 | Home-page links by signed-in team members have their own allowance | In force |
+| [D-036](D-036-unblock-may-exceed-limit.md) | 2026-11-28 | Removing a staff block may take a person over the limit | In force |
+| [D-037](D-037-limit-check-fault-allows.md) | 2026-11-28 | If the limit cannot be checked, the link is allowed | In force |
+| [D-038](D-038-erasure-cleans-moved-history.md) | 2026-11-28 | Erasing a moved person removes their identifiers from old history | In force |
