@@ -56,6 +56,9 @@ unset($g2mlGuardScriptPath);
 // Removes secrets in web addresses from everything logged here (#323)
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'log_redaction.php';
 
+// Makes values fit their database columns, so a row is never refused (#312)
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'text_fit.php';
+
 // ============================================================================
 // 📝 Error Severity Mapping
 // ============================================================================
@@ -218,60 +221,6 @@ function _g2ml_traceCallWithoutArguments(string $call): string
 }
 
 // ============================================================================
-// ✂️ Fit Values Into Their Database Columns (#312)
-// ============================================================================
-// The database runs in strict mode, so a value that is too long, or that is not
-// valid UTF-8 text, makes the whole INSERT fail and the error row is lost.
-// ============================================================================
-
-/**
- * Make a value valid UTF-8 and cut it to a number of characters (for VARCHAR
- * columns), without splitting a multi-byte character.
- *
- * @param  string|null $value          The value to fit
- * @param  int         $maxCharacters  The column's size in characters
- * @return string|null                 The value that is safe to insert
- */
-function _g2ml_fitCharacters(?string $value, int $maxCharacters): ?string
-{
-    if ($value === null)
-    {
-        return null;
-    }
-
-    if (function_exists('mb_substr') && function_exists('mb_scrub'))
-    {
-        return mb_substr(mb_scrub($value, 'UTF-8'), 0, $maxCharacters, 'UTF-8');
-    }
-
-    // Without the mbstring extension, keep plain ASCII only.
-    return substr((string) preg_replace('/[^\x00-\x7F]/', '?', $value), 0, $maxCharacters);
-}
-
-/**
- * Make a value valid UTF-8 and cut it to a number of bytes (for TEXT columns,
- * which are measured in bytes), without splitting a multi-byte character.
- *
- * @param  string|null $value     The value to fit
- * @param  int         $maxBytes  The largest number of bytes to keep
- * @return string|null            The value that is safe to insert
- */
-function _g2ml_fitBytes(?string $value, int $maxBytes): ?string
-{
-    if ($value === null)
-    {
-        return null;
-    }
-
-    if (function_exists('mb_strcut') && function_exists('mb_scrub'))
-    {
-        return mb_strcut(mb_scrub($value, 'UTF-8'), 0, $maxBytes, 'UTF-8');
-    }
-
-    return substr((string) preg_replace('/[^\x00-\x7F]/', '?', $value), 0, $maxBytes);
-}
-
-// ============================================================================
 // 📥 Log Error to Database
 // ============================================================================
 
@@ -323,11 +272,11 @@ function g2ml_logError(
         // Truncate backtrace to prevent excessively large inserts
         if (strlen($backtrace) > 10000)
         {
-            $backtrace = _g2ml_fitBytes($backtrace, 10000) . "\n... [truncated]";
+            $backtrace = g2ml_fitBytes($backtrace, 10000) . "\n... [truncated]";
         }
         else
         {
-            $backtrace = _g2ml_fitBytes($backtrace, 10000);
+            $backtrace = g2ml_fitBytes($backtrace, 10000);
         }
     }
 
@@ -356,14 +305,22 @@ function g2ml_logError(
         $safeHeaders['HTTP_REFERER'] = g2ml_redactLogURL((string) $safeHeaders['HTTP_REFERER']);
     }
 
+    // Cut each header on its own, so that one or two very long headers cannot
+    // push the whole list over the size limit and lose all of them (#331). At
+    // 1,000 bytes each, all seven fit even when every byte has to be written
+    // as six characters in JSON. This also replaces bytes that are not valid
+    // UTF-8.
+    foreach ($safeHeaders as $key => $value)
+    {
+        $safeHeaders[$key] = g2ml_fitBytes((string) $value, 1000);
+    }
+
     if (!empty($safeHeaders)) {
-        // A header can hold bytes that are not valid UTF-8. Replace them, or
-        // json_encode() fails and the database refuses the row.
-        $requestHeaders = json_encode($safeHeaders, JSON_INVALID_UTF8_SUBSTITUTE);
+        $requestHeaders = g2ml_encodeJSONColumn($safeHeaders, 'request headers', 'error log');
     } else {
         $requestHeaders = null;
     }
-    $ipAddress      = g2ml_clientIpOrDefault($_SERVER['REMOTE_ADDR'] ?? null);
+    $ipAddress      = g2ml_fitCharacters(g2ml_clientIpOrDefault($_SERVER['REMOTE_ADDR'] ?? null), 45);
     $userUID        = $_SESSION['user_uid'] ?? null;
 
     // The full text for PHP's error log, built before anything is cut
@@ -387,21 +344,21 @@ function g2ml_logError(
     }
 
     // Cut each value to fit its column (sizes: web/_sql/schema/030_analytics.sql)
-    $columnTitle   = (string) _g2ml_fitCharacters($title, 500);
-    $columnDetail  = _g2ml_fitBytes($detail, 65535);
-    $columnFile    = _g2ml_fitCharacters($file, 500);
-    $requestURL    = _g2ml_fitCharacters($requestURL, 500);
-    $requestMethod = _g2ml_fitCharacters($requestMethod, 10);
+    $columnTitle   = (string) g2ml_fitCharacters($title, 500);
+    $columnDetail  = g2ml_fitBytes($detail, 65535);
+    $columnFile    = g2ml_fitCharacters($file, 500);
+    $requestURL    = g2ml_fitCharacters($requestURL, 500);
+    $requestMethod = g2ml_fitCharacters($requestMethod, 10);
 
     // True when the stored title or detail is shorter than the real one
     $textWasCut = false;
 
-    if ($columnTitle !== _g2ml_fitCharacters($title, strlen($title)))
+    if ($columnTitle !== g2ml_fitCharacters($title, strlen($title)))
     {
         $textWasCut = true;
     }
 
-    if ($detail !== null && $columnDetail !== _g2ml_fitBytes($detail, strlen($detail) * 4))
+    if ($detail !== null && $columnDetail !== g2ml_fitBytes($detail, strlen($detail) * 4))
     {
         $textWasCut = true;
     }
@@ -431,7 +388,7 @@ function g2ml_logError(
             if ($stmt !== false)
             {
                 // Some Linux packages report a version longer than the column
-                $phpVersion = _g2ml_fitCharacters(PHP_VERSION, 20);
+                $phpVersion = g2ml_fitCharacters(PHP_VERSION, 20);
 
                 $stmt->bind_param(
                     'sisssisssssis',

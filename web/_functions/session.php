@@ -54,6 +54,9 @@ if ($g2mlGuardScriptPath !== '' && realpath($g2mlGuardScriptPath) === realpath(_
 }
 unset($g2mlGuardScriptPath);
 
+// Makes values fit their database columns, so a row is never refused (#331)
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'text_fit.php';
+
 // ============================================================================
 // 🍪 Session Cookie Domain
 // ============================================================================
@@ -168,11 +171,12 @@ function createUserSession(int $userUID): string|false
     // 📖 Reference: https://www.php.net/manual/en/function.date.php
     $expiresAt = date('Y-m-d H:i:s', time() + $lifetime);
 
-    // Truncate long user agent strings to match column limit
-    if (strlen($userAgent) > 500)
-    {
-        $userAgent = substr($userAgent, 0, 500);
-    }
+    // Make the request values valid UTF-8 and cut them to their column sizes,
+    // on a character boundary (#331). Otherwise the database refuses the row
+    // and the sign-in fails.
+    $ipAddress  = g2ml_fitCharacters($ipAddress, 45);
+    $userAgent  = g2ml_fitCharacters($userAgent, 500);
+    $deviceInfo = g2ml_fitCharacters($deviceInfo, 255);
 
     // Insert the session into tblUserSessions
     $sessionUID = dbInsert(

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🔒 Odd text can no longer hide a request (2026-11-28)
+
+- 🔒 A request whose browser name or address held invalid text, or was too long, could leave no
+  record, so it escaped the API request limit and the failed sign-in counting. Every logged value is
+  now made valid and cut to fit (#331).
+
 ### 🚢 A safe automatic upload, with separate test copies (2026-11-28)
 
 - 🔒 Each branch uploads to its own complete copy (`live`, `alpha`, `beta`, `rc`) inside a folder used

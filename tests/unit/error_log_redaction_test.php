@@ -185,11 +185,11 @@ test('error log columns: values are cut by characters or bytes without splitting
 {
     $long = str_repeat('é', 600);
 
-    assert_same(str_repeat('é', 500), _g2ml_fitCharacters($long, 500));
-    assert_same(str_repeat('é', 2), _g2ml_fitBytes($long, 5));
-    assert_same(null, _g2ml_fitCharacters(null, 500));
-    assert_same(null, _g2ml_fitBytes(null, 500));
-    assert_same(1, preg_match('//u', (string) _g2ml_fitCharacters("bad \xC3 byte \xFF", 500)));
+    assert_same(str_repeat('é', 500), g2ml_fitCharacters($long, 500));
+    assert_same(str_repeat('é', 2), g2ml_fitBytes($long, 5));
+    assert_same(null, g2ml_fitCharacters(null, 500));
+    assert_same(null, g2ml_fitBytes(null, 500));
+    assert_same(1, preg_match('//u', (string) g2ml_fitCharacters("bad \xC3 byte \xFF", 500)));
 });
 
 // ============================================================================

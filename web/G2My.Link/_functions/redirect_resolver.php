@@ -55,6 +55,10 @@ unset($g2mlGuardScriptPath);
 require_once dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . '_functions'
     . DIRECTORY_SEPARATOR . 'log_redaction.php';
 
+// Cuts captured tracking values without splitting a character (#331)
+require_once dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . '_functions'
+    . DIRECTORY_SEPARATOR . 'text_fit.php';
+
 // ============================================================================
 // 🔀 resolveShortCode — Resolve a short code to its destination URL
 // ============================================================================
@@ -371,12 +375,13 @@ function g2ml_appendUtmToDestination(string $destinationURL, array $linkUtm): st
 //     array-style parameter (e.g. "utm_source[]=x") is ignored rather than
 //     coerced, so a crafted request can never smuggle an array into the
 //     eventual json_encode() call in logActivity().
-//   - Each accepted value is cast to a string and capped to $maxValueLength
-//     characters.
-//   - The combined size of all captured values is capped to $maxTotalLength;
-//     once accumulating further values would exceed that cap, remaining
-//     whitelisted keys are dropped (not further truncated) so what IS stored
-//     is always a whole, un-mangled value.
+//   - Each accepted value is cast to a string, has any bytes that are not
+//     valid UTF-8 replaced, and is cut to at most $maxValueLength BYTES
+//     without splitting a character (so a value in non-English letters keeps
+//     fewer than 255 characters).
+//   - The combined size of all captured values, also in bytes, is capped to
+//     $maxTotalLength; once adding a further value would exceed that cap, it
+//     and the remaining whitelisted keys are dropped rather than cut again.
 //
 // The caller is responsible for storing the result ONLY (e.g. inside
 // logActivity()'s logData JSON column) — this function performs no escaping
@@ -435,10 +440,8 @@ function g2ml_extractTrackingParams(array $queryParams): array
             continue;
         }
 
-        if (strlen($stringValue) > $maxValueLength)
-        {
-            $stringValue = substr($stringValue, 0, $maxValueLength);
-        }
+        // Valid UTF-8, cut without splitting a character (#331)
+        $stringValue = (string) g2ml_fitBytes($stringValue, $maxValueLength);
 
         // Stop accumulating once the total captured size would exceed the
         // cap. Remaining whitelisted keys (if any) are dropped rather than

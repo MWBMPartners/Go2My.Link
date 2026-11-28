@@ -50,6 +50,9 @@ if ($g2mlGuardScriptPath !== '' && realpath($g2mlGuardScriptPath) === realpath(_
 }
 unset($g2mlGuardScriptPath);
 
+// Makes values fit their database columns, so a row is never refused (#331)
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'text_fit.php';
+
 // ============================================================================
 // 📋 Get Consent Status for a Category
 // ============================================================================
@@ -95,7 +98,7 @@ function g2ml_getConsentStatus(string $type): ?bool
     }
 
     $userUID   = $_SESSION['user_uid'] ?? null;
-    $sessionID = session_id();
+    $sessionID = g2ml_fitCharacters((string) session_id(), 255);
 
     if ($userUID !== null && (int) $userUID > 0)
     {
@@ -168,7 +171,7 @@ function g2ml_recordConsent(string $type, bool $given, string $method = 'banner'
     } else {
         $userUID = null;
     }
-    $sessionID      = session_id();
+    $sessionID      = g2ml_fitCharacters((string) session_id(), 255);
     if ($given) {
         $consentGiven = 1;
     } else {
@@ -192,11 +195,14 @@ function g2ml_recordConsent(string $type, bool $given, string $method = 'banner'
         $expiryDays = 365;
     }
 
-    // Truncate UA to column limit
-    if ($userAgent !== null && strlen($userAgent) > 500)
-    {
-        $userAgent = substr($userAgent, 0, 500);
-    }
+    // Make each text value valid UTF-8 and cut it to its column's size (#331),
+    // or a browser name holding stray bytes would lose the consent record.
+    // Sizes: tblConsentRecords in web/_sql/schema/034_legal_compliance.sql
+    $consentMethod  = (string) g2ml_fitCharacters($method, 50);
+    $ipAddress      = g2ml_fitCharacters($ipAddress, 45);
+    $userAgent      = g2ml_fitCharacters($userAgent, 500);
+    $jurisdiction   = g2ml_fitCharacters($jurisdiction, 50);
+    $consentVersion = g2ml_fitCharacters((string) $consentVersion, 20);
 
     // Calculate expiry date
     $expiresAt = date('Y-m-d H:i:s', strtotime("+{$expiryDays} days"));
@@ -211,7 +217,7 @@ function g2ml_recordConsent(string $type, bool $given, string $method = 'banner'
         $stmt = $db->prepare($sql);
         $stmt->bind_param(
             'ississssss',
-            $userUID, $sessionID, $type, $consentGiven, $method,
+            $userUID, $sessionID, $type, $consentGiven, $consentMethod,
             $ipAddress, $userAgent, $jurisdiction, $consentVersion, $expiresAt
         );
         $stmt->execute();
@@ -305,7 +311,7 @@ function g2ml_hasValidConsent(): bool
     }
 
     $userUID   = $_SESSION['user_uid'] ?? null;
-    $sessionID = session_id();
+    $sessionID = g2ml_fitCharacters((string) session_id(), 255);
 
     if ($userUID !== null && (int) $userUID > 0)
     {

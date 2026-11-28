@@ -54,6 +54,9 @@ unset($g2mlGuardScriptPath);
 // Removes secrets in web addresses from everything logged here (#323)
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'log_redaction.php';
 
+// Makes values fit their database columns, so a row is never refused (#331)
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'text_fit.php';
+
 // ============================================================================
 // 📝 Log Activity
 // ============================================================================
@@ -149,21 +152,11 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
         }
 
         // logData is a JSON column, so what is written must be valid JSON
-        // (#330). Plain json_encode() gives false for text that is not valid
-        // UTF-8 — for example an e-mail address typed with stray bytes on a
-        // failed sign-in — and false is sent as an empty string, which both
-        // MySQL and MariaDB refuse for a JSON column, so the whole row was
-        // lost (checked on MySQL 8.4 and MariaDB 11.4). Bad bytes are now
-        // replaced with the Unicode replacement character, the same way
-        // error_handler.php stores request headers, and if the data still
-        // cannot be written as JSON the row is kept with logData empty.
-        $logData = json_encode($safeLogData, JSON_INVALID_UTF8_SUBSTITUTE);
-
-        if ($logData === false)
-        {
-            error_log('[Go2My.Link] WARNING: logActivity could not write logData as JSON (' . json_last_error_msg() . '); the row is kept without it.');
-            $logData = null;
-        }
+        // (#330, #331). Bytes that are not valid UTF-8 are replaced, data
+        // nested too deeply for MariaDB (or too large) is replaced by a short
+        // note, and data that still cannot be written as JSON leaves the
+        // column empty. The row is kept in every case.
+        $logData = g2ml_encodeJSONColumn($safeLogData, 'log data', 'activity log');
     } else {
         $logData = null;
     }
@@ -206,49 +199,35 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
     // Parse User-Agent for structured fields
     $uaParsed = _g2ml_parseUserAgent($requestUA);
 
-    // Truncate long fields to match column limits
-    if ($requestPath !== null && strlen($requestPath) > 500)
-    {
-        $requestPath = substr($requestPath, 0, 500);
-    }
+    // Make every text value valid UTF-8 and cut it to its column's size, on a
+    // character boundary (#331). The database refuses the whole row otherwise,
+    // and rows here are what the failed-login CAPTCHA and the anonymous link
+    // limit count. Several of these come straight from the request (the host
+    // name, address, referring page, browser name and the short code).
+    // Sizes: tblActivityLog in web/_sql/schema/030_analytics.sql. TEXT columns
+    // are measured in bytes, the others in characters.
+    $action         = (string) g2ml_fitCharacters($action, 100);
+    $status         = g2ml_fitCharacters($status, 50);
+    $orgHandle      = g2ml_fitCharacters($orgHandle, 50);
+    $shortCode      = g2ml_fitCharacters($shortCode, 50);
+    $destinationURL = g2ml_fitBytes($destinationURL, 65535);
+    $requestDomain  = g2ml_fitCharacters($requestDomain, 255);
+    $requestPath    = g2ml_fitCharacters($requestPath, 500);
+    $requestMethod  = g2ml_fitCharacters($requestMethod, 10);
+    $requestReferer = g2ml_fitCharacters($requestReferer, 500);
+    $requestUA      = g2ml_fitCharacters($requestUA, 500);
+    $ipAddress      = g2ml_fitCharacters($ipAddress, 45);
+    $scanSource     = g2ml_fitCharacters($scanSource, 50);
+    $countryCode    = g2ml_fitCharacters($countryCode, 2);
+    $regionCode     = g2ml_fitCharacters($regionCode, 10);
+    $cityName       = g2ml_fitCharacters($cityName, 255);
 
-    if ($requestReferer !== null && strlen($requestReferer) > 500)
-    {
-        $requestReferer = substr($requestReferer, 0, 500);
-    }
-
-    if ($requestUA !== null && strlen($requestUA) > 500)
-    {
-        $requestUA = substr($requestUA, 0, 500);
-    }
-
-    // scanSource is untrusted-input-derived (#145) — cap it to the
-    // tblActivityLog.scanSource VARCHAR(50) column width defensively, even
-    // though the caller is expected to have already bounded it to a known
-    // configured value rather than raw query-string text.
-    if ($scanSource !== null && strlen($scanSource) > 50)
-    {
-        $scanSource = substr($scanSource, 0, 50);
-    }
-
-    // Geolocation fields (#43) are derived from the vendored MaxMind reader
-    // (web/_functions/geolocation.php), not raw request input, but are
-    // capped defensively to their column widths anyway — the same
-    // defence-in-depth posture as scanSource above.
-    if ($countryCode !== null && strlen($countryCode) > 2)
-    {
-        $countryCode = substr($countryCode, 0, 2);
-    }
-
-    if ($regionCode !== null && strlen($regionCode) > 10)
-    {
-        $regionCode = substr($regionCode, 0, 10);
-    }
-
-    if ($cityName !== null && strlen($cityName) > 255)
-    {
-        $cityName = substr($cityName, 0, 255);
-    }
+    // The version numbers are cut out of the User-Agent, so they can be long
+    $uaParsed['browserName']    = g2ml_fitCharacters($uaParsed['browserName'], 100);
+    $uaParsed['browserVersion'] = g2ml_fitCharacters($uaParsed['browserVersion'], 50);
+    $uaParsed['osName']         = g2ml_fitCharacters($uaParsed['osName'], 100);
+    $uaParsed['osVersion']      = g2ml_fitCharacters($uaParsed['osVersion'], 50);
+    $uaParsed['deviceType']     = g2ml_fitCharacters($uaParsed['deviceType'], 50);
 
     try
     {

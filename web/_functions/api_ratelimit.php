@@ -57,6 +57,9 @@ unset($g2mlGuardScriptPath);
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'log_redaction.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'environment.php';
 
+// Makes values fit their database columns, so a row is never refused (#331)
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'text_fit.php';
+
 // ============================================================================
 // 🚦 Rate limit check
 // ============================================================================
@@ -400,7 +403,8 @@ function g2ml_apiRedactRequestBody(array $body): array
 
 /**
  * Bound an untrusted string to a destination column's width, stripping any
- * control characters (including CR/LF) first.
+ * control characters (including CR/LF) first. Bytes that are not valid UTF-8
+ * are replaced, and the cut never splits a multi-byte character (#331).
  *
  * Pure and DB-free so it is directly unit-testable.
  *
@@ -421,7 +425,7 @@ function g2ml_apiRedactRequestBody(array $body): array
  * server error log at any caller that also error_log()s the value.
  *
  * @param  string|null $value      The untrusted value, or null.
- * @param  int         $maxLength  The destination column width (bytes).
+ * @param  int         $maxLength  The destination column width (characters).
  * @return string|null             The stripped, length-capped value, or null.
  */
 function g2ml_apiBoundLogValue(?string $value, int $maxLength): ?string
@@ -438,12 +442,7 @@ function g2ml_apiBoundLogValue(?string $value, int $maxLength): ?string
         $stripped = '';
     }
 
-    if (strlen($stripped) > $maxLength)
-    {
-        $stripped = substr($stripped, 0, $maxLength);
-    }
-
-    return $stripped;
+    return g2ml_fitCharacters($stripped, $maxLength);
 }
 
 // ============================================================================
@@ -476,45 +475,17 @@ function g2ml_apiLogRequest(?int $apiKeyUID, string $endpoint, string $httpMetho
     {
         $redactedBody = g2ml_apiRedactRequestBody($requestBody);
 
-        // How deeply the stored JSON may be nested (#330). MariaDB, which the
-        // live host runs, refuses a JSON value nested 32 or more levels deep
-        // in a JSON column (it fails the column's JSON_VALID check); MySQL's
-        // limit is 100. Measured on MariaDB 11.4 and MySQL 8.4. A caller
-        // can send a body nested as deeply as it likes, and a refused INSERT
-        // would drop the audit row — and with it the count the rate limiter
-        // and the failed-sign-in backoff rely on. json_encode() gives false
-        // (JSON_ERROR_DEPTH) for anything deeper than this, so such a body is
-        // replaced by a short note below and the row is still written.
-        $maximumStoredDepth = 31;
-        $encodedCandidate   = json_encode($redactedBody, 0, $maximumStoredDepth);
-
-        if ($encodedCandidate === false && json_last_error() === JSON_ERROR_DEPTH)
-        {
-            $encodedBody = '{"_note":"request body omitted from audit log (nested too deeply)"}';
-        }
-        elseif ($encodedCandidate !== false)
-        {
-            // The requestBody column is JSON, so it must stay VALID JSON — an
-            // over-length body is replaced with a small valid-JSON marker
-            // rather than truncated mid-structure (which would fail the JSON
-            // column's validation and drop the whole audit row).
-            if (strlen($encodedCandidate) > 60000)
-            {
-                $encodedBody = '{"_note":"request body omitted from audit log (too large)"}';
-            }
-            else
-            {
-                $encodedBody = $encodedCandidate;
-            }
-        }
+        // A caller can send any body at all. One nested too deeply for the
+        // JSON column (#330), or too large, is replaced by a short note, and
+        // the row is still written. A refused INSERT would drop the audit row,
+        // and with it the count the rate limiter and the failed-sign-in
+        // backoff rely on.
+        $encodedBody = g2ml_encodeJSONColumn($redactedBody, 'request body', 'audit log');
     }
 
-    $truncatedUserAgent = null;
-
-    if ($userAgent !== null)
-    {
-        $truncatedUserAgent = substr($userAgent, 0, 500);
-    }
+    // The User-Agent comes straight from the request: it can be long, and it
+    // can hold bytes that are not valid UTF-8 (#331)
+    $truncatedUserAgent = g2ml_fitCharacters($userAgent, 500);
 
     // Bound every request-derived string to its column width (stripping control
     // characters) so an oversized/hostile value can never fail the INSERT and

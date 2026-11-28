@@ -1258,6 +1258,29 @@ function _g2ml_linkspageManageValidateFields(array $input): array
     else
     {
         $socialLinksValue = json_encode($validatedSocialLinks);
+
+        // json_encode() gives false when it cannot write the value. Refuse the
+        // whole save then (#331): saving "no social links" instead would wipe
+        // the ones already stored on the page.
+        if ($socialLinksValue === false)
+        {
+            error_log('[Go2My.Link] WARNING: LinksPage social links could not be written as JSON (' . json_last_error_msg() . '); the page was not saved.');
+
+            if (function_exists('__'))
+            {
+                $socialLinksInvalidError = __('linkspage.error.url_invalid');
+            }
+            else
+            {
+                $socialLinksInvalidError = 'Please enter a valid http:// or https:// URL.';
+            }
+
+            return [
+                'ok'        => false,
+                'error'     => $socialLinksInvalidError,
+                'errorCode' => 'validation',
+            ];
+        }
     }
 
     if (isset($input['isPublished']) && $input['isPublished'] === true)
