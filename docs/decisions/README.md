@@ -54,3 +54,5 @@ tracked on its own issue.
 | [D-036](D-036-unblock-may-exceed-limit.md) | 2026-11-28 | Removing a staff block may take a person over the limit | In force |
 | [D-037](D-037-limit-check-fault-allows.md) | 2026-11-28 | If the limit cannot be checked, the link is allowed | In force |
 | [D-038](D-038-erasure-cleans-moved-history.md) | 2026-11-28 | Erasing a moved person removes their identifiers from old history | In force |
+| [D-039](D-039-removed-address-shows-not-found.md) | 2026-11-28 | A removed organisation's own web address keeps answering "not found" | In force |
+| [D-040](D-040-org-choice-asked-later.md) | 2026-11-28 | The account is erased on time; an unanswered organisation choice is asked for by e-mail | In force |
