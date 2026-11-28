@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 💷 The Free link limit applies to everyone (2026-11-28)
+
+- 🐛 People in no organisation are now limited to the Free plan's active links, and switching a link
+  back on is refused at the limit. Two requests at once can no longer both slip past it. Global
+  administrators have no limit (#327, decisions D-024, D-035 to D-037).
+- 🗄️ **On deploy:** apply seed `084_link_limit_translations.sql` (checklist row A40).
+
 ### 🐬 Tested on MariaDB, the live database type (2026-11-28)
 
 - 🧪 The database tests now run on MariaDB 11.4 as well as MySQL 8.4 (#330).

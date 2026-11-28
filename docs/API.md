@@ -184,7 +184,14 @@ describes the key being used.
 
 **Bulk creation** takes `{"items": [ … ]}` with at most 100 entries. Each entry is checked on
 its own, and the reply's `results` array says what happened to each one, so a single bad entry
-does not lose the rest. Your organisation's link allowance is applied per row.
+does not lose the rest. The link allowance is applied per row.
+
+**The link allowance** counts switched-on links: your organisation's together, or, for a key
+belonging to somebody in no organisation, that person's own (50 on the Free plan). At the limit
+`POST /urls` replies `403`, and each bulk row that does not fit fails with the same message. If
+other creates for the same person or organisation are in progress for more than a few seconds,
+`POST /urls` replies `503` and a bulk row fails with a "try again" message. The API cannot switch
+a deactivated link back on.
 
 **A code belonging to another organisation gives exactly the same `404` as a code that does not
 exist**, so the API never reveals whether somebody else's link exists.

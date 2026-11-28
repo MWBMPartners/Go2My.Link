@@ -24,8 +24,8 @@
  *   - g2ml_findLinkForInfo()     — Find the link the public info page shows (#289)
  *   - verifyCaptcha()           — Verify Turnstile/reCAPTCHA response
  *
- * Dependencies: db_query.php, settings.php, security.php, activity_logger.php
- *               (all loaded via page_init.php)
+ * Dependencies: db_query.php, settings.php, security.php, activity_logger.php,
+ *               entitlements.php (all loaded via page_init.php), link_limit.php
  *
  * @package    Go2My.Link
  * @subpackage ComponentA
@@ -50,6 +50,10 @@ if ($g2mlGuardScriptPath !== '' && realpath($g2mlGuardScriptPath) === realpath(_
     exit;
 }
 unset($g2mlGuardScriptPath);
+
+// The limit on switched-on links (#327), used by createShortURL() and by the
+// dashboard's edit page.
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'link_limit.php';
 
 // ============================================================================
 // 🔤 Custom short-code (alias) constraints — shared in one place (FG-001)
@@ -818,105 +822,6 @@ function createShortURL(string $longURL, array $options = []): array
     }
 
     // ========================================================================
-    // 💎 Step 3c: Enforce the org's maxLinks entitlement (#146)
-    // ========================================================================
-    // Counts the org's current ACTIVE short URLs (an indexed, org-scoped
-    // query against IDX_url_org) and checks it against the org's tier via
-    // g2ml_checkLimit(). GlobalAdmin / '[default]' / an unlimited tier always
-    // resolve to a NULL limit (allowed) inside g2ml_getOrgTier() — see
-    // web/_functions/entitlements.php. This NEVER retroactively touches an
-    // existing link; it only blocks a NEW create once the org is already at
-    // (or over) its plan's link count.
-    //
-    // Fail OPEN: if the COUNT query itself fails, $currentActiveLinkCount
-    // stays 0 (dbSelect() already error_log()s the underlying failure), which
-    // can only ever make the check MORE permissive, never block a legitimate
-    // create because of a system fault.
-    //
-    // ⚠️  ACCEPTED RESIDUAL — maxLinks TOCTOU (#149.2, evaluated & documented,
-    //     NOT hardened): this count -> check -> insert is NOT atomic. Two
-    //     genuinely concurrent createShortURL() calls for the SAME org can
-    //     both COUNT before either INSERT commits, so both pass the check —
-    //     the org can overshoot maxLinks by a small margin (bounded by how
-    //     many creates for that org are truly in-flight at once, realistically
-    //     a handful, never unbounded). This was evaluated for a safe fix and
-    //     deliberately left as-is:
-    //       - A `SELECT ... FOR UPDATE` (or equivalent locking read) on the
-    //         count, or an atomic `INSERT ... SELECT ... WHERE (COUNT...) < ?`,
-    //         would close the window, but an aggregate COUNT(*) with no
-    //         exact-match index takes InnoDB next-key locks across the WHOLE
-    //         matching range under REPEATABLE READ — serializing EVERY
-    //         concurrent create for that org for the duration of the lock,
-    //         including across this function's own shortCode collision retry
-    //         loop below (multiple generate+insert attempts inside one
-    //         transaction). That harms the busiest orgs the MOST — precisely
-    //         the population most likely to hit this race — trading a soft,
-    //         cosmetic over-provisioning edge case for a real throughput
-    //         regression and added deadlock surface on the hottest path in
-    //         the codebase.
-    //       - A post-insert re-check-and-rollback (detect the overshoot AFTER
-    //         committing, then deactivate the "losing" row) avoids the lock
-    //         contention, but trades it for a confusing UX regression: a
-    //         caller can receive success=true and then have their link
-    //         silently deactivated moments later by an unrelated concurrent
-    //         request, with no deterministic rule for which of several
-    //         simultaneous creators "wins" — worse than the residual itself.
-    //     maxLinks is a soft, plan-communication limit — never a security or
-    //     tenant-isolation boundary (no cross-org data exposure, no privilege
-    //     escalation; it only ever affects the requesting org's own count) —
-    //     so a small, bounded overshoot under genuine concurrency is an
-    //     acceptable trade against those regressions. If a HARD real-time cap
-    //     is ever required, prefer an out-of-band reconciliation (e.g. a
-    //     periodic job that deactivates the newest links over the cap) over
-    //     locking this hot path.
-    //
-    // 📖 Reference: web/_functions/entitlements.php — g2ml_checkLimit()
-    // 📖 Reference: web/_sql/schema/020_shorturls_categories_tags.sql (IDX_url_org)
-    // ========================================================================
-    if (function_exists('g2ml_checkLimit'))
-    {
-        $activeLinkCountRow = dbSelectOne(
-            "SELECT COUNT(*) AS cnt FROM tblShortURLs WHERE orgHandle = ? AND isActive = 1",
-            's',
-            [$orgHandle]
-        );
-
-        if ($activeLinkCountRow !== null && $activeLinkCountRow !== false)
-        {
-            $currentActiveLinkCount = (int) $activeLinkCountRow['cnt'];
-        }
-        else
-        {
-            error_log('[Go2My.Link] WARNING: entitlements — could not count active links for org: ' . $orgHandle . ' — treating as 0 (fail OPEN).');
-            $currentActiveLinkCount = 0;
-        }
-
-        $linkLimitCheck = g2ml_checkLimit($orgHandle, 'maxLinks', $currentActiveLinkCount);
-
-        if ($linkLimitCheck['allowed'] === false)
-        {
-            // #209: paid plans cannot be bought yet (D-020), so the message
-            // must not tell anyone to upgrade.
-            if (function_exists('__'))
-            {
-                $limitMessage = __('links.error_plan_limit');
-            }
-            else
-            {
-                $limitMessage = 'You have reached your plan\'s link limit. To make room, turn off a link that is no longer needed (a link past its end date still counts until it is turned off). Paid plans are coming and cannot be bought yet.';
-            }
-
-            return [
-                'success'      => false,
-                'shortCode'    => null,
-                'shortURL'     => null,
-                'error'        => $limitMessage,
-                'limitReached' => true,
-            ];
-        }
-    }
-
-    // ========================================================================
     // 🔗 Step 3d: Which set of codes does this link use? (#289, D-003)
     // ========================================================================
     // The short domain the new link's address is printed with decides it,
@@ -992,6 +897,53 @@ function createShortURL(string $longURL, array $options = []): array
          ?, ?, ?, ?,
          ?, ?, ?, ?, ?,
          ?, ?, ?, NOW(), NOW())";
+
+    // ========================================================================
+    // 💎 The limit on switched-on links (#146, #327 — link_limit.php)
+    // ========================================================================
+    // An organisation's plan limits its members' links together; a signed-in
+    // person's links outside any organisation are limited to the Free plan's
+    // number; a link with no owner is not limited here. A new link is refused
+    // at the limit even if it is to be created switched off.
+    //
+    // The lock is held from the count until the row is written, so two creates
+    // at the same moment cannot both take the last place. It is let go just
+    // after the loop below. If the script stops with an error before then, the
+    // database lets it go when the connection closes.
+    //
+    // 📖 Reference: web/Go2My.Link/_functions/link_limit.php
+    // ========================================================================
+    $limitOwnerUID = null;
+
+    if ($userUID !== null)
+    {
+        $limitOwnerUID = (int) $userUID;
+    }
+
+    $limitGate = g2ml_linkLimitOpen($orgHandle, $limitOwnerUID);
+
+    if ($limitGate['allowed'] === false)
+    {
+        $refusal = [
+            'success'   => false,
+            'shortCode' => null,
+            'shortURL'  => null,
+            // #209: paid plans cannot be bought yet (D-020), so the message
+            // must not tell anyone to upgrade.
+            'error'     => g2ml_linkLimitMessage($limitGate, 'create'),
+        ];
+
+        if ($limitGate['reason'] === 'busy')
+        {
+            $refusal['limitBusy'] = true;
+        }
+        else
+        {
+            $refusal['limitReached'] = true;
+        }
+
+        return $refusal;
+    }
 
     for ($attempt = 1; $attempt <= $maxAttempts; $attempt++)
     {
@@ -1184,6 +1136,9 @@ function createShortURL(string $longURL, array $options = []): array
         error_log('[Go2My.Link] ERROR: Failed to insert short URL (non-duplicate) — code: ' . $shortCode . ', org: ' . $orgHandle);
         break;
     }
+
+    // The row is written (or was not): let the next request count.
+    g2ml_linkLimitClose($limitGate);
 
     // A QR UUID that is already linked to another short URL gets its own
     // distinguishable error and NEVER falls back to a random-code retry

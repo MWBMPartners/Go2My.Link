@@ -17,8 +17,8 @@
  * 'free' tier, with 49 and then 50 active links, and reads the words of the
  * refusal from the database (seed 082) through the real __().
  *
- * It says nothing about people in no organisation: the limit is not checked
- * for them, and the page does not claim it is.
+ * People in no organisation, and switching a link back on, are checked in
+ * link_limit_test.php (#327).
  *
  * Runs after entitlements_test.php in name order, and defines no constants or
  * connection of its own: it skips when no database connection is configured.

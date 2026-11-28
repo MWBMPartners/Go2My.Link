@@ -404,6 +404,11 @@ paths:
         separately been set to allow externally chosen short codes;
         otherwise it is silently ignored and Go2My.Link generates the code
         itself.
+
+        A plan allows only so many switched-on links: an organisation's links
+        are counted together, and the links of a person in no organisation
+        are counted for that person (50 on the Free plan as shipped). At the
+        limit the request is refused with `403`.
       x-required-scope: urls:write
       parameters:
         - $ref: "#/components/parameters/FormatParam"
@@ -442,8 +447,9 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           description: |
-            Missing `urls:write` scope, OR (CueRCode create only) the
-            CueRCode integration is not enabled for the service, OR the
+            Missing `urls:write` scope, OR the limit on switched-on links is
+            reached (`field: "destination_url"`), OR (CueRCode create only)
+            the CueRCode integration is not enabled for the service, OR the
             key lacks the additional `qr:link` scope.
           content:
             application/json:
@@ -472,7 +478,17 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
         "503":
-          $ref: "#/components/responses/ServiceUnavailable"
+          description: |
+            The public API has been switched off, OR the link limit could not
+            be checked because other creates for the same person or
+            organisation were in progress for too long. Try again.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
         "500":
           $ref: "#/components/responses/InternalError"
   /urls/{code}:
@@ -627,6 +643,9 @@ paths:
 
         Unlike `POST /urls`, bulk items do **not** support the CueRCode
         `qr_external_id` / `qr_external_uuid` fields.
+
+        The limit on switched-on links (see `POST /urls`) is applied to each
+        row: a row that does not fit fails with the limit message.
       x-required-scope: urls:write
       parameters:
         - $ref: "#/components/parameters/FormatParam"

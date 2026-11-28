@@ -295,9 +295,9 @@ PHP may take a few minutes to notice a new or changed `.user.ini`.
 3. 📋 Import all **17** schema files from `web/_sql/schema/`, in filename order
 4. 🔧 Import both stored procedures from `web/_sql/procedures/`
    (`sp_generateShortCode.sql`, `sp_lookupShortURL.sql`)
-5. 🌱 Import all **44** seed files from `web/_sql/seeds/`, in order — the
+5. 🌱 Import all **45** seed files from `web/_sql/seeds/`, in order — the
    numbering is not continuous: `001` through `023` run in sequence, then
-   twenty-one later additions sit outside that run, `029_linkspage_privacy_translations.sql`,
+   twenty-two later additions sit outside that run, `029_linkspage_privacy_translations.sql`,
    `057_form_rate_limit_settings.sql`,
    `058_truthful_marketing_translations.sql`,
    `059_link_destination_translations.sql`,
@@ -317,12 +317,13 @@ PHP may take a few minutes to notice a new or changed `.user.ini`.
    `077_deletion_link_choice_translations.sql`,
    `079_staff_link_switch_translations.sql`,
    `081_dead_link_page_translations.sql`,
-   `082_plans_and_pricing_translations.sql` (see the table below for
+   `082_plans_and_pricing_translations.sql`,
+   `084_link_limit_translations.sql` (see the table below for
    what each one adds). Importing "in order" means by filename, so a plain
-   `for f in web/_sql/seeds/*.sql` loop picks up all 44 without needing to
+   `for f in web/_sql/seeds/*.sql` loop picks up all 45 without needing to
    know about the gap in the numbers.
 
-> 📝 Counts as at 2026-11-28: 17 schema files, 2 stored procedures, 44 seeds,
+> 📝 Counts as at 2026-11-28: 17 schema files, 2 stored procedures, 45 seeds,
 > 26 migrations. Import order is schema → procedures → seeds, which is the
 > order `.github/workflows/ci.yml` uses. (Seed `023` and migration `021`, the
 > LinksPage feature registry, were added on 2026-09-21; seeds `029`, `058`,
@@ -336,6 +337,7 @@ PHP may take a few minutes to notice a new or changed `.user.ini`.
 > Migration `048` and seed `081`, the pages for links that do not open, were
 > added for #290 — see below.
 > Seed `082`, the words about plans and limits, was added for #209.
+> Seed `084`, the words about the limit on switched-on links, was added for #327.
 
 #### 🚨 The collation check — do this first, every time
 
@@ -430,9 +432,10 @@ key names instead of words:
 | `079_staff_link_switch_translations.sql` | 56 strings for #325: the staff "Find a Short Link" page, the menu entry, the notices an owner sees when staff have switched a link off, and the visitor wording for a disabled link | The staff page and its menu entry show built-in English or a key name; the disabled-link error page and My Links show key names such as `redirect.link_disabled_message` |
 | `081_dead_link_page_translations.sql` | 32 strings for #290: the g2my.link pages for a link that does not open or cannot be looked up, the safety check page, and three corrected help paragraphs; also new descriptions for the settings `redirect.fallback_url` and `redirect.fallback_delay` | The g2my.link pages show the English written in the code; the three help paragraphs on the Short Links and Click statistics help pages show key names |
 | `082_plans_and_pricing_translations.sql` | 21 strings for #209: the pricing page (the Free plan and "paid plans are coming", no prices), the corrected words about teams, custom domains, the country breakdown and the API's request limits, and the plan-limit messages that no longer ask anybody to upgrade | The pricing, features, about and help pages and the plan-limit messages show key names |
+| `084_link_limit_translations.sql` | 8 strings for #327: the pricing and help sentences about the limit on switched-on links (now covering people without an organisation and switching a link back on), and the refusal messages | The pricing page, two help paragraphs and the new limit messages show key names |
 
-All twenty-three are safe to run more than once and safe on a database that already has them.
-Twenty are plain `INSERT IGNORE`. `057` and `074` write their settings with
+All twenty-four are safe to run more than once and safe on a database that already has them.
+Twenty-one are plain `INSERT IGNORE`. `057` and `074` write their settings with
 `ON DUPLICATE KEY UPDATE`, so a value you chose is kept (their texts are `INSERT IGNORE`).
 `081` also rewrites the descriptions of two settings and leaves their values alone.
 
@@ -687,7 +690,7 @@ See owner action **A36** in
    **DELETED** — the app now performs a direct `INSERT` into `tblActivityLog`
    instead (`web/_functions/activity_logger.php`); do not look for or try to
    import this file
-4. 🌱 Import all 44 seed files in filename order (the list is in step 5 of
+4. 🌱 Import all 45 seed files in filename order (the list is in step 5 of
    **New Installation** above)
 5. 🧪 Run dry-run verification: `web/_sql/dry_run.sql`
 6. ▶️ Run migration scripts from `web/_sql/migrations/` in order — `001`–`004`,

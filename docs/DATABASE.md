@@ -245,7 +245,14 @@ Some features are only on some plans. There are two ways the code decides who ge
 
 What the older limits do at launch (#209, checked 2026-11-28):
 
-- `maxLinks` (50 on Free) is checked only when `createShortURL()` makes a link for an organisation. It counts links that are switched on (`isActive = 1`), including ones past their end date. People in no organisation (the `[default]` organisation) and global administrators are not limited by plan. Turning an old link back on is not checked.
+- `maxLinks` (50 on Free) is the limit on switched-on links (`isActive = 1`, including ones past their end date). `web/Go2My.Link/_functions/link_limit.php` checks it when `createShortURL()` makes a link and when the dashboard's edit page switches one back on (#327, decision D-024). The API has no way to switch a link back on.
+  - An organisation's links are counted together against its plan.
+  - A person's links in no organisation (the `[default]` organisation) are counted for that person alone, against the Free plan: the active plan with the lowest `sortOrder`, read with the pricing engine off or on. This includes a link an organisation member makes on the home page while signed in (D-035). Links outside an organisation with no owner (made without an account) are not limited.
+  - Global administrators are not limited: neither while signed in and acting, nor for any link a global administrator owns, in an organisation or not (which covers the API).
+  - A new link is refused at the limit even if it is to be created switched off.
+  - Counting and writing happen under a database lock named after the person or organisation (`GET_LOCK`), so two requests cannot both take the last place. A request that waits more than 5 seconds is refused with a "try again" message (the API answers 503 for a single create).
+  - If the plan, the owner or the count cannot be read, the link is allowed and the error log says so (D-037). People and organisations are treated alike. A failed lock query is logged too, but the count is still made, without the lock, and the link is refused at the limit.
+  - Removing a staff block (#325) restores the link without counting, so it can leave an owner above the limit (D-036).
 - `maxCustomDomains` (0 on Free) is checked when a short domain is added.
 - `hasAnalytics` and `hasAPIAccess` (both off on Free in the seed) are **not checked**: a Free organisation gets the statistics pages and can create API keys. The 30-day statistics window is not built. The pricing page therefore does not mention either (decision D-020).
 

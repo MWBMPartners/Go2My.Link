@@ -29,7 +29,7 @@ Complete **all** items before beginning the migration:
 ### 📁 Application Files
 
 - [ ] All 17 schema files (`web/_sql/schema/` — `000`, `010`–`015`, `020`–`021`, `030`–`036`, `044`) are current and tested
-- [ ] All 44 seed files (`web/_sql/seeds/`, listed in Phase C below) are current and tested
+- [ ] All 45 seed files (`web/_sql/seeds/`, listed in Phase C below) are current and tested
 - [ ] Both stored procedures (`web/_sql/procedures/sp_generateShortCode.sql`, `sp_lookupShortURL.sql`) are current — ⚠️ `sp_logActivity.sql` no longer exists (DELETED; direct `INSERT` now)
 - [ ] All 19 migration scripts (`web/_sql/migrations/001-004,006,008-019,048` — there is no `005`) match legacy schema, with `016` and `019` confirmed MANDATORY (see Phase D). The other seven files there (`020`, `021`, `042`, `043`, `044`, `045` and `046`) are covered in `docs/DEPLOYMENT.md`
 - [ ] `auth_creds.php` populated with production database credentials
@@ -166,10 +166,11 @@ Step C41:  web/_sql/seeds/077_deletion_link_choice_translations.sql
 Step C42:  web/_sql/seeds/079_staff_link_switch_translations.sql
 Step C43:  web/_sql/seeds/081_dead_link_page_translations.sql
 Step C44:  web/_sql/seeds/082_plans_and_pricing_translations.sql
+Step C45:  web/_sql/seeds/084_link_limit_translations.sql
 ```
 
-⚠️ **All 44 must be loaded, in filename order.** The numbers have gaps (there
-is no `024`–`028`, `030`–`056`, `060`–`063`, `078` or `080`); that is expected. Many
+⚠️ **All 45 must be loaded, in filename order.** The numbers have gaps (there
+is no `024`–`028`, `030`–`056`, `060`–`063`, `078`, `080` or `083`); that is expected. Many
 features read settings these seeds define, and the later ones hold the words
 the pages show, so most pages without their seed show key names instead of
 text.

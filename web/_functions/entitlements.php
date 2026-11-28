@@ -39,6 +39,13 @@
  * to the unlimited sentinel — they are never gated, regardless of any tier
  * row that may exist.
  *
+ * ONE EXCEPTION, MADE OUTSIDE THIS FILE (#327): the number of switched-on
+ * links IS limited for people in no organisation. The caller
+ * (web/Go2My.Link/_functions/link_limit.php) asks for the tier of the empty
+ * handle '' — no organisation — which resolves to the Free fallback plan, and
+ * counts that person's own links. The functions here still answer "unlimited"
+ * for '[default]'.
+ *
  * 🧩 TWO KINDS OF FEATURE, TWO PAIRS OF FUNCTIONS (LP-01, #216)
  *
  *   LEGACY features are the fixed has* and max* columns on tblSubscriptionTiers.

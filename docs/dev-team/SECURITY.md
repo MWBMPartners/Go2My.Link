@@ -86,6 +86,7 @@ operations/rotation task, **not** an incident — proceed normally.
 - Malicious/compromised destination (migrated legacy `javascript:` URL) surfacing on an interstitial (**F-003**).
 - Admin/SSRF-enabled fetch reaching internal hosts (**F-004**, **F-005**).
 - API-key abuse against `/api/v1` — reviewed in a dedicated adversarial cycle (2026-07-10): 1 Medium finding fixed (audit-log INSERT length-bound); Low-severity residuals (rate-limit model, `maxLinks` TOCTOU) tracked in #149, awaiting owner ratification — **not** re-derived here.
+  - 📝 *Note added 2026-11-28 (#327):* the `maxLinks` TOCTOU residual named above no longer stands as accepted: link creation and switching a link back on now count under a database lock (`web/Go2My.Link/_functions/link_limit.php`). If the lock query itself fails, the count is made without it, and this has had no security review.
 - A malicious org uploading crafted `customHTML` (#49) to achieve stored XSS against LinksPage visitors — the primary reason the feature ships gated + kill-switched OFF pending a dedicated sign-off.
 
 ### 1.5 Crown-jewel paths to red-team hardest

@@ -84,6 +84,8 @@ function _g2mlPlanClaimsTestFiles(): array
         'web/Go2My.Link/_admin/public_html/pages/linkspage/index.php',
         'web/Go2My.Link/_admin/public_html/pages/linkspage/create/index.php',
         'web/Go2My.Link/_functions/shorturl_create.php',
+        'web/Go2My.Link/_functions/link_limit.php',
+        'web/Go2My.Link/_admin/public_html/pages/links/edit/index.php',
         'web/_functions/linkspage_manage.php',
     );
 }
@@ -189,6 +191,13 @@ test('every seed 082 text is used, and matches the English fallback in the code 
 
     assert_same(21, count($rows), 'Unexpected number of rows in seed 082');
 
+    // Replaced by newer keys in seed 084 (#327).
+    foreach (array('pricing.free_limit_organisations', 'help.short_links.s9_item6_v2') as $replaced)
+    {
+        assert_true(isset($rows[$replaced]), 'Seed 082 has no ' . $replaced);
+        unset($rows[$replaced]);
+    }
+
     foreach ($rows as $key => $english)
     {
         if (strpos($source, "'" . $key . "'") === false)
@@ -208,6 +217,65 @@ test('every seed 082 text is used, and matches the English fallback in the code 
     }
 
     assert_same(array(), $problems, implode(PHP_EOL, $problems));
+});
+
+test('every seed 084 text is used, matches the English in the code and uses new key names (#327)', function (): void
+{
+    $source = '';
+
+    foreach (_g2mlPlanClaimsTestFiles() as $file)
+    {
+        // Undo PHP's escaping of apostrophes, so the English can be compared.
+        $source .= str_replace("\\'", "'", _g2mlPlanClaimsTestRead($file));
+    }
+
+    $rows     = _g2mlPlanClaimsTestSeedRows('web/_sql/seeds/084_link_limit_translations.sql');
+    $problems = array();
+
+    assert_same(8, count($rows), 'Unexpected number of rows in seed 084');
+
+    foreach ($rows as $key => $english)
+    {
+        if (strpos($source, "'" . $key . "'") === false)
+        {
+            $problems[] = $key . ' is not used';
+        }
+
+        if (strpos($source, $english) === false)
+        {
+            $problems[] = $key . ' has different English in the code';
+        }
+
+        if (stripos($english, 'upgrade') !== false)
+        {
+            $problems[] = $key . ' asks for an upgrade';
+        }
+    }
+
+    foreach (glob(dirname(__DIR__, 2) . '/web/_sql/seeds/*.sql') as $path)
+    {
+        $name = basename($path);
+
+        if (strpos($name, '084_') === 0)
+        {
+            continue;
+        }
+
+        foreach (array_keys(array_intersect_key($rows, _g2mlPlanClaimsTestSeedRows('web/_sql/seeds/' . $name))) as $key)
+        {
+            $problems[] = $key . ' is already in ' . $name;
+        }
+    }
+
+    assert_same(array(), $problems, implode(PHP_EOL, $problems));
+});
+
+test('pricing page: the limit covers people without an organisation and switching back on (#327)', function (): void
+{
+    $words = _g2mlPlanClaimsTestPricingWords();
+
+    assert_contains('switch one back on', $words);
+    assert_contains('Without an organisation the 50 are your own', $words);
 });
 
 test('seed 082 holds only new key names (#209)', function (): void

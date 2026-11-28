@@ -261,7 +261,7 @@ if (function_exists('__')) {
                     </p>
 
                     <p>
-                        <?php if (function_exists('__')) { echo __('help.short_links.s7_p3'); } else { echo 'To turn a link back on, open it from the Links list and switch Active back on in the edit page.'; } ?>
+                        <?php if (function_exists('__')) { echo __('help.short_links.s7_p3_v2'); } else { echo 'To turn a link back on, open it from the Links list and switch Active back on in the edit page. If you have reached your link limit (see Things that can go wrong below), your other changes are saved but the link stays off.'; } ?>
                     </p>
                 </section>
 
@@ -315,7 +315,7 @@ if (function_exists('__')) {
                             <?php if (function_exists('__')) { echo __('help.short_links.s9_item5'); } else { echo '<strong>"Rate limit exceeded"</strong> when not signed in — the homepage box allows up to 10 new links an hour and 50 a day from the same connection, to stop it being used for spam. Wait a while, or sign in and use your dashboard instead, which does not have this limit.'; } ?>
                         </li>
                         <li>
-                            <?php if (function_exists('__')) { echo __('help.short_links.s9_item6_v2'); } else { echo '<strong>"You have reached your plan\'s link limit"</strong> when creating a link for an organisation — the organisation\'s plan allows only so many switched-on links (50 on the Free plan), shared by its members. A link past its end date still counts until it is turned off. Turn off links that are no longer needed to make room. Paid plans are coming and cannot be bought yet.'; } ?>
+                            <?php if (function_exists('__')) { echo __('help.short_links.s9_item6_v3'); } else { echo '<strong>A message saying you have reached a link limit</strong> — a plan allows only so many switched-on links (50 on the Free plan). Links outside an organisation are counted for you alone, including links you make on the home page while signed in. An organisation\'s links are shared by its members. A link past its end date still counts until it is turned off. At the limit you cannot create a link or switch one back on. Turn off links that are no longer needed to make room. Paid plans are coming and cannot be bought yet.'; } ?>
                         </li>
                         <li>
                             <?php if (function_exists('__')) { echo __('help.short_links.s9_item7'); } else { echo '<strong>"Link not found or you do not have permission to edit it"</strong> — you can only edit or turn off a link you created yourself while signed in.'; } ?>

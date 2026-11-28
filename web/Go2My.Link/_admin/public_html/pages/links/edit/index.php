@@ -14,7 +14,9 @@
  *
  * Edit an existing short link. Ownership-checked — only the creator can edit.
  * Short code is read-only; all other fields are editable. A link that staff
- * have switched off (#325) cannot be switched on here.
+ * have switched off (#325) cannot be switched on here. Switching a link back on
+ * is refused at the limit on switched-on links (#327): the other changes are
+ * saved and the link stays off.
  *
  * @package    Go2My.Link
  * @subpackage ComponentA_Admin
@@ -191,14 +193,37 @@ if ($linkData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
                 $endDateVal = null;
             }
 
+            // Switching a link back on needs a free place under the limit
+            // (#327, link_limit.php). The switch is changed to "on" only when
+            // this check says so; otherwise the stored state is kept.
+            $switchGate = null;
+            $limitError = '';
+
+            if ($isActive === 1)
+            {
+                $switchGate = g2ml_linkLimitOpenForSwitchOn((int) $linkData['urlUID']);
+
+                if ($switchGate['switchOn'] === false)
+                {
+                    $switchSubmitted = 0;
+                }
+
+                if ($switchGate['allowed'] === false)
+                {
+                    $limitError = g2ml_linkLimitMessage($switchGate, 'switch_on');
+                }
+            }
+
+            // urlUID as well as the code: one person can own the same code in
+            // two organisations, and only the link that was checked may change.
             $result = dbUpdate(
-                "UPDATE tblShortURLs SET
-                    destinationURL = ?, title = ?, urlNotes = ?, categoryID = ?,
-                    startDate = ?, endDate = ?,
+                "UPDATE `tblShortURLs` SET
+                    `destinationURL` = ?, `title` = ?, `urlNotes` = ?, `categoryID` = ?,
+                    `startDate` = ?, `endDate` = ?,
                     `isActive` = IF(`staffDisabledAt` IS NOT NULL, 0, IF(? = 1, ?, `isActive`)),
                     `staffPreviousIsActive` = IF(`staffDisabledAt` IS NOT NULL AND ? = 1, 0, `staffPreviousIsActive`)
-                 WHERE shortCode = ? AND createdByUserUID = ?",
-                'ssssssiiisi',
+                 WHERE `shortCode` = ? AND `createdByUserUID` = ? AND `urlUID` = ?",
+                'ssssssiiisii',
                 [
                     $sanitisedURL,
                     $titleVal,
@@ -211,8 +236,14 @@ if ($linkData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
                     $ownerSwitchedOff,
                     $shortCode,
                     $userUID,
+                    (int) $linkData['urlUID'],
                 ]
             );
+
+            if ($switchGate !== null)
+            {
+                g2ml_linkLimitClose($switchGate);
+            }
 
             if ($result !== false)
             {
@@ -224,7 +255,14 @@ if ($linkData !== null && $_SERVER['REQUEST_METHOD'] === 'POST')
                     $linkData = $savedData;
                 }
 
-                $formSuccess = true;
+                if ($limitError === '')
+                {
+                    $formSuccess = true;
+                }
+                else
+                {
+                    $formError = $limitError;
+                }
 
                 logActivity('edit_link', 'success', 200, [
                     'userUID'   => $userUID,

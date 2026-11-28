@@ -15,8 +15,10 @@
 --   * The Free plan's 50 active links (seed 001) are checked by
 --     createShortURL() when a link is created for an organisation. "Active"
 --     means switched on (isActive = 1), so a link past its end date still
---     counts. The limit is not checked for people in no organisation, so the
---     words name organisations. Turning an old link back on is not checked.
+--     counts. When this seed was written the limit was not checked for people
+--     in no organisation or when a link was switched back on, so its words
+--     name organisations. Both are checked since #327: seed 084 replaces the
+--     pricing and short-links help texts about the limit.
 --   * Free allows no custom short domain (maxCustomDomains 0).
 --   * An organisation has two roles, Admin and User.
 --   * A country breakdown needs IP location lookup, which is off by default.
