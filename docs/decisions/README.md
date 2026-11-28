@@ -57,3 +57,4 @@ tracked on its own issue.
 | [D-039](D-039-removed-address-shows-not-found.md) | 2026-11-28 | A removed organisation's own web address keeps answering "not found" | In force |
 | [D-040](D-040-org-choice-asked-later.md) | 2026-11-28 | The account is erased on time; an unanswered organisation choice is asked for by e-mail | In force |
 | [D-041](D-041-deleted-organisation-keeps-links-inactive.md) | 2026-11-28 | A deleted organisation keeps its links and QR codes, marked inactive | In force |
+| [D-042](D-042-fix-captcha-before-launch.md) | 2026-11-28 | The CAPTCHA is fixed before launch, allowing the provider's addresses | In force |
