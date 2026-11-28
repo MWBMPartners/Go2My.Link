@@ -239,7 +239,9 @@ explanation of a careful piece of work wastes the care.
 ## 📁 Directory Naming
 
 - Private dirs: underscore prefix (`_auth_keys`, `_includes`, `_functions`, `_libraries`)
-- Web roots: `public_html`, `public_html_dev_alpha`, `public_html_dev_beta`, `public_html_landing`, `public_html_redir`
+- Web roots: `public_html`, `public_html_landing`, `public_html_redir`. There are no
+  per-channel web roots: the live, alpha, beta and release-candidate copies are separate
+  complete copies of `web/` on the server (#158, D-019; see `docs/DEPLOYMENT.md`)
 - ⚠️ **Deliberate exception:** each component's per-component credential directory is
   `<Component>/.auth/` (dot-prefixed, not underscore) — renamed from `_auth_keys/` in 2026-07
   (#160) specifically so it sorts/reads as a hidden dotfile-style directory distinct from the

@@ -115,6 +115,13 @@ step the installer, per component:
   `require_once` of the shared file above — **only if that file is not
   already present** (an existing thin include is never overwritten).
 
+At the same step, if nothing yet says which copy of the site this is, the
+installer writes `web/.g2ml-channel` containing `live`, but only if the folder is
+named `live` or you opened the installer on a live address. Otherwise it shows a
+notice, and for a live site you create the file yourself. **Only a live copy runs
+timed jobs and clean-ups**; see
+[DEPLOYMENT.md](DEPLOYMENT.md) → "How the software knows which copy it is".
+
 ## 🔒 After installation (do this immediately)
 
 1. **Delete the entire `install/` directory** from the web root.
@@ -150,6 +157,9 @@ and [`docs/DATABASE.md`](DATABASE.md).
 
 After importing `web/_sql/schema/*`, `web/_sql/procedures/*`, and
 `web/_sql/seeds/*`:
+
+0. For a live site, create `web/.g2ml-channel` containing the single word
+   `live`. Without it, timed jobs and clean-ups never run.
 
 1. Copy the template — `auth_creds.php` itself is gitignored and will not
    exist on a fresh deploy:

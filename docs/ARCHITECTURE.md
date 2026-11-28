@@ -42,13 +42,18 @@ All three components include the shared layer via PHP `require_once` with portab
 - **Provider:** Dreamhost Shared Hosting
 - **Constraints:**
   - ❌ No CLI access (no Composer, no npm, no artisan)
-  - 📦 Libraries must be manually uploaded
+  - 📦 Libraries come from the repository: the automatic upload sends
+    `web/_libraries/` and replaces or removes server copies to match it, so add
+    or change a library in the repository, not on the server (the GeoIP `.mmdb`
+    database is the exception)
   - 🌐 CDN-first with local fallback for all third-party assets
   - ⚙️ `.htaccess` with `AllowOverride All` supported
-- **Document roots:** Each component has multiple web roots for staging:
-  - 🟢 `public_html/` — Production
-  - 🟡 `public_html_dev_alpha/` — Alpha development
-  - 🟠 `public_html_dev_beta/` — Beta development
+- **Staging:** the live, alpha, beta and release-candidate copies are separate
+  complete copies of `web/` on the server (`live/`, `alpha/`, `beta/`, `rc/`),
+  each with its own credential files and uploads. Alpha, beta and rc are test
+  sites that share the live database. See [DEPLOYMENT.md](DEPLOYMENT.md).
+- **Document roots** in each component:
+  - 🟢 `public_html/` — the site itself, in every copy
   - 📄 `public_html_landing/` — Pre-launch landing page
   - 🔀 `public_html_redir/` — Redirection (limited use)
 

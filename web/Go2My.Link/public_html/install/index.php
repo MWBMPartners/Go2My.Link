@@ -1179,6 +1179,23 @@ function g2ml_install_finalise(array $dbCreds, string $authDir, array $component
 
     @chmod($lockFile, 0600);
 
+    // Say that this is the live copy, when it clearly is and nothing says so
+    // yet. Without it, timed jobs and clean-ups never run (#158).
+    $copyRoot        = dirname($authDir);
+    $environmentFile = $copyRoot . DIRECTORY_SEPARATOR . '_functions' . DIRECTORY_SEPARATOR . 'environment.php';
+
+    if (file_exists($environmentFile))
+    {
+        require_once $environmentFile;
+
+        $markNotice = g2ml_installerMarkCopy($copyRoot, (string) ($_SERVER['HTTP_HOST'] ?? ''));
+
+        if ($markNotice !== '')
+        {
+            $result['notices'][] = $markNotice;
+        }
+    }
+
     $result['ok'] = true;
 
     return $result;

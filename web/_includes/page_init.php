@@ -18,7 +18,7 @@
  *   1. Direct access guard
  *   1.5. Force the PHP default time zone to UTC (#214)
  *   2. Define path constants
- *   3. Environment detection (alpha/beta/local/production)
+ *   3. Environment detection (alpha/beta/rc/local/production)
  *   4. Switch on-screen errors off (debug mode is decided after step 7)
  *   5. Load all _functions/*.php in dependency order
  *   6. Register error/exception/shutdown handlers
@@ -207,37 +207,27 @@ define('G2ML_SQL',       G2ML_ROOT . DIRECTORY_SEPARATOR . '_sql');
 // 📖 Reference: https://www.php.net/manual/en/reserved.variables.server.php
 // ============================================================================
 
+require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'environment.php';
+
 $hostname = $_SERVER['HTTP_HOST'] ?? 'localhost';
 
-if (preg_match('/^alpha\./i', $hostname))
+// Which copy is running is decided by where the code is (#158); a test copy is a
+// test copy whatever address reaches it. Only a copy known to be live runs timed
+// jobs and clean-ups. See _functions/environment.php.
+if (!defined('G2ML_COPY_CHANNEL'))
 {
-    define('G2ML_ENVIRONMENT', 'alpha');
-}
-elseif (preg_match('/^beta\./i', $hostname))
-{
-    define('G2ML_ENVIRONMENT', 'beta');
-}
-elseif (in_array($hostname, ['localhost', '127.0.0.1', '::1'], true) || preg_match('/\.local$/', $hostname))
-{
-    define('G2ML_ENVIRONMENT', 'local');
-}
-else
-{
-    define('G2ML_ENVIRONMENT', 'production');
+    define('G2ML_COPY_CHANNEL', g2ml_copyChannel(G2ML_ROOT));
 }
 
+define('G2ML_ENVIRONMENT', g2ml_resolveEnvironment(G2ML_COPY_CHANNEL, $hostname));
+
 /**
- * Return the current runtime environment ('alpha'/'beta'/'local'/'production').
+ * Return the current runtime environment
+ * ('alpha'/'beta'/'rc'/'local'/'production').
  *
  * Thin typed wrapper around the G2ML_ENVIRONMENT constant defined just
- * above. Because that constant is set via a different define() call in
- * each branch of the if/elseif/elseif/else chain above, a caller in
- * ANOTHER file that reads G2ML_ENVIRONMENT directly gets PHPStan's
- * cross-file constant-type inference, which only sees ONE of those
- * branches' literal values rather than the real
- * 'alpha'|'beta'|'local'|'production' union — this function's declared
- * `string` return type avoids that false narrowing without changing the
- * runtime value at all.
+ * above. Callers in other files use it so that static analysis sees a plain
+ * string rather than guessing at the constant's possible values.
  *
  * @return string
  */
@@ -415,7 +405,9 @@ register_shutdown_function('g2ml_shutdownHandler');
 if (session_status() === PHP_SESSION_NONE)
 {
     // Session name unique to the application (prevents conflicts on shared hosts)
-    session_name('G2ML_SESSION');
+    // Test copies use their own name, so the live go2my.link cookie, which a
+    // browser also sends to them, is never mistaken for theirs (#158).
+    session_name(g2ml_sessionCookieName(g2ml_getEnvironment()));
 
     // Configure session security
     // Domain is '.go2my.link' in production ONLY for components that are
@@ -495,7 +487,7 @@ if (session_status() === PHP_SESSION_NONE)
         'domain'   => $sessionDomain,                      // '.go2my.link' in production for go2my.link and
                                                             // admin.go2my.link only; host-only everywhere else
                                                             // (see g2ml_sessionCookieDomain())
-        'secure'   => (G2ML_ENVIRONMENT === 'production'), // HTTPS only in production
+        'secure'   => g2ml_sessionCookieSecure(g2ml_getEnvironment(), $_SERVER), // see environment.php
         'httponly'  => true,                                // Not accessible via JavaScript
         'samesite' => 'Lax',                               // CSRF protection
     ]);
@@ -548,9 +540,14 @@ if (isset($_SESSION['user_uid']) && (int) $_SESSION['user_uid'] > 0)
     }
 }
 
-// Probabilistic session cleanup (1% of requests)
+// Probabilistic session cleanup (1% of requests). Only the live copy: test
+// copies share its database (D-029).
 // 📖 Reference: session.php → cleanExpiredSessions()
-if (function_exists('cleanExpiredSessions') && mt_rand(1, 100) === 1)
+if (
+    function_exists('cleanExpiredSessions')
+    && g2ml_cleanupAllowed()
+    && mt_rand(1, 100) === 1
+)
 {
     cleanExpiredSessions();
 }
@@ -583,6 +580,7 @@ loadSettingsCache();
 
 // ============================================================================
 // 🧹 Step 8.5: Probabilistic Retention Fallback (#167 / #178)
+// Does nothing unless this copy is known to be live: see environment.php.
 // ============================================================================
 // Mirrors the existing 1% session-cleanup idiom above, but MUST run AFTER
 // loadSettingsCache() (unlike that hook, which needs no settings at all) —
@@ -596,6 +594,13 @@ loadSettingsCache();
 if (function_exists('g2ml_cronMaybeRunProbabilisticRetention'))
 {
     g2ml_cronMaybeRunProbabilisticRetention();
+}
+
+// A live site that nothing marks as live runs no clean-up at all, so say so in
+// the error log, about once a day (#158).
+if (function_exists('g2ml_cronReportUnknownCopy'))
+{
+    g2ml_cronReportUnknownCopy(g2ml_getEnvironment(), g2ml_currentCopyChannel());
 }
 
 // ============================================================================

@@ -8,133 +8,65 @@
 # Go2My.Link — SFTP Deploy Workflow
 # =============================================================================
 #
-# Deploys web/ to Dreamhost via SFTP (lftp mirror) after the code checks pass,
-# on every push to main / alpha / beta. Modelled on the iHymns deploy pipeline.
+# After the code checks pass, uploads web/ to Dreamhost over SFTP. The upload
+# itself is scripts/sftp-deploy.sh. The owner's set-up steps, the dry run and
+# how to arm and disarm are in docs/DEPLOYMENT.md.
 #
-# ---------------------------------------------------------------------------
-# WHAT GETS UPLOADED (single remote root: secrets.SFTP_BASE_PATH)
-# ---------------------------------------------------------------------------
-# Everything under web/ is mirrored to SFTP_BASE_PATH preserving its tree,
-# EXCEPT the three component public_html/ directories, which are remapped per
-# branch (the "channel"):
+# WHERE EACH BRANCH GOES (#158)
+#   secrets.SFTP_BASE_PATH is a folder used only by this service
+#   (docs/decisions/D-007-deploy-separate-folder.md). Each channel has its own
+#   complete copy of web/ inside it (D-019-test-sites-own-copy.md):
 #
-#   main              →  web/<Comp>/public_html/  ⇒  SFTP_BASE_PATH/<Comp>/public_html/
-#   alpha             →  web/<Comp>/public_html/  ⇒  SFTP_BASE_PATH/<Comp>/public_html_dev_alpha/
-#   beta              →  web/<Comp>/public_html/  ⇒  SFTP_BASE_PATH/<Comp>/public_html_dev_beta/
-#   release-candidate →  web/<Comp>/public_html/  ⇒  SFTP_BASE_PATH/<Comp>/public_html_dev_rc/
+#     main              ->  <service folder>/live/    (the only live upload)
+#     alpha             ->  <service folder>/alpha/
+#     beta              ->  <service folder>/beta/
+#     release-candidate ->  <service folder>/rc/      (manual run only)
 #
-#   <Comp> ∈ { Go2My.Link, G2My.Link, Lnks.page }
+#   Any other branch or tag is refused. No channel reads or writes another
+#   channel's program files. (The test copies share the live database: D-029.)
+#   release-candidate is deliberately not in the push list below; to upload it,
+#   use "Run workflow" on that branch (D-032).
 #
-# NOTE ON release-candidate (pre-production staging tier):
-#   `release-candidate` is intentionally NOT in the `push:` branch list above,
-#   so a push to it does NOT auto-deploy. The channel mapping below still gives
-#   it a dedicated `public_html_dev_rc` target so that a MANUAL workflow_dispatch
-#   run on the RC ref lands in its own staging web-root and can NEVER fall
-#   through the default `*)` case onto production `public_html`. Before using
-#   RC deploy at all, provision `SFTP_BASE_PATH/<Comp>/public_html_dev_rc/` on
-#   the server (owner action). To make RC auto-deploy, add it to `push:` too.
+# SAFETY
+#   * Each real upload writes <copy>/.g2ml-channel; only a copy marked live
+#     runs timed jobs and clean-ups.
+#   * The server's identity is pinned (secrets.SFTP_KNOWN_HOSTS). A missing or
+#     wrong entry stops the run.
+#   * The run stops unless the service folder holds the marker file
+#     .g2ml-service-folder.
+#   * Server files are removed only inside the folders listed in the script, and
+#     credentials, uploads, logs, backups and install lock files are never
+#     uploaded or removed.
+#   * A manual run is a dry run unless the dry_run box is unticked. A push to
+#     main, alpha or beta uploads for real.
+#   * Nothing happens at all unless vars.SFTP_ENABLED is 'true'.
 #
-# Nothing outside web/ is ever uploaded.
-#
-# ---------------------------------------------------------------------------
-# ⚠️  SHARED-BACKEND NOTE (deliberate design decision — "literal spec")
-# ---------------------------------------------------------------------------
-# The shared backend (web/_functions, web/_includes, web/_libraries,
-# web/_schemas, web/_sql, web/assets) and each component's non-public_html
-# directories (e.g. _admin/public_html) are NOT channel-split — they deploy to
-# SFTP_BASE_PATH on EVERY branch. This means an alpha or beta push OVERWRITES
-# the live production shared backend + admin dashboard. This is intentional
-# per the deployment spec: the dev channels differ only in their front-end
-# public_html/ web root and share one production backend. If you later want
-# fully isolated preview channels, gate the Phase-2 mirror to `main` only.
-#
-# ---------------------------------------------------------------------------
-# LIVE-STATE PROTECTION  (see #158 — read this before touching --delete)
-# ---------------------------------------------------------------------------
-# Phase 1 (the three component web roots) uses --delete: those roots are wholly
-# repo-owned, so pruning what the repo no longer ships is correct.
-#
-# Phase 2 (everything else → SFTP_BASE_PATH) does NOT use --delete. It is
-# additive only. A 2026-07-19 dry run proved --delete there would issue 47
-# removals against live server content, via two distinct mechanisms:
-#
-#   (A) A repo directory holding ONLY .gitkeep looks EMPTY at the source,
-#       because COMMON_EXCLUDES excludes .gitkeep and ~/.lftprc sets
-#       mirror:no-empty-dirs. --delete then removed the live remote
-#       counterpart: private_html/, public_html_redir/, per-component
-#       _includes/ + _libraries/, Lnks.page/_functions/.
-#
-#   (B) Paths that exist only on the server, never in the repo:
-#       <Comp>/_auth_keys/  (installer-written thin includes of the shared
-#       auth_creds.php — deleting these is an instant total outage),
-#       _admin/public_html/pages/errors/, public_html_landing/img/, and an
-#       entire live brand-assets site at SFTP_BASE_PATH itself (/index.php,
-#       /BrandKit, /logos, /docs, /pwa, /press-kit, …).
-#
-# Server-owned paths are ALSO hard-excluded, as defence in depth, so that
-# re-introducing --delete cannot silently destroy them:
-#   _auth_keys/     (installer-written DB creds + runtime — gitignored)
-#   .auth/          (per-component thin credential includes — see below)
-#   private_html/   (Dreamhost private area)
-#   _uploads/       (user uploads)        _backups/  (server backups)
-#   .dh-diag        (Dreamhost-generated diagnostics)
-#
-# 🚨 ONE-OFF PRE-DEPLOY MIGRATION — the per-component credential directory was
-#    renamed `_auth_keys/` → `.auth/`. The application now requires
-#    <Comp>/.auth/auth_creds.php at boot; the live server still has the OLD
-#    <Comp>/_auth_keys/. Because .auth/ is untracked AND excluded here, this
-#    mirror CANNOT create it. Run this on the server BEFORE the first armed
-#    deploy or all three sites go down:
-#
-#      mv Go2My.Link/_auth_keys Go2My.Link/.auth
-#      mv G2My.Link/_auth_keys  G2My.Link/.auth
-#      mv Lnks.page/_auth_keys  Lnks.page/.auth
-#
-#    (The shared web/_auth_keys/auth_creds.php is UNCHANGED — do not move it.)
-#    See docs/DEPLOYMENT.md.
-#
-# ⚠️  Before ARMING (vars.SFTP_ENABLED=true), always run a workflow_dispatch
-#     with dry_run=true and read the removal list. See docs/DEPLOYMENT.md.
-#
-# ---------------------------------------------------------------------------
-# SECRETS (repo → Settings → Secrets and variables → Actions → Secrets)
-#   SFTP_HOST         Dreamhost SFTP hostname
+# SECRETS live in the GitHub Environment "sftp-deploy" (repo -> Settings ->
+# Environments), which allows only the branches main, alpha, beta and
+# release-candidate. They must NOT also exist as repository secrets: an older copy of this file, on any
+# branch or tag, would be able to use those, with no server identity check.
+#   SFTP_HOST         Dreamhost SFTP server name
 #   SFTP_USER         SFTP username
-#   SFTP_PORT         SFTP port (optional; defaults to 22 if unset/blank)
-#   SFTP_BASE_PATH    Remote root that web/ maps onto (single path for all channels)
-#   SFTP_KEY          SSH private key (PREFERRED). If set & non-empty → key auth.
-#   SFTP_PASSWORD     SFTP password (FALLBACK, used only when SFTP_KEY is empty/unset)
-#   MAXMIND_LICENSE_KEY  (org secret, OPTIONAL) MaxMind GeoLite2 licence key
-#                     (#43). When set, scripts/fetch-geoip.sh downloads a
-#                     fresh GeoLite2-Country.mmdb before the mirror runs. When
-#                     unset, the fetch is skipped with a notice and the deploy
-#                     proceeds normally — see that script's own docblock for
-#                     the full graceful-failure contract. The application
-#                     itself (web/_functions/geolocation.php) is a total
-#                     no-op with no database present, so this is never a
-#                     required secret.
+#   SFTP_PORT         SFTP port (optional; 22 if unset or blank)
+#   SFTP_BASE_PATH    The folder used only by this service
+#   SFTP_KNOWN_HOSTS  The server's pinned host key line(s)
+#   SFTP_KEY          SSH private key (preferred)
+#   SFTP_PASSWORD     SFTP password (used only when SFTP_KEY is empty)
+#   MAXMIND_LICENSE_KEY  (optional; stays an organisation or repository secret)
+#                     MaxMind GeoLite2 licence key (#43). When
+#                     set, scripts/fetch-geoip.sh downloads the country database
+#                     before the upload. When unset or the download fails, the
+#                     deploy carries on and any database already on the server
+#                     is left as it is. Turning the feature on is a separate
+#                     setting; see web/_sql/seeds/017_geolocation_settings.sql.
 #
-# VARIABLES (… → Variables)
-#   SFTP_ENABLED      Set to 'true' to arm deployment (kill switch; off by default)
+# VARIABLES (repo -> Settings -> Secrets and variables -> Actions -> Variables)
+#   SFTP_ENABLED      'true' arms deployment (off by default). It must be a
+#                     repository variable: the job's "if:" is read before the
+#                     environment is.
 #
-# ---------------------------------------------------------------------------
-# RUNNER — both jobs run on `ubuntu-latest` (house rule, see
-# .claude/memory/patterns.md → "CI/CD & GitHub Actions"). The production target
-# (Dreamhost) is Linux, so a Linux runner keeps the PHP + lftp/SFTP toolchain at
-# dev/CI/deploy parity. Do NOT switch any job to windows-*/macos-*/self-hosted.
-# ---------------------------------------------------------------------------
-# GeoIP DATABASE DEPLOYMENT (#43) — read before touching the mirror commands
-# ---------------------------------------------------------------------------
-# web/_libraries/maxminddb/*.mmdb is EXCLUDED from every `--delete` mirror
-# below (COMMON_EXCLUDES has `--exclude \.mmdb$`) and is instead uploaded by
-# its own dedicated, NON-deleting `mirror` command, run ONLY when this run's
-# "Fetch GeoLite2-Country GeoIP database" step actually produced a fresh
-# file. This means a failed/skipped fetch (no licence key, MaxMind outage)
-# NEVER deletes a previously deployed, working database — it just leaves the
-# remote copy exactly as it was. Turning the feature on in production is a
-# separate, manual step: set analytics.geolocation_enabled = '1' (System
-# scope) only AFTER confirming a deploy has actually placed the database —
-# see web/_sql/seeds/017_geolocation_settings.sql.
+# RUNNER: both jobs run on `ubuntu-latest` (house rule, see
+# .claude/memory/patterns.md -> "CI/CD & GitHub Actions").
 #
 # @package    Go2My.Link
 # @author     MWBM Partners Ltd (MWservices)
@@ -152,6 +84,8 @@ on:
     paths:
       - 'web/**'
       - '.github/workflows/sftp-deploy.yml'
+      - 'scripts/sftp-deploy.sh'
+      - 'scripts/fetch-geoip.sh'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -199,7 +133,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2.37.2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962  # v2.40.0
         with:
           php-version: ${{ matrix.php-version }}
           extensions: mbstring, mysqli
@@ -221,7 +155,7 @@ jobs:
       # they run on the 8.4 leg only.
       - name: Setup Node.js
         if: matrix.php-version == '8.4'
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
           # Node 24 (long-term support). 24.22.1 is the first 24.x release that
           # fixes CVE-2026-111497 in Node's built-in Brotli decoder (#302). Node 20
@@ -252,256 +186,63 @@ jobs:
     runs-on: ubuntu-latest
     needs: checks
     if: vars.SFTP_ENABLED == 'true'
+    # The SFTP secrets belong to this environment, and GitHub gives them only to
+    # the branches the environment allows (docs/DEPLOYMENT.md, owner set-up).
+    environment: sftp-deploy
     # Hard cap so a stalled SFTP mirror can't hang near the 6h Actions ceiling.
     timeout-minutes: 30
-
-    # Shared lftp mirror flags — anchored regex excludes.
-    #
-    # ⚠️  EACH PATTERN MUST BE SINGLE-QUOTED. These strings are interpolated
-    # into the generated lftp command script, and lftp's own lexer — not the
-    # shell — tokenises that script. lftp treats an unquoted `|` as its pipe
-    # operator, so a bare `(^|/)\.git/` is split into `(^` + a pipe, and the
-    # mirror dies with:
-    #
-    #     mirror: regular expression `(^': Unmatched ( or \(
-    #
-    # That aborts the deploy (it fails closed — nothing is transferred or
-    # deleted). Single quotes make lftp pass each pattern through verbatim.
-    # Verified against lftp 4.9.2, the version the runner installs.
-    #
-    #   COMMON_EXCLUDES  — applied to every mirror (repo cruft + live-state
-    #                      protection: credentials, installer runtime, uploads,
-    #                      backups). Also excludes *.mmdb (#43) so these
-    #                      `--delete` mirrors never touch the GeoIP database —
-    #                      it is uploaded separately, WITHOUT --delete, by the
-    #                      "Deploy GeoIP database" logic further down, only
-    #                      when this run's fetch step actually produced one.
-    #   PHASE2_EXCLUDES  — extra excludes for the "everything else" mirror so it
-    #                      never uploads OR --deletes the channel web roots
-    #                      (those are owned by the per-component Phase-1 mirrors).
-    env:
-      COMMON_EXCLUDES: >-
-        --exclude '\.DS_Store$'
-        --exclude 'Thumbs\.db$'
-        --exclude '(^|/)\.git/'
-        --exclude '(^|/)\.github/'
-        --exclude '\.gitignore$'
-        --exclude '\.gitkeep$'
-        --exclude '\.gitattributes$'
-        --exclude '(^|/)README\.md$'
-        --exclude '(^|/)DEV_NOTES\.md$'
-        --exclude '(^|/)CLAUDE\.md$'
-        --exclude '(^|/)\.vscode/'
-        --exclude '(^|/)\.idea/'
-        --exclude 'auth_creds\.php$'
-        --exclude '\.install_token$'
-        --exclude '\.installed$'
-        --exclude '(^|/)_uploads/'
-        --exclude '(^|/)_backups/'
-        --exclude '(^|/)_auth_keys/'
-        --exclude '(^|/)\.auth/'
-        --exclude '(^|/)private_html/'
-        --exclude '\.dh-diag$'
-        --exclude '\.mmdb$'
-      # Anchored to the component roots so ONLY the three top-level
-      # public_html/ web roots are held back (they are owned by Phase 1);
-      # <Comp>/_admin/public_html/, public_html_landing/, public_html_redir/
-      # are NOT matched and so still deploy to SFTP_BASE_PATH.
-      PHASE2_EXCLUDES: >-
-        --exclude '^Go2My\.Link/public_html/'
-        --exclude '^G2My\.Link/public_html/'
-        --exclude '^Lnks\.page/public_html/'
-        --exclude '(^|/)public_html_dev_alpha/'
-        --exclude '(^|/)public_html_dev_beta/'
 
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
 
-      # ---------------------------------------------------------------------
-      # GeoIP database fetch (#43) — see scripts/fetch-geoip.sh for the full
-      # graceful-failure contract. This NEVER fails the job: when
-      # MAXMIND_LICENSE_KEY is unset or the download fails, the script exits
-      # 0 having written nothing, `fetched` comes out `false`, and the
-      # dedicated non-deleting upload step later in this job is skipped
-      # entirely — any previously deployed database is left untouched.
-      # ---------------------------------------------------------------------
+      # GeoIP database fetch (#43). It never fails the job: with no licence key,
+      # or a failed download, it writes nothing, the upload script sends no
+      # database, and any database already on the server stays as it is.
       - name: Fetch GeoLite2-Country GeoIP database (#43)
-        id: geoip
         env:
           MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
         run: |
           bash scripts/fetch-geoip.sh
-          if [[ -s web/_libraries/maxminddb/GeoLite2-Country.mmdb ]]
-          then
-            echo "fetched=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "fetched=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Configure lftp timeouts
-        run: |
-          {
-            echo "set net:timeout 20"
-            echo "set net:max-retries 3"
-            echo "set net:reconnect-interval-base 5"
-            echo "set net:reconnect-interval-multiplier 1"
-            echo "set mirror:no-empty-dirs yes"
-            echo "set sftp:auto-confirm yes"
-          } >> "$HOME/.lftprc"
 
       - name: Install lftp
         run: sudo apt-get update && sudo apt-get install -y lftp
 
-      # Determine the channel web-root directory from the branch (push) or
-      # default to production for a manual dispatch on a non-channel ref.
-      - name: Determine channel
-        id: channel
-        run: |
-          case "${{ github.ref_name }}" in
-            main)              TARGET="public_html" ;;
-            alpha)             TARGET="public_html_dev_alpha" ;;
-            beta)              TARGET="public_html_dev_beta" ;;
-            release-candidate) TARGET="public_html_dev_rc" ;;
-            *)                 TARGET="public_html" ;;
-          esac
-          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
-          echo "Channel web root: $TARGET"
-
-      # Default port 22 when SFTP_PORT is unset, blank, or non-numeric.
-      - name: Resolve SFTP port
-        id: port
+      # All the checks and the upload are in the script, so that they can be
+      # run and tested outside GitHub. Values reach it as environment
+      # variables only, never pasted into the command text.
+      - name: Deploy
+        id: deploy
         env:
-          RAW_PORT: ${{ secrets.SFTP_PORT }}
-        run: |
-          TRIMMED_PORT=$(echo "$RAW_PORT" | tr -d '[:space:]')
-          if [[ "$TRIMMED_PORT" =~ ^[0-9]+$ ]] && [[ "$TRIMMED_PORT" -ge 1 ]] && [[ "$TRIMMED_PORT" -le 65535 ]]
-          then
-            echo "port=$TRIMMED_PORT" >> "$GITHUB_OUTPUT"
-          else
-            echo "port=22" >> "$GITHUB_OUTPUT"
-            echo "SFTP_PORT unset/blank/invalid — defaulting to 22"
-          fi
-
-      # SSH key preferred; password fallback only when SFTP_KEY is empty/unset.
-      - name: Select auth method
-        id: auth
-        env:
-          SFTP_KEY: ${{ secrets.SFTP_KEY }}
-        run: |
-          if [[ -n "${SFTP_KEY//[[:space:]]/}" ]]
-          then
-            echo "method=key" >> "$GITHUB_OUTPUT"
-            echo "Auth: SSH key"
-          else
-            echo "method=password" >> "$GITHUB_OUTPUT"
-            echo "Auth: password (SFTP_KEY not set)"
-          fi
-
-      # Resolve dry-run flag (manual dispatch can preview; pushes deploy for real).
-      - name: Resolve dry-run flag
-        id: dry
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.dry_run }}" == "true" ]]
-          then
-            echo "flag=--dry-run" >> "$GITHUB_OUTPUT"
-            echo "DRY RUN — no files will be uploaded"
-          else
-            echo "flag=" >> "$GITHUB_OUTPUT"
-          fi
-
-      # -------------------------------------------------------------------
-      # Deploy via SSH key
-      # Phase 1: each component public_html → its channel web root (--delete;
-      #          these roots are wholly repo-owned, so pruning is correct).
-      # Phase 2: everything else under web/ → SFTP_BASE_PATH. ADDITIVE — no
-      #          --delete. See the LIVE-STATE PROTECTION note above and #158:
-      #          SFTP_BASE_PATH also hosts unrelated live content, and
-      #          .gitkeep-only repo dirs read as empty, so --delete here
-      #          destroys server state. Do not re-add it.
-      # -------------------------------------------------------------------
-      - name: Deploy (SSH key)
-        if: steps.auth.outputs.method == 'key'
-        env:
-          SFTP_USER: ${{ secrets.SFTP_USER }}
+          DEPLOY_REF: ${{ github.ref }}
+          DEPLOY_EVENT: ${{ github.event_name }}
+          DEPLOY_DRY_INPUT: ${{ github.event.inputs.dry_run }}
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
-          SFTP_PORT: ${{ steps.port.outputs.port }}
-          SFTP_KEY: ${{ secrets.SFTP_KEY }}
-          BASE: ${{ secrets.SFTP_BASE_PATH }}
-          TARGET: ${{ steps.channel.outputs.target }}
-          DRY: ${{ steps.dry.outputs.flag }}
-          GEOIP_FETCHED: ${{ steps.geoip.outputs.fetched }}
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "$SFTP_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          cat > /tmp/lftp_deploy.txt <<LFTP_EOF
-          set sftp:connect-program "ssh -a -x -o StrictHostKeyChecking=no -i $HOME/.ssh/deploy_key -p ${SFTP_PORT}"
-          open sftp://${SFTP_USER}@${SFTP_HOST}:${SFTP_PORT}
-          mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/Go2My.Link/public_html/ ${BASE}/Go2My.Link/${TARGET}/
-          mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/G2My.Link/public_html/ ${BASE}/G2My.Link/${TARGET}/
-          mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/Lnks.page/public_html/ ${BASE}/Lnks.page/${TARGET}/
-          mirror --reverse ${DRY} --no-empty-dirs $COMMON_EXCLUDES $PHASE2_EXCLUDES web/ ${BASE}/
-          LFTP_EOF
-          # GeoIP database (#43) — deliberately its OWN mirror command, with NO
-          # --delete, appended ONLY when this run's fetch step actually
-          # produced a fresh file. A failed/skipped fetch simply omits this
-          # line entirely, leaving any previously deployed database untouched.
-          if [[ "${GEOIP_FETCHED}" == "true" ]]
-          then
-            echo "mirror --reverse ${DRY} --no-empty-dirs web/_libraries/maxminddb/ ${BASE}/_libraries/maxminddb/" >> /tmp/lftp_deploy.txt
-          fi
-          echo "bye" >> /tmp/lftp_deploy.txt
-          lftp -f /tmp/lftp_deploy.txt
-          rm -f ~/.ssh/deploy_key
-
-      # -------------------------------------------------------------------
-      # Deploy via password (fallback)
-      # -------------------------------------------------------------------
-      - name: Deploy (password)
-        if: steps.auth.outputs.method == 'password'
-        env:
+          SFTP_PORT: ${{ secrets.SFTP_PORT }}
           SFTP_USER: ${{ secrets.SFTP_USER }}
-          SFTP_PASS: ${{ secrets.SFTP_PASSWORD }}
-          SFTP_HOST: ${{ secrets.SFTP_HOST }}
-          SFTP_PORT: ${{ steps.port.outputs.port }}
-          BASE: ${{ secrets.SFTP_BASE_PATH }}
-          TARGET: ${{ steps.channel.outputs.target }}
-          DRY: ${{ steps.dry.outputs.flag }}
-          GEOIP_FETCHED: ${{ steps.geoip.outputs.fetched }}
-        run: |
-          cat > /tmp/lftp_deploy.txt <<LFTP_EOF
-          set sftp:auto-confirm yes
-          set ssl:verify-certificate no
-          open -u "${SFTP_USER},${SFTP_PASS}" sftp://${SFTP_HOST}:${SFTP_PORT}
-          mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/Go2My.Link/public_html/ ${BASE}/Go2My.Link/${TARGET}/
-          mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/G2My.Link/public_html/ ${BASE}/G2My.Link/${TARGET}/
-          mirror --reverse --delete ${DRY} --no-empty-dirs $COMMON_EXCLUDES web/Lnks.page/public_html/ ${BASE}/Lnks.page/${TARGET}/
-          mirror --reverse ${DRY} --no-empty-dirs $COMMON_EXCLUDES $PHASE2_EXCLUDES web/ ${BASE}/
-          LFTP_EOF
-          # GeoIP database (#43) — see the matching comment in the "Deploy (SSH
-          # key)" step above; identical non-deleting, fetch-gated behaviour.
-          if [[ "${GEOIP_FETCHED}" == "true" ]]
-          then
-            echo "mirror --reverse ${DRY} --no-empty-dirs web/_libraries/maxminddb/ ${BASE}/_libraries/maxminddb/" >> /tmp/lftp_deploy.txt
-          fi
-          echo "bye" >> /tmp/lftp_deploy.txt
-          lftp -f /tmp/lftp_deploy.txt
+          SFTP_BASE_PATH: ${{ secrets.SFTP_BASE_PATH }}
+          SFTP_KNOWN_HOSTS: ${{ secrets.SFTP_KNOWN_HOSTS }}
+          SFTP_KEY: ${{ secrets.SFTP_KEY }}
+          SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+        run: bash scripts/sftp-deploy.sh
 
       - name: Deploy summary
         if: always()
         env:
-          TARGET: ${{ steps.channel.outputs.target }}
-          METHOD: ${{ steps.auth.outputs.method }}
-          DRY: ${{ steps.dry.outputs.flag }}
+          BRANCH: ${{ github.ref_name }}
+          CHANNEL: ${{ steps.deploy.outputs.channel }}
+          METHOD: ${{ steps.deploy.outputs.auth }}
+          DRY: ${{ steps.deploy.outputs.dry }}
+          RESULT: ${{ steps.deploy.outcome }}
         run: |
           {
-            echo "## 🚀 SFTP Deploy"
+            echo "## SFTP Deploy"
             echo ""
             echo "| Field | Value |"
             echo "|-------|-------|"
-            echo "| Branch | ${{ github.ref_name }} |"
-            echo "| Channel web root | $TARGET |"
-            echo "| Auth method | $METHOD |"
-            echo "| Dry run | ${DRY:-no} |"
-          } >> "$GITHUB_STEP_SUMMARY"
+            echo "| Branch | ${BRANCH} |"
+            echo "| Copy on the server | ${CHANNEL} |"
+            echo "| Sign-in method | ${METHOD} |"
+            echo "| Dry run | ${DRY} |"
+            echo "| Result | ${RESULT} |"
+          } >> "${GITHUB_STEP_SUMMARY}"

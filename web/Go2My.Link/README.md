@@ -21,11 +21,13 @@ Go2My.Link/
 ├── _backups/            ← Website-specific backups (not web-accessible)
 ├── private_html/        ← Private HTML (placeholder)
 ├── public_html/         ← Production web root (go2my.link)
-├── public_html_dev_alpha/  ← Alpha development web root
-├── public_html_dev_beta/   ← Beta development web root
 ├── public_html_landing/    ← Pre-launch landing page
 └── public_html_redir/      ← Redirection web root (limited use)
 ```
+
+On the server, the live, alpha, beta and release-candidate copies are separate
+complete copies of `web/`; each uses the folder names above. See
+[docs/DEPLOYMENT.md](../../docs/DEPLOYMENT.md).
 
 ## Key Features
 

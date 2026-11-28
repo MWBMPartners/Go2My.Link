@@ -29,6 +29,10 @@
 **/dbConfig.php
 **/public_html_legacy/
 
+# Which copy of the site this folder is (#158). Written by the upload or the
+# installer; never committed.
+web/.g2ml-channel
+
 # Installer runtime artefacts (server-local; never commit)
 # The shared server-wide credentials dir stays "_auth_keys/"; each
 # component's own credential-override dir was renamed from "_auth_keys/" to

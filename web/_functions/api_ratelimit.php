@@ -55,6 +55,7 @@ unset($g2mlGuardScriptPath);
 
 // Removes secrets in web addresses from everything logged here (#323)
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'log_redaction.php';
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'environment.php';
 
 // ============================================================================
 // 🚦 Rate limit check
@@ -534,7 +535,8 @@ function g2ml_apiLogRequest(?int $apiKeyUID, string $endpoint, string $httpMetho
     // Probabilistic prune — Dreamhost cron is limited, so old rows are swept
     // opportunistically (mirrors the same 1-in-100 pattern used for session
     // cleanup in _includes/page_init.php) rather than via a scheduled job.
-    if (mt_rand(1, 100) === 1)
+    // Only the live copy prunes: test copies share its database (#158).
+    if (g2ml_cleanupAllowed() && mt_rand(1, 100) === 1)
     {
         $retentionDays = (int) getSetting('api.request_log_retention_days', 30);
 

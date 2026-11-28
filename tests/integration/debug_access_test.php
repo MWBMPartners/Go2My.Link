@@ -33,6 +33,8 @@
 
 declare(strict_types=1);
 
+require_once dirname(__DIR__, 2) . '/web/_functions/environment.php';
+
 if (!isset($db) || !($db instanceof mysqli))
 {
     return;
@@ -285,7 +287,8 @@ function g2mlDebugTest_get(string $root, string $host, string $path, string $ses
 
     if ($sessionID !== '')
     {
-        $headers .= 'Cookie: G2ML_SESSION=' . $sessionID . "\r\n";
+        // Each test copy has its own session cookie name (#158).
+        $headers .= 'Cookie: ' . g2ml_sessionCookieName(g2ml_environmentForHost($host)) . '=' . $sessionID . "\r\n";
     }
 
     $context = stream_context_create(array('http' => array(

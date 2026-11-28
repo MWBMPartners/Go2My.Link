@@ -40,6 +40,14 @@ than the tested versions, it warns but does not stop (see `docs/INSTALL.md`).
 | ⚙️ `admin.go2my.link` | CNAME | go2my.link | Admin dashboard (Component A) |
 | 🔗 `g2my.link` | A | Dreamhost IP | Shortlink redirect engine (Component B) |
 | 📄 `lnks.page` | A | Dreamhost IP | LinksPage service (Component C) |
+| 🧪 `rc.go2my.link`, `rc.admin.go2my.link`, `rc.g2my.link`, `rc.lnks.page` | A | Dreamhost IP | Release-candidate test copy (D-032) |
+| 🧪 The same four with `alpha` or `beta` in place of `rc` | A | Dreamhost IP | Alpha and beta test copies |
+
+Add only the test addresses you want. A CNAME to the matching live address also
+works for a name below it (`rc.go2my.link` to `go2my.link`). If the domain's DNS
+is managed by Dreamhost, adding the address as a website in the panel normally
+creates the record; check that it did. Each address also needs its own HTTPS
+certificate.
 
 ### 🏢 Custom Organisation Domains
 
@@ -65,36 +73,95 @@ Organisations can use custom short domains (e.g., `camsda.link`, `tyney.link`). 
 
 📖 **Full partner-facing guide:** [`docs/CUSTOM_DOMAINS.md`](CUSTOM_DOMAINS.md).
 
-## 📁 Document Root Mapping
+## 📁 Folder Layout on the Server
 
-Each domain maps to a specific `public_html` directory:
+Everything lives in one folder used only by this service
+([decision D-007](decisions/D-007-deploy-separate-folder.md)). Inside it, each
+branch has its own complete copy of `web/`
+([decision D-019](decisions/D-019-test-sites-own-copy.md)). The examples below
+call the folder `go2mylink`.
 
-| Domain | Document Root |
+```
+<home folder>/go2mylink/       <- secret SFTP_BASE_PATH
+├── .g2ml-service-folder       <- marker file you create once; uploads stop without it
+├── live/                      <- branch main (the live site)
+│   ├── .g2ml-channel          <- one word naming the copy, written by the upload
+│   ├── _auth_keys/            <- this copy's credentials and install lock (server only)
+│   ├── _functions/  _includes/  _libraries/  _schemas/  _sql/  assets/
+│   ├── _uploads/  _logs/      <- made by the application when needed (server only)
+│   ├── Go2My.Link/
+│   │   ├── .auth/             <- this component's credential include (server only)
+│   │   ├── _functions/
+│   │   ├── public_html/
+│   │   └── _admin/public_html/
+│   ├── G2My.Link/  (.auth/, _functions/, public_html/)
+│   └── Lnks.page/  (.auth/, _functions/, public_html/)
+├── alpha/                     <- branch alpha, same shape
+├── beta/                      <- branch beta, same shape
+└── rc/                        <- branch release-candidate (manual upload only)
+```
+
+The code finds its shared folders by climbing up from the file that is running,
+so a copy only ever reads its own program files, credentials, uploads and
+install lock. Each copy needs its own `_auth_keys/` and `.auth/` folders.
+
+## 🌐 Web Directory for Each Domain
+
+| Domain | Web directory (relative to the home folder) |
 | --- | --- |
-| 🌐 `go2my.link` | `web/Go2My.Link/public_html/` |
-| ⚙️ `admin.go2my.link` | `web/Go2My.Link/_admin/public_html/` |
-| 🟡 `alpha.go2my.link` | `web/Go2My.Link/public_html_dev_alpha/` |
-| 🟠 `beta.go2my.link` | `web/Go2My.Link/public_html_dev_beta/` |
-| 🔗 `g2my.link` | `web/G2My.Link/public_html/` |
-| 📄 `lnks.page` | `web/Lnks.page/public_html/` |
+| `go2my.link` | `go2mylink/live/Go2My.Link/public_html` |
+| `admin.go2my.link` | `go2mylink/live/Go2My.Link/_admin/public_html` |
+| `g2my.link` | `go2mylink/live/G2My.Link/public_html` |
+| `lnks.page` | `go2mylink/live/Lnks.page/public_html` |
+| `alpha.go2my.link` | `go2mylink/alpha/Go2My.Link/public_html` |
+| `alpha.admin.go2my.link` | `go2mylink/alpha/Go2My.Link/_admin/public_html` |
+| `alpha.g2my.link` | `go2mylink/alpha/G2My.Link/public_html` |
+| `alpha.lnks.page` | `go2mylink/alpha/Lnks.page/public_html` |
+| `beta.go2my.link` | `go2mylink/beta/Go2My.Link/public_html` |
+| `rc.go2my.link` | `go2mylink/rc/Go2My.Link/public_html` |
+| `rc.admin.go2my.link` | `go2mylink/rc/Go2My.Link/_admin/public_html` |
+| `rc.g2my.link` | `go2mylink/rc/G2My.Link/public_html` |
+| `rc.lnks.page` | `go2mylink/rc/Lnks.page/public_html` |
 
-## 📁 Directory Layout on Server
+Beta's other three addresses follow the same pattern as alpha's
+([D-032](decisions/D-032-release-candidate-own-copy.md) gives release-candidate
+its own). The test addresses are suggestions: add only the ones you want, each
+with its DNS record.
 
+### 🏷️ How the software knows which copy it is
+
+**1. By where the code runs.** A copy in a folder named `alpha`, `beta` or `rc`
+is a test copy. Otherwise the file `.g2ml-channel` at the top of the copy (beside
+`_functions/`) names it with one word: `live`, `alpha`, `beta` or `rc`.
+
+| Set-up | Where the file comes from |
+| --- | --- |
+| Automatic upload | Every real upload writes it, before any code |
+| New installation with the installer, no file yet | When you press the final button, the installer writes `live` only if the folder is named `live` or you opened it on a live address (`go2my.link`, `www.go2my.link`, and so on). Otherwise it shows a notice and you create the file yourself |
+| Installation without the installer, or an existing one | Create `web/.g2ml-channel` containing `live` yourself |
+| Local development | Nothing needed to browse the site. To try timed jobs or clean-ups, create `web/.g2ml-channel` containing `live` (git ignores it), only against a local database |
+
+**Only a copy known to be `live` runs timed jobs and clean-ups.** A copy with no
+file, or an unreadable or unrecognised one, serves pages normally but removes no
+old data: no data clean-up, session clean-up, form-attempt, API log or usage
+event pruning, and `/cron` answers "not found" (the server error log says why).
+⚠️ On the live site that means account erasure and data retention stop, so check
+the file is there. A live address on an unmarked copy writes a "critical" row to
+`tblErrorLog` about once a day, titled "This copy is not marked as live: ...".
+There is no on-screen warning; check with:
+
+```sql
+SELECT `createdAt`, `errorTitle` FROM `tblErrorLog`
+ WHERE `errorTitle` LIKE 'This copy is not marked as live%'
+ ORDER BY `createdAt` DESC LIMIT 5;
 ```
-~/                              ← Dreamhost home directory
-├── go2my.link/                 ← Mapped from web/Go2My.Link/public_html/
-├── admin.go2my.link/           ← Mapped from web/Go2My.Link/_admin/public_html/
-├── g2my.link/                  ← Mapped from web/G2My.Link/public_html/
-├── lnks.page/                  ← Mapped from web/Lnks.page/public_html/
-└── _shared/                    ← Mapped from web/ (shared includes, outside web root)
-    ├── _auth_keys/
-    ├── _includes/
-    ├── _functions/
-    ├── _libraries/
-    └── _sql/
-```
 
-> 📝 **Note:** The exact server-side directory structure may differ. Paths in `auth_creds.php` use `dirname(__DIR__)` for portability.
+**2. By the web address.** On `go2my.link`, `g2my.link`, `lnks.page`,
+`localhost` and `*.local`, a part of the name that is exactly `alpha`, `beta` or
+`rc` marks a test address (so `rc.admin.go2my.link` and `admin.rc.go2my.link`
+both work; `rc-test.go2my.link` does not). **An organisation's own domain is
+always live**, even if it starts with `beta.`. A test copy stays a test copy on
+any address; a test address also stops timed jobs and clean-ups.
 
 ## 🚀 Deployment Process
 
@@ -104,9 +171,9 @@ SFTP to Dreamhost). Manual VS Code FTP-Sync is no longer the deployment path.
 ### 🛠️ Development Workflow
 
 1. ✏️ **Edit locally** and commit to a feature branch
-2. 🔀 **Merge to `alpha`** → deploys to the `public_html_dev_alpha` channel web roots
-3. 🧪 **Test on staging** (`alpha.go2my.link` / `beta.go2my.link`)
-4. 🟢 **Promote to `main`** → deploys to the production `public_html` web roots
+2. 🔀 **Merge to `alpha`** → uploads to the `alpha/` copy on the server
+3. 🧪 **Test** on the alpha, beta or release-candidate addresses
+4. 🟢 **Promote to `main`** → uploads to the `live/` copy
 
 ### 🤖 CI/CD workflows
 
@@ -116,7 +183,7 @@ SFTP to Dreamhost). Manual VS Code FTP-Sync is no longer the deployment path.
 | 🔍 `php-lint.yml` | Push / PR | PHP syntax validation |
 | 🧹 `lint.yml` | Changes under `.github/workflows/**` | `actionlint` workflow linting |
 | 🐬 `mariadb-import.yml` | Push / PR touching `web/**` or `tests/**`, plus manual dispatch | MariaDB 11.4: imports schema/procedures/seeds, then runs the database suite on PHP 8.4 (#330) (**advisory, not required — see #183**) |
-| 🚢 `sftp-deploy.yml` | Push to `main`/`alpha`/`beta` touching `web/**`; manual dispatch | SFTP deployment (**gated by `vars.SFTP_ENABLED`**) |
+| 🚢 `sftp-deploy.yml` | Push to `main`/`alpha`/`beta` touching `web/**`, the workflow or its two scripts; manual run | SFTP upload by `scripts/sftp-deploy.sh` (**gated by `vars.SFTP_ENABLED`**) |
 | 🏷️ `release.yml` | Tag push | Per-component releases |
 
 ### 🔒 Making the integration tests a required check (owner action)
@@ -143,120 +210,404 @@ job's `name: Tests (Integration)` combined with the single-value
 changing either would silently orphan this required check, so do not rename
 the job or drop the matrix without updating the ruleset to match.
 
-### 🔀 How the mirror maps repo → server
+### 🔀 Which branch goes where
 
-Two phases run against a single remote root (`secrets.SFTP_BASE_PATH`):
+| Branch | Copy | When |
+| --- | --- | --- |
+| `main` | `live/` | Every push while armed, or a manual run |
+| `alpha` | `alpha/` | Every push while armed, or a manual run |
+| `beta` | `beta/` | Every push while armed, or a manual run |
+| `release-candidate` | `rc/` | Manual run only |
+| anything else | none | The run stops with an error |
 
-| Phase | Source | Destination | `--delete`? |
-| --- | --- | --- | --- |
-| **1** | `web/<Comp>/public_html/` | `<Comp>/public_html[_dev_alpha\|_dev_beta]/` per branch | ✅ **Yes** — these roots are wholly repo-owned |
-| **2** | everything else under `web/` | `SFTP_BASE_PATH/` | ❌ **No** — additive only |
+Only `main` writes to `live/`.
 
-> ⚠️ Phase 2 is **deliberately additive**. See [#158](https://github.com/MWBMPartners/Go2My.Link/issues/158):
-> `SFTP_BASE_PATH` also hosts unrelated live content, and repo directories that
-> contain only `.gitkeep` read as *empty* to lftp (because `.gitkeep` is excluded
-> and `mirror:no-empty-dirs` is set), so `--delete` there prunes live server
-> state — including the per-component credential directories (📜 *historical:*
-> `_auth_keys/`; **now `.auth/`** — see the BLOCKING PRE-DEPLOY STEP below),
-> which would cause an immediate total outage. **Do not re-add `--delete` to
-> Phase 2.**
+The `release-candidate` copy is uploaded only when you start a run by hand
+([D-032](decisions/D-032-release-candidate-own-copy.md)). The software treats its
+`rc` addresses as a test site.
 
-### 🚨 BLOCKING PRE-DEPLOY STEP — the `_auth_keys/` → `.auth/` migration
+An upload has two parts. First, everything under `web/` is added or updated in
+the copy; this part removes nothing. Second, in these folders only, files that
+the repository no longer has are removed: `_functions`, `_includes`,
+`_libraries`, `_schemas`, `_sql`, each component's `_functions` and
+`public_html`, and `Go2My.Link/_admin/public_html`. **Treat those folders as
+belonging to the upload: anything you put in them by hand is removed**, unless
+its name is in the table under "Files the upload never touches".
 
-The per-component credential directory was renamed `_auth_keys/` → `.auth/`.
-The application **boots only** from `<Comp>/.auth/auth_creds.php`. The **live
-server still has the OLD `<Comp>/_auth_keys/`**, and because `.auth/` is
-untracked and excluded from every mirror phase (see 🛡️ "Paths the mirror
-never touches" below), **the mirror cannot create it.** Skipping this before
-the first armed deploy against the renamed layout takes **all three sites**
-down.
+### 🚦 Owner set-up: do this once, in this order
 
-Run this on the server, once, BEFORE arming that deploy:
+Nobody has run these steps against the real server or on GitHub yet. Stop at
+anything that does not look as described. In the commands, replace `HOST`,
+`USER`, `PORT` and `RUN-ID` with your own values.
 
-```bash
-mv Go2My.Link/_auth_keys Go2My.Link/.auth
-mv G2My.Link/_auth_keys  G2My.Link/.auth
-mv Lnks.page/_auth_keys  Lnks.page/.auth
-```
+#### Step 0 — Switch off, and look for older workflow files
 
-⚠️ The **shared** `web/_auth_keys/auth_creds.php` (server-wide DB credentials
-+ encryption keys) is **UNCHANGED** — it stays at `_auth_keys/` and must
-**NOT** be moved. Only the three per-component directories (which hold each
-component's thin `require_once` include, not the real credentials) are
-renamed. See `.github/workflows/sftp-deploy.yml`'s header comment for the
-full rationale, and `docs/INSTALL.md` for how a fresh installer run creates
-`.auth/` for you instead.
-
-### 🔐 Arming and running a deploy
-
-The pipeline ships **disarmed**. `vars.SFTP_ENABLED` must be `'true'` for the
-deploy job to run at all (the pre-deploy PHP/JS/JSON checks always run).
-
-**Mandatory procedure — never skip the dry run:**
-
-**1. 🔎 Dry run first.** Actions → *SFTP Deploy* → *Run workflow* → pick the
-branch → leave `dry_run` = **true** (the default). Or:
+The older workflow file does not check the server's identity, and GitHub runs
+the file that is **on the branch or tag being run**. The protection is to give
+the upload secrets only to an environment that the older file does not ask for
+(Step 4). Start by switching uploads off and listing where older files are:
 
 ```bash
-gh workflow run sftp-deploy.yml --ref alpha -f dry_run=true
+gh variable set SFTP_ENABLED --body false --repo MWBMPartners/Go2My.Link
+git fetch origin --tags
+file=".github/workflows/sftp-deploy.yml"
+git for-each-ref --format='%(refname)' refs/remotes/origin refs/tags |
+while read -r ref
+do
+  if git cat-file -e "$ref:$file" 2>/dev/null
+  then
+    if ! git show "$ref:$file" | grep -q 'environment: sftp-deploy'
+    then
+      echo "OLD FILE: $ref"
+    fi
+  fi
+done
 ```
 
-The job is skipped unless `SFTP_ENABLED` is `'true'`, so arm it first if needed:
+- `main`, `alpha`, `beta` and `release-candidate` must **not** be listed before
+  you expect them to upload: bring the new file to them first. (Until then their runs get no
+  secrets and fail without uploading.)
+- Other branches and tags may stay listed. They are harmless **only once Step 4
+  has removed the repository and organisation copies of the secrets**. Do not
+  set `SFTP_ENABLED` to `true` before then.
+
+#### Step 1 — Get the server's host key and check it, before connecting
+
+The host key is the server's identity card. Do this before the first sign-in, so
+that you never send a password or a file to an unchecked machine.
 
 ```bash
-gh api -X PATCH repos/MWBMPartners/Go2My.Link/actions/variables/SFTP_ENABLED \
-  -f name=SFTP_ENABLED -f value=true
+ssh-keyscan -t ed25519 HOST > g2ml_known_hosts
+ssh-keygen -lf g2ml_known_hosts
 ```
 
-**2. 📋 Read the removal list.** Pull the log and inspect every deletion:
+- Write `HOST` exactly as you will put it in `SFTP_HOST`. If the port is not 22,
+  use `ssh-keyscan -p PORT -t ed25519 HOST`; the line must then begin
+  `[HOST]:PORT`.
+- **Check the fingerprint** (the `SHA256:...` text) against a source other than
+  this command, because the command believes whatever answers it. Ask Dreamhost
+  support for the fingerprint, or compare with one your computer saved on an
+  earlier connection: `ssh-keygen -lF HOST`. If they differ, stop.
+
+#### Step 2 — Make the service folder and its marker file
+
+1. In the Dreamhost panel, note which **user** the websites run as. Use that
+   same user for the upload, so that the website can write to its own folders.
+2. On your computer, make the marker file:
 
 ```bash
-gh run view <run-id> --log | grep -oE '(rm -r|rm) "[^"]+"'
+printf 'go2mylink-service-folder\n' > .g2ml-service-folder
 ```
 
-✋ **Every removal must be understood and intended.** If anything on that list
-is server-owned or unfamiliar, **stop** and fix the excludes before arming.
-
-**3. 🚀 Deploy for real** — re-run the dispatch with `dry_run` = `false`, or push
-to `main`/`alpha`/`beta`.
-
-**4. 🔒 Disarm again** if you do not want subsequent pushes auto-deploying:
+3. Sign in with the checked host key, make a new, empty folder in the home
+   folder (here `go2mylink`), and upload the marker into it. It must not be the
+   brand-assets website folder, or any other website's folder.
 
 ```bash
-gh api -X PATCH repos/MWBMPartners/Go2My.Link/actions/variables/SFTP_ENABLED \
-  -f name=SFTP_ENABLED -f value=false
+sftp -o UserKnownHostsFile=g2ml_known_hosts -o StrictHostKeyChecking=yes USER@HOST
+sftp> mkdir go2mylink
+sftp> cd go2mylink
+sftp> put .g2ml-service-folder
+sftp> ls -la
+sftp> bye
 ```
 
-### 🛡️ Paths the mirror never touches
+(Add `-P PORT` if the port is not 22.) Names that start with a dot are hidden in
+many file programs. You do not need to make `live/`, `alpha/`, `beta/` or `rc/`;
+the first real upload of each makes it.
 
-Excluded from **every** phase, so a deploy can never destroy live state:
+#### Step 3 — Make a key used only for uploads
+
+```bash
+ssh-keygen -t ed25519 -N '' -C 'go2mylink-deploy' -f g2ml_deploy
+ssh-copy-id -i g2ml_deploy.pub -o UserKnownHostsFile=g2ml_known_hosts -o StrictHostKeyChecking=yes USER@HOST
+sftp -i g2ml_deploy -o UserKnownHostsFile=g2ml_known_hosts -o StrictHostKeyChecking=yes USER@HOST
+```
+
+(If the port is not 22, add `-p PORT` to `ssh-copy-id` and `-P PORT` to
+`sftp`.) The last command must sign in without asking for a password. If the user has no
+shell access and `ssh-copy-id` fails, add the one line in `g2ml_deploy.pub` to
+the file `.ssh/authorized_keys` in the user's home folder with your SFTP program.
+
+#### Step 4 — Create the environment, add its secrets, delete the old copies
+
+**4a. The environment.** GitHub → the repository → **Settings** →
+**Environments** → **New environment** → name it exactly `sftp-deploy`. Under
+**Deployment branches and tags** choose **Selected branches and tags** and add
+the four branches `main`, `alpha`, `beta` and `release-candidate`. Add no tag
+rule. If GitHub does
+not offer this restriction (it depends on the plan and on whether the repository
+is private), **stop** and report it. Check:
+
+```bash
+gh api repos/MWBMPartners/Go2My.Link/environments/sftp-deploy/deployment-branch-policies --jq '.branch_policies[].name'
+```
+
+It must print `main`, `alpha`, `beta` and `release-candidate` and nothing else. Create the
+environment before arming: if a run names an environment that does not exist,
+GitHub creates one with no restriction.
+
+**4b. Its secrets** (`gh secret set NAME` asks for the value):
+
+```bash
+R=MWBMPartners/Go2My.Link
+gh secret set SFTP_HOST --env sftp-deploy --repo $R
+gh secret set SFTP_USER --env sftp-deploy --repo $R
+gh secret set SFTP_BASE_PATH --env sftp-deploy --repo $R
+gh secret set SFTP_KNOWN_HOSTS --env sftp-deploy --repo $R < g2ml_known_hosts
+gh secret set SFTP_KEY --env sftp-deploy --repo $R < g2ml_deploy
+```
+
+| Name | Where | Value |
+| --- | --- | --- |
+| `SFTP_HOST` | environment secret | The server name, as used in Step 1 |
+| `SFTP_USER` | environment secret | The user from Step 2 |
+| `SFTP_BASE_PATH` | environment secret | The folder from Step 2: `go2mylink` (relative to the home folder) or `/home/USER/go2mylink`. Do not use `~`; it is refused |
+| `SFTP_KNOWN_HOSTS` | environment secret | The whole contents of `g2ml_known_hosts` |
+| `SFTP_KEY` | environment secret | The whole contents of `g2ml_deploy` (the private half) |
+| `SFTP_PORT` | environment secret, optional | Only if the port is not 22 |
+| `SFTP_PASSWORD` | environment secret, optional | Used only when `SFTP_KEY` is empty. Prefer the key. A password containing `"` or `\` is refused |
+| `MAXMIND_LICENSE_KEY` | organisation or repository secret, optional | Country lookup for statistics (checklist A5) |
+| `SFTP_ENABLED` | repository **variable** | `false` until Step 5; `true` switches uploads on |
+
+**4c. Delete every other copy of the SFTP secrets.** This is what disarms the
+older workflow files. List the repository secrets, then delete each one whose
+name begins `SFTP_`:
+
+```bash
+gh secret list --repo $R
+gh secret delete SFTP_HOST --repo $R
+gh secret delete SFTP_USER --repo $R
+gh secret delete SFTP_PORT --repo $R
+gh secret delete SFTP_BASE_PATH --repo $R
+gh secret delete SFTP_KEY --repo $R
+gh secret delete SFTP_PASSWORD --repo $R
+gh secret delete SFTP_KNOWN_HOSTS --repo $R
+gh secret list --repo $R
+gh secret list --env sftp-deploy --repo $R
+```
+
+(An error for a name that was never there is fine.) Also look in the
+**organisation's** Actions secrets for names beginning `SFTP_`, and delete them
+or remove this repository's access. The second-last command must then show no
+`SFTP_` name. If an old password or key had been stored there, change it on the
+server too.
+
+When the secrets are saved, delete `g2ml_deploy` from your computer (or keep it
+in a password manager).
+
+#### Step 5 — Arm, then do a dry run
+
+A dry run connects, compares and lists what it would do. It changes nothing.
+
+⚠️ While armed, **any push or merge** to `main`, `alpha` or `beta` that touches
+the uploaded files uploads for real. Do not push or merge anything until Step 7
+is done.
+
+Start with `alpha`:
+
+```bash
+gh variable set SFTP_ENABLED --body true --repo MWBMPartners/Go2My.Link
+gh workflow run sftp-deploy.yml --repo MWBMPartners/Go2My.Link --ref alpha -f dry_run=true
+gh run list --repo MWBMPartners/Go2My.Link --workflow sftp-deploy.yml --limit 3
+```
+
+On the website: **Actions** → **SFTP Deploy** → **Run workflow** → choose the
+branch → leave the dry run box **ticked**.
+
+#### Step 6 — Read the log and the removal list
+
+```bash
+gh run view RUN-ID --repo MWBMPartners/Go2My.Link --log
+gh run view RUN-ID --repo MWBMPartners/Go2My.Link --log | grep -nE '(^|[[:space:]])(rm|rmdir)[[:space:]]|Removing'
+```
+
+GitHub hides secret values in logs, so the server name, user and service folder
+appear as `***`. In the **Deploy** step check:
+
+- It says `Copy on the server: alpha` (or the copy you expect) and `DRY RUN`,
+  and notes that a real run writes `.g2ml-channel`.
+- Paths are directly inside the copy. Correct:
+  `***/alpha/_functions/security.php` and
+  `***/alpha/Go2My.Link/public_html/index.php`. **Wrong:** a folder repeated or
+  added, such as `***/alpha/_functions/_functions/...` or `***/alpha/web/...`,
+  or a path that does not go through `***/alpha/`.
+- The part between `===== REMOVALS` and `===== END OF REMOVALS =====`, and the
+  result of the second command above. For a new, empty copy there should be no
+  removals. Later there should be only files you know were deleted from the
+  repository. The exact wording the upload program uses has not been seen yet,
+  so also read the whole log once.
+
+✋ If a path is wrong, or any removal is unfamiliar, or is a credential, upload
+or backup, **stop**, switch uploads off (Step 7) and ask for help. Do the same,
+without working round it, if a dry run of a brand-new copy fails saying a folder
+does not exist, or the run says it could not tell whether the copy is installed.
+
+#### Step 7 — Upload for real, check the files, then disarm
+
+```bash
+gh workflow run sftp-deploy.yml --repo MWBMPartners/Go2My.Link --ref alpha -f dry_run=false
+gh run watch --repo MWBMPartners/Go2My.Link
+gh variable set SFTP_ENABLED --body false --repo MWBMPartners/Go2My.Link
+```
+
+Wait for the run to finish before the last command, then read its log as in
+Step 6. After the **first alpha upload**, sign in with `sftp` as in Step 2 and
+look:
+
+```bash
+sftp> ls -la go2mylink/alpha
+sftp> ls -la go2mylink/alpha/_functions
+sftp> ls -la go2mylink/alpha/Go2My.Link/public_html
+```
+
+Folders must show `drwxr-xr-x` and files `-rw-r--r--`. `go2mylink/alpha` must
+hold `.g2ml-channel` containing `alpha` (and later `live/` one containing
+`live`). There must be no
+`go2mylink/alpha/web` and no folder inside itself. If either check fails, stop:
+do not upload the other copies.
+
+Then repeat Steps 5 to 7 with `--ref beta` and, when you are ready to launch,
+`--ref main`. For the release-candidate copy, use `--ref release-candidate`
+whenever you want to upload it; nothing uploads it by itself. Leave `SFTP_ENABLED` at `true` only if you want every push to
+upload by itself.
+
+#### Step 8 — Point the domains at their copies
+
+In the Dreamhost panel, open each domain's website settings and set its **web
+directory** to the value in
+[🌐 Web Directory for Each Domain](#-web-directory-for-each-domain). (The panel's
+menu names may differ.) Choose PHP 8.4 or 8.5 and switch HTTPS on.
+
+⚠️ For a live domain this changes what visitors see **at once**. Do it at the
+point the [migration plan](MIGRATION_PLAN.md) calls the cutover. Set up the
+live copy's credentials (Step 9) in the same sitting; the installer needs a
+domain pointing at the copy. Point test addresses only after their copy has its
+credentials.
+
+If the panel adds its own placeholder files to a web directory, the next upload
+removes them; the dry run lists them first.
+
+#### Step 9 — Give each copy its credentials
+
+Each copy (live, alpha, beta, release-candidate) has its own credential files.
+All of them name the **same database**
+([D-029](decisions/D-029-test-sites-shared-database.md); release-candidate is a
+test site under [D-032](decisions/D-032-release-candidate-own-copy.md) and is set
+up the same way).
+
+**The live copy first**, one of:
+
+- **New set-up:** open `https://go2my.link/install/` and follow
+  [INSTALL.md](INSTALL.md). The installer writes `_auth_keys/` and each `.auth/`
+  inside `live/`. Then delete its `install/` folder; later uploads see the lock
+  file and leave `install/` out.
+- **Reusing credentials from an older server layout:** as below, copying from
+  the old folders.
+
+**Then the test copies (alpha, beta, rc), by copying.** ⚠️ **Never run the installer for a test
+copy.** It would work on the shared live database and make new encryption keys,
+so the copy could not read the live encrypted data. Instead:
+
+1. Copy the shared `auth_creds.php` to `<copy>/_auth_keys/`, and each
+   component's include to `<copy>/<Component>/.auth/auth_creds.php` (older
+   servers may call that folder `_auth_keys`). Keep `ENCRYPTION_SALT` and
+   `ENCRYPTION_KEY_SECONDARY` unchanged. Set the files to `0600`.
+2. Make the lock file `<copy>/_auth_keys/.installed`, containing any one line.
+3. Delete `<copy>/Go2My.Link/public_html/install/`.
+
+Do items 2 and 3 straight after the first upload of a test copy, even before it
+has an address.
+
+#### ⚠️ Test copies work on live data
+
+Alpha, beta and release-candidate share the live database, and so share its
+settings:
+
+- **Never point a timer (scheduled job) at a test copy.** The timed-job switch
+  (`cron.enabled`) and token (`cron.dispatch_token`) are the same in every copy.
+  A test copy answers "not found" to `/cron` and runs none of the automatic
+  clean-ups.
+- A test copy can still change live data in every other way: whatever a signed-in
+  person does there is real.
+- **Test copies send real email** to real people, using the live email settings.
+
+#### ⚠️ Limits of the test copies
+
+- The program files are separate, but **the database is the live one**
+  ([D-029](decisions/D-029-test-sites-shared-database.md)). Anything done on a
+  test copy changes live data. The decision wants values that behave differently
+  on alpha or beta kept in separate fields or tables; **that is not built yet**,
+  and its detail is still to be confirmed (tracked in #158). Do not apply a test
+  branch's database change without thinking about what the live code will do with it.
+- Some links, and the page shown after signing in, still name the live addresses
+  (for example `https://admin.go2my.link`), so a test copy can send you to the
+  live site.
+- The live sign-in cookie (`G2ML_SESSION`) is set for all of `go2my.link`, so a
+  browser also sends it to the test addresses. Each test copy uses its own name
+  (`G2ML_SESSION_ALPHA`, `_BETA`, `_RC`) and ignores it, but code running on a
+  test copy could still read it. Whether the copies share PHP's session storage
+  on the server has not been checked.
+- Search engines are not told to skip test copies; they get the same pages and
+  `robots.txt` as the live site.
+- One server user can write to every copy. The separation comes from the
+  workflow, so anyone who can change the workflow on `alpha`, `beta` or
+  `release-candidate` could reach the live files.
+
+### 🔒 Switching uploads off
+
+```bash
+gh variable set SFTP_ENABLED --body false --repo MWBMPartners/Go2My.Link
+```
+
+This stops new runs from uploading. A run already going carries on; cancel it
+from the **Actions** page if you must, knowing the copy may be left half updated.
+
+### 🔑 If the server's host key changes
+
+The run fails before anything is uploaded. Confirm with Dreamhost that the
+change is real, repeat Step 1, and save the new `SFTP_KNOWN_HOSTS` in the
+`sftp-deploy` environment.
+
+### 🛡️ Files the upload never touches
+
+Never uploaded and never removed, in every copy:
 
 | Path | Why |
 | --- | --- |
-| `_auth_keys/` | The **shared** server-wide `web/_auth_keys/auth_creds.php` (DB credentials + encryption keys), installer-written |
-| `.auth/` | The **per-component** thin credential include (`<Comp>/.auth/auth_creds.php`), installer-written — see the BLOCKING PRE-DEPLOY STEP above |
-| `private_html/` | Dreamhost private area |
-| `_uploads/` | User uploads |
-| `_backups/` | Server backups |
-| `.dh-diag` | Dreamhost-generated diagnostics |
-| `.git/`, `.github/`, `.vscode/`, `.idea/` | VCS / tooling metadata |
-| `README.md`, `DEV_NOTES.md`, `CLAUDE.md`, `.gitignore`, `.gitkeep`, `.gitattributes` | Repo docs and markers |
+| `_auth_keys/`, `.auth/`, `auth_creds.php` | Credentials |
+| `.installed`, `.install_token` | Install lock and token |
+| `_uploads/`, `_backups/`, `_logs/` | User files, backups and logs |
+| `private_html/`, `.well-known/`, `.dh-diag`, `.htpasswd` | Belong to the host (certificate checks live in `.well-known/`) |
+| `error_log`, `php_errors.log` | Server error logs |
+| `.g2ml-service-folder` | The marker file |
+| `.g2ml-channel` | Names the copy; the upload writes it separately and never removes it |
+| `*.mmdb` | The country database is uploaded on its own, with no removals, and only when a run downloaded it |
+| `.git/`, `.github/`, `.vscode/`, `.idea/`, `.gitignore`, `.gitkeep`, `.gitattributes`, `README.md`, `DEV_NOTES.md`, `CLAUDE.md`, `.DS_Store`, `Thumbs.db` | Repository clutter |
 
-> 🧪 The exclude patterns are **single-quoted** in the workflow env blocks. This is
-> load-bearing: lftp tokenises the generated command script with its own lexer and
-> treats an unquoted `|` as a pipe operator, which silently corrupts any
-> `(^|/)…` regex. See [#156](https://github.com/MWBMPartners/Go2My.Link/issues/156).
+`.user.ini` and `.htaccess` are **not** in this list. The repository owns them
+(they keep PHP error messages off the screen), so an upload replaces any change
+made on the server. Make server-only PHP changes in the Dreamhost panel instead,
+or change the file in the repository.
+
+> 🧪 The patterns in `scripts/sftp-deploy.sh` are single-quoted on purpose:
+> lftp treats an unquoted `|` as a pipe
+> ([#156](https://github.com/MWBMPartners/Go2My.Link/issues/156)).
 
 ## 🔍 Environment Detection
 
-The application detects its environment from the hostname:
+A test copy takes its environment from where it runs; any other copy from the web
+address (see
+[🏷️ How the software knows which copy it is](#️-how-the-software-knows-which-copy-it-is);
+the code is `web/_functions/environment.php`).
 
-| Hostname pattern | Environment | Debug output for a global administrator |
-| --- | --- | --- |
-| 🟡 `alpha.*` | Development (Alpha) | ✅ Always |
-| 🟠 `beta.*` | Development (Beta) | ✅ Always |
-| 🖥️ `localhost` / `127.0.0.1` / `*.local` (no port number) | Local development | ✅ Always |
-| 🟢 Everything else | Production | 🔸 Only with `?debug=true` in the address |
+| Copy or address | Environment | Debug output for a global administrator | Sign-in cookie |
+| --- | --- | --- | --- |
+| 🟡 `alpha` copy or test address | Alpha | ✅ Always | `G2ML_SESSION_ALPHA`, Secure over HTTPS |
+| 🟠 `beta` copy or test address | Beta | ✅ Always | `G2ML_SESSION_BETA`, Secure over HTTPS |
+| 🟣 `rc` copy or test address | Release candidate | ✅ Always | `G2ML_SESSION_RC`, Secure over HTTPS |
+| 🖥️ `localhost` / `127.0.0.1` / `*.local` (no port number, no test part) | Local development | ✅ Always | `G2ML_SESSION`, not Secure |
+| 🟢 Everything else | Production | 🔸 Only with `?debug=true` in the address | `G2ML_SESSION`, Secure |
 
 ### 🐛 Who sees debug output
 
@@ -264,7 +615,7 @@ On **every** address, the debug panel (PHP version, database statements) and
 any error details on screen are shown only to a signed-in **global
 administrator** ([decision D-011](decisions/D-011-debug-panel-global-admin.md)).
 Everyone else sees a normal page. The check is made against the database
-whenever debug output is asked for (always on alpha, beta and local addresses;
+whenever debug output is asked for (always on alpha, beta, rc and local addresses;
 on the live site only with `?debug=true`), so if the database is down, or an
 error happens before the sign-in has been checked, nobody sees any details. Errors are still logged
 (`tblErrorLog`, or the server's PHP error log).
@@ -761,8 +1112,8 @@ not from a single fresh import of today's files:
    `<Comp>/.auth/auth_creds.php` for `Go2My.Link`, `G2My.Link`, and
    `Lnks.page` — each just `require_once`s the shared file above so all three
    sites use the same database and keys. The web installer creates these
-   automatically (0700 directory, 0600 file); on a manual/SFTP deploy see the
-   🚨 BLOCKING PRE-DEPLOY STEP above.
+   automatically (0700 directory, 0600 file); the automatic upload never
+   creates them (see Step 9 of the owner set-up above).
 
 > 🔒 **Security:** `auth_creds.php` (shared) and `.auth/auth_creds.php`
 > (per-component, thin) are excluded from git via `.gitignore` and blocked
@@ -806,6 +1157,12 @@ opening the library directly and redirected before any job code ran. Every
 direct-access guard in the codebase now compares real, resolved file paths
 instead, which tells the two files apart.
 
+The endpoint answers "not found" unless the copy is marked live (see "How the
+software knows which copy it is") and the address is not a test address,
+because test copies share the live database
+([D-029](decisions/D-029-test-sites-shared-database.md)). Point the scheduler at
+the live address only.
+
 The endpoint itself still ships switched off (`cron.enabled` and
 `cron.dispatch_token` both default to off/empty in
 `web/_sql/seeds/020_cron_gdpr_settings.sql`), so this fix alone does not turn
@@ -832,7 +1189,7 @@ anything on. Choosing and wiring the actual external scheduler is #178.
 - [ ] 🌐 Custom organisation domains working
 - [ ] 🔒 HTTPS enforced on all domains
 - [ ] 🛡️ Security headers in place
-- [ ] 🚨 `_auth_keys/` → `.auth/` rename done on the server for all 3 components (see the BLOCKING PRE-DEPLOY STEP above) — **before the first armed deploy**
+- [ ] 🚨 Each copy in use has its own `_auth_keys/` and `<Component>/.auth/`, all naming the same database (Step 9 of the owner set-up)
 - [ ] 🚨 #93 — legacy `public_html_legacy/dbConfig.php` credential rotated and file removed from the server
 - [ ] 🔒 Private directories (`_auth_keys`, `.auth`, `_includes`, `_functions`) not web-accessible
 - [ ] 🐛 Error logging to database working

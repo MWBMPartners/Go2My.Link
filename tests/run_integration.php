@@ -46,6 +46,11 @@ require_once __DIR__ . '/bootstrap.php';
 
 $_SESSION = array();
 
+// The tests that call functions directly act as the live copy, so that its
+// clean-ups run (#158). Tests that go through the web server write their own
+// .g2ml-channel file instead.
+define('G2ML_COPY_CHANNEL', 'live');
+
 /**
  * Read an environment variable, returning a default when it is unset or empty.
  *

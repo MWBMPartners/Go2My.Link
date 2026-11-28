@@ -118,6 +118,8 @@ if ($g2mlGuardScriptPath !== '' && realpath($g2mlGuardScriptPath) === realpath(_
 }
 unset($g2mlGuardScriptPath);
 
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'environment.php';
+
 // ============================================================================
 // 🔑 Constants
 // ============================================================================
@@ -1163,7 +1165,8 @@ function g2ml_pricingMeterUsage(string $orgHandle, string $featureSlug, int $qua
                 error_log('[Go2My.Link] WARNING: pricing — usage EVENT log insert failed for org "' . $orgHandle . '", feature "' . $featureSlug . '" — the counter update above still succeeded.');
             }
 
-            if (mt_rand(1, 100) === 1)
+            // Only the live copy prunes: test copies share its database (#158).
+            if (g2ml_cleanupAllowed() && mt_rand(1, 100) === 1)
             {
                 _g2ml_pricingPruneUsageEvents();
             }

@@ -224,7 +224,17 @@ $hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hid
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td><code>G2ML_SESSION</code></td>
+                                    <td><code><?php
+                                        // The name in use: test copies have their own (#158).
+                                        if (function_exists('g2ml_getEnvironment'))
+                                        {
+                                            echo htmlspecialchars(g2ml_sessionCookieName(g2ml_getEnvironment()), ENT_QUOTES, 'UTF-8');
+                                        }
+                                        else
+                                        {
+                                            echo 'G2ML_SESSION';
+                                        }
+                                    ?></code></td>
                                     <td><?php if (function_exists('__')) { echo __('legal.cookies_session_purpose'); } else { echo 'Maintains your server-side session, keeping you logged in and preserving your state across page requests.'; } ?></td>
                                     <td><?php if (function_exists('__')) { echo __('legal.cookies_session_duration'); } else { echo 'Session (deleted when you close your browser)'; } ?></td>
                                     <td><?php if (function_exists('__')) { echo __('legal.cookies_type_http'); } else { echo 'HTTP Cookie'; } ?></td>

@@ -15,7 +15,8 @@
  * A token-guarded standalone endpoint any external scheduler can hit —
  * Dreamhost Panel cron `curl`, cron-job.org, GitHub Actions `schedule:` (see
  * .github/HANDOFF.md and issue #178 for the scheduler decision). Reachable at
- * https://admin.go2my.link/cron.php (+ the alpha subdomain equivalent).
+ * https://admin.go2my.link/cron.php. It answers 404 unless this copy is known to
+ * be the live one and the address is not a test address (D-029, #158).
  *
  * ----------------------------------------------------------------------------
  * Why this is a standalone script, not a pages/* route
@@ -130,6 +131,24 @@ define('G2ML_ROOT', dirname(__DIR__, 3));
 require_once G2ML_ROOT
     . DIRECTORY_SEPARATOR . '_includes'
     . DIRECTORY_SEPARATOR . 'page_init.php';
+
+// ============================================================================
+// 🧪 Step 3b: Only the live copy runs jobs.
+//
+// Test copies share the live database, and so the live cron switch and token
+// (D-029, #158). A copy that is not known to be live is refused too. Refuse
+// before any setting is read, with the same generic 404 as every other refusal.
+// ============================================================================
+
+if (!g2ml_cleanupAllowed())
+{
+    if (g2ml_currentCopyChannel() === 'unknown')
+    {
+        error_log('[Go2My.Link] WARNING: timed jobs refused because this copy is not marked as live. See .g2ml-channel in docs/DEPLOYMENT.md.');
+    }
+
+    g2ml_cronEmitNotFound();
+}
 
 // ============================================================================
 // 🔐 Step 4: Method Guard — GET and POST only.

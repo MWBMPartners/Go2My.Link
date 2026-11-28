@@ -50,7 +50,7 @@ function g2mlDebugUnitTest_webRoots(): array
 
 test('debug access (#319): test and local hosts want debug output; the live site only when asked', function (): void
 {
-    foreach (array('alpha', 'beta', 'local') as $environment)
+    foreach (array('alpha', 'beta', 'rc', 'local') as $environment)
     {
         assert_true(g2ml_debugWanted($environment, null), $environment);
     }

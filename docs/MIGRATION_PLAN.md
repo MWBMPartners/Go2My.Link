@@ -38,19 +38,12 @@ Complete **all** items before beginning the migration:
 
 ### 🚨 Blocking Pre-Cutover Server Steps
 
-- [ ] 🚨 **`.auth/` directory migration run on the server.** The per-component
-      credential directory was renamed `_auth_keys/` → `.auth/`; the app boots
-      only from `<Comp>/.auth/auth_creds.php` and the SFTP mirror **cannot**
-      create this directory (untracked + excluded from every mirror phase).
-      Run, once, BEFORE the first armed deploy against the renamed layout:
-      ```bash
-      mv Go2My.Link/_auth_keys Go2My.Link/.auth
-      mv G2My.Link/_auth_keys  G2My.Link/.auth
-      mv Lnks.page/_auth_keys  Lnks.page/.auth
-      ```
-      The **shared** `web/_auth_keys/auth_creds.php` is UNCHANGED — do NOT
-      move it. Skipping this step takes all three sites down. See
-      `docs/DEPLOYMENT.md`'s BLOCKING PRE-DEPLOY STEP.
+- [ ] 🚨 **The `live/` copy has its credentials.** The app starts only from
+      `live/<Comp>/.auth/auth_creds.php` plus the shared
+      `live/_auth_keys/auth_creds.php`, and the automatic upload creates
+      neither. Follow the owner set-up in
+      [`DEPLOYMENT.md`](DEPLOYMENT.md), Step 9, before pointing the live
+      domains at the new folder.
 - [ ] 🚨 **#93 — legacy DB credential rotated and file removed.**
       `web/G2My.Link/public_html_legacy/dbConfig.php` still holds a
       real-looking live database credential. It is untracked and gitignored
@@ -464,16 +457,44 @@ Check **daily**:
 - [ ] `auth_creds.php` has production credentials
 - [ ] `ENCRYPTION_SALT` is a unique 64-character hex string
 - [ ] `auth_creds.php` not accessible via browser (returns redirect)
-- [ ] Private directories (`_auth_keys`, `.auth`, `_functions`, `_includes`) return 403
-- [ ] 🚨 Each component's `.auth/` directory renamed from `_auth_keys/` on the
-      server (BLOCKING PRE-CUTOVER SERVER STEP, §1, complete) and
-      `<Comp>/.auth/auth_creds.php` confirmed present on all 3 components
+- [ ] Private folders are not served: asking each domain for
+      `/_auth_keys/auth_creds.php`, `/.auth/auth_creds.php` and
+      `/_functions/security.php` gives a refusal, a "not found" page or the
+      domain's fallback, never the file's contents (these folders sit outside
+      every web directory)
+- [ ] 🚨 `live/<Comp>/.auth/auth_creds.php` confirmed present on all 3
+      components, with `live/_auth_keys/auth_creds.php` (BLOCKING PRE-CUTOVER
+      SERVER STEP, §1, complete)
 - [ ] 🚨 #93 — legacy credential rotated and `public_html_legacy/` removed
       from the server (BLOCKING PRE-CUTOVER SERVER STEP, §1, complete)
 - [ ] CSP headers present on all domains
 - [ ] CSRF protection working on all forms
 - [ ] Rate limiting active on URL creation and login
 - [ ] Account lockout working after failed login attempts
+
+### 🏷️ The live copy is marked as live (#158)
+
+Do both at the switch-over. Without them account erasure and data retention can
+stop without anything on screen saying so.
+
+- [ ] 🚨 `live/.g2ml-channel` exists on the server and contains the single word
+      `live` (in a set-up without the automatic upload: `web/.g2ml-channel`).
+- [ ] 🚨 One real call to the timed-job address returns `200`. This needs
+      `cron.enabled` on and `cron.dispatch_token` set (#178); until then it
+      answers `404` whatever the file says, so repeat this check on the day the
+      jobs are switched on. `job=retention` runs only the clean-up jobs, as far
+      as their own settings allow, never account erasure:
+
+```bash
+read -rs TOKEN
+curl -sS -w '\n%{http_code}\n' -H "X-G2ML-Cron-Token: ${TOKEN}" \
+  'https://admin.go2my.link/cron?job=retention'
+```
+
+  The answer must end with `200` and show `"environment": "production"` (or
+  `"status": "skipped"` if a run is already going).
+
+- [ ] No new "This copy is not marked as live" row in `tblErrorLog`.
 
 ### 🖥️ Application
 

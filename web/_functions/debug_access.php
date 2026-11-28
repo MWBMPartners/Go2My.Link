@@ -12,7 +12,7 @@
  * 🔏 Go2My.Link — Who May See Debug Output (#319)
  * ============================================================================
  *
- * One rule, on every web address, including alpha., beta. and local ones: the
+ * One rule, on every web address, including test (alpha, beta, rc) and local ones: the
  * debug panel and any error details on screen are shown only to a signed-in
  * global administrator. Everyone else sees a normal page.
  * Decision: docs/decisions/D-011-debug-panel-global-admin.md
@@ -20,10 +20,10 @@
  * The rule "fails closed": if we cannot prove who the visitor is (no session,
  * database down, an error early in the request), nothing is shown.
  *
- * On alpha, beta and local addresses a global administrator always gets debug
+ * On alpha, beta, rc and local addresses a global administrator always gets debug
  * output. On the live site they must also add ?debug=true to the address.
  *
- * Dependencies: db_query.php (dbSelectOne())
+ * Dependencies: db_query.php (dbSelectOne()), environment.php
  *
  * @package    Go2My.Link
  * @subpackage Functions
@@ -44,6 +44,8 @@ if ($g2mlGuardScriptPath !== '' && realpath($g2mlGuardScriptPath) === realpath(_
     exit;
 }
 unset($g2mlGuardScriptPath);
+
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'environment.php';
 
 /**
  * Return the user number of the signed-in global administrator, or 0 when the
@@ -111,13 +113,13 @@ function g2ml_signedInGlobalAdminUID(): int
  * Say whether this request asks for debug output, given who is already known to
  * be a global administrator. This does not decide who the visitor is.
  *
- * @param  string $environment     'alpha', 'beta', 'local' or 'production'
+ * @param  string $environment     'alpha', 'beta', 'rc', 'local' or 'production'
  * @param  mixed  $debugParameter  The ?debug= value from the address, if any
  * @return bool
  */
 function g2ml_debugWanted(string $environment, mixed $debugParameter): bool
 {
-    if (in_array($environment, ['alpha', 'beta', 'local'], true))
+    if ($environment === 'local' || g2ml_isTestEnvironment($environment))
     {
         return true;
     }
@@ -131,7 +133,7 @@ function g2ml_debugWanted(string $environment, mixed $debugParameter): bool
  *
  * Call it once, after the session has been started and checked.
  *
- * @param  string $environment     'alpha', 'beta', 'local' or 'production'
+ * @param  string $environment     'alpha', 'beta', 'rc', 'local' or 'production'
  * @param  mixed  $debugParameter  The ?debug= value from the address, if any
  * @return void
  */

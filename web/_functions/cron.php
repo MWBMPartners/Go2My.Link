@@ -74,6 +74,8 @@ if ($g2mlGuardScriptPath !== '' && realpath($g2mlGuardScriptPath) === realpath(_
 }
 unset($g2mlGuardScriptPath);
 
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'environment.php';
+
 // ============================================================================
 // 🔑 Auth / Parsing Helpers (PURE unless noted)
 // ============================================================================
@@ -1114,6 +1116,57 @@ function g2ml_retentionPathIsConfined(string $realBaseDir, string $realFilePath)
 }
 
 // ============================================================================
+// 📣 Say so when the live site is not marked as live (#158)
+// ============================================================================
+
+/**
+ * On a live address whose copy nothing identifies, timed jobs and clean-ups
+ * (including account erasure and data retention) are all refused. Record that
+ * in tblErrorLog, about once a day, so that it does not go unnoticed.
+ *
+ * Called once per request from _includes/page_init.php.
+ *
+ * @param  string $environment  The value of g2ml_getEnvironment().
+ * @param  string $channel      The value of g2ml_currentCopyChannel().
+ * @return void
+ */
+function g2ml_cronReportUnknownCopy(string $environment, string $channel): void
+{
+    if ($environment !== 'production' || $channel !== 'unknown')
+    {
+        return;
+    }
+
+    if (!function_exists('dbSelectOne') || !function_exists('g2ml_logError'))
+    {
+        return;
+    }
+
+    $title = 'This copy is not marked as live: account erasure, data retention and other clean-ups are not running';
+
+    $recent = dbSelectOne(
+        'SELECT `errorUID` FROM `tblErrorLog` '
+        . 'WHERE `createdAt` > DATE_SUB(NOW(), INTERVAL 1 DAY) AND `errorTitle` = ? LIMIT 1',
+        's',
+        [$title]
+    );
+
+    // A row means it was said today; false means the log could not be read.
+    if ($recent !== null)
+    {
+        return;
+    }
+
+    g2ml_logError(
+        'critical',
+        null,
+        $title,
+        'Create the file .g2ml-channel at the top of this copy (beside _functions/) containing the single word live. '
+        . 'See docs/DEPLOYMENT.md, "How the software knows which copy it is".'
+    );
+}
+
+// ============================================================================
 // 🎲 Probabilistic Fallback (page_init.php hook)
 // ============================================================================
 
@@ -1126,6 +1179,8 @@ function g2ml_retentionPathIsConfined(string $realBaseDir, string $realFilePath)
  *
  * Early-out order (cheapest checks first, mirroring api_ratelimit.php's own
  * probabilistic prune):
+ *   0. Return at once unless this copy is known to be live: test copies share
+ *      its database (D-029, #158), and an unrecognised copy does nothing.
  *   1. The dispatch endpoint marks itself with G2ML_CRON_DISPATCH before
  *      page_init.php runs — if set, this request already IS the endpoint
  *      run, so return immediately (no self-race for the advisory lock).
@@ -1139,10 +1194,33 @@ function g2ml_retentionPathIsConfined(string $realBaseDir, string $realFilePath)
  *   6. Run the retention job with the fallback time budget, then release the
  *      lock in a finally block.
  *
+ * @param  string|null $environment  Normally left out, to use the current one.
+ * @param  string|null $channel      Normally left out, to use the running
+ *                                   copy's. Tests pass both.
  * @return void
  */
-function g2ml_cronMaybeRunProbabilisticRetention(): void
+function g2ml_cronMaybeRunProbabilisticRetention(?string $environment = null, ?string $channel = null): void
 {
+    if ($environment === null)
+    {
+        $environment = 'production';
+
+        if (function_exists('g2ml_getEnvironment'))
+        {
+            $environment = g2ml_getEnvironment();
+        }
+    }
+
+    if ($channel === null)
+    {
+        $channel = g2ml_currentCopyChannel();
+    }
+
+    if (!g2ml_jobsAllowed($channel, $environment))
+    {
+        return;
+    }
+
     if (defined('G2ML_CRON_DISPATCH'))
     {
         return;

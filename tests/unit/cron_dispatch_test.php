@@ -38,6 +38,22 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 1) . '/../web/_functions/cron.php';
 
 // ============================================================================
+// 🧪 The endpoint runs only on the live copy (#158)
+// ============================================================================
+
+test('cron: the endpoint refuses other copies before it reads any cron setting', function (): void
+{
+    $source = file_get_contents(dirname(__DIR__, 2) . '/web/Go2My.Link/_admin/public_html/cron.php');
+
+    $guardAt   = strpos($source, 'if (!g2ml_cleanupAllowed())');
+    $settingAt = strpos($source, "getSetting('cron.enabled'");
+
+    assert_true($guardAt !== false, 'cron.php must refuse a copy that is not live');
+    assert_true($settingAt !== false, 'cron.php must still read cron.enabled');
+    assert_true($guardAt < $settingAt, 'The refusal must come before the cron settings are read');
+});
+
+// ============================================================================
 // 🔑 g2ml_cronVerifyToken()
 // ============================================================================
 

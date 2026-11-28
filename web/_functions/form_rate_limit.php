@@ -59,6 +59,8 @@ if ($g2mlGuardScriptPath !== '' && realpath($g2mlGuardScriptPath) === realpath(_
 }
 unset($g2mlGuardScriptPath);
 
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'environment.php';
+
 // ============================================================================
 // 📋 Whitelist
 // ============================================================================
@@ -267,9 +269,14 @@ function g2ml_formRateLimitTake(string $formKey, int $maxPerHour): string
             return 'unavailable';
         }
 
-        dbDelete(
-            "DELETE FROM `tblFormAttempts` WHERE `createdAt` < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 DAY) LIMIT 100"
-        );
+        // Only the live copy clears old rows: test copies share its database
+        // (#158). The limit itself only counts recent rows either way.
+        if (g2ml_cleanupAllowed())
+        {
+            dbDelete(
+                "DELETE FROM `tblFormAttempts` WHERE `createdAt` < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 DAY) LIMIT 100"
+            );
+        }
 
         return 'allowed';
     }

@@ -74,7 +74,7 @@ unset($g2mlGuardScriptPath);
  * reads $_SESSION (the age-gate's CSRF token check among them) always found
  * nothing and sent the visitor straight back to the interstitial: an
  * infinite confirmation loop that only ever showed up in production,
- * because alpha/beta/local never set a Domain attribute at all.
+ * because alpha/beta/rc/local never set a Domain attribute at all.
  *
  * THE FIX: only widen the cookie to '.go2my.link' when the component being
  * served actually lives under go2my.link (the main site or admin.go2my.link
@@ -90,7 +90,7 @@ unset($g2mlGuardScriptPath);
  * $componentDomain is one of the four real component domains; an unrecognised
  * value simply falls through to the safe (host-only) empty string.
  *
- * @param  string $environment      G2ML_ENVIRONMENT ('alpha'/'beta'/'local'/'production').
+ * @param  string $environment      G2ML_ENVIRONMENT ('alpha'/'beta'/'rc'/'local'/'production').
  * @param  string $componentDomain  G2ML_COMPONENT_DOMAIN for the running component
  *                                  (e.g. 'go2my.link', 'admin.go2my.link', 'g2my.link',
  *                                  'lnks.page').
@@ -102,7 +102,7 @@ unset($g2mlGuardScriptPath);
  */
 function g2ml_sessionCookieDomain(string $environment, string $componentDomain): string
 {
-    // Only production widens the cookie at all. Alpha/beta/local have always
+    // Only production widens the cookie at all. Alpha/beta/rc/local have always
     // been host-only, and stay that way.
     if ($environment !== 'production')
     {

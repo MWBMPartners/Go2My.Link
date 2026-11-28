@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🚢 A safe automatic upload, with separate test copies (2026-11-28)
+
+- 🔒 Each branch uploads to its own complete copy (`live`, `alpha`, `beta`, `rc`) inside a folder used
+  only by this service; the server's identity is checked; nothing outside the copy can be removed;
+  the secrets live in a GitHub Environment (#158, decisions D-007, D-019, D-032).
+- 🔒 Test copies are never treated as live: they have their own sign-in cookie, show debug output only
+  to a global administrator, and run no timed jobs or automatic clean-ups on the shared database.
+- 🗄️ **Before going live:** follow "Owner set-up" in `docs/DEPLOYMENT.md` (checklist rows A39 and
+  A42). A live copy must contain `.g2ml-channel` saying `live`, or the erasure and clean-up jobs do
+  not run.
+
 ### 🔑 No programming access on the Free plan (2026-11-28)
 
 - 🔒 API keys can be created and used only on a plan with API access, and only while their maker is an
