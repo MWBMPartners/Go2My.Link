@@ -595,12 +595,13 @@ $hideReviewPlaceholders = function_exists('getSetting') && getSetting('legal.hid
                             <tr>
                                 <td><?php if (function_exists('__')) { echo __('legal.privacy_s7_account'); } else { echo 'Account data'; } ?></td>
                                 <td><?php if (function_exists('__')) { echo __('legal.privacy_s7_account_period'); } else { echo 'Duration of account + 30 days'; } ?></td>
-                                <td><?php if (function_exists('__')) { echo __('legal.privacy_s7_account_notes'); } else { echo 'After you close your account, we retain your data for a 30-day grace period to allow for account recovery, after which it is permanently deleted.'; } ?></td>
+                                <td><?php if (function_exists('__')) { echo __('legal.privacy_s7_account_notes_links'); } else { echo 'After you ask us to close your account there is a 30-day grace period in which you can cancel. We then erase your account by removing your name and sign-in details from it. What happens to your short links is described in the next row.'; } ?></td>
                             </tr>
                             <tr>
                                 <td><?php if (function_exists('__')) { echo __('legal.privacy_s7_urls'); } else { echo 'Short URLs &amp; metadata'; } ?></td>
                                 <td><?php if (function_exists('__')) { echo __('legal.privacy_s7_urls_period'); } else { echo 'Configurable (default: indefinite while account active)'; } ?></td>
-                                <td><?php if (function_exists('__')) { echo __('legal.privacy_s7_urls_notes'); } else { echo 'You may set expiration dates on individual short URLs. Expired URLs are soft-deleted and permanently removed after 30 days. Anonymous (non-account) URLs follow the system-configured retention policy.'; } ?></td>
+                                <td><?php if (function_exists('__')) { echo __('legal.privacy_s7_urls_notes'); } else { echo 'You may set expiration dates on individual short URLs. Expired URLs are soft-deleted and permanently removed after 30 days. Anonymous (non-account) URLs follow the system-configured retention policy.'; } ?>
+                                    <?php if (function_exists('__')) { echo __('legal.privacy_s7_urls_erasure'); } else { echo 'When your account is erased your links are switched off, unless you chose to keep them working for 30 days, 90 days, 1 year or for ever. A kept link is disconnected from your account and its title and notes are removed; its destination address is kept so that it can work. Links belonging to an organisation with other active members stay with that organisation.'; } ?></td>
                             </tr>
                             <tr>
                                 <td><?php if (function_exists('__')) { echo __('legal.privacy_s7_clicks'); } else { echo 'Click/analytics data'; } ?></td>

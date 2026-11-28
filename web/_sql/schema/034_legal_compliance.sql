@@ -94,6 +94,10 @@ CREATE TABLE IF NOT EXISTS `tblDataDeletionRequests` (
     `requestReason`         TEXT                DEFAULT NULL
         COMMENT 'User-provided reason for the request',
 
+    `linkChoice`            ENUM('off', '30_days', '90_days', '1_year', 'forever')
+                            NOT NULL DEFAULT 'off'
+        COMMENT 'Deletion requests only (#246): what happens to the person''s short links when the account is erased',
+
     `adminNotes`            TEXT                DEFAULT NULL
         COMMENT 'Internal notes from admin processing',
 

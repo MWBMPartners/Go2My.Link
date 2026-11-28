@@ -19,6 +19,7 @@
  *   $displayName  — User's display name
  *   $graceDays    — Days before deletion is executed
  *   $cancelURL    — Link to cancel the deletion request
+ *   $linkChoiceText — What happens to their short links (#246)
  *   $siteName     — Site name (auto-injected)
  *   $siteURL      — Site URL (auto-injected)
  *   $currentYear  — Current year (auto-injected)
@@ -41,6 +42,7 @@ if (!isset($currentYear))
     $currentYear = date('Y');
 }
 $preheader   = $preheader ?? '';
+$linkChoiceText = $linkChoiceText ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -103,7 +105,7 @@ $preheader   = $preheader ?? '';
                             </p>
 
                             <p class="g2ml-text" style="margin:0 0 20px; color:#495057; font-size:16px; line-height:1.6;">
-                                We've received your request to delete your account and all associated data.
+                                We've received your request to delete your account.
                             </p>
 
                             <table role="presentation" cellpadding="0" cellspacing="0" class="g2ml-alert-danger" style="margin:0 0 20px; background-color:#f8d7da; border-radius:6px; width:100%;">
@@ -115,7 +117,10 @@ $preheader   = $preheader ?? '';
                                         <ul style="margin:0; padding:0 0 0 20px; color:#842029; font-size:14px; line-height:1.8;">
                                             <li>Your account will be scheduled for deletion</li>
                                             <li>You have <strong><?php echo (int) $graceDays; ?> days</strong> to cancel this request</li>
-                                            <li>After the grace period, all data will be permanently removed</li>
+                                            <li>After the grace period, your account will be erased</li>
+                                            <?php if ($linkChoiceText !== '') { ?>
+                                            <li><?php echo htmlspecialchars($linkChoiceText, ENT_QUOTES, 'UTF-8'); ?></li>
+                                            <?php } ?>
                                             <li>This action is <strong>irreversible</strong> once completed</li>
                                         </ul>
                                     </td>

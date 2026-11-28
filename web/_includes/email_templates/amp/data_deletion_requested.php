@@ -43,6 +43,7 @@ if (!isset($currentYear))
     $currentYear = date('Y');
 }
 $preheader   = $preheader ?? '';
+$linkChoiceText = $linkChoiceText ?? '';
 ?>
 <!doctype html>
 <html ⚡4email data-css-strict>
@@ -90,7 +91,7 @@ $preheader   = $preheader ?? '';
                 <p>Hi <?php echo htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8'); ?>,</p>
 
                 <p>
-                    We've received your request to delete your account and all associated data.
+                    We've received your request to delete your account.
                 </p>
 
                 <div class="alert-danger">
@@ -98,7 +99,10 @@ $preheader   = $preheader ?? '';
                     <ul>
                         <li>Your account will be scheduled for deletion</li>
                         <li>You have <strong><?php echo (int) $graceDays; ?> days</strong> to cancel this request</li>
-                        <li>After the grace period, all data will be permanently removed</li>
+                        <li>After the grace period, your account will be erased</li>
+                        <?php if ($linkChoiceText !== '') { ?>
+                        <li><?php echo htmlspecialchars($linkChoiceText, ENT_QUOTES, 'UTF-8'); ?></li>
+                        <?php } ?>
                         <li>This action is <strong>irreversible</strong> once completed</li>
                     </ul>
                 </div>

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### ⚖️ Deleting an account now deals with its short links (2026-11-28)
+
+- 🐛 Erasing an account switches its short links off, as the page always promised. The person may
+  instead keep them working for 30 days, 90 days, 1 year or for ever; kept links are no longer tied
+  to them (#246, decisions D-017 and D-021).
+- 🗄️ **On deploy to an existing database:** apply migration `045_deletion_link_choice.sql` and seed
+  `077_deletion_link_choice_translations.sql` **before** uploading the code (checklist row A32). The
+  new wording needs legal review.
+
 ### 📣 Lnks.Page is announced (2026-11-28)
 
 - ✨ The lnks.page pages no longer say "coming soon". They, and the go2my.link home, features, pricing

@@ -199,7 +199,7 @@ function _privacyRequestStatusBadge(string $status): string
                             <?php if (function_exists('__')) { echo __('privacy.delete_title'); } else { echo 'Delete Account'; } ?>
                         </h2>
                         <p class="text-body-secondary small mb-3">
-                            <?php if (function_exists('__')) { echo __('privacy.delete_desc'); } else { echo 'You have the right to request permanent deletion of your account and all associated data. This action cannot be undone after the grace period.'; } ?>
+                            <?php if (function_exists('__')) { echo __('privacy.delete_desc_links'); } else { echo 'You can ask for your account to be erased, and choose whether your short links are switched off or keep working. This cannot be undone after the grace period.'; } ?>
                         </p>
                         <a href="/privacy/delete" class="btn btn-outline-danger btn-sm">
                             <?php if (function_exists('__')) { echo __('privacy.delete_account'); } else { echo 'Delete Account'; } ?>

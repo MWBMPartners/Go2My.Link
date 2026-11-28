@@ -267,9 +267,9 @@ The application detects its environment from the hostname:
 3. 📋 Import all **17** schema files from `web/_sql/schema/`, in filename order
 4. 🔧 Import both stored procedures from `web/_sql/procedures/`
    (`sp_generateShortCode.sql`, `sp_lookupShortURL.sql`)
-5. 🌱 Import all **38** seed files from `web/_sql/seeds/`, in order — the
+5. 🌱 Import all **40** seed files from `web/_sql/seeds/`, in order — the
    numbering is not continuous: `001` through `023` run in sequence, then
-   fifteen later additions sit outside that run, `029_linkspage_privacy_translations.sql`,
+   sixteen later additions sit outside that run, `029_linkspage_privacy_translations.sql`,
    `057_form_rate_limit_settings.sql`,
    `058_truthful_marketing_translations.sql`,
    `059_link_destination_translations.sql`,
@@ -284,18 +284,20 @@ The application detects its environment from the hostname:
    `072_accessibility_translations.sql`,
    `073_linkspage_layout_translations.sql`,
    `074_destination_check.sql` and
-   `075_linkspage_announcement_translations.sql` (see the table below for
+    `075_linkspage_announcement_translations.sql`,
+   `077_deletion_link_choice_translations.sql` (see the table below for
    what each one adds). Importing "in order" means by filename, so a plain
-   `for f in web/_sql/seeds/*.sql` loop picks up all 38 without needing to
+   `for f in web/_sql/seeds/*.sql` loop picks up all 40 without needing to
    know about the gap in the numbers.
 
-> 📝 Counts as at 2026-11-28: 17 schema files, 2 stored procedures, 39 seeds,
-> 22 migrations. Import order is schema → procedures → seeds, which is the
+> 📝 Counts as at 2026-11-28: 17 schema files, 2 stored procedures, 40 seeds,
+> 23 migrations. Import order is schema → procedures → seeds, which is the
 > order `.github/workflows/ci.yml` uses. (Seed `023` and migration `021`, the
 > LinksPage feature registry, were added on 2026-09-21; seeds `029`, `058`,
-> `059`, `064`, `065`, `066`, `067`, `068`, `069`, `070`, `071`, `072`, `073`, `074` and `075` were added later still, outside the 001-023 run —
+> `059`, `064`, `065`, `066`, `067`, `068`, `069`, `070`, `071`, `072`, `073`, `074`, `075` and `077` were added later still, outside the 001-023 run —
 > see below. Seed `057`, schema `044` and migration `043`, the form
-> rate-limit table, were added for #212 — see below.)
+> rate-limit table, were added for #212 — see below. Seed `077` and migration
+> `045`, the link choice on account deletion, were added for #246 — see below.)
 
 #### 🚨 The collation check — do this first, every time
 
@@ -385,9 +387,10 @@ key names instead of words:
 | `073_linkspage_layout_translations.sql` | 1 string: "Profile picture", the alt text of an uploaded LinksPage avatar (#287) | Nothing a visitor sees breaks: the renderer falls back to the English words when the translation is missing |
 | `074_destination_check.sql` | The setting `redirect.enforce_destination_check` (off) and 3 strings for #308: the refusal page's title and message, and the info page's "destination is not valid" line. The setting decides whether a short link that fails the stricter link check is refused when followed | Nothing a visitor sees breaks: until it is applied the setting counts as off, and the code's own English is used. Apply it before you switch the setting on |
 | `075_linkspage_announcement_translations.sql` | 33 strings for #320: the lnks.page home page, and the Lnks.Page mentions on go2my.link (home, features, pricing, help and the footer) | The go2my.link home, features, pricing and help pages, and the footer on every main-site and dashboard page, show key names such as `footer.linkspage`; the lnks.page home page shows its built-in English instead |
+| `077_deletion_link_choice_translations.sql` | 20 strings for #246: the choice of what happens to short links on the Delete Account page, the sentence describing it (also used in the confirmation email), the corrected warning line and Privacy dashboard card, and two Privacy Policy retention texts (new legal wording, needs the owner's review) | The Delete Account page, the Privacy dashboard and the Privacy Policy show key names instead of words |
 
-All eighteen are safe to run more than once and safe on a database that already has them.
-Sixteen are plain `INSERT IGNORE`. `057` and `074` write their settings with
+All nineteen are safe to run more than once and safe on a database that already has them.
+Seventeen are plain `INSERT IGNORE`. `057` and `074` write their settings with
 `ON DUPLICATE KEY UPDATE`, so a value you chose is kept (their texts are `INSERT IGNORE`).
 
 **Also re-import `004_linkspage_templates.sql` on an existing database (#287), after the new code is
@@ -519,6 +522,21 @@ and forgot-password all stop working — until this migration has run. See owner
 `CREATE TABLE IF NOT EXISTS` makes this migration safe to run more than
 once, including on a database that already has the table.
 
+#### 🧩 Migration `045` — the link choice on deletion requests (needed on an EXISTING database)
+
+`web/_sql/migrations/045_deletion_link_choice.sql` adds the column
+`tblDataDeletionRequests.linkChoice`, which records what a person wants done
+with their short links when their account is erased (#246, owner decisions
+D-017 and D-021). Requests already waiting get `off`. A fresh install gets the
+column from schema `034_legal_compliance.sql`, so it does not need this file.
+
+**Run it, and seed `077_deletion_link_choice_translations.sql`, before
+uploading the code.** The new code reads and writes the column. Without it the
+privacy pages cannot list or record requests and the scheduled erasure job
+cannot run. The migration checks for the column first, so it is safe to run
+more than once. See owner action **A32** in
+[PRE_LAUNCH_CHECKLIST.md](../PRE_LAUNCH_CHECKLIST.md).
+
 ### 🔄 Migration (from MWlink)
 
 > 📋 **See [MIGRATION_PLAN.md](MIGRATION_PLAN.md) for the comprehensive step-by-step migration execution plan**, including pre-migration checklist, DNS cutover, rollback procedures, and post-launch monitoring.
@@ -534,7 +552,7 @@ once, including on a database that already has the table.
    **DELETED** — the app now performs a direct `INSERT` into `tblActivityLog`
    instead (`web/_functions/activity_logger.php`); do not look for or try to
    import this file
-4. 🌱 Import all 39 seed files in filename order (the list is in step 5 of
+4. 🌱 Import all 40 seed files in filename order (the list is in step 5 of
    **New Installation** above)
 5. 🧪 Run dry-run verification: `web/_sql/dry_run.sql`
 6. ▶️ Run migration scripts from `web/_sql/migrations/` in order — `001`–`004`,

@@ -18,6 +18,8 @@
  *
  * Deletion is not immediate — a grace period allows cancellation. After
  * the grace period, data is anonymised and the account is deactivated.
+ * The person also chooses here what happens to their short links at that
+ * point: switched off (the default) or kept working (#246, D-017, D-021).
  *
  * @package    Go2My.Link
  * @subpackage AdminDashboard
@@ -44,6 +46,10 @@ $userUID     = $currentUser['userUID'];
 
 $actionSuccess = '';
 $actionError   = '';
+
+// The link choice shown as selected in the form. Kept after a failed submit
+// (for example a mistyped password) so the person's choice is not lost.
+$selectedLinkChoice = 'off';
 
 // Distinguish which POST action was submitted (cancel vs request deletion).
 $postAction = '';
@@ -153,6 +159,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $postAction === 'cancel')
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $postAction !== 'cancel')
 {
+    // No choice sent means the default, 'off'. Anything that is not one of the
+    // five choices is refused by g2ml_requestDataDeletion().
+    $postedLinkChoice = $_POST['link_choice'] ?? 'off';
+
+    if (!is_string($postedLinkChoice))
+    {
+        $postedLinkChoice = '';
+    }
+
+    if (g2ml_isValidLinkChoice($postedLinkChoice))
+    {
+        $selectedLinkChoice = $postedLinkChoice;
+    }
+
     $csrfToken = $_POST['_csrf_token'] ?? '';
 
     if (!g2ml_validateCSRFToken($csrfToken, 'account_delete'))
@@ -217,7 +237,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $postAction !== 'cancel')
                 } else {
                     $reasonParam = null;
                 }
-                $result = g2ml_requestDataDeletion($userUID, $reasonParam);
+                $result = g2ml_requestDataDeletion($userUID, $reasonParam, $postedLinkChoice);
 
                 if ($result['success'])
                 {
@@ -333,7 +353,13 @@ foreach ($allRequests as $req)
                         <strong><?php if (function_exists('__')) { echo __('delete.grace_period'); } else { echo 'Grace period'; } ?>:</strong>
                         <?php echo $graceDaysSetting; ?> <?php if (function_exists('__')) { echo __('delete.days'); } else { echo 'days'; } ?>
                     </li>
+                    <li>
+                        <?php echo g2ml_sanitiseOutput(g2ml_linkChoiceSummary((string) ($pendingDeletion['linkChoice'] ?? 'off'))); ?>
+                    </li>
                 </ul>
+                <p class="text-body-secondary">
+                    <?php if (function_exists('__')) { echo __('delete.links_pending_change'); } else { echo 'To change this choice, cancel the request and submit a new one. The grace period then starts again.'; } ?>
+                </p>
 
                 <form action="/privacy/delete" method="POST"
                       onsubmit="return confirm('<?php if (function_exists('__')) { echo __('delete.cancel_confirm'); } else { echo 'Cancel your deletion request and keep your account?'; } ?>');">
@@ -370,7 +396,7 @@ foreach ($allRequests as $req)
                     </li>
                     <li>
                         <i class="fas fa-unlink text-danger" aria-hidden="true"></i>
-                        <?php if (function_exists('__')) { echo __('delete.warning_links'); } else { echo 'All your short links will be deactivated and will no longer redirect.'; } ?>
+                        <?php if (function_exists('__')) { echo __('delete.warning_links_choice'); } else { echo 'Your short links will be switched off when your account is erased, unless you choose below to keep them working.'; } ?>
                     </li>
                     <li>
                         <i class="fas fa-chart-line text-danger" aria-hidden="true"></i>
@@ -429,6 +455,45 @@ foreach ($allRequests as $req)
                 <form action="/privacy/delete" method="POST" novalidate
                       onsubmit="return confirm('<?php if (function_exists('__')) { echo __('delete.submit_confirm'); } else { echo 'Are you sure you want to request account deletion? You can cancel within the grace period.'; } ?>');">
                     <?php echo g2ml_csrfField('account_delete'); ?>
+
+                    <!-- What happens to short links (#246) -->
+                    <fieldset class="mb-4" aria-describedby="link-choice-help link-choice-kept link-choice-org">
+                        <legend class="fs-6 fw-semibold">
+                            <?php if (function_exists('__')) { echo __('delete.links_legend'); } else { echo 'What should happen to your short links?'; } ?>
+                        </legend>
+                        <p id="link-choice-help" class="form-text mt-0">
+                            <?php if (function_exists('__')) { echo __('delete.links_help'); } else { echo 'One choice covers all of your links. It takes effect when your account is erased, not today, and any period is counted from that day. A link that already expires sooner keeps its own expiry date. A link that is switched off stays off.'; } ?>
+                        </p>
+                        <?php
+                        $linkChoiceLabels = [
+                            'off'     => 'Switch them off (default)',
+                            '30_days' => 'Keep them working for 30 days',
+                            '90_days' => 'Keep them working for 90 days',
+                            '1_year'  => 'Keep them working for 1 year',
+                            'forever' => 'Keep them working for ever',
+                        ];
+
+                        foreach ($linkChoiceLabels as $choiceValue => $choiceFallback)
+                        {
+                        ?>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="link_choice"
+                                   id="link-choice-<?php echo g2ml_sanitiseOutput($choiceValue); ?>"
+                                   value="<?php echo g2ml_sanitiseOutput($choiceValue); ?>"<?php if ($choiceValue === $selectedLinkChoice) { echo ' checked'; } ?>>
+                            <label class="form-check-label" for="link-choice-<?php echo g2ml_sanitiseOutput($choiceValue); ?>">
+                                <?php if (function_exists('__')) { echo __('delete.links_option_' . $choiceValue); } else { echo $choiceFallback; } ?>
+                            </label>
+                        </div>
+                        <?php
+                        }
+                        ?>
+                        <p id="link-choice-kept" class="form-text">
+                            <?php if (function_exists('__')) { echo __('delete.links_kept_note'); } else { echo 'Links you keep are disconnected from your account, so you cannot change them, switch them off or see their statistics afterwards. Their titles and private notes are removed. The destination addresses stay as you entered them, so check that they contain nothing personal. Our terms still apply, and a link that breaks them can still be switched off.'; } ?>
+                        </p>
+                        <p id="link-choice-org" class="form-text mb-0">
+                            <?php if (function_exists('__')) { echo __('delete.links_org_note'); } else { echo 'Links that belong to an organisation with other active members stay with that organisation. This choice does not change them; they are only disconnected from your account.'; } ?>
+                        </p>
+                    </fieldset>
 
                     <!-- Password Confirmation -->
                     <div class="mb-3">

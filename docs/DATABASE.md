@@ -118,7 +118,20 @@ Schema files are located in `web/_sql/schema/`.
 | Table | Purpose |
 | --- | --- |
 | `tblConsentRecords` | ✅ GDPR/CCPA consent tracking |
-| `tblDataDeletionRequests` | 🗑️ Data subject deletion requests |
+| `tblDataDeletionRequests` | 🗑️ Data subject deletion requests. `linkChoice` (`off` by default, `30_days`, `90_days`, `1_year`, `forever`) records what happens to the person's short links at erasure (#246) |
+
+> 🔗 **Short links when an account is erased (#246, owner decisions D-017 and D-021).**
+> One choice, stored in `tblDataDeletionRequests.linkChoice`, is applied by
+> `g2ml_applyLinkChoiceOnErasure()` (`web/_functions/data_rights.php`) inside
+> the erasure transaction, not when the request is made. It uses the existing
+> `tblShortURLs` columns, so `sp_lookupShortURL` is unchanged: `off` sets
+> `isActive = 0`; a period sets `endDate` to that long after erasure unless an
+> earlier date is already there; `forever` changes neither. Links already off
+> stay off. A link in an organisation (not `[default]`) that still has another
+> active member is the organisation's: the choice does not touch it. Every link
+> the person created loses `createdByUserUID` and `createdViaAPIKeyUID`; their
+> own links also lose `title` and `urlNotes`. `destinationURL` and the UTM
+> columns are kept, and the activity log is not covered (#247).
 
 > ✅ **LinksPages are covered by data export and erasure (fixed 2026-09-21, issue #219).**
 > `g2ml_requestDataExport()` and `g2ml_anonymiseUserData()`

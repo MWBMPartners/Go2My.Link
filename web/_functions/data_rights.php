@@ -537,6 +537,169 @@ function g2ml_handleDataExportDownloadRequest(): void
 }
 
 // ============================================================================
+// 🔗 What happens to short links on erasure (#246 — D-017, D-021)
+// ============================================================================
+// One choice covers all of a person's links. The values are the ones stored in
+// tblDataDeletionRequests.linkChoice. 'off' is the default (D-017).
+// 📖 Reference: docs/decisions/D-017-erased-account-links.md
+// 📖 Reference: docs/decisions/D-021-kept-links-one-choice.md
+// ============================================================================
+
+const G2ML_LINK_CHOICE_DEFAULT = 'off';
+
+const G2ML_LINK_CHOICES = ['off', '30_days', '90_days', '1_year', 'forever'];
+
+/**
+ * PURE — is this one of the five link choices a person may make?
+ *
+ * @param  string $linkChoice
+ * @return bool
+ */
+function g2ml_isValidLinkChoice(string $linkChoice): bool
+{
+    return in_array($linkChoice, G2ML_LINK_CHOICES, true);
+}
+
+/**
+ * The sentence that tells the person what their choice means, used on the
+ * Delete Account page and in the confirmation email.
+ *
+ * An unrecognised value is described as 'off', because that is what
+ * g2ml_applyLinkChoiceOnErasure() does with it.
+ *
+ * @param  string $linkChoice  One of G2ML_LINK_CHOICES.
+ * @return string              Translated sentence (English if translations are unavailable).
+ */
+function g2ml_linkChoiceSummary(string $linkChoice): string
+{
+    $fallbacks = [
+        'off'     => 'Your short links are switched off when your account is erased.',
+        '30_days' => 'Your short links keep working for 30 days after your account is erased, then stop.',
+        '90_days' => 'Your short links keep working for 90 days after your account is erased, then stop.',
+        '1_year'  => 'Your short links keep working for 1 year after your account is erased, then stop.',
+        'forever' => 'Your short links keep working for ever. A link with its own expiry date still stops on that date.',
+    ];
+
+    if (!g2ml_isValidLinkChoice($linkChoice))
+    {
+        $linkChoice = G2ML_LINK_CHOICE_DEFAULT;
+    }
+
+    if (function_exists('__'))
+    {
+        return __('delete.links_summary_' . $linkChoice);
+    }
+
+    return $fallbacks[$linkChoice];
+}
+
+/**
+ * Apply the person's link choice to their short links, then disconnect every
+ * one of those links from them. Called ONLY from g2ml_anonymiseUserData(),
+ * inside its transaction. Any failure throws, so the whole erasure rolls back.
+ *
+ * WHOSE LINKS ARE THEY? A link the person created is treated as THEIRS unless
+ * it sits in an organisation (not '[default]') that still has at least one
+ * other active member. Such a link belongs to the organisation: the choice
+ * does not touch it, because one person leaving must not stop the
+ * organisation's links.
+ *
+ * THEIR links:
+ *   - 'off' (and any unrecognised value): links that are on are switched off.
+ *   - a period: links that are on get an end date that far from NOW (the
+ *     moment of erasure, not of the request). An end date that is already
+ *     sooner is left alone.
+ *   - 'forever': neither the switch nor the end date changes.
+ *   - Links that were already off are never switched on or given a new date.
+ *
+ * Then, for the disconnecting:
+ *   - THEIR links lose createdByUserUID, createdViaAPIKeyUID, title and
+ *     urlNotes. None of these affects where the link goes.
+ *   - ORGANISATION links lose createdByUserUID and createdViaAPIKeyUID only;
+ *     the title and notes are the organisation's.
+ *
+ * destinationURL and the UTM columns are kept as the person entered them (the
+ * link cannot work without the address). Personal data inside them, and in
+ * the activity log, is part of #247.
+ *
+ * Running this twice is harmless: after the first run no link carries the
+ * person's userUID, so a later run changes nothing and no period is restarted.
+ *
+ * The end date is worked out from UTC_TIMESTAMP(), because
+ * sp_lookupShortURL compares endDate with NOW() in the UTC time zone.
+ *
+ * @param  mysqli $db          Open connection, inside a transaction.
+ * @param  int    $userUID     The person being erased.
+ * @param  string $linkChoice  One of G2ML_LINK_CHOICES.
+ * @return void
+ */
+function g2ml_applyLinkChoiceOnErasure(mysqli $db, int $userUID, string $linkChoice): void
+{
+    // Fixed SQL fragments only — nothing from a request is ever put into them.
+    $theirOwnLink = "(`s`.`orgHandle` = '[default]' OR NOT EXISTS (
+                        SELECT 1 FROM `tblUsers` AS `m`
+                        WHERE `m`.`orgHandle` = `s`.`orgHandle`
+                          AND `m`.`userUID` <> ?
+                          AND `m`.`isActive` = 1))";
+
+    $periods = [
+        '30_days' => 'INTERVAL 30 DAY',
+        '90_days' => 'INTERVAL 90 DAY',
+        '1_year'  => 'INTERVAL 1 YEAR',
+    ];
+
+    $sql = null;
+
+    if (isset($periods[$linkChoice]))
+    {
+        $newEnd = 'DATE_ADD(UTC_TIMESTAMP(), ' . $periods[$linkChoice] . ')';
+
+        $sql = "UPDATE `tblShortURLs` AS `s`
+                SET `s`.`endDate` = " . $newEnd . "
+                WHERE `s`.`createdByUserUID` = ?
+                  AND `s`.`isActive` = 1
+                  AND (`s`.`endDate` IS NULL OR `s`.`endDate` > " . $newEnd . ")
+                  AND " . $theirOwnLink;
+    }
+    elseif ($linkChoice !== 'forever')
+    {
+        $sql = "UPDATE `tblShortURLs` AS `s`
+                SET `s`.`isActive` = 0
+                WHERE `s`.`createdByUserUID` = ?
+                  AND `s`.`isActive` = 1
+                  AND " . $theirOwnLink;
+    }
+
+    if ($sql !== null)
+    {
+        $stmt = $db->prepare($sql);
+        $stmt->bind_param('ii', $userUID, $userUID);
+        $stmt->execute();
+        $stmt->close();
+    }
+
+    // Disconnect the person's own links.
+    $sql = "UPDATE `tblShortURLs` AS `s`
+            SET `s`.`createdByUserUID` = NULL, `s`.`createdViaAPIKeyUID` = NULL,
+                `s`.`title` = NULL, `s`.`urlNotes` = NULL
+            WHERE `s`.`createdByUserUID` = ?
+              AND " . $theirOwnLink;
+    $stmt = $db->prepare($sql);
+    $stmt->bind_param('ii', $userUID, $userUID);
+    $stmt->execute();
+    $stmt->close();
+
+    // Whatever still carries the person's userUID belongs to an organisation.
+    $sql  = "UPDATE `tblShortURLs`
+             SET `createdByUserUID` = NULL, `createdViaAPIKeyUID` = NULL
+             WHERE `createdByUserUID` = ?";
+    $stmt = $db->prepare($sql);
+    $stmt->bind_param('i', $userUID);
+    $stmt->execute();
+    $stmt->close();
+}
+
+// ============================================================================
 // 🗑️ Request Data Deletion
 // ============================================================================
 
@@ -547,12 +710,27 @@ function g2ml_handleDataExportDownloadRequest(): void
  * during which the user can cancel. After the grace period, an admin
  * (or automated process) executes the deletion.
  *
- * @param  int         $userUID  The user requesting deletion
- * @param  string|null $reason   Optional reason for the request
- * @return array                 ['success' => bool, 'requestUID' => int|null, 'graceDays' => int, 'error' => string|null]
+ * The link choice is only RECORDED here. Nothing happens to any link until
+ * the account is erased, and cancelling the request leaves every link as it
+ * was.
+ *
+ * @param  int         $userUID     The user requesting deletion
+ * @param  string|null $reason      Optional reason for the request
+ * @param  string      $linkChoice  What to do with their short links at erasure (G2ML_LINK_CHOICES)
+ * @return array                    ['success' => bool, 'requestUID' => int|null, 'graceDays' => int, 'error' => string|null]
  */
-function g2ml_requestDataDeletion(int $userUID, ?string $reason = null): array
+function g2ml_requestDataDeletion(int $userUID, ?string $reason = null, string $linkChoice = G2ML_LINK_CHOICE_DEFAULT): array
 {
+    if (!g2ml_isValidLinkChoice($linkChoice))
+    {
+        if (function_exists('__'))
+        {
+            return ['success' => false, 'error' => __('delete.links_error_invalid')];
+        }
+
+        return ['success' => false, 'error' => 'Please choose what should happen to your short links.'];
+    }
+
     $db = getDB();
 
     if ($db === null)
@@ -584,11 +762,11 @@ function g2ml_requestDataDeletion(int $userUID, ?string $reason = null): array
 
     try
     {
-        $sql = "INSERT INTO tblDataDeletionRequests
-                (userUID, requestType, status, requestReason)
-                VALUES (?, 'deletion', 'pending', ?)";
+        $sql = "INSERT INTO `tblDataDeletionRequests`
+                (`userUID`, `requestType`, `status`, `requestReason`, `linkChoice`)
+                VALUES (?, 'deletion', 'pending', ?, ?)";
         $stmt = $db->prepare($sql);
-        $stmt->bind_param('is', $userUID, $reason);
+        $stmt->bind_param('iss', $userUID, $reason, $linkChoice);
         $stmt->execute();
         $requestUID = $stmt->insert_id;
         $stmt->close();
@@ -604,6 +782,7 @@ function g2ml_requestDataDeletion(int $userUID, ?string $reason = null): array
                     'displayName' => $user['displayName'] ?? $user['firstName'],
                     'graceDays'   => $graceDays,
                     'cancelURL'   => 'https://admin.go2my.link/privacy/delete?cancel=' . $requestUID,
+                    'linkChoiceText' => g2ml_linkChoiceSummary($linkChoice),
                 ]);
             }
         }
@@ -612,7 +791,7 @@ function g2ml_requestDataDeletion(int $userUID, ?string $reason = null): array
         {
             logActivity('data_deletion_requested', 'success', null, [
                 'userUID' => $userUID,
-                'logData' => ['requestUID' => $requestUID, 'graceDays' => $graceDays],
+                'logData' => ['requestUID' => $requestUID, 'graceDays' => $graceDays, 'linkChoice' => $linkChoice],
             ]);
         }
 
@@ -663,6 +842,10 @@ function g2ml_requestDataDeletion(int $userUID, ?string $reason = null): array
  *     '0.0.0.0'. Nothing else on those rows changes.
  *   - tblConsentRecords (the person's rows): ipAddress becomes '0.0.0.0'
  *     and userAgent becomes NULL. The rows are kept.
+ *   - tblShortURLs (links the person created): switched off, given an end
+ *     date or left working according to $linkChoice, and disconnected from
+ *     the person (#246). The exact rules, including how an organisation's
+ *     links are treated, are on g2ml_applyLinkChoiceOnErasure().
  *   - tblLinksPages (the person's pages): DELETED outright (added for
  *     #219; the inline comment at the DELETE below explains why a page is
  *     deleted rather than edited). Their tblLinksPageItems rows go with
@@ -689,10 +872,12 @@ function g2ml_requestDataDeletion(int $userUID, ?string $reason = null): array
  * row recording that a password-reset email was sent to them, whose logData
  * holds their email address — so this function cannot find them.
  *
- * @param  int  $userUID  The user to anonymise
- * @return bool           true if anonymisation completed
+ * @param  int    $userUID     The user to anonymise
+ * @param  string $linkChoice  What to do with their short links (G2ML_LINK_CHOICES);
+ *                             'off' when not given (D-017)
+ * @return bool                true if anonymisation completed
  */
-function g2ml_anonymiseUserData(int $userUID): bool
+function g2ml_anonymiseUserData(int $userUID, string $linkChoice = G2ML_LINK_CHOICE_DEFAULT): bool
 {
     $db = getDB();
 
@@ -792,6 +977,10 @@ function g2ml_anonymiseUserData(int $userUID): bool
         $stmt->execute();
         $stmt->close();
 
+        // Short links (#246): apply the person's choice and disconnect the
+        // links from them.
+        g2ml_applyLinkChoiceOnErasure($db, $userUID, $linkChoice);
+
         $db->commit();
 
         return true;
@@ -825,7 +1014,8 @@ function g2ml_processDataDeletion(int $requestUID, int $processedByUserUID): boo
     }
 
     // Get request details
-    $sql  = "SELECT userUID, requestType, status FROM tblDataDeletionRequests WHERE requestUID = ?";
+    $sql  = "SELECT `userUID`, `requestType`, `status`, `linkChoice`
+             FROM `tblDataDeletionRequests` WHERE `requestUID` = ?";
     $stmt = $db->prepare($sql);
     $stmt->bind_param('i', $requestUID);
     $stmt->execute();
@@ -838,7 +1028,7 @@ function g2ml_processDataDeletion(int $requestUID, int $processedByUserUID): boo
     }
 
     // Anonymise the user's data
-    $success = g2ml_anonymiseUserData($request['userUID']);
+    $success = g2ml_anonymiseUserData((int) $request['userUID'], (string) $request['linkChoice']);
 
     // Update request status
     if ($success) {
@@ -908,10 +1098,10 @@ function g2ml_getUserDataRequests(int $userUID): array
         return [];
     }
 
-    $sql  = "SELECT requestUID, requestType, status, requestReason,
-                    exportFilePath, exportExpiresAt, createdAt, processedAt
-             FROM tblDataDeletionRequests WHERE userUID = ?
-             ORDER BY createdAt DESC";
+    $sql  = "SELECT `requestUID`, `requestType`, `status`, `requestReason`, `linkChoice`,
+                    `exportFilePath`, `exportExpiresAt`, `createdAt`, `processedAt`
+             FROM `tblDataDeletionRequests` WHERE `userUID` = ?
+             ORDER BY `createdAt` DESC";
     $stmt = $db->prepare($sql);
     $stmt->bind_param('i', $userUID);
     $stmt->execute();
