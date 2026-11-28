@@ -47,3 +47,6 @@ tracked on its own issue.
 | [D-029](D-029-test-sites-shared-database.md) | 2026-11-28 | Test sites share the live database, with separate fields or tables where behaviour differs | In force |
 | [D-030](D-030-erased-link-addresses-kept.md) | 2026-11-28 | Erasure keeps the address a switched-off link pointed to | In force |
 | [D-031](D-031-sole-member-organisation-choice.md) | 2026-11-28 | The sole member of an organisation chooses what happens to its details | In force |
+| [D-032](D-032-release-candidate-own-copy.md) | 2026-11-28 | Release-candidate gets its own copy and web address | In force |
+| [D-033](D-033-demoted-admin-keys-stop.md) | 2026-11-28 | API keys stop working when their owner is no longer an administrator | In force |
+| [D-034](D-034-old-accounts-arrive-confirmed.md) | 2026-11-28 | Moved accounts arrive switched on with confirmed email addresses | In force |
