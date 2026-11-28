@@ -39,3 +39,7 @@ tracked on its own issue.
 | [D-021](D-021-kept-links-one-choice.md) | 2026-11-28 | One choice with set periods covers all of a person's links | In force |
 | [D-022](D-022-team-links-stay-with-team.md) | 2026-11-28 | A team keeps its links when a member leaves | In force |
 | [D-023](D-023-admin-link-switch-before-launch.md) | 2026-11-28 | A screen to switch any short link off is built before launch | In force |
+| [D-024](D-024-enforce-free-link-limit.md) | 2026-11-28 | The Free link limit applies to individuals and to switching links back on | In force |
+| [D-025](D-025-free-no-api-30-day-statistics.md) | 2026-11-28 | Free has no API access and shows 30 days of statistics at launch | In force |
+| [D-026](D-026-unblocking-restores-state.md) | 2026-11-28 | Removing a staff block restores the link as it was | In force |
+| [D-027](D-027-blocked-link-hides-destination.md) | 2026-11-28 | The information page hides a blocked link's destination | In force |
