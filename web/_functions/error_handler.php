@@ -18,6 +18,10 @@
  * This handler MUST NEVER throw exceptions itself — any failure within the
  * handler silently falls back to error_log().
  *
+ * A stack trace written or shown by this file must never contain the values
+ * that were passed to a function (passwords, tokens and so on). Traces are
+ * rebuilt or cleaned so that only file, line and function names remain (#312).
+ *
  * Dependencies: db_connect.php (getDB()), db_query.php (dbInsert())
  *
  * @package    Go2My.Link
@@ -109,6 +113,162 @@ function _g2ml_mapErrorType(int $errno): string
 }
 
 // ============================================================================
+// 🙈 Remove Function Argument Values From Stack Traces (#312)
+// ============================================================================
+// PHP writes the values passed to each function into a stack trace, for example
+// "#0 /srv/page.php(3): login('hunter2')". That text turns up in the message of
+// an uncaught exception, and in any message built from an exception object. A
+// password or token must never be stored or logged that way.
+//
+// page_init.php also tells PHP to leave the values out in the first place, but
+// a host may not allow that, so this cleaning step does not rely on it.
+// ============================================================================
+
+/**
+ * Remove the argument list from every stack trace line in a piece of text.
+ *
+ * A stack trace line looks like "#2 /path/file.php(12): Class->method(...)" or
+ * "#3 [internal function]: name(...)". Everything from the opening bracket of
+ * the argument list to the end of the line is replaced with "()". PHP writes a
+ * new line inside a value as the two characters \n, so a value cannot carry on
+ * onto the next line. All other text is returned unchanged.
+ *
+ * If a line cannot be checked, it is removed rather than risk keeping a value.
+ *
+ * @param  string $text  A message, detail or backtrace
+ * @return string        The same text with no argument values in trace lines
+ */
+function g2ml_stripTraceArguments(string $text): string
+{
+    if (strpos($text, '#') === false)
+    {
+        return $text;
+    }
+
+    $lines = explode("\n", $text);
+
+    foreach ($lines as $index => $line)
+    {
+        $found  = [];
+        $result = preg_match(
+            '/#\d+ (?:\[internal function\]|[^\r]*?\(\d+\)): /',
+            $line,
+            $found,
+            PREG_OFFSET_CAPTURE
+        );
+
+        if ($result === false)
+        {
+            $lines[$index] = '[line removed: it could not be checked for argument values]';
+            continue;
+        }
+
+        if ($result === 1)
+        {
+            $callStart = $found[0][1] + strlen($found[0][0]);
+
+            $lines[$index] = substr($line, 0, $callStart)
+                . _g2ml_traceCallWithoutArguments((string) substr($line, $callStart));
+        }
+    }
+
+    return implode("\n", $lines);
+}
+
+/**
+ * Turn the call part of a trace line, such as "Class->method('value')", into
+ * "Class->method()".
+ *
+ * The argument list starts at the first "(" that is not inside curly brackets.
+ * The curly brackets matter because PHP 8.4 and later name a closure like
+ * "{closure:Class::method():12}", which has round brackets of its own.
+ *
+ * @param  string $call  The text after "file(line): "
+ * @return string        The function name followed by "()", or a fixed note
+ *                       when no argument list can be found
+ */
+function _g2ml_traceCallWithoutArguments(string $call): string
+{
+    $depth  = 0;
+    $length = strlen($call);
+
+    for ($position = 0; $position < $length; $position++)
+    {
+        $character = $call[$position];
+
+        if ($character === '{')
+        {
+            $depth++;
+        }
+        elseif ($character === '}')
+        {
+            $depth--;
+        }
+        elseif ($character === '(' && $depth <= 0)
+        {
+            return substr($call, 0, $position) . '()';
+        }
+    }
+
+    // Not a shape PHP produces. Keep none of it.
+    return '[call removed]';
+}
+
+// ============================================================================
+// ✂️ Fit Values Into Their Database Columns (#312)
+// ============================================================================
+// The database runs in strict mode, so a value that is too long, or that is not
+// valid UTF-8 text, makes the whole INSERT fail and the error row is lost.
+// ============================================================================
+
+/**
+ * Make a value valid UTF-8 and cut it to a number of characters (for VARCHAR
+ * columns), without splitting a multi-byte character.
+ *
+ * @param  string|null $value          The value to fit
+ * @param  int         $maxCharacters  The column's size in characters
+ * @return string|null                 The value that is safe to insert
+ */
+function _g2ml_fitCharacters(?string $value, int $maxCharacters): ?string
+{
+    if ($value === null)
+    {
+        return null;
+    }
+
+    if (function_exists('mb_substr') && function_exists('mb_scrub'))
+    {
+        return mb_substr(mb_scrub($value, 'UTF-8'), 0, $maxCharacters, 'UTF-8');
+    }
+
+    // Without the mbstring extension, keep plain ASCII only.
+    return substr((string) preg_replace('/[^\x00-\x7F]/', '?', $value), 0, $maxCharacters);
+}
+
+/**
+ * Make a value valid UTF-8 and cut it to a number of bytes (for TEXT columns,
+ * which are measured in bytes), without splitting a multi-byte character.
+ *
+ * @param  string|null $value     The value to fit
+ * @param  int         $maxBytes  The largest number of bytes to keep
+ * @return string|null            The value that is safe to insert
+ */
+function _g2ml_fitBytes(?string $value, int $maxBytes): ?string
+{
+    if ($value === null)
+    {
+        return null;
+    }
+
+    if (function_exists('mb_strcut') && function_exists('mb_scrub'))
+    {
+        return mb_strcut(mb_scrub($value, 'UTF-8'), 0, $maxBytes, 'UTF-8');
+    }
+
+    return substr((string) preg_replace('/[^\x00-\x7F]/', '?', $value), 0, $maxBytes);
+}
+
+// ============================================================================
 // 📥 Log Error to Database
 // ============================================================================
 
@@ -117,6 +277,11 @@ function _g2ml_mapErrorType(int $errno): string
  *
  * If the database INSERT fails, falls back to PHP's error_log().
  * This function MUST NOT throw exceptions.
+ *
+ * Function argument values are removed from the title, detail and backtrace
+ * before anything is written. Values too long for their column are cut to fit.
+ * When the title or detail had to be cut, the full text is also written to
+ * PHP's error log so nothing is lost.
  *
  * @param  string      $severity   One of: notice, warning, error, critical, exception
  * @param  int|null    $code       PHP error code or custom error code
@@ -139,10 +304,28 @@ function g2ml_logError(
     ?string $backtrace = null
 ): void
 {
-    // Truncate backtrace to prevent excessively large inserts
-    if ($backtrace !== null && strlen($backtrace) > 10000)
+    // Remove function argument values first, so that neither the database nor
+    // the log file can receive them
+    $title = g2ml_stripTraceArguments($title);
+
+    if ($detail !== null)
     {
-        $backtrace = substr($backtrace, 0, 10000) . "\n... [truncated]";
+        $detail = g2ml_stripTraceArguments($detail);
+    }
+
+    if ($backtrace !== null)
+    {
+        $backtrace = g2ml_stripTraceArguments($backtrace);
+
+        // Truncate backtrace to prevent excessively large inserts
+        if (strlen($backtrace) > 10000)
+        {
+            $backtrace = _g2ml_fitBytes($backtrace, 10000) . "\n... [truncated]";
+        }
+        else
+        {
+            $backtrace = _g2ml_fitBytes($backtrace, 10000);
+        }
     }
 
     // Build request context
@@ -165,63 +348,16 @@ function g2ml_logError(
     }
 
     if (!empty($safeHeaders)) {
-        $requestHeaders = json_encode($safeHeaders);
+        // A header can hold bytes that are not valid UTF-8. Replace them, or
+        // json_encode() fails and the database refuses the row.
+        $requestHeaders = json_encode($safeHeaders, JSON_INVALID_UTF8_SUBSTITUTE);
     } else {
         $requestHeaders = null;
     }
     $ipAddress      = g2ml_clientIpOrDefault($_SERVER['REMOTE_ADDR'] ?? null);
     $userUID        = $_SESSION['user_uid'] ?? null;
 
-    // Attempt database insert
-    try
-    {
-        $db = getDB();
-
-        if ($db !== null)
-        {
-            $sql = "INSERT INTO tblErrorLog (
-                        errorSeverity, errorCode, errorTitle, errorDetail,
-                        errorFile, errorLine, errorBacktrace,
-                        requestURL, requestMethod, requestHeaders,
-                        ipAddress, userUID, phpVersion
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-            $stmt = $db->prepare($sql);
-
-            if ($stmt !== false)
-            {
-                $phpVersion = PHP_VERSION;
-
-                $stmt->bind_param(
-                    'sisssisssssis',
-                    $severity,
-                    $code,
-                    $title,
-                    $detail,
-                    $file,
-                    $line,
-                    $backtrace,
-                    $requestURL,
-                    $requestMethod,
-                    $requestHeaders,
-                    $ipAddress,
-                    $userUID,
-                    $phpVersion
-                );
-
-                $stmt->execute();
-                $stmt->close();
-
-                return; // Successfully logged to database
-            }
-        }
-    }
-    catch (\Throwable $e)
-    {
-        // Silently fall through to error_log — NEVER re-throw from the error handler
-    }
-
-    // Fallback: log to PHP error_log
+    // The full text for PHP's error log, built before anything is cut
     // 📖 Reference: https://www.php.net/manual/en/function.error-log.php
     $fallbackMessage = '[Go2My.Link] ' . strtoupper($severity)
         . ' [' . ($code ?? 0) . ']: ' . $title;
@@ -241,6 +377,91 @@ function g2ml_logError(
         $fallbackMessage .= ' | Detail: ' . $detail;
     }
 
+    // Cut each value to fit its column (sizes: web/_sql/schema/030_analytics.sql)
+    $columnTitle   = (string) _g2ml_fitCharacters($title, 500);
+    $columnDetail  = _g2ml_fitBytes($detail, 65535);
+    $columnFile    = _g2ml_fitCharacters($file, 500);
+    $requestURL    = _g2ml_fitCharacters($requestURL, 500);
+    $requestMethod = _g2ml_fitCharacters($requestMethod, 10);
+
+    // True when the stored title or detail is shorter than the real one
+    $textWasCut = false;
+
+    if ($columnTitle !== _g2ml_fitCharacters($title, strlen($title)))
+    {
+        $textWasCut = true;
+    }
+
+    if ($detail !== null && $columnDetail !== _g2ml_fitBytes($detail, strlen($detail) * 4))
+    {
+        $textWasCut = true;
+    }
+
+    // An error code outside the INT column's range cannot be stored
+    if ($code !== null && ($code > 2147483647 || $code < -2147483647 - 1))
+    {
+        $code = null;
+    }
+
+    // Attempt database insert
+    try
+    {
+        $db = getDB();
+
+        if ($db !== null)
+        {
+            $sql = "INSERT INTO tblErrorLog (
+                        errorSeverity, errorCode, errorTitle, errorDetail,
+                        errorFile, errorLine, errorBacktrace,
+                        requestURL, requestMethod, requestHeaders,
+                        ipAddress, userUID, phpVersion
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+            $stmt = $db->prepare($sql);
+
+            if ($stmt !== false)
+            {
+                // Some Linux packages report a version longer than the column
+                $phpVersion = _g2ml_fitCharacters(PHP_VERSION, 20);
+
+                $stmt->bind_param(
+                    'sisssisssssis',
+                    $severity,
+                    $code,
+                    $columnTitle,
+                    $columnDetail,
+                    $columnFile,
+                    $line,
+                    $backtrace,
+                    $requestURL,
+                    $requestMethod,
+                    $requestHeaders,
+                    $ipAddress,
+                    $userUID,
+                    $phpVersion
+                );
+
+                $saved = $stmt->execute();
+                $stmt->close();
+
+                if ($saved !== false)
+                {
+                    if ($textWasCut)
+                    {
+                        error_log($fallbackMessage);
+                    }
+
+                    return; // Successfully logged to database
+                }
+            }
+        }
+    }
+    catch (\Throwable $e)
+    {
+        // Silently fall through to error_log — NEVER re-throw from the error handler
+    }
+
+    // Fallback: log to PHP error_log
     error_log($fallbackMessage);
 }
 
@@ -324,7 +545,10 @@ function g2ml_exceptionHandler(\Throwable $exception): void
     $code      = (int) $exception->getCode();
     $file      = $exception->getFile();
     $line      = $exception->getLine();
-    $backtrace = $exception->getTraceAsString();
+    // Built from file, line and function names only. getTraceAsString() is not
+    // used because it includes the values passed to each function (#312).
+    $trace     = $exception->getTrace();
+    $backtrace = _g2ml_formatBacktrace($trace) . '#' . count($trace) . " {main}\n";
 
     // Check for previous exception chain
     $detail = null;
@@ -346,6 +570,10 @@ function g2ml_exceptionHandler(\Throwable $exception): void
         $line,
         $backtrace
     );
+
+    // The message can itself contain a stack trace, so clean it before the
+    // debug page below can show it
+    $message = g2ml_stripTraceArguments($message);
 
     // In production, show a generic error page
     if (!defined('G2ML_DEBUG') || G2ML_DEBUG !== true)

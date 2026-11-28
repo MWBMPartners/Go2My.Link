@@ -142,6 +142,29 @@ date_default_timezone_set('UTC');
 // separate follow-up, not this one).
 
 // ============================================================================
+// 🙈 Keep Function Argument Values Out of Stack Traces (#312)
+// ============================================================================
+// By default PHP can write the values passed to each function (passwords and
+// tokens included) into stack traces, and into its own error log. Switch that
+// off before any application code runs. A host that does not allow ini_set()
+// is still covered for our own error log by g2ml_stripTraceArguments() in
+// error_handler.php. "error_include_args" is a newer, similar setting for
+// PHP's warning messages; it only exists on some PHP versions.
+//
+// 📖 Reference: https://www.php.net/manual/en/ini.core.php#ini.zend.exception-ignore-args
+// ============================================================================
+
+if (function_exists('ini_set'))
+{
+    ini_set('zend.exception_ignore_args', '1');
+
+    if (ini_get('error_include_args') !== false)
+    {
+        ini_set('error_include_args', '0');
+    }
+}
+
+// ============================================================================
 // ⏱️ Step 10 (early): Record start time and memory for debug panel
 // ============================================================================
 // We record these at the very top so the debug panel shows accurate totals.

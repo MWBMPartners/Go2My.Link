@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🔒 Passwords kept out of error logs (2026-11-28)
+
+- 🔒 Error logs no longer record the values passed to functions, which could include passwords and
+  keys. Very long error messages are now shortened and saved instead of being lost (#312).
+
 ### 🧰 The web installer can finish (2026-11-28)
 
 - 🐛 A new install could not create its first administrator, so it could never finish. Fixed (#316).

@@ -62,6 +62,25 @@ declare(strict_types=1);
 date_default_timezone_set('UTC');
 
 // ============================================================================
+// 🙈 Keep Function Argument Values Out of Stack Traces (#312)
+// ============================================================================
+// The installer handles the database password and the first administrator's
+// password, and it has no error handler of its own. Stop PHP writing the values
+// passed to functions into stack traces or warnings, as page_init.php does for
+// the rest of the application.
+// ============================================================================
+
+if (function_exists('ini_set'))
+{
+    ini_set('zend.exception_ignore_args', '1');
+
+    if (ini_get('error_include_args') !== false)
+    {
+        ini_set('error_include_args', '0');
+    }
+}
+
+// ============================================================================
 // 🧪 Functions only (used by the database test, #316)
 // ============================================================================
 // tests/integration/installer_test.php loads this file to call the installer's
