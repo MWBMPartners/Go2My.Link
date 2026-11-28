@@ -315,7 +315,7 @@ if (function_exists('__')) {
                             <?php if (function_exists('__')) { echo __('help.short_links.s9_item5'); } else { echo '<strong>"Rate limit exceeded"</strong> when not signed in — the homepage box allows up to 10 new links an hour and 50 a day from the same connection, to stop it being used for spam. Wait a while, or sign in and use your dashboard instead, which does not have this limit.'; } ?>
                         </li>
                         <li>
-                            <?php if (function_exists('__')) { echo __('help.short_links.s9_item6'); } else { echo '<strong>"You have reached your plan\'s link limit"</strong> when signed in — your account has a maximum number of active links allowed by your plan. Turn off links you no longer need, or upgrade your plan, to create more.'; } ?>
+                            <?php if (function_exists('__')) { echo __('help.short_links.s9_item6_v2'); } else { echo '<strong>"You have reached your plan\'s link limit"</strong> when creating a link for an organisation — the organisation\'s plan allows only so many switched-on links (50 on the Free plan), shared by its members. A link past its end date still counts until it is turned off. Turn off links that are no longer needed to make room. Paid plans are coming and cannot be bought yet.'; } ?>
                         </li>
                         <li>
                             <?php if (function_exists('__')) { echo __('help.short_links.s9_item7'); } else { echo '<strong>"Link not found or you do not have permission to edit it"</strong> — you can only edit or turn off a link you created yourself while signed in.'; } ?>

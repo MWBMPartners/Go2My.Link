@@ -168,7 +168,7 @@ if (function_exists('__')) {
                     <?php if (function_exists('__')) { echo __('help.home.qa5_q'); } else { echo 'Where do I see how many people have clicked my link?'; } ?>
                 </h3>
                 <p class="text-body-secondary">
-                    <?php if (function_exists('__')) { echo __('help.home.qa5_a'); } else { echo 'Sign in and open Analytics in your dashboard. It shows your total clicks over time, your best-performing links, and a breakdown by browser, device, and country.'; } ?>
+                    <?php if (function_exists('__')) { echo __('help.home.qa5_a_v2'); } else { echo 'Sign in and open Analytics in your dashboard. It shows your total clicks over time, your best-performing links, and a breakdown by browser and device. A breakdown by country appears only where the site operator has switched on location lookup.'; } ?>
                 </p>
 
                 <h3 class="h6 fw-bold mt-4 mb-2">

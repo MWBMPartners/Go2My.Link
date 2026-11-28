@@ -30,7 +30,7 @@ info:
        key).
     6. Key verification (`401` when the key is invalid, expired, revoked,
        suspended, or its owning user/organisation is inactive).
-    7. Per-key rate limiting (`429` with `Retry-After`).
+    7. Rate limiting (`429` with `Retry-After`).
     8. Route + scope dispatch (`404` for an unknown method/path combination,
        `403` when the authenticated key lacks the endpoint's required
        scope).
@@ -99,22 +99,28 @@ info:
 
     ### Rate limiting and backoff
 
-    Two independent windows are enforced per key (limits are worked out
-    from the recent requests the service has already recorded for that key):
+    Two limits are checked on every request with a valid key. Both are
+    worked out from the recent requests the service has already recorded:
 
-    - **Daily** — the key's own daily limit if one has been set for it,
-      otherwise the standard daily limit (`5000` requests by default), over
-      a rolling 24-hour window.
+    - **Daily**, over a rolling 24-hour window. The first of these that
+      applies is used: the key's own daily limit, if one has been set for it;
+      otherwise the daily limit of the organisation's plan (`100` requests on
+      the Free plan as shipped); otherwise, when the plan sets no limit, the
+      standard daily limit (`5000` requests by default). A key's own limit
+      counts only that key's requests. The other two are one allowance shared
+      by all the organisation's keys that have no limit of their own.
     - **Burst** — the standard per-minute limit (`60` requests by default),
-      over a rolling 60-second window, applied to every key regardless of
-      any daily override.
+      over a rolling 60-second window, counted for each key separately and
+      applied to every key regardless of any daily limit of its own.
 
     Exceeding either window returns `429` with a `Retry-After` header
     (`86400` seconds for the daily window, `60` for the burst window) and a
     plain error body — **no** `meta` block is present on an error response.
 
     On every **successful** response, `meta.rateLimit` reports
-    `{limit, remaining, resetAt}` for the tighter of the two windows — this
+    `{limit, remaining, resetAt}`: `limit` is the daily limit that applies
+    to the key, `remaining` is the smaller of what is left under the daily
+    and per-minute limits, and `resetAt` is 60 seconds after the check. This
     is the only place rate-limit state is exposed; no `X-RateLimit-*`
     headers are sent.
 
@@ -957,8 +963,9 @@ components:
             $ref: "#/components/schemas/ErrorEnvelope"
     TooManyRequests:
       description: |
-        Either the per-IP pre-authentication failed-auth backoff, or the
-        authenticated key's own daily or per-minute rate limit, was
+        Either the per-IP pre-authentication failed-auth backoff, the daily
+        limit that applies to the key (its own, or the allowance shared
+        across the organisation), or the key's per-minute limit was
         exceeded. A `Retry-After` header (seconds) is always sent alongside
         this response; the body carries no `meta` block.
       headers:
@@ -1049,17 +1056,17 @@ components:
       properties:
         limit:
           type: integer
-          description: The tighter of the key's daily and burst limits, as evaluated for this request.
-          example: 60
+          description: The daily limit that applies to this key (its own, or the allowance shared across the organisation).
+          example: 100
         remaining:
           type: integer
-          description: Requests remaining in the tighter of the two windows.
+          description: The smaller of the requests left under the daily limit and under the per-minute limit.
           example: 59
         resetAt:
           type: string
           format: date-time
-          description: UTC time the reported window resets.
-          example: "2026-07-09T14:33:00Z"
+          description: UTC time 60 seconds after the limits were checked. It is not the time the daily allowance frees up.
+          example: "2026-07-09T14:33:07Z"
     ErrorEnvelope:
       type: object
       required:

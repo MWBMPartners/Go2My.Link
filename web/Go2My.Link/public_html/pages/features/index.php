@@ -103,7 +103,7 @@ if (function_exists('__')) {
                         </div>
                         <h3 class="h5"><?php if (function_exists('__')) { echo __('features.domains_title'); } else { echo 'Custom Domains'; } ?></h3>
                         <p class="text-body-secondary mb-0">
-                            <?php if (function_exists('__')) { echo __('features.domains_desc'); } else { echo 'Use your own branded short domain instead of g2my.link. Multiple domains per organisation supported.'; } ?>
+                            <?php if (function_exists('__')) { echo __('features.domains_desc_v2'); } else { echo 'Organisations can use their own short domain instead of g2my.link. This is not part of the Free plan. Paid plans are coming and cannot be bought yet.'; } ?>
                         </p>
                     </div>
                 </div>
@@ -118,7 +118,7 @@ if (function_exists('__')) {
                         </div>
                         <h3 class="h5"><?php if (function_exists('__')) { echo __('features.teams_title'); } else { echo 'Team Management'; } ?></h3>
                         <p class="text-body-secondary mb-0">
-                            <?php if (function_exists('__')) { echo __('features.teams_desc'); } else { echo 'Invite team members with role-based access. Owners, admins, and members each have appropriate permissions.'; } ?>
+                            <?php if (function_exists('__')) { echo __('features.teams_desc_v2'); } else { echo 'Invite people to your organisation by email. Each one is an admin or a user. Admins manage members, organisation settings and API keys. Users create and manage their own links.'; } ?>
                         </p>
                     </div>
                 </div>

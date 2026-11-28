@@ -214,10 +214,7 @@ $unpublishConfirmAttr = htmlspecialchars('return confirm(' . $unpublishConfirmJs
         <?php if ($limitStatus['allowed'] === false) { ?>
         <div class="alert alert-warning" role="status">
             <i class="fas fa-triangle-exclamation" aria-hidden="true"></i>
-            <?php if (function_exists('__')) { echo __('linkspage.limit_reached'); } else { ?>
-            You have reached your plan's LinksPage limit<?php if ($limitStatus['limit'] !== null) { echo ' of ' . (int) $limitStatus['limit']; } ?>.
-            Please upgrade your plan to create more LinksPages.
-            <?php } ?>
+            <?php if (function_exists('__')) { echo __('linkspage.limit_reached_v2'); } else { echo 'You have reached your plan\'s LinksPage limit. To make room, delete a LinksPage you no longer need. Paid plans are coming and cannot be bought yet.'; } ?>
         </div>
         <?php } ?>
 

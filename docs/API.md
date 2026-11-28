@@ -115,15 +115,17 @@ Every successful reply is wrapped the same way:
     "meta": {
         "requestId": "…",
         "rateLimit": {
-            "limit": 5000,
-            "remaining": 4987,
+            "limit": 100,
+            "remaining": 59,
             "resetAt": "2026-09-08T12:00:00Z"
         }
     }
 }
 ```
 
-The `meta.rateLimit` block tells you where you stand without having to guess.
+In the `meta.rateLimit` block, `limit` is the daily limit that applies to your key, `remaining`
+is the smaller of what is left under the daily and per-minute limits, and `resetAt` is 60
+seconds after the check (not the time the daily allowance frees up).
 
 For XML instead, send `Accept: application/xml` or add `?format=xml` to the address.
 

@@ -12,8 +12,13 @@
  * Go2My.Link — Pricing Page (Component A)
  * ============================================================================
  *
- * Pricing placeholder page. Full pricing tiers and Stripe integration
- * will be added in Phase 9 (Billing & Subscriptions).
+ * Shows the Free plan and says paid plans are coming (#209, decision D-020).
+ * It shows no prices. It does not describe a statistics time window or limit
+ * the API by plan, because neither is enforced yet.
+ *
+ * The 50-link sentence names organisations only: createShortURL() checks the
+ * limit when a link is created for an organisation, and not for people in no
+ * organisation (the '[default]' organisation is resolved as unlimited).
  *
  * @package    Go2My.Link
  * @subpackage ComponentA
@@ -28,9 +33,9 @@ if (function_exists('__')) {
     $pageTitle = 'Pricing';
 }
 if (function_exists('__')) {
-    $pageDesc = __('pricing.description');
+    $pageDesc = __('pricing.description_v2');
 } else {
-    $pageDesc = 'Go2My.Link pricing plans — free and premium options.';
+    $pageDesc = 'The Go2My.Link Free plan. Paid plans are coming.';
 }
 ?>
 
@@ -43,13 +48,13 @@ if (function_exists('__')) {
             <?php if (function_exists('__')) { echo __('pricing.heading'); } else { echo 'Pricing'; } ?>
         </h1>
         <p class="lead text-body-secondary">
-            <?php if (function_exists('__')) { echo __('pricing.subtitle'); } else { echo 'Simple, transparent pricing for everyone.'; } ?>
+            <?php if (function_exists('__')) { echo __('pricing.subtitle_v2'); } else { echo 'The Free plan is available now. Paid plans are coming.'; } ?>
         </p>
     </div>
 </section>
 
 <!-- ====================================================================== -->
-<!-- Pricing Tiers Preview                                                   -->
+<!-- Plans                                                                   -->
 <!-- ====================================================================== -->
 <section class="py-5" aria-labelledby="tiers-heading">
     <div class="container">
@@ -58,89 +63,47 @@ if (function_exists('__')) {
         </h2>
         <div class="row g-4 justify-content-center">
 
-            <!-- Free Tier -->
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 border-0 shadow-sm">
+            <!-- Free plan -->
+            <div class="col-md-6 col-lg-5">
+                <div class="card h-100 border-primary shadow">
                     <div class="card-body text-center p-4">
-                        <h3 class="h5 text-body-secondary"><?php if (function_exists('__')) { echo __('pricing.tier_free'); } else { echo 'Free'; } ?></h3>
-                        <div class="display-5 fw-bold my-3">$0</div>
+                        <h3 class="h4"><?php if (function_exists('__')) { echo __('pricing.tier_free'); } else { echo 'Free'; } ?></h3>
                         <p class="text-body-secondary">
-                            <?php if (function_exists('__')) { echo __('pricing.tier_free_desc'); } else { echo 'Perfect for personal use and trying out the platform.'; } ?>
+                            <?php if (function_exists('__')) { echo __('pricing.free_desc_v2'); } else { echo 'For shortening and looking after your links.'; } ?>
                         </p>
                         <ul class="list-unstyled text-start mb-4">
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.free_feature_1'); } else { echo 'Unlimited short links'; } ?></li>
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.free_feature_2'); } else { echo 'Basic click analytics'; } ?></li>
+                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.free_limit_organisations'); } else { echo 'For organisations: new links can be created while fewer than 50 are switched on. A link past its end date still counts until it is switched off. The 50 are shared by all members.'; } ?></li>
+                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.free_statistics'); } else { echo 'Click statistics for your links'; } ?></li>
                             <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.free_feature_3'); } else { echo 'g2my.link short domain'; } ?></li>
                             <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.free_feature_linkspage'); } else { echo 'A link page on Lnks.Page'; } ?></li>
                         </ul>
-                        <a href="/" class="btn btn-outline-primary">
+                        <a href="/register" class="btn btn-primary">
                             <?php if (function_exists('__')) { echo __('pricing.get_started'); } else { echo 'Get Started Free'; } ?>
                         </a>
                     </div>
                 </div>
             </div>
 
-            <!-- Pro Tier -->
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 border-primary shadow">
-                    <div class="card-body text-center p-4">
-                        <h3 class="h5 text-primary"><?php if (function_exists('__')) { echo __('pricing.tier_pro'); } else { echo 'Pro'; } ?></h3>
-                        <div class="display-5 fw-bold my-3">
-                            <span class="text-body-secondary fs-6"><?php if (function_exists('__')) { echo __('pricing.coming_soon'); } else { echo 'Coming Soon'; } ?></span>
-                        </div>
-                        <p class="text-body-secondary">
-                            <?php if (function_exists('__')) { echo __('pricing.tier_pro_desc'); } else { echo 'For professionals and small teams who need more.'; } ?>
-                        </p>
-                        <ul class="list-unstyled text-start mb-4">
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.pro_feature_1'); } else { echo 'Everything in Free'; } ?></li>
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.pro_feature_2'); } else { echo 'Custom short domains'; } ?></li>
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.pro_feature_3'); } else { echo 'Advanced analytics'; } ?></li>
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.pro_feature_4'); } else { echo 'API access'; } ?></li>
-                        </ul>
-                        <button class="btn btn-primary" disabled>
-                            <?php if (function_exists('__')) { echo __('pricing.coming_soon'); } else { echo 'Coming Soon'; } ?>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Enterprise Tier -->
-            <div class="col-md-6 col-lg-4">
+            <!-- Paid plans: no names, no prices and no feature list (D-020) -->
+            <div class="col-md-6 col-lg-5">
                 <div class="card h-100 border-0 shadow-sm">
                     <div class="card-body text-center p-4">
-                        <h3 class="h5 text-body-secondary"><?php if (function_exists('__')) { echo __('pricing.tier_enterprise'); } else { echo 'Enterprise'; } ?></h3>
-                        <div class="display-5 fw-bold my-3">
-                            <span class="text-body-secondary fs-6"><?php if (function_exists('__')) { echo __('pricing.coming_soon'); } else { echo 'Coming Soon'; } ?></span>
-                        </div>
-                        <p class="text-body-secondary">
-                            <?php if (function_exists('__')) { echo __('pricing.tier_enterprise_desc'); } else { echo 'For organisations with advanced needs.'; } ?>
+                        <h3 class="h4"><?php if (function_exists('__')) { echo __('pricing.paid_heading'); } else { echo 'Paid plans'; } ?></h3>
+                        <p class="text-body-secondary mb-0">
+                            <?php if (function_exists('__')) { echo __('pricing.paid_text'); } else { echo 'Paid plans are coming. They cannot be bought yet.'; } ?>
                         </p>
-                        <ul class="list-unstyled text-start mb-4">
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.enterprise_feature_1'); } else { echo 'Everything in Pro'; } ?></li>
-                            <?php
-                            // #210: this line used to list "SSO / SAML integration"
-                            // (pricing.enterprise_feature_2), which is not built (#36). Removed
-                            // rather than reworded because PF-07 rebuilds this whole page from
-                            // the tier admin's own data; this is only the stop-gap until then.
-                            ?>
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.enterprise_feature_3'); } else { echo 'Dedicated support'; } ?></li>
-                            <li class="mb-2"><i class="fas fa-check text-success" aria-hidden="true"></i> <?php if (function_exists('__')) { echo __('pricing.enterprise_feature_4'); } else { echo 'Custom SLA'; } ?></li>
-                        </ul>
-                        <a href="/contact" class="btn btn-outline-primary">
-                            <?php if (function_exists('__')) { echo __('pricing.contact_sales'); } else { echo 'Contact Sales'; } ?>
-                        </a>
                     </div>
                 </div>
             </div>
 
         </div>
 
-        <!-- Coming Soon Notice -->
+        <!-- Using the service without an account -->
         <div class="row justify-content-center mt-5">
             <div class="col-lg-8 text-center">
-                <div class="alert alert-info" role="status">
+                <div class="alert alert-info" role="note">
                     <i class="fas fa-info-circle" aria-hidden="true"></i>
-                    <?php if (function_exists('__')) { echo __('pricing.phase9_notice'); } else { echo 'Detailed pricing and subscription management are coming in a future update. Anonymous URL shortening is free and unlimited (rate limits apply).'; } ?>
+                    <?php if (function_exists('__')) { echo __('pricing.anonymous_note'); } else { echo 'You can also shorten links on the home page without an account. Hourly and daily limits apply.'; } ?>
                 </div>
             </div>
         </div>

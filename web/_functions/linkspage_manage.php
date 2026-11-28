@@ -1325,22 +1325,22 @@ function g2ml_linkspageManageCreatePage(int $userUID, string $orgHandle, array $
         {
             if (function_exists('__'))
             {
-                $limitMessage = __('linkspage.error.page_limit_reached_with_limit', ['limit' => $limitCheck['limit']]);
+                $limitMessage = __('linkspage.error.page_limit_reached_with_limit_v2', ['limit' => $limitCheck['limit']]);
             }
             else
             {
-                $limitMessage = 'You have reached your plan\'s LinksPage limit of ' . $limitCheck['limit'] . '. Please upgrade your plan to create more LinksPages.';
+                $limitMessage = 'You have reached your plan\'s LinksPage limit of ' . $limitCheck['limit'] . '. To make room, delete a LinksPage you no longer need. Paid plans are coming and cannot be bought yet.';
             }
         }
         else
         {
             if (function_exists('__'))
             {
-                $limitMessage = __('linkspage.error.page_limit_reached_no_limit');
+                $limitMessage = __('linkspage.error.page_limit_reached_no_limit_v2');
             }
             else
             {
-                $limitMessage = 'You have reached your plan\'s LinksPage limit. Please upgrade your plan to create more LinksPages.';
+                $limitMessage = 'You have reached your plan\'s LinksPage limit. To make room, delete a LinksPage you no longer need. Paid plans are coming and cannot be bought yet.';
             }
         }
 

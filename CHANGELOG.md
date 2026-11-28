@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 💷 The pricing page says only what is true (2026-11-28)
+
+- 🐛 The pricing page shows the Free plan and says paid plans are coming, with no prices. Wrong
+  claims about plans, roles, statistics and API limits were corrected on the public pages, in the
+  help and in the API description (#209, decision D-020).
+- 🗄️ **On deploy:** apply seed `082_plans_and_pricing_translations.sql` (checklist row A37).
+
 ### 🔗 Dead short links explain themselves (2026-11-28)
 
 - 🐛 A short link that does not exist, has expired, has not started or is switched off now shows a

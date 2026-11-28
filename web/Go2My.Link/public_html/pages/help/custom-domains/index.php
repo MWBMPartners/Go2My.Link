@@ -151,7 +151,7 @@ if (function_exists('getSetting')) {
 
                     <div class="alert alert-info" role="alert">
                         <i class="fas fa-info-circle" aria-hidden="true"></i>
-                        <?php if (function_exists('__')) { echo __('help.custom_domains.s2_note_limit'); } else { echo 'Depending on your plan, there may be a limit on how many domains your organisation can add. If you reach it, the Add button will tell you your current limit rather than adding the domain.'; } ?>
+                        <?php if (function_exists('__')) { echo __('help.custom_domains.s2_note_limit_v2'); } else { echo 'Custom short domains are not part of the Free plan, and paid plans cannot be bought yet. If your plan does not allow another domain, you will see a message giving the limit when you click Add, and the domain is not added.'; } ?>
                     </div>
                 </section>
 

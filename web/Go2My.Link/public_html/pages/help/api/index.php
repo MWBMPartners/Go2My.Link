@@ -261,7 +261,7 @@ if (function_exists('__')) {
                     </h2>
 
                     <p>
-                        <?php if (function_exists('__')) { echo __('help.api.s6_p1'); } else { echo 'To keep the service fair and reliable for everyone, each key is limited in how many requests it can make: a short-term limit on requests per minute, and a longer-term limit on requests per day. The exact numbers depend on your organisation\'s plan.'; } ?>
+                        <?php if (function_exists('__')) { echo __('help.api.s6_p1_v2'); } else { echo 'To keep the service fair and reliable for everyone, there are limits on how many requests can be made. The per-minute limit is counted for each key separately. The daily limit is usually one allowance shared by all of your organisation\'s keys, and its size usually depends on the organisation\'s plan, so creating more keys does not give you more requests a day. A key that has been given its own daily limit is counted on its own.'; } ?>
                     </p>
 
                     <p class="mb-0">

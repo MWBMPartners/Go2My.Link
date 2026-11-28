@@ -59,7 +59,7 @@ if (function_exists('__')) {
                     <?php if (function_exists('__')) { echo __('about.mission_heading'); } else { echo 'Our Mission'; } ?>
                 </h2>
                 <p class="text-body-secondary">
-                    <?php if (function_exists('__')) { echo __('about.mission_text'); } else { echo 'Go2My.Link was built to make link management simple, secure, and powerful. Whether you\'re sharing a single URL or managing thousands of links across an organisation, we provide the tools you need to shorten, track, and manage your links with confidence.'; } ?>
+                    <?php if (function_exists('__')) { echo __('about.mission_text_v2'); } else { echo 'Go2My.Link was built to make link management simple, secure, and powerful. Whether you\'re sharing a single web address or looking after links with your organisation, we provide tools to shorten, track, and manage your links with confidence.'; } ?>
                 </p>
             </div>
         </div>
@@ -83,7 +83,7 @@ if (function_exists('__')) {
                             <?php if (function_exists('__')) { echo __('about.offer_shorten'); } else { echo 'URL Shortening'; } ?>
                         </h3>
                         <p class="text-body-secondary mb-0">
-                            <?php if (function_exists('__')) { echo __('about.offer_shorten_desc'); } else { echo 'Create clean, memorable short links from long URLs. Use our default g2my.link domain or bring your own custom domain.'; } ?>
+                            <?php if (function_exists('__')) { echo __('about.offer_shorten_desc_v2'); } else { echo 'Create clean, memorable short links from long web addresses on our g2my.link domain. Using your own domain is not part of the Free plan.'; } ?>
                         </p>
                     </div>
                 </div>
@@ -115,7 +115,7 @@ if (function_exists('__')) {
                             <?php if (function_exists('__')) { echo __('about.offer_orgs'); } else { echo 'Organisation Management'; } ?>
                         </h3>
                         <p class="text-body-secondary mb-0">
-                            <?php if (function_exists('__')) { echo __('about.offer_orgs_desc'); } else { echo 'Manage links across teams with role-based access, custom domains per organisation, and shared link libraries.'; } ?>
+                            <?php if (function_exists('__')) { echo __('about.offer_orgs_desc_v2'); } else { echo 'Work as a team with two roles, admin and user. Members can see click statistics for the whole organisation.'; } ?>
                         </p>
                     </div>
                 </div>

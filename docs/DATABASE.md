@@ -243,6 +243,12 @@ Some features are only on some plans. There are two ways the code decides who ge
 | **Older features** (link limits, analytics, API access, custom HTML …) | A fixed column on `tblSubscriptionTiers`, such as `hasAnalytics` or `maxLinks` | `g2ml_canUseFeature()` / `g2ml_checkLimit()` in `web/_functions/entitlements.php` |
 | **New features** (everything the LinksPage programme adds) | One row per feature in `tblFeatures` (the feature registry), plus one row per plan in `tblTierFeatures` | `g2ml_featureAllowed()` / `g2ml_featureLimit()` in the same file |
 
+What the older limits do at launch (#209, checked 2026-11-28):
+
+- `maxLinks` (50 on Free) is checked only when `createShortURL()` makes a link for an organisation. It counts links that are switched on (`isActive = 1`), including ones past their end date. People in no organisation (the `[default]` organisation) and global administrators are not limited by plan. Turning an old link back on is not checked.
+- `maxCustomDomains` (0 on Free) is checked when a short domain is added.
+- `hasAnalytics` and `hasAPIAccess` (both off on Free in the seed) are **not checked**: a Free organisation gets the statistics pages and can create API keys. The 30-day statistics window is not built. The pricing page therefore does not mention either (decision D-020).
+
 New features deliberately do **not** get a new column. Adding a column for every feature means a schema change and a deploy each time; the registry means the owner moves a feature between plans by changing **one row**, with no code change:
 
 ```sql

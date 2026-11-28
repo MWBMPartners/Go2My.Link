@@ -895,11 +895,22 @@ function createShortURL(string $longURL, array $options = []): array
 
         if ($linkLimitCheck['allowed'] === false)
         {
+            // #209: paid plans cannot be bought yet (D-020), so the message
+            // must not tell anyone to upgrade.
+            if (function_exists('__'))
+            {
+                $limitMessage = __('links.error_plan_limit');
+            }
+            else
+            {
+                $limitMessage = 'You have reached your plan\'s link limit. To make room, turn off a link that is no longer needed (a link past its end date still counts until it is turned off). Paid plans are coming and cannot be bought yet.';
+            }
+
             return [
                 'success'      => false,
                 'shortCode'    => null,
                 'shortURL'     => null,
-                'error'        => 'You have reached your plan\'s link limit. Please upgrade to create more short links.',
+                'error'        => $limitMessage,
                 'limitReached' => true,
             ];
         }
