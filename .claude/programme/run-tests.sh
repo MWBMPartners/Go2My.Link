@@ -10,11 +10,13 @@
 #      files only" loop because it also catches deprecation warnings, which
 #      are the whole point of testing newer versions, and it takes seconds.
 #   2. the unit suite (tests/run.php)
-#   3. the database suite (tests/run_integration.php) against ONE fresh MySQL
-#      8.4 container created with utf8mb4_unicode_ci (NO MYSQL_DATABASE, so the
-#      schema's own CREATE DATABASE decides the collation — the fault behind
-#      issue #196). Before each version the database is dropped and re-imported
-#      (schema, procedures, seeds) so every version starts from a clean state.
+#   3. the database suite (tests/run_integration.php), on each database
+#      engine in turn: a fresh MySQL 8.4 container, then a fresh MariaDB 11.4
+#      container (the live host runs MariaDB; added for #330). Each is created
+#      with utf8mb4_unicode_ci and NO MYSQL_DATABASE, so the schema's own
+#      CREATE DATABASE decides the collation (the fault behind issue #196).
+#      Before each version the database is dropped and re-imported (schema,
+#      procedures, seeds) so every version starts from a clean state.
 #
 # PHP VERSIONS
 #   G2ML_PHP_VERSIONS  versions to test, separated by spaces.
@@ -36,7 +38,13 @@
 #                           into words). Use it where host names do not
 #                           resolve, for example in a cloud container:
 #                           G2ML_DOCKER_EXTRA_ARGS="--add-host example.com:93.184.215.14"
-#   G2ML_TEST_DB_CONTAINER  name of the throwaway MySQL container.
+#   G2ML_TEST_DB_ENGINES    database images to run the database suite on,
+#                           separated by spaces, one after the other.
+#                           Default: "mysql:8.4 mariadb:11.4". An image whose
+#                           name starts with "mariadb:" is driven with the
+#                           mariadb client; any other with the mysql client.
+#                           MariaDB only: G2ML_TEST_DB_ENGINES=mariadb:11.4
+#   G2ML_TEST_DB_CONTAINER  name of the throwaway database container.
 #                           Default: g2ml-test-mysql
 #   G2ML_TEST_NET           name of the Docker network it runs on.
 #                           Default: g2ml-test-net
@@ -65,11 +73,12 @@ MODE="${1:-all}"
 PHP_VERSIONS="${G2ML_PHP_VERSIONS:-8.4 8.5 8.6}"
 ADVISORY_VERSIONS="${G2ML_PHP_ADVISORY-}"
 EXTRA_ARGS="${G2ML_DOCKER_EXTRA_ARGS:-}"
+DB_ENGINES="${G2ML_TEST_DB_ENGINES:-mysql:8.4 mariadb:11.4}"
 NET="${G2ML_TEST_NET:-g2ml-test-net}"
 DB="${G2ML_TEST_DB_CONTAINER:-g2ml-test-mysql}"
 LOG_PREFIX="/tmp/${DB}"
-# The MySQL image keeps its data in a separate storage area (an anonymous
-# Docker volume). A plain "docker rm -f" removes the container but LEAVES that
+# The MySQL and MariaDB images keep their data in a separate storage area
+# (an anonymous Docker volume). A plain "docker rm -f" removes the container but LEAVES that
 # volume behind, holding a whole test database, and nothing on screen says so.
 # Every removal below therefore uses "docker rm -f -v", which takes the volume
 # with it. Found 2026-09-25: one night's builds had left seven such volumes,
@@ -157,81 +166,118 @@ if [ "${MODE}" = "unit" ] || [ "${MODE}" = "all" ]; then
 fi
 
 if [ "${MODE}" = "integration" ] || [ "${MODE}" = "all" ]; then
-    echo "=== database suite setup (MySQL 8.4, utf8mb4_unicode_ci) ==="
-    docker rm -f -v "${DB}" >/dev/null 2>&1
-    docker network create "${NET}" >/dev/null 2>&1
-    # If the run is stopped (Ctrl-C or kill), remove the MySQL container, its
-    # storage volume and the network first. Exit code 130 is the usual one
-    # for "stopped by Ctrl-C"; it is non-zero, so nobody reads it as a pass.
-    trap 'docker rm -f -v "${DB}" >/dev/null 2>&1; docker network rm "${NET}" >/dev/null 2>&1; exit 130' INT TERM
-    docker run -d --name "${DB}" --network "${NET}" -e MYSQL_ALLOW_EMPTY_PASSWORD=yes \
-        mysql:8.4 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci >/dev/null
-    # Wait for the FINAL server. The image first runs a temporary server (on
-    # port 0) to initialise itself, answers pings, then restarts; importing
-    # during that window fails with "Can't connect". The final server's
-    # "Version: ... port: 3306" log line is the reliable signal.
-    # If MySQL never becomes ready, DB_VERSIONS is emptied so the loop below
-    # runs nothing, OVERALL becomes 1, and the script still cleans up and
-    # prints its OVERALL line.
-    DB_VERSIONS="${READY_VERSIONS}"
-    TRIES=0
-    until docker logs "${DB}" 2>&1 | grep -q "Version:.*port: 3306"; do
-        TRIES=$((TRIES + 1))
-        if [ "${TRIES}" -gt 120 ]; then
-            echo "MySQL did not start"
-            DB_VERSIONS=""
-            OVERALL=1
-            break
-        fi
-        sleep 2
-    done
-    if [ -n "${DB_VERSIONS}" ]; then
+    for ENGINE in ${DB_ENGINES}; do
+        # The two server families name their command-line client differently.
+        case "${ENGINE}" in
+            mariadb:*)
+                CLIENT="mariadb"
+                ;;
+            *)
+                CLIENT="mysql"
+                ;;
+        esac
+        TAG=$(printf '%s' "${ENGINE}" | tr ':' '-')
+        echo "=== database suite setup (${ENGINE}, utf8mb4_unicode_ci) ==="
+        docker rm -f -v "${DB}" >/dev/null 2>&1
+        docker network create "${NET}" >/dev/null 2>&1
+        # If the run is stopped (Ctrl-C or kill), remove the database container, its
+        # storage volume and the network first. Exit code 130 is the usual one
+        # for "stopped by Ctrl-C"; it is non-zero, so nobody reads it as a pass.
+        trap 'docker rm -f -v "${DB}" >/dev/null 2>&1; docker network rm "${NET}" >/dev/null 2>&1; exit 130' INT TERM
+        # Each image reads its own "empty root password" variable and ignores the
+        # other one.
+        docker run -d --name "${DB}" --network "${NET}" -e MYSQL_ALLOW_EMPTY_PASSWORD=yes \
+            -e MARIADB_ALLOW_EMPTY_ROOT_PASSWORD=yes \
+            "${ENGINE}" --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci >/dev/null
+        # Wait for the FINAL server. The image first runs a temporary server (on
+        # port 0) to initialise itself, answers pings, then restarts; importing
+        # during that window fails with "Can't connect". The final server's
+        # "Version: ... port: 3306" log line is the reliable signal; both MySQL
+        # and MariaDB print it. (A looser "port: 3306" would also match MySQL's
+        # "port: 33060" line for its X Protocol listener.)
+        # If the server never becomes ready, DB_VERSIONS is emptied so the loop
+        # below runs nothing, OVERALL becomes 1, and the script still cleans up and
+        # prints its OVERALL line.
+        DB_VERSIONS="${READY_VERSIONS}"
         TRIES=0
-        until docker exec "${DB}" mysql -uroot -e "SELECT 1" >/dev/null 2>&1; do
+        until docker logs "${DB}" 2>&1 | grep -q "Version:.*port: 3306"; do
             TRIES=$((TRIES + 1))
             if [ "${TRIES}" -gt 120 ]; then
-                echo "MySQL stopped answering after it said it was ready"
+                echo "${ENGINE} did not start"
                 DB_VERSIONS=""
                 OVERALL=1
                 break
             fi
-            sleep 1
+            sleep 2
         done
-    fi
-    for V in ${DB_VERSIONS}; do
-        IMAGE="g2ml-php:${V}-test"
-        echo "=== database suite (PHP ${V}) ==="
-        # Start each version from a clean database. The schema file creates
-        # the database itself, so the collation still comes from the server.
-        docker exec "${DB}" mysql -uroot -e "DROP DATABASE IF EXISTS mwtools_Go2MyLink" > "${LOG_PREFIX}_import_${V}.txt" 2>&1
-        IMPORT_FAIL=0
-        for DIR in schema procedures seeds; do
-            for FILE in $(find "web/_sql/${DIR}" -maxdepth 1 -name "*.sql" | sort); do
-                if ! docker exec -i "${DB}" mysql -uroot < "${FILE}" > "${LOG_PREFIX}_import_${V}.txt" 2>&1; then
-                    echo "IMPORT FAIL ${FILE}: $(head -3 "${LOG_PREFIX}_import_${V}.txt")"
-                    IMPORT_FAIL=1
+        if [ -n "${DB_VERSIONS}" ]; then
+            TRIES=0
+            until docker exec "${DB}" "${CLIENT}" -uroot -e "SELECT 1" >/dev/null 2>&1; do
+                TRIES=$((TRIES + 1))
+                if [ "${TRIES}" -gt 120 ]; then
+                    echo "${ENGINE} stopped answering after it said it was ready"
+                    DB_VERSIONS=""
+                    OVERALL=1
+                    break
                 fi
+                sleep 1
             done
+        fi
+        for V in ${DB_VERSIONS}; do
+            IMAGE="g2ml-php:${V}-test"
+            echo "=== database suite (PHP ${V}, ${ENGINE}) ==="
+            # Start each version from a clean database. The schema file creates
+            # the database itself, so the collation still comes from the server.
+            docker exec "${DB}" "${CLIENT}" -uroot -e "DROP DATABASE IF EXISTS mwtools_Go2MyLink" > "${LOG_PREFIX}_import_${V}_${TAG}.txt" 2>&1
+            IMPORT_FAIL=0
+            for DIR in schema procedures seeds; do
+                for FILE in $(find "web/_sql/${DIR}" -maxdepth 1 -name "*.sql" | sort); do
+                    if ! docker exec -i "${DB}" "${CLIENT}" -uroot < "${FILE}" > "${LOG_PREFIX}_import_${V}_${TAG}.txt" 2>&1; then
+                        echo "IMPORT FAIL ${FILE}: $(head -3 "${LOG_PREFIX}_import_${V}_${TAG}.txt")"
+                        IMPORT_FAIL=1
+                    fi
+                done
+            done
+            if [ "${IMPORT_FAIL}" -ne 0 ]; then
+                record_failure "${V}"
+            fi
+            # shellcheck disable=SC2086
+            docker run --rm ${EXTRA_ARGS} --network "${NET}" -v "${REPO}":/app:ro -w /app \
+                -e G2ML_TEST_DB_HOST="${DB}" -e G2ML_TEST_DB_PORT=3306 -e G2ML_TEST_DB_NAME=mwtools_Go2MyLink \
+                -e G2ML_TEST_DB_USER=root -e G2ML_TEST_DB_PASS= \
+                "${IMAGE}" php tests/run_integration.php > "${LOG_PREFIX}_integ_${V}_${TAG}.txt" 2>&1
+            INTEG_EXIT=$?
+            # The suite's first line names the server it reached. A run that
+            # could not connect prints "SKIPPED (no test DB)" and exits 0, so
+            # without this check it would count as a pass (#330).
+            case "${ENGINE}" in
+                mariadb:*)
+                    SERVER_PATTERN="^Database server: .*MariaDB"
+                    ;;
+                *)
+                    SERVER_PATTERN="^Database server: [0-9]"
+                    ;;
+            esac
+            if ! grep -q "${SERVER_PATTERN}" "${LOG_PREFIX}_integ_${V}_${TAG}.txt"; then
+                echo "the database suite did not run against ${ENGINE} (no matching 'Database server:' line)"
+                INTEG_EXIT=1
+            elif [ "${CLIENT}" = "mysql" ]; then
+                if grep -q "^Database server: .*MariaDB" "${LOG_PREFIX}_integ_${V}_${TAG}.txt"; then
+                    echo "the database suite reached a MariaDB server, not ${ENGINE}"
+                    INTEG_EXIT=1
+                fi
+            fi
+            grep -E "^(FAIL|ERROR|DEPRECATED|(PHP )?(Warning|Notice|Fatal error|Deprecated):)|SKIPPED" "${LOG_PREFIX}_integ_${V}_${TAG}.txt" | head -40
+            tail -1 "${LOG_PREFIX}_integ_${V}_${TAG}.txt"
+            echo "integration exit=${INTEG_EXIT} (PHP ${V}, ${ENGINE})"
+            if [ "${INTEG_EXIT}" -ne 0 ]; then
+                record_failure "${V}"
+            fi
         done
-        if [ "${IMPORT_FAIL}" -ne 0 ]; then
-            record_failure "${V}"
-        fi
-        # shellcheck disable=SC2086
-        docker run --rm ${EXTRA_ARGS} --network "${NET}" -v "${REPO}":/app:ro -w /app \
-            -e G2ML_TEST_DB_HOST="${DB}" -e G2ML_TEST_DB_PORT=3306 -e G2ML_TEST_DB_NAME=mwtools_Go2MyLink \
-            -e G2ML_TEST_DB_USER=root -e G2ML_TEST_DB_PASS= \
-            "${IMAGE}" php tests/run_integration.php > "${LOG_PREFIX}_integ_${V}.txt" 2>&1
-        INTEG_EXIT=$?
-        grep -E "^(FAIL|ERROR|DEPRECATED|(PHP )?(Warning|Notice|Fatal error|Deprecated):)|SKIPPED" "${LOG_PREFIX}_integ_${V}.txt" | head -40
-        tail -1 "${LOG_PREFIX}_integ_${V}.txt"
-        echo "integration exit=${INTEG_EXIT}"
-        if [ "${INTEG_EXIT}" -ne 0 ]; then
-            record_failure "${V}"
-        fi
+        docker rm -f -v "${DB}" >/dev/null 2>&1
+        docker network rm "${NET}" >/dev/null 2>&1
+        trap - INT TERM
     done
-    docker rm -f -v "${DB}" >/dev/null 2>&1
-    docker network rm "${NET}" >/dev/null 2>&1
-    trap - INT TERM
 fi
 
 echo "=== OVERALL exit=${OVERALL} ==="

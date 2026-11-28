@@ -17,7 +17,9 @@
  *
  *   - A test registrar:   test('name', function () { ... });
  *   - Assertion helpers:  assert_true, assert_false, assert_same,
- *                         assert_not_same, assert_throws, assert_contains.
+ *                         assert_not_same, assert_throws, assert_contains,
+ *                         assert_json_same (JSON read back from the
+ *                         database, compared as data — #330).
  *   - A results collector accessed via g2ml_test_run_all().
  *
  * Each registered test is a closure. Assertions throw a G2mlAssertionError on
@@ -336,6 +338,81 @@ function assert_contains(string $needle, string $haystack, string $message = '')
     {
         $detail = 'Expected to find ' . g2ml_test_export($needle)
             . ' within ' . g2ml_test_export($haystack);
+        throw new G2mlAssertionError(g2ml_test_format_message($detail, $message));
+    }
+}
+
+/**
+ * Put the keys of every JSON object in a decoded value into alphabetical
+ * order, at every depth. A JSON list (an array whose keys are 0, 1, 2 ...)
+ * keeps its order, because the order of a list is part of its meaning.
+ *
+ * @param  mixed $value  A value returned by json_decode(..., true).
+ * @return mixed
+ */
+function g2ml_test_sort_json_keys(mixed $value): mixed
+{
+    if (!is_array($value))
+    {
+        return $value;
+    }
+
+    foreach ($value as $key => $item)
+    {
+        $value[$key] = g2ml_test_sort_json_keys($item);
+    }
+
+    if (!array_is_list($value))
+    {
+        ksort($value, SORT_STRING);
+    }
+
+    return $value;
+}
+
+/**
+ * Assert that a JSON text read back from the database holds exactly the
+ * expected keys and values, with the same types.
+ *
+ * Why not compare the text itself (#330): the two database engines give a
+ * JSON column back differently. MySQL rewrites what it stores into its own
+ * form (a space after each ':' and ',', and the keys of each object put in
+ * order of length and then alphabet). MariaDB, which the live host runs,
+ * stores the text exactly as PHP wrote it. Both hold the same data, so this
+ * compares the decoded data instead: every key, every value and every type
+ * must match, and nothing extra may be present. Only the order of an
+ * object's keys, which JSON itself says carries no meaning, is ignored.
+ *
+ * @param  array<mixed>  $expected  The data that should be stored.
+ * @param  mixed         $actual    The column value as read back (a string).
+ * @param  string        $message
+ * @return void
+ */
+function assert_json_same(array $expected, mixed $actual, string $message = ''): void
+{
+    if (!is_string($actual))
+    {
+        $detail = 'Expected a JSON text, got ' . g2ml_test_export($actual);
+        throw new G2mlAssertionError(g2ml_test_format_message($detail, $message));
+    }
+
+    try
+    {
+        $decoded = json_decode($actual, true, 512, JSON_THROW_ON_ERROR);
+    }
+    catch (JsonException $invalid)
+    {
+        $detail = 'Expected valid JSON, got ' . g2ml_test_export($actual) . ' (' . $invalid->getMessage() . ')';
+        throw new G2mlAssertionError(g2ml_test_format_message($detail, $message));
+    }
+
+    $sortedExpected = g2ml_test_sort_json_keys($expected);
+    $sortedActual   = g2ml_test_sort_json_keys($decoded);
+
+    if ($sortedExpected !== $sortedActual)
+    {
+        $detail = 'Expected JSON holding ' . json_encode($sortedExpected)
+            . ', got ' . g2ml_test_export($actual);
         throw new G2mlAssertionError(g2ml_test_format_message($detail, $message));
     }
 }

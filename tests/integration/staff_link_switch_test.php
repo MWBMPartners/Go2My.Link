@@ -756,7 +756,9 @@ test('#325: migration 046 adds the columns and the check to an older table, and 
     assert_same([4, 1], $count(), 'A fresh install has the columns and the check');
 
     // Make the table look as it did before #325.
-    g2ml_stafflink_test_run('ALTER TABLE `tblShortURLs` DROP CHECK `CK_url_staff_disabled_off`');
+    // DROP CONSTRAINT works on both engines; MariaDB, which the live host
+    // runs, does not know DROP CHECK (#330).
+    g2ml_stafflink_test_run('ALTER TABLE `tblShortURLs` DROP CONSTRAINT `CK_url_staff_disabled_off`');
     g2ml_stafflink_test_run('ALTER TABLE `tblShortURLs` DROP COLUMN `staffDisabledAt`, DROP COLUMN `staffDisabledByUserUID`, DROP COLUMN `staffDisableReason`, DROP COLUMN `staffPreviousIsActive`');
     assert_same([0, 0], $count());
 

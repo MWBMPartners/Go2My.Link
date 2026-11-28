@@ -474,9 +474,24 @@ function g2ml_apiLogRequest(?int $apiKeyUID, string $endpoint, string $httpMetho
     if ($requestBody !== null)
     {
         $redactedBody = g2ml_apiRedactRequestBody($requestBody);
-        $encodedCandidate = json_encode($redactedBody);
 
-        if ($encodedCandidate !== false)
+        // How deeply the stored JSON may be nested (#330). MariaDB, which the
+        // live host runs, refuses a JSON value nested 32 or more levels deep
+        // in a JSON column (it fails the column's JSON_VALID check); MySQL's
+        // limit is 100. Measured on MariaDB 11.4 and MySQL 8.4. A caller
+        // can send a body nested as deeply as it likes, and a refused INSERT
+        // would drop the audit row — and with it the count the rate limiter
+        // and the failed-sign-in backoff rely on. json_encode() gives false
+        // (JSON_ERROR_DEPTH) for anything deeper than this, so such a body is
+        // replaced by a short note below and the row is still written.
+        $maximumStoredDepth = 31;
+        $encodedCandidate   = json_encode($redactedBody, 0, $maximumStoredDepth);
+
+        if ($encodedCandidate === false && json_last_error() === JSON_ERROR_DEPTH)
+        {
+            $encodedBody = '{"_note":"request body omitted from audit log (nested too deeply)"}';
+        }
+        elseif ($encodedCandidate !== false)
         {
             // The requestBody column is JSON, so it must stay VALID JSON — an
             // over-length body is replaced with a small valid-JSON marker

@@ -69,7 +69,9 @@
 --
 -- NO SPECIAL PRIVILEGES. It uses plain ALTER TABLE, UPDATE and SELECT, run
 -- through PREPARE / EXECUTE, and creates no stored procedure, trigger or
--- function. Tested on MySQL 8.4; written for MySQL 8.0 or newer and for
+-- function. Tested on MySQL 8.4 and on MariaDB 11.4, the engine the live
+-- host runs (#330: the database suite runs this file against an old-shaped
+-- table on both); written for MySQL 8.0 or newer and for
 -- MariaDB 10.2 or newer (both enforce the check from those versions; an older
 -- server accepts the check and ignores it).
 --

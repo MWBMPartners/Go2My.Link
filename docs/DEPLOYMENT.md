@@ -115,7 +115,7 @@ SFTP to Dreamhost). Manual VS Code FTP-Sync is no longer the deployment path.
 | 🔍 `ci.yml` | Push to `main`/`alpha`/`beta`, all PRs | Frontend + Backend gates (PHPStan, PHPCS) |
 | 🔍 `php-lint.yml` | Push / PR | PHP syntax validation |
 | 🧹 `lint.yml` | Changes under `.github/workflows/**` | `actionlint` workflow linting |
-| 🐬 `mariadb-import.yml` | Push / PR touching `web/_sql/**`, plus manual dispatch | MariaDB 11.4 import check for schema/procedures/seeds (**advisory, not required — see #183**) |
+| 🐬 `mariadb-import.yml` | Push / PR touching `web/**` or `tests/**`, plus manual dispatch | MariaDB 11.4: imports schema/procedures/seeds, then runs the database suite on PHP 8.4 (#330) (**advisory, not required — see #183**) |
 | 🚢 `sftp-deploy.yml` | Push to `main`/`alpha`/`beta` touching `web/**`; manual dispatch | SFTP deployment (**gated by `vars.SFTP_ENABLED`**) |
 | 🏷️ `release.yml` | Tag push | Per-component releases |
 
@@ -530,7 +530,7 @@ Do these three steps, in this order:
    accept, confirmed by importing the full schema into a throwaway MariaDB
    11.4 container with 0 errors. `.github/workflows/mariadb-import.yml`
    checks the fresh-install form of this table (schema `036`) on MariaDB
-   11.4 on every change under `web/_sql/`. It does not run migration `020`
+   11.4 on every change under `web/` or `tests/`. It does not run migration `020`
    itself, and it is a warning check, not a required one — so a real install
    still needs the manual check above after running `020`. If the table
    is still missing after running `020` on a real install, that install most

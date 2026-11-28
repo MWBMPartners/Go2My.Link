@@ -251,3 +251,91 @@ test('apiLogRequest: oversized-endpoint 401s are logged and DO count toward the 
     loadSettingsCache();
     g2ml_apilog_test_clear($db, $ip);
 });
+
+// ============================================================================
+// (3) #330 — a deeply nested request body must not drop the audit row.
+//
+// The requestBody column is JSON. MariaDB, which the live host runs, refuses
+// a JSON value nested 32 or more levels deep (it fails the column's own
+// JSON_VALID check, error 4025); MySQL refuses one deeper than 100 (error
+// 3157). Before the fix, a body nested that deeply — which any caller can
+// send — made the INSERT fail, so the request was never logged and never
+// counted by the rate limiter or the failed-sign-in backoff. Now the body is
+// replaced by a short note when it is too deeply nested, and the row is kept.
+// ============================================================================
+
+/**
+ * Build a request body nested $levels levels deep, counting the body itself
+ * as the first level: ['a' => ['a' => ... ['a' => 'end'] ...]].
+ *
+ * @param  int $levels
+ * @return array<string, mixed>
+ */
+function g2ml_apilog_test_nested_body(int $levels): array
+{
+    $body = ['a' => 'end'];
+
+    for ($level = 1; $level < $levels; $level++)
+    {
+        $body = ['a' => $body];
+    }
+
+    return $body;
+}
+
+/**
+ * Read back the stored request body for an IP (the newest row).
+ *
+ * @param  mysqli $db
+ * @param  string $ipAddress
+ * @return string|null
+ */
+function g2ml_apilog_test_body(mysqli $db, string $ipAddress): ?string
+{
+    $statement = mysqli_prepare($db, 'SELECT `requestBody` FROM `tblAPIRequestLog` WHERE `ipAddress` = ? ORDER BY `requestUID` DESC LIMIT 1');
+    mysqli_stmt_bind_param($statement, 's', $ipAddress);
+    mysqli_stmt_execute($statement);
+    $result = mysqli_stmt_get_result($statement);
+    $row    = mysqli_fetch_assoc($result);
+    mysqli_free_result($result);
+    mysqli_stmt_close($statement);
+
+    if ($row === null)
+    {
+        return null;
+    }
+
+    return $row['requestBody'];
+}
+
+test('apiLogRequest (#330): a body nested too deeply for the JSON column is replaced by a note, and the row is still written', function () use ($db): void
+{
+    $ip = '198.51.100.13';
+    g2ml_apilog_test_clear($db, $ip);
+    loadSettingsCache();
+
+    // 31 levels: the deepest MariaDB accepts. Stored in full on both engines.
+    g2ml_apiLogRequest(null, '/api/v1/urls', 'POST', 401, 3, $ip, 'depth-UA', g2ml_apilog_test_nested_body(31));
+    $stored = g2ml_apilog_test_read($db, $ip);
+    assert_same(1, $stored['cnt'], 'A body 31 levels deep is logged');
+    assert_json_same(g2ml_apilog_test_nested_body(31), g2ml_apilog_test_body($db, $ip), 'A body 31 levels deep is stored in full');
+
+    // 32 levels (MariaDB refuses it), 40, and 120 (MySQL refuses that too).
+    $expectedRows = 1;
+
+    foreach ([32, 40, 120] as $levels)
+    {
+        g2ml_apiLogRequest(null, '/api/v1/urls', 'POST', 401, 3, $ip, 'depth-UA', g2ml_apilog_test_nested_body($levels));
+        $expectedRows = $expectedRows + 1;
+
+        $stored = g2ml_apilog_test_read($db, $ip);
+        assert_same($expectedRows, $stored['cnt'], 'A body ' . $levels . ' levels deep must still write its audit row, so the request is counted');
+        assert_json_same(
+            ['_note' => 'request body omitted from audit log (nested too deeply)'],
+            g2ml_apilog_test_body($db, $ip),
+            'A body ' . $levels . ' levels deep is replaced by a short note'
+        );
+    }
+
+    g2ml_apilog_test_clear($db, $ip);
+});

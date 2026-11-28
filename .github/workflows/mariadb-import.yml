@@ -29,35 +29,50 @@
 # repeated here because the container is started differently and could in
 # principle drift from it. Does the schema go in cleanly, with the right
 # collation, on the engine the live site actually runs — that is what this
-# workflow checks.
+# workflow checks first.
 #
-# WHAT THIS WORKFLOW CANNOT DO. It does not run the PHP unit or integration
-# test suites (those already run against MySQL 8 in ci.yml); it only proves
-# the import, not the application code. It does NOT import web/_sql/migrations
-# at all — only web/_sql/schema, web/_sql/procedures and web/_sql/seeds (the
-# fresh-install files) — so a MariaDB-only fault written into a migration
-# file (the way an already-deployed database gets upgraded) is not caught
-# here and still has to be checked on MariaDB by hand before it ships. It is
-# a warning check, not a required one, and it must never be added to the
-# "Protect main branch" ruleset's list of required status checks. The reason
-# is the `paths:` filter below: this workflow only runs when a change
-# touches web/_sql/**, so on every other pull request GitHub skips it
-# entirely rather than running it — and GitHub leaves a required check from a
-# skipped workflow stuck at "Pending" forever instead of marking it not
-# applicable. Making this workflow required would therefore block every
-# pull request that does not touch the SQL from ever merging, for a check
-# that was never going to run. Treat a red result here as a hold-everything
-# signal regardless of that: it means a fresh install cannot complete on
-# Dreamhost. It also only proves the schema against MariaDB 11.4, not
-# whatever exact point release Dreamhost happens to run — a real import
-# against the live database is still worth doing once before a production
-# cutover (see docs/DEPLOYMENT.md). One more limit, stated plainly rather
-# than left to be found out later: as of 2026-09-21 this workflow has only
-# ever been run locally, against Docker on the lead's own machine — it has
-# NOT yet run on a real GitHub-hosted runner. The `docker run` approach it
-# uses to sidestep #187's `services:`-container failure is expected to work
-# the same way there, but that is an expectation, not something confirmed
-# yet.
+# THEN IT RUNS THE DATABASE SUITE ON MARIADB (#330). The same
+# tests/run_integration.php that ci.yml runs against MySQL 8 is run here,
+# on PHP 8.4, against the MariaDB database it has just imported. Until #330
+# the PHP code had only ever been tested against MySQL, and running it on
+# MariaDB found real faults that a schema import alone cannot show: for
+# example, MariaDB refuses a JSON value nested 32 or more levels deep (MySQL
+# allows 100), which let a deeply nested API request body drop its own audit
+# row. The suite prints the server it connected to ("Database server: ...")
+# and the step below fails unless that line names MariaDB, so a run that
+# could not reach the database, or reached the wrong one, never passes
+# quietly. The same suite can be run on a developer's machine against both
+# engines with .claude/programme/run-tests.sh (see tests/README.md).
+#
+# WHAT THIS WORKFLOW CANNOT DO. It runs the database suite on one PHP
+# version (8.4, the lowest supported) only; ci.yml runs the suite on
+# MySQL. It does NOT import web/_sql/migrations as a whole — only
+# web/_sql/schema, web/_sql/procedures and web/_sql/seeds (the fresh-install
+# files). The database suite does run two migrations (044 and 046)
+# against old-shaped tables, but a MariaDB-only fault in any other
+# migration file (the way an already-deployed database gets upgraded) is
+# not caught here and still has to be checked on MariaDB by hand before it
+# ships. It is a warning check, not a required one, and it must never be
+# added to the "Protect main branch" ruleset's list of required status
+# checks. The reason is the `paths:` filter below: this workflow only runs
+# when a change touches web/** or tests/** (or this file), so on every other
+# pull request GitHub skips it entirely rather than running it — and GitHub
+# leaves a required check from a skipped workflow stuck at "Pending" forever
+# instead of marking it not applicable. Making this workflow required would
+# therefore block every pull request that touches neither from ever merging,
+# for a check that was never going to run. Treat a red result here as a
+# hold-everything signal regardless of that: it means a fresh install, or
+# the code itself, does not work on the engine the live site runs. It also
+# only proves MariaDB 11.4, not whatever exact point release Dreamhost
+# happens to run — a real import against the live database is still worth
+# doing once before a production cutover (see docs/DEPLOYMENT.md).
+#
+# THE `docker run` APPROACH WORKS ON GITHUB'S OWN RUNNERS. When this file
+# was written (2026-09-21) it had only been tried locally. It has since run
+# on GitHub-hosted runners many times: the ten most recent runs listed on
+# 2026-11-28 had all succeeded (they ran the import and collation steps;
+# the database-suite steps below are new with #330 and have not yet run
+# there).
 #
 # WHY MARIADB IS STARTED AS A PLAIN STEP, NOT A `services:` CONTAINER. ci.yml
 # already tried a MariaDB `services:` leg for this same purpose (#186) and had
@@ -82,14 +97,18 @@
 
 name: MariaDB Import Check
 
+# web/** covers the SQL files and the PHP code the database suite tests;
+# tests/** covers the suite itself (#330).
 on:
   push:
     paths:
-      - 'web/_sql/**'
+      - 'web/**'
+      - 'tests/**'
       - '.github/workflows/mariadb-import.yml'
   pull_request:
     paths:
-      - 'web/_sql/**'
+      - 'web/**'
+      - 'tests/**'
       - '.github/workflows/mariadb-import.yml'
   workflow_dispatch:
 
@@ -104,7 +123,7 @@ concurrency:
 
 jobs:
   mariadb-import:
-    name: Import schema on MariaDB 11.4
+    name: Import schema and run the database suite on MariaDB 11.4
     # Standing rule: every job runs on ubuntu-latest (see patterns.md).
     runs-on: ubuntu-latest
 
@@ -216,6 +235,51 @@ jobs:
               echo "Expected utf8mb4_unicode_ci, got '${COLLATION}' — see #196."
               exit 1
           fi
+
+      # #330 — the PHP side of the check: the database suite, on MariaDB.
+      # Same PHP setup as ci.yml's "Tests (Integration)" job (PHP 8.4 with
+      # mysqli, same pinned action).
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240  # v2.37.2
+        with:
+          php-version: "8.4"
+          extensions: "mysqli"
+
+      # The container was started with an empty root password and its port
+      # published on this machine, so the suite connects to 127.0.0.1:3306 as
+      # root with no password. tests/run_integration.php prints "SKIPPED (no
+      # test DB)" and exits 0 when it cannot connect, which must not count as
+      # a pass here, so the step also insists that the suite named a MariaDB
+      # server on its "Database server:" line.
+      - name: PHP database suite on MariaDB (PHP 8.4)
+        env:
+          G2ML_TEST_DB_HOST: "127.0.0.1"
+          G2ML_TEST_DB_PORT: "3306"
+          G2ML_TEST_DB_NAME: "mwtools_Go2MyLink"
+          G2ML_TEST_DB_USER: "root"
+          G2ML_TEST_DB_PASS: ""
+        run: |
+          set -euo pipefail
+          # Run inside "if" so a failing suite does not stop this script
+          # before the checks below have printed what went wrong.
+          if php tests/run_integration.php > integration-mariadb.txt 2>&1
+          then
+              SUITE_EXIT=0
+          else
+              SUITE_EXIT=$?
+          fi
+          cat integration-mariadb.txt
+          if ! grep "^Database server: .*MariaDB" integration-mariadb.txt >/dev/null
+          then
+              echo "The database suite did not run against MariaDB (no 'Database server: ...MariaDB' line)."
+              exit 1
+          fi
+          if [ "${SUITE_EXIT}" -ne 0 ]
+          then
+              echo "The database suite failed on MariaDB (exit ${SUITE_EXIT})."
+              exit "${SUITE_EXIT}"
+          fi
+          echo "The database suite passed on MariaDB."
 
       - name: Stop MariaDB
         if: always()

@@ -131,6 +131,25 @@ if ($db === null)
 
 mysqli_set_charset($db, 'utf8mb4');
 
+/**
+ * Say whether the test database is MariaDB rather than MySQL (#330). The live
+ * host runs MariaDB and the suite runs on both, and a few answers differ by
+ * engine in ways the product does not depend on — for example the error
+ * number for a broken CHECK rule (MySQL 3819, MariaDB 4025). A test uses this
+ * to expect the right one for the engine it is on, never to skip a check.
+ *
+ * @param  mysqli $connection
+ * @return bool
+ */
+function g2ml_test_db_is_mariadb(mysqli $connection): bool
+{
+    return str_contains(mysqli_get_server_info($connection), 'MariaDB');
+}
+
+// Print which engine and version this run used, so a saved result says what
+// it was run against.
+echo 'Database server: ' . mysqli_get_server_info($db) . PHP_EOL;
+
 // ----------------------------------------------------------------------------
 // Discover and register integration tests.
 // ----------------------------------------------------------------------------

@@ -299,7 +299,7 @@ One piece of work = one GitHub issue and one commit. When it is finished:
    installed on the owner's Mac through Homebrew (found 2026-09-21; older notes say it is not). The code
    is supported on PHP 8.4 (the lowest), 8.5 and 8.6, so run the tests in Docker on all three:
    `sh .claude/programme/run-tests.sh all` (the strict lint, the unit suite and the database suite
-   on each version; `tests/README.md` has the details and the settings). Format only the files
+   on each version, the database suite on both MySQL 8.4 and MariaDB 11.4, the live host's engine; `tests/README.md` has the details and the settings). Format only the files
    you touched (the tree has older formatting drift, tracked in #153 — do not reformat unrelated
    files). Read the diff once with security in mind. If the work changes what visitors see, also run
    the polish check (rule 14) on the pages it touches.

@@ -67,7 +67,7 @@ copy is out of step (it warns; `alpha` has no required checks, so it cannot bloc
   quiet the reviewer. Record the number of rounds.
 - **After each finished piece of work:** verify it yourself (read the real exit codes; PHP runs in
   Docker on every tested PHP version — `sh .claude/programme/run-tests.sh all` runs the strict lint, the unit and the database
-  suites on PHP 8.4, 8.5 and 8.6 (see `tests/README.md`); format only the files you touched; one security read of the diff); the review
+  suites on PHP 8.4, 8.5 and 8.6, the database suite on both MySQL 8.4 and MariaDB 11.4, the live host's engine (see `tests/README.md`); format only the files you touched; one security read of the diff); the review
   loop; update `.claude/` and then run `sh scripts/sync-ai-context.sh` for `.OpenAI/`; update
   `.github/HANDOFF.md`; **commit and push to the working branch**; update that task's GitHub issue; show a
   progress table.

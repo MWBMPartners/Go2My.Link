@@ -789,13 +789,23 @@ test('#289: the database itself refuses a second row with the same g2my.link cod
     );
     assert_same(1062, $duplicate, 'A second organisation cannot hold the same g2my.link code: refused by the unique key UQ_url_shared_code');
 
-    // 3819 is MySQL's "check constraint is violated" (MariaDB uses 4025).
+    // The two engines number the "a CHECK rule was broken" error differently:
+    // 3819 on MySQL, 4025 on MariaDB (#330). Each engine must give its own
+    // number, so the row is refused by the check on both, not by anything
+    // else. Nothing in the product reads this number.
+    $checkBrokenErrno = 3819;
+
+    if (g2ml_test_db_is_mariadb($db))
+    {
+        $checkBrokenErrno = 4025;
+    }
+
     $mismatch = g2ml_sgc_errno_of(
         $db,
         "INSERT INTO `tblShortURLs` (`orgHandle`, `shortCode`, `sharedShortCode`, `destinationURL`, `destinationType`, `isActive`) "
         . "VALUES ('sgcorgb', 'sgcmisa', 'sgcmisb', 'https://example.com/sgc-mismatch', 'url', 1)"
     );
-    assert_same(3819, $mismatch, 'A row cannot open on g2my.link under a code other than its own: refused by CK_url_shared_code_matches');
+    assert_same($checkBrokenErrno, $mismatch, 'A row cannot open on g2my.link under a code other than its own: refused by CK_url_shared_code_matches');
 
     g2ml_sgc_clean($db);
 });
@@ -922,9 +932,15 @@ test('#289: migration 044 brings an old table up to date, keeps working links, a
             [$scratch]
         );
 
+        // DROP CONSTRAINT, not DROP CHECK: MariaDB, which the live host
+        // runs, does not know DROP CHECK; both engines accept DROP
+        // CONSTRAINT (#330). MySQL renames a check copied by CREATE TABLE
+        // ... LIKE (to tblShortURLs_chk_1 and so on), so
+        // the names come from information_schema rather than being written
+        // here.
         foreach ($checks as $check)
         {
-            g2ml_sgc_exec($db, 'ALTER TABLE `' . $scratch . '`.`tblShortURLs` DROP CHECK `' . $check['CONSTRAINT_NAME'] . '`');
+            g2ml_sgc_exec($db, 'ALTER TABLE `' . $scratch . '`.`tblShortURLs` DROP CONSTRAINT `' . $check['CONSTRAINT_NAME'] . '`');
         }
 
         g2ml_sgc_exec($db, 'ALTER TABLE `' . $scratch . '`.`tblShortURLs` DROP INDEX `UQ_url_shared_code`');

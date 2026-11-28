@@ -162,15 +162,19 @@ FROM mwtools_Go2MyLink.tblLinksPageTemplates;
 SELECT '=== MIGRATION READINESS SUMMARY ===' AS section;
 
 -- 4.1 Check that new tables are empty (no prior migration data)
-SELECT 'tblShortURLs empty' AS check_name,
-       COUNT(*) AS rows,
-       CASE WHEN COUNT(*) = 0 THEN 'READY' ELSE 'WARNING — data already exists' END AS status
-FROM mwtools_Go2MyLink.tblShortURLs;
+-- Every name is in backticks (#330). ROWS is a reserved word on both MySQL 8
+-- and MariaDB, so when these two checks said a bare "AS rows" each of them
+-- failed with a syntax error on both engines, and the mysql or mariadb
+-- client stops the whole script at the first error.
+SELECT 'tblShortURLs empty' AS `check_name`,
+       COUNT(*) AS `rows`,
+       CASE WHEN COUNT(*) = 0 THEN 'READY' ELSE 'WARNING — data already exists' END AS `status`
+FROM `mwtools_Go2MyLink`.`tblShortURLs`;
 
-SELECT 'tblUsers empty' AS check_name,
-       COUNT(*) AS rows,
-       CASE WHEN COUNT(*) = 0 THEN 'READY' ELSE 'WARNING — data already exists' END AS status
-FROM mwtools_Go2MyLink.tblUsers;
+SELECT 'tblUsers empty' AS `check_name`,
+       COUNT(*) AS `rows`,
+       CASE WHEN COUNT(*) = 0 THEN 'READY' ELSE 'WARNING — data already exists' END AS `status`
+FROM `mwtools_Go2MyLink`.`tblUsers`;
 
 -- 4.2 Verify InnoDB engine on critical tables
 SELECT 'InnoDB check' AS check_name,

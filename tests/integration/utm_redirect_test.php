@@ -434,13 +434,14 @@ test('UTM redirect (#92): capture on — whitelisted tracking params from the re
     ]);
 
     $row = g2ml_utmredirect_fetch_log($db, $g2mlUtmRedirectShortCode);
-    // NOTE: tblActivityLog.logData is a native MySQL JSON column — MySQL
-    // canonicalises stored JSON on read-back (a space after each ':', and
-    // object keys sorted alphabetically within each object), so the expected
-    // string below is MySQL's normalised form, not raw PHP json_encode()
-    // output ({"utm_source":...,"gclid":...} insertion order).
-    assert_same(
-        '{"trackingParams": {"gclid": "g-abc123", "utm_source": "newsletter"}}',
+    // NOTE: tblActivityLog.logData is a JSON column. MySQL rewrites stored
+    // JSON into its own form on read-back (a space after each ':', and object
+    // keys put in its own order); MariaDB, which the live host runs, gives
+    // back exactly what PHP's json_encode() wrote. So the stored value is
+    // compared as data — every key and value, nothing extra — not as text
+    // (#330; see assert_json_same() in tests/bootstrap.php).
+    assert_json_same(
+        ['trackingParams' => ['gclid' => 'g-abc123', 'utm_source' => 'newsletter']],
         $row['logData'],
         'logData stores exactly the whitelisted captured params — ignored_param never appears'
     );
@@ -499,9 +500,10 @@ test('UTM redirect (#92): both settings on — forwarding and capture both apply
     ]);
 
     $row = g2ml_utmredirect_fetch_log($db, $g2mlUtmRedirectShortCode);
-    // See the NOTE above about MySQL's JSON canonicalisation on read-back.
-    assert_same(
-        '{"trackingParams": {"utm_campaign": "visitor-campaign-override-attempt"}}',
+    // See the NOTE above: compared as data, because the two engines give the
+    // JSON text back differently.
+    assert_json_same(
+        ['trackingParams' => ['utm_campaign' => 'visitor-campaign-override-attempt']],
         $row['logData'],
         'Capture reflects the VISITOR own query string, independent of the link own configured forwarding values'
     );

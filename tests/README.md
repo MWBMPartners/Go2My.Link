@@ -12,12 +12,12 @@
 |---|---|
 | `tests/bootstrap.php` | The micro-framework: `test()` registrar, assertion helpers, results collector. No external dependencies. |
 | `tests/run.php` | Discovers and runs every `tests/unit/*.php` (**DB-free**). Exits non-zero on any failure so CI can gate. |
-| `tests/run_integration.php` | Discovers and runs every `tests/integration/*.php` against a MySQL server from environment variables. **Skips cleanly (exit 0) when no DB is reachable.** |
+| `tests/run_integration.php` | Discovers and runs every `tests/integration/*.php` against a MySQL or MariaDB server from environment variables. Its first line names the server it reached (`Database server: 11.4.13-MariaDB-...`). **Skips cleanly (exit 0) when no DB is reachable.** |
 | `tests/unit/` | DB-free tests: characterization tests of the function library, and checks that read the files under `web/` and fail the build when a house rule is broken (for example "No .php in web addresses" and "The polish check", below). |
 | `tests/unit/direct_access_guard_test.php` | Regression test for #198 — proves a library's direct-access guard now tells apart two files that merely share a name, by requiring the library in a real child PHP process with `SCRIPT_FILENAME` set the way Apache would set it. |
 | `tests/unit/no_php_in_urls_test.php` | Check for #203 — fails the build when it finds a link, form target, redirect or JavaScript request in the shipping code under `web/` that points at an address ending in `.php`. See "No .php in web addresses" below. |
 | `tests/unit/site_polish_test.php` | The polish check (#288) — fails the build on the parts of the standing polish rule a machine can read from the files. See "The polish check" below. |
-| `tests/integration/` | DB-backed tests against a real MySQL database: the redirect lookup (`sp_lookupShortURL`), sign-in and registration, API keys and endpoints, analytics, LinksPage, data export, scheduled jobs, custom domains, pricing and more. |
+| `tests/integration/` | DB-backed tests against a real MySQL or MariaDB database: the redirect lookup (`sp_lookupShortURL`), sign-in and registration, API keys and endpoints, analytics, LinksPage, data export, scheduled jobs, custom domains, pricing and more. |
 
 ## 🧩 Assertion helpers
 
@@ -28,6 +28,10 @@ Available inside any `test('name', function () { ... })` body:
 - `assert_not_same($expected, $actual)` — strict `!==` inequality.
 - `assert_throws($callback, $expectedClass = null)` — the callback must throw (optionally of a given class).
 - `assert_contains($needle, $haystack)` — substring check.
+- `assert_json_same($expectedArray, $storedJson)` — a JSON value read back from the database holds
+  exactly the expected keys, values and types, and nothing else. Use it instead of comparing the
+  text: MySQL rewrites stored JSON into its own form (spaces, key order) and MariaDB keeps it as
+  written, so the text differs between the two while the data is the same (#330).
 
 Each accepts an optional final `$message` string for context.
 
@@ -62,10 +66,21 @@ The code is tested on PHP 8.4, 8.5 and 8.6 (8.4 is the minimum).
   from `tests/docker/Dockerfile`, which adds whichever is missing and stops if either is still
   absent: `docker build -q -t g2ml-php:8.5-test --build-arg PHP_TAG=8.5-cli - < tests/docker/Dockerfile`.
 - **The runner for all three versions.** `sh .claude/programme/run-tests.sh all` builds the images,
-  then runs the strict lint, the unit suite and the database suite on each version against one
-  throwaway MySQL 8.4 container, and prints a final `OVERALL exit=N` line. `G2ML_PHP_VERSIONS`
-  picks the versions (default `8.4 8.5 8.6`); `G2ML_PHP_ADVISORY` names versions that are reported
-  but cannot fail the run (default none).
+  then runs the strict lint and the unit suite on each version, then the database suite on each
+  version against each database engine in turn, and prints a final `OVERALL exit=N` line.
+  `G2ML_PHP_VERSIONS` picks the versions (default `8.4 8.5 8.6`); `G2ML_PHP_ADVISORY` names versions
+  that are reported but cannot fail the run (default none).
+- **Both database engines (#330).** The live host runs MariaDB, so the database suite runs against a
+  fresh MariaDB 11.4 container as well as a fresh MySQL 8.4 one, each started with
+  `utf8mb4_unicode_ci`. `G2ML_TEST_DB_ENGINES` picks the images (default `mysql:8.4 mariadb:11.4`);
+  for example `G2ML_TEST_DB_ENGINES=mariadb:11.4` runs MariaDB only. The runner uses whatever image is
+  already on the machine and downloads one only if it is missing. The result files in `/tmp` carry the
+  engine in their names, for example `/tmp/g2ml-test-mysql_integ_8.4_mariadb-11.4.txt`. A test whose
+  expected answer differs between the engines in a way the product does not depend on (the error number
+  for a broken CHECK rule, the way JSON text is given back) expects the right answer for the engine it is
+  on — `g2ml_test_db_is_mariadb($db)`, in `tests/run_integration.php`, says which — and never skips the
+  check. CI runs the database suite on MariaDB too, in `.github/workflows/mariadb-import.yml` (PHP 8.4
+  only); `ci.yml` runs it on MySQL.
 - **Settings for the runner.** `G2ML_DOCKER_EXTRA_ARGS` is added to every `docker run`, for example
   `--add-host example.com:93.184.215.14` where host names do not resolve.
   `G2ML_TEST_DB_CONTAINER` and `G2ML_TEST_NET` rename the database container and the Docker
@@ -82,11 +97,13 @@ The unit runner defines throwaway encryption constants (`ENCRYPTION_SALT`,
 file, and initialises `$_SESSION` as a plain array so the CSRF helpers work
 without an active PHP session. It never touches `web/_auth_keys`.
 
-## ▶️ Running the integration suite (needs a MySQL test database)
+## ▶️ Running the integration suite (needs a MySQL or MariaDB test database)
 
 The integration runner reads its connection details from environment
 variables. If it cannot connect, it prints `SKIPPED (no test DB)` and exits
-`0` — it never hard-fails merely because a test DB is unconfigured.
+`0` — it never hard-fails merely because a test DB is unconfigured. So a
+result is only worth something if its first line is `Database server: ...`,
+naming the engine and version it actually ran against.
 
 | Variable | Meaning | Default |
 |---|---|---|

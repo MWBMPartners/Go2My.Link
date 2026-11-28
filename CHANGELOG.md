@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🐬 Tested on MariaDB, the live database type (2026-11-28)
+
+- 🧪 The database tests now run on MariaDB 11.4 as well as MySQL 8.4 (#330).
+- 🐛 Fixed on the way: a deeply nested API request body left no audit record on MariaDB, so it also
+  escaped the request limit; invalid text in activity data lost the whole record; the old-data
+  check script `dry_run.sql` stopped with a syntax error (#330).
+
 ### 💷 The pricing page says only what is true (2026-11-28)
 
 - 🐛 The pricing page shows the Free plan and says paid plans are coming, with no prices. Wrong

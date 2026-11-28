@@ -236,7 +236,9 @@ test('logActivity: a create_link event writes exactly one row with matching colu
     assert_same('go2my.link', $row['requestDomain'], 'requestDomain captured from HTTP_HOST');
     assert_same('POST', $row['requestMethod'], 'requestMethod captured from REQUEST_METHOD');
     assert_same('198.51.100.77', $row['ipAddress'], 'ipAddress captured');
-    assert_same('{"source": "integration_test"}', $row['logData'], 'logData JSON stored verbatim');
+    // Compared as data, not as text: MySQL rewrites stored JSON into its own
+    // form and MariaDB keeps it as written (#330; see assert_json_same()).
+    assert_json_same(array('source' => 'integration_test'), $row['logData'], 'logData holds exactly the logged data');
     assert_same(null, $row['scanSource'], '(#145) scanSource must be NULL when the caller never supplies it');
     assert_same(null, $row['qrCodeExternalID'], '(#145) qrCodeExternalID must be NULL when the caller never supplies it');
     assert_same(null, $row['countryCode'], '(#43) countryCode must be NULL when the caller never supplies it');
@@ -435,6 +437,44 @@ test('logActivity: (#43) a normal redirect (no geo context) logs countryCode/reg
     assert_same(null, $row['cityName'], 'A normal redirect must log cityName as NULL — unchanged behaviour');
 
     // Cleanup.
+    $cleanup = mysqli_prepare($db, 'DELETE FROM `tblActivityLog` WHERE `shortCode` = ?');
+    mysqli_stmt_bind_param($cleanup, 's', $marker);
+    mysqli_stmt_execute($cleanup);
+    mysqli_stmt_close($cleanup);
+});
+
+// ----------------------------------------------------------------------------
+// (g) #330 — text that is not valid UTF-8 in logData must not lose the row.
+//     logData is a JSON column; plain json_encode() gives false for bad bytes,
+//     false was sent as an empty string, and both MySQL and MariaDB refuse
+//     that for a JSON column, so the row was never written.
+// ----------------------------------------------------------------------------
+test('logActivity: (#330) logData holding bytes that are not valid UTF-8 still writes the row', function () use ($db): void
+{
+    unset($_SERVER['HTTP_DNT']);
+    unset($_SERVER['HTTP_SEC_GPC']);
+    $_SERVER['REMOTE_ADDR']     = '198.51.100.83';
+    $_SERVER['HTTP_HOST']       = 'go2my.link';
+    $_SERVER['REQUEST_URI']     = '/login';
+    $_SERVER['REQUEST_METHOD']  = 'POST';
+    $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0';
+
+    $marker = 'itutf_' . substr(hash('sha256', (string) microtime(true)), 0, 12);
+
+    $written = logActivity('login_failed', 'failure', 401, array(
+        'orgHandle' => '[default]',
+        'shortCode' => $marker,
+        'logData'   => array('email' => "bad\xFF@example.com"),
+    ));
+
+    assert_same(true, $written, 'logActivity returns true: the row is written');
+    assert_same(1, g2ml_activitylog_test_count($db, $marker), 'Exactly one row was written');
+
+    $row = g2ml_activitylog_test_fetch($db, $marker);
+
+    // The bad byte becomes U+FFFD, the Unicode replacement character.
+    assert_json_same(array('email' => "bad\u{FFFD}@example.com"), $row['logData'], 'logData keeps the address, with the bad byte replaced');
+
     $cleanup = mysqli_prepare($db, 'DELETE FROM `tblActivityLog` WHERE `shortCode` = ?');
     mysqli_stmt_bind_param($cleanup, 's', $marker);
     mysqli_stmt_execute($cleanup);

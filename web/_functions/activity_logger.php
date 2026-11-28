@@ -148,7 +148,22 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
             $safeLogData = g2ml_redactLogText($safeLogData);
         }
 
-        $logData = json_encode($safeLogData);
+        // logData is a JSON column, so what is written must be valid JSON
+        // (#330). Plain json_encode() gives false for text that is not valid
+        // UTF-8 — for example an e-mail address typed with stray bytes on a
+        // failed sign-in — and false is sent as an empty string, which both
+        // MySQL and MariaDB refuse for a JSON column, so the whole row was
+        // lost (checked on MySQL 8.4 and MariaDB 11.4). Bad bytes are now
+        // replaced with the Unicode replacement character, the same way
+        // error_handler.php stores request headers, and if the data still
+        // cannot be written as JSON the row is kept with logData empty.
+        $logData = json_encode($safeLogData, JSON_INVALID_UTF8_SUBSTITUTE);
+
+        if ($logData === false)
+        {
+            error_log('[Go2My.Link] WARNING: logActivity could not write logData as JSON (' . json_last_error_msg() . '); the row is kept without it.');
+            $logData = null;
+        }
     } else {
         $logData = null;
     }
