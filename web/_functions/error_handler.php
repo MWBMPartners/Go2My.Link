@@ -53,6 +53,9 @@ if ($g2mlGuardScriptPath !== '' && realpath($g2mlGuardScriptPath) === realpath(_
 }
 unset($g2mlGuardScriptPath);
 
+// Removes secrets in web addresses from everything logged here (#323)
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'log_redaction.php';
+
 // ============================================================================
 // 📝 Error Severity Mapping
 // ============================================================================
@@ -304,18 +307,18 @@ function g2ml_logError(
     ?string $backtrace = null
 ): void
 {
-    // Remove function argument values first, so that neither the database nor
-    // the log file can receive them
-    $title = g2ml_stripTraceArguments($title);
+    // Remove function argument values and secrets in web addresses first, so
+    // that neither the database nor the log file can receive them
+    $title = g2ml_redactLogText(g2ml_stripTraceArguments($title));
 
     if ($detail !== null)
     {
-        $detail = g2ml_stripTraceArguments($detail);
+        $detail = g2ml_redactLogText(g2ml_stripTraceArguments($detail));
     }
 
     if ($backtrace !== null)
     {
-        $backtrace = g2ml_stripTraceArguments($backtrace);
+        $backtrace = g2ml_redactLogText(g2ml_stripTraceArguments($backtrace));
 
         // Truncate backtrace to prevent excessively large inserts
         if (strlen($backtrace) > 10000)
@@ -329,7 +332,7 @@ function g2ml_logError(
     }
 
     // Build request context
-    $requestURL    = ($_SERVER['REQUEST_URI'] ?? null);
+    $requestURL    = g2ml_redactLogURL($_SERVER['REQUEST_URI'] ?? null);
     $requestMethod = ($_SERVER['REQUEST_METHOD'] ?? null);
 
     // Sanitise request headers (only include relevant, non-sensitive headers)
@@ -345,6 +348,12 @@ function g2ml_logError(
         {
             $safeHeaders[$key] = $_SERVER[$key];
         }
+    }
+
+    // The referring page's address can carry a token too (#323)
+    if (isset($safeHeaders['HTTP_REFERER']))
+    {
+        $safeHeaders['HTTP_REFERER'] = g2ml_redactLogURL((string) $safeHeaders['HTTP_REFERER']);
     }
 
     if (!empty($safeHeaders)) {

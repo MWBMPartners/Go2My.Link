@@ -170,13 +170,14 @@ if (isset($_GET['_apiroute']) && is_string($_GET['_apiroute']))
 
 $g2mlApiSanitisedRoute = g2ml_apiSanitiseRoute($g2mlApiRawRoute);
 
+// Anything in the route that looks like a token or key is replaced (#323).
 // The endpoint deliberately embeds the RAW (unsanitised) route so a malformed
 // attempt stays auditable, but it also flows into error_log() on the 500 path
 // below — so bound it to the tblAPIRequestLog.endpoint column width and strip
 // control characters here (g2ml_apiBoundLogValue(), loaded via page_init.php's
 // api_ratelimit.php) so an over-length route can never fail the audit INSERT
 // and a percent-decoded newline can never inject a forged server-log line.
-$g2mlApiEndpointForLog = g2ml_apiBoundLogValue('/api/v1/' . $g2mlApiRawRoute, 255);
+$g2mlApiEndpointForLog = g2ml_apiBoundLogValue(g2ml_redactLogURL('/api/v1/' . $g2mlApiRawRoute), 255);
 
 // ============================================================================
 // 🔒 Step 5: Enforce HTTPS
@@ -572,7 +573,7 @@ catch (G2mlApiHandlerException $g2mlApiHandlerException)
 catch (Throwable $g2mlApiHandlerError)
 {
     // Never leak the underlying cause to the client — log it server-side only.
-    error_log('[Go2My.Link] API v1 handler exception on ' . $g2mlApiEndpointForLog . ': ' . $g2mlApiHandlerError->getMessage());
+    error_log('[Go2My.Link] API v1 handler exception on ' . $g2mlApiEndpointForLog . ': ' . g2ml_redactLogText($g2mlApiHandlerError->getMessage()));
 
     g2mlApiV1FinishRequest(
         g2ml_apiErrorBody(500, 'An unexpected error occurred.'),

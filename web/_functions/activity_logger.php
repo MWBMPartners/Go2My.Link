@@ -51,6 +51,9 @@ if ($g2mlGuardScriptPath !== '' && realpath($g2mlGuardScriptPath) === realpath(_
 }
 unset($g2mlGuardScriptPath);
 
+// Removes secrets in web addresses from everything logged here (#323)
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'log_redaction.php';
+
 // ============================================================================
 // 📝 Log Activity
 // ============================================================================
@@ -129,7 +132,18 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
     $destinationURL = $context['destinationURL'] ?? null;
     $apiKeyUID      = $context['apiKeyUID'] ?? null;
     if (isset($context['logData'])) {
-        $logData = json_encode($context['logData']);
+        $safeLogData = $context['logData'];
+
+        if (is_array($safeLogData))
+        {
+            $safeLogData = g2ml_redactLogData($safeLogData);
+        }
+        elseif (is_string($safeLogData))
+        {
+            $safeLogData = g2ml_redactLogText($safeLogData);
+        }
+
+        $logData = json_encode($safeLogData);
     } else {
         $logData = null;
     }
@@ -162,9 +176,10 @@ function logActivity(string $action, ?string $status = null, ?int $statusCode = 
 
     // Gather request metadata
     $requestDomain  = $_SERVER['HTTP_HOST'] ?? null;
-    $requestPath    = $_SERVER['REQUEST_URI'] ?? null;
+    // Both addresses are cleaned of tokens and other secrets (#323)
+    $requestPath    = g2ml_redactLogURL($_SERVER['REQUEST_URI'] ?? null);
     $requestMethod  = $_SERVER['REQUEST_METHOD'] ?? null;
-    $requestReferer = $_SERVER['HTTP_REFERER'] ?? null;
+    $requestReferer = g2ml_redactLogURL($_SERVER['HTTP_REFERER'] ?? null);
     $requestUA      = $_SERVER['HTTP_USER_AGENT'] ?? null;
     $ipAddress = g2ml_clientIpOrDefault($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
 

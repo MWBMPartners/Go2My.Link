@@ -53,6 +53,9 @@ if ($g2mlGuardScriptPath !== '' && realpath($g2mlGuardScriptPath) === realpath(_
 }
 unset($g2mlGuardScriptPath);
 
+// Removes secrets in web addresses from everything logged here (#323)
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'log_redaction.php';
+
 // ============================================================================
 // 🚦 Rate limit check
 // ============================================================================
@@ -375,6 +378,11 @@ function g2ml_apiRedactRequestBody(array $body): array
         {
             $redacted[$key] = g2ml_apiRedactRequestBody($value);
         }
+        elseif (is_string($value))
+        {
+            // An address sent in the body can carry a token (#323)
+            $redacted[$key] = g2ml_redactLogText($value);
+        }
         else
         {
             $redacted[$key] = $value;
@@ -496,7 +504,7 @@ function g2ml_apiLogRequest(?int $apiKeyUID, string $endpoint, string $httpMetho
     // characters) so an oversized/hostile value can never fail the INSERT and
     // silently drop the audit row — see g2ml_apiBoundLogValue() for why that
     // would also let a failed-auth flood evade the pre-auth backoff.
-    $boundedEndpoint   = g2ml_apiBoundLogValue($endpoint, 255);
+    $boundedEndpoint   = g2ml_apiBoundLogValue(g2ml_redactLogURL($endpoint), 255);
     $boundedHttpMethod = g2ml_apiBoundLogValue($httpMethod, 10);
     $boundedIpAddress  = g2ml_apiBoundLogValue($ipAddress, 45);
 

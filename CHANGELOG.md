@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🔒 Secret links kept out of logs (2026-11-28)
+
+- 🔒 Password-reset, email-verification and invitation tokens, and other secrets in web addresses,
+  are replaced with `[redacted]` before anything is logged. Records already stored are not changed
+  (#323).
+
 ### ⚖️ Deleting an account now deals with its short links (2026-11-28)
 
 - 🐛 Erasing an account switches its short links off, as the page always promised. The person may

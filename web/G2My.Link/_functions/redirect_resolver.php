@@ -51,6 +51,10 @@ if ($g2mlGuardScriptPath !== '' && realpath($g2mlGuardScriptPath) === realpath(_
 }
 unset($g2mlGuardScriptPath);
 
+// Removes secrets in web addresses before they reach the error log (#323)
+require_once dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . '_functions'
+    . DIRECTORY_SEPARATOR . 'log_redaction.php';
+
 // ============================================================================
 // 🔀 resolveShortCode — Resolve a short code to its destination URL
 // ============================================================================
@@ -117,7 +121,7 @@ function resolveShortCode(string $domain, string $code): array
         error_log(
             '[Go2My.Link] ERROR: sp_lookupShortURL call failed'
             . ' — domain: ' . $domain
-            . ', code: ' . $code
+            . ', code: ' . g2ml_redactLogURL($code)
         );
 
         return [
@@ -829,7 +833,7 @@ function buildRedirectResponse(string $destination, int $statusCode = 302): void
         error_log(
             '[Go2My.Link] WARNING: Headers already sent in '
             . $file . ':' . $line
-            . ' — cannot redirect to: ' . $destination
+            . ' — cannot redirect to: ' . g2ml_redactLogURL($destination)
         );
         return;
     }
@@ -838,7 +842,7 @@ function buildRedirectResponse(string $destination, int $statusCode = 302): void
     // Prevents javascript: or data: URLs from being issued as redirect headers
     if (!preg_match('/^https?:\/\//i', $destination))
     {
-        error_log('[Go2My.Link] WARNING: Rejected redirect to non-HTTP URL: ' . $destination);
+        error_log('[Go2My.Link] WARNING: Rejected redirect to non-HTTP URL: ' . g2ml_redactLogURL($destination));
         http_response_code(404);
         return;
     }
