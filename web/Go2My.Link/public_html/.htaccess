@@ -45,6 +45,10 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers
 # =============================================================================
 <IfModule mod_headers.c>
+    # Do not tell visitors which PHP version the server runs (#319)
+    Header unset X-Powered-By
+    Header always unset X-Powered-By
+
     # Prevent MIME-type sniffing
     Header set X-Content-Type-Options "nosniff"
 
@@ -205,6 +209,7 @@ ErrorDocument 500 /index.php?route=errors/500
 <IfModule mod_php.c>
     # Display errors off in production
     php_flag display_errors Off
+    php_flag display_startup_errors Off
     php_flag log_errors On
 
     # Session security

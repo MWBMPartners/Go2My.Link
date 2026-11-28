@@ -251,12 +251,40 @@ Excluded from **every** phase, so a deploy can never destroy live state:
 
 The application detects its environment from the hostname:
 
-| Hostname pattern | Environment | Debug mode |
+| Hostname pattern | Environment | Debug output for a global administrator |
 | --- | --- | --- |
-| 🟡 `alpha.*` | Development (Alpha) | ✅ Enabled |
-| 🟠 `beta.*` | Development (Beta) | ✅ Enabled |
-| 🖥️ `localhost` / `127.0.0.1` | Local development | ✅ Enabled |
-| 🟢 Everything else | Production | ❌ Disabled (unless `?debug=true` with admin IP) |
+| 🟡 `alpha.*` | Development (Alpha) | ✅ Always |
+| 🟠 `beta.*` | Development (Beta) | ✅ Always |
+| 🖥️ `localhost` / `127.0.0.1` / `*.local` (no port number) | Local development | ✅ Always |
+| 🟢 Everything else | Production | 🔸 Only with `?debug=true` in the address |
+
+### 🐛 Who sees debug output
+
+On **every** address, the debug panel (PHP version, database statements) and
+any error details on screen are shown only to a signed-in **global
+administrator** ([decision D-011](decisions/D-011-debug-panel-global-admin.md)).
+Everyone else sees a normal page. The check is made against the database
+whenever debug output is asked for (always on alpha, beta and local addresses;
+on the live site only with `?debug=true`), so if the database is down, or an
+error happens before the sign-in has been checked, nobody sees any details. Errors are still logged
+(`tblErrorLog`, or the server's PHP error log).
+
+The setting lives in `web/_functions/debug_access.php`. Each web root also has
+a `.user.ini` (for PHP running as CGI or FastCGI) and `.htaccess` lines (for PHP
+inside Apache) that keep errors off the screen from the first line of a request.
+PHP may take a few minutes to notice a new or changed `.user.ini`.
+
+### 💻 Debug output in local development
+
+1. 🗄️ Set up a local database and create a global administrator (the installer
+   does this).
+2. 🔑 Sign in as that administrator. The panel then appears on the next page.
+3. 🔢 If your address has a port number (for example `localhost:8000`), the site
+   treats it as production: add `?debug=true`. The sign-in cookie is then marked
+   "secure", which some browsers refuse over plain `http`.
+4. 📋 To read an error that happens before anyone can be recognised (for example
+   a broken credentials file), look in the PHP error log. It is never shown on
+   the page.
 
 ## 🗄️ Database Setup
 

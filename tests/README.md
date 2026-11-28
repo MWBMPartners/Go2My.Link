@@ -187,6 +187,15 @@ the exact file path, the exact matched text, and a plain-English reason. An
 entry covers every occurrence of that exact text in that one file, and
 nothing else.
 
+## 🐛 Who sees debug output
+
+`tests/integration/debug_access_test.php` (#319) copies `web/` to a temporary
+folder, serves it with PHP's built-in web server with on-screen errors switched
+on, and asks for real pages as a stranger, an ordinary user and a global
+administrator, including with deliberately broken pages and with the database
+unreachable. `tests/unit/debug_access_test.php` checks the `.htaccess` and
+`.user.ini` files, which that server does not read.
+
 ## 🔎 The polish check
 
 Standing rule 14 in `.claude/memory/working-rules.md` says nothing a visitor

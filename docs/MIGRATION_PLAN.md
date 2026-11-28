@@ -503,7 +503,7 @@ Check **daily**:
 
 - [ ] `tblErrorLog` logging PHP errors correctly
 - [ ] `tblActivityLog` logging requests correctly
-- [ ] Debug mode disabled in production (`?debug=true` only for admin IPs)
+- [ ] Debug output shown only to a signed-in global administrator (`?debug=true`)
 - [ ] External uptime monitoring configured (UptimeRobot or similar)
 
 ---

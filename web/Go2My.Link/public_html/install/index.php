@@ -96,6 +96,24 @@ if (defined('G2ML_INSTALLER_FUNCTIONS_ONLY'))
 }
 
 // ============================================================================
+// 🙈 No PHP errors on screen (#319)
+// ============================================================================
+// The installer runs before any administrator exists, so PHP's own error output
+// is never shown to the browser. It still goes to the server's error log.
+// ============================================================================
+
+if (function_exists('ini_set'))
+{
+    ini_set('display_errors', '0');
+    ini_set('display_startup_errors', '0');
+}
+
+if (function_exists('header_remove') && !headers_sent())
+{
+    header_remove('X-Powered-By');
+}
+
+// ============================================================================
 // 📁 Paths
 // ============================================================================
 // install/ is at: web/<Component>/public_html/install/
@@ -1470,12 +1488,20 @@ if (!$alreadyInstalled)
 // 🌍 Environment checks (step 0)
 // ============================================================================
 
-function g2ml_install_requirements(string $authDir, string $sqlDir, array $components): array
+function g2ml_install_requirements(string $authDir, string $sqlDir, array $components, bool $showVersion = false): array
 {
     $checks = [];
 
     $phpOk    = version_compare(PHP_VERSION, '8.4.0', '>=');
-    $checks[] = ['label' => 'PHP 8.4 or newer (found ' . PHP_VERSION . ')', 'ok' => $phpOk];
+
+    // The exact PHP version is only shown to somebody who has entered the
+    // installer token. Anybody can open this page before that (#319).
+    $versionLabel = 'PHP 8.4 or newer';
+    if ($showVersion)
+    {
+        $versionLabel .= ' (found ' . PHP_VERSION . ')';
+    }
+    $checks[] = ['label' => $versionLabel, 'ok' => $phpOk];
 
     // Advice about the PHP version. This never blocks the install: it only adds
     // a warning line. The installer's own text is plain English (it runs before
@@ -1487,7 +1513,7 @@ function g2ml_install_requirements(string $authDir, string $sqlDir, array $compo
         require_once $supportFile;
     }
 
-    if ($phpOk && function_exists('g2ml_phpSupportStatus') && function_exists('g2ml_phpSupportMessage'))
+    if ($showVersion && $phpOk && function_exists('g2ml_phpSupportStatus') && function_exists('g2ml_phpSupportMessage'))
     {
         $supportStatus = g2ml_phpSupportStatus(PHP_VERSION_ID, PHP_EXTRA_VERSION);
         if ($supportStatus === 'pre-release' || $supportStatus === 'untested')
@@ -1684,7 +1710,12 @@ header('Content-Type: text/html; charset=UTF-8');
         // ====================================================================
         elseif ($step === 0)
         {
-            $checks   = g2ml_install_requirements($g2mlAuthDir, $g2mlSqlDir, $g2mlComponents);
+            $checks   = g2ml_install_requirements(
+                $g2mlAuthDir,
+                $g2mlSqlDir,
+                $g2mlComponents,
+                !empty($_SESSION['g2ml_install_token_ok'])
+            );
             $allReady = true;
 
             foreach ($checks as $check)

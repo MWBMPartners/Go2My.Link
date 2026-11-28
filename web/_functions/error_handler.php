@@ -584,8 +584,10 @@ function g2ml_exceptionHandler(\Throwable $exception): void
     // debug page below can show it
     $message = g2ml_stripTraceArguments($message);
 
-    // In production, show a generic error page
-    if (!defined('G2ML_DEBUG') || G2ML_DEBUG !== true)
+    // Everyone gets a generic error page, except a signed-in global
+    // administrator (#319). If that cannot be established, for example because
+    // the error happened early in the request, no details are shown.
+    if (!function_exists('g2ml_debugOutputAllowed') || !g2ml_debugOutputAllowed())
     {
         if (!headers_sent())
         {
@@ -600,7 +602,7 @@ function g2ml_exceptionHandler(\Throwable $exception): void
     }
     else
     {
-        // In debug mode, show the exception details
+        // Global administrator in debug mode: show the exception details
         if (!headers_sent())
         {
             http_response_code(500);

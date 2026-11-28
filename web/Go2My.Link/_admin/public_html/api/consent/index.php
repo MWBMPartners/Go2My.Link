@@ -39,6 +39,20 @@
  * ============================================================================
  */
 
+// Show no PHP errors on screen, even if this file stops before the application
+// has started. A signed-in global administrator gets them back later (#319).
+if (function_exists('ini_set'))
+{
+    ini_set('display_errors', '0');
+    ini_set('display_startup_errors', '0');
+}
+
+// Do not name the PHP version in the response headers either.
+if (function_exists('header_remove'))
+{
+    header_remove('X-Powered-By');
+}
+
 $mainSiteConsentEndpoint = dirname(__DIR__, 4)
     . DIRECTORY_SEPARATOR . 'public_html'
     . DIRECTORY_SEPARATOR . 'api'

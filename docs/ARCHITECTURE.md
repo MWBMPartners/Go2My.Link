@@ -255,7 +255,7 @@ WCAG 2.1 AA compliance is a foundational requirement from Phase 2 onwards:
 | --- | --- | --- |
 | 🔴 PHP errors/exceptions | `tblErrorLog` | Custom error handler |
 | 📊 Activity/requests | `tblActivityLog` | Activity logger |
-| 🐛 Debug info | Browser (admin only) | `?debug=true` parameter |
+| 🐛 Debug info | Browser (signed-in global administrator only) | Always on alpha, beta and local; `?debug=true` on the live site ([D-011](decisions/D-011-debug-panel-global-admin.md)) |
 | 👤 User-facing errors | Branded error pages | Graceful fallback |
 
 ## 📚 Related Documentation

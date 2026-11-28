@@ -354,7 +354,10 @@ test('error log: an uncaught exception saves a backtrace with no argument values
 test('error log: the debug error page shows no argument values (#312)', function (): void
 {
     $run = g2mlRedactTest_child(
-        "define('G2ML_DEBUG', true);\nset_exception_handler('g2ml_exceptionHandler');\n"
+        // The details page is only for a signed-in global administrator (#319).
+        "require " . var_export(dirname(__DIR__, 2) . '/web/_functions/debug_access.php', true) . ";\n"
+        . "define('G2ML_DEBUG', true);\n\$GLOBALS['_g2ml_debug_user_uid'] = 1;\n\$_SESSION = ['user_uid' => 1];\n"
+        . "set_exception_handler('g2ml_exceptionHandler');\n"
         . "function wrap(string \$token) { try { login(\$token); } catch (Throwable \$e) { throw new Exception('wrapped ' . \$e, 0, \$e); } }\n"
         . "wrap('hunter2-pw');"
     );

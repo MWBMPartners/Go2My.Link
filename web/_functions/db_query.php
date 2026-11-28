@@ -50,7 +50,9 @@ unset($g2mlGuardScriptPath);
 // ============================================================================
 // 🔍 Debug Query Log
 // ============================================================================
-// When debug mode is enabled, all queries are logged here for the debug panel.
+// In debug mode (a signed-in global administrator only, #319), the text of each
+// query is recorded here for the debug panel. For everyone else nothing is
+// recorded. The values bound to a query are never recorded.
 // ============================================================================
 
 // Global query log for debug panel (populated when G2ML_DEBUG is true)
@@ -81,7 +83,7 @@ function dbLastErrno(): int
  * Log a query for the debug panel.
  *
  * @param  string $sql       The SQL query or procedure name
- * @param  array  $params    The bound parameters
+ * @param  array  $params    The bound parameters (not recorded)
  * @param  float  $duration  Execution time in milliseconds
  * @param  bool   $success   Whether the query succeeded
  * @return void
@@ -92,7 +94,6 @@ function _g2ml_logQuery(string $sql, array $params, float $duration, bool $succe
     {
         $GLOBALS['_g2ml_query_log'][] = [
             'sql'      => $sql,
-            'params'   => $params,
             'duration' => round($duration, 3),
             'success'  => $success,
             'time'     => date('H:i:s.') . substr((string) microtime(true), -3),

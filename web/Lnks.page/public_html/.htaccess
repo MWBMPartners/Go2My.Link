@@ -37,6 +37,9 @@ RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 # Security Headers
 # =============================================================================
 <IfModule mod_headers.c>
+    # Do not tell visitors which PHP version the server runs (#319)
+    Header unset X-Powered-By
+    Header always unset X-Powered-By
     Header set X-Content-Type-Options "nosniff"
     Header set X-Frame-Options "SAMEORIGIN"
     Header set X-XSS-Protection "1; mode=block"
@@ -164,6 +167,7 @@ ErrorDocument 500 /index.php?http_error=500
 # =============================================================================
 <IfModule mod_php.c>
     php_flag display_errors Off
+    php_flag display_startup_errors Off
     php_flag log_errors On
     php_value session.cookie_httponly 1
     php_value session.cookie_secure 1

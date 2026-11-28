@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🔒 Debug details only for a global administrator (2026-11-28)
+
+- 🔒 On every address, including alpha and beta, the debug panel and on-screen error details are now
+  shown only to a signed-in global administrator. Before this, every visitor to the test sites saw
+  the PHP version and database statements (#319, decision D-011).
+
 ### 🔗 Organisation members' short links work (2026-11-28)
 
 - 🐛 A link made by a member of an organisation with no web address of its own was shown as a

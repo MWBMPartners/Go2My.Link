@@ -118,7 +118,7 @@ No `.php` extensions visible to users. Achieved via:
 
 - 🔴 PHP errors → `tblErrorLog` (severity, code, title, detail, backtrace, request URL, headers)
 - 📊 Activity logging → `tblActivityLog` (all request data, IP, UA, geo)
-- 🐛 Debug mode → `?debug=true` URL parameter (restricted to admin/allowed IPs)
+- 🐛 Debug mode → signed-in global administrators only, on every address (`?debug=true` also needed on the live site). See docs/DEPLOYMENT.md, "Who sees debug output"
 - 👤 User-facing errors → Graceful branded error pages
 
 ### 📡 QR Codes — External Service

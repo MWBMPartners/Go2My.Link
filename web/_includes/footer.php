@@ -13,8 +13,8 @@
  * ============================================================================
  *
  * Closes the <main> element, outputs the footer with links, includes
- * JavaScript files (Bootstrap and the site's own), and the debug panel (when
- * G2ML_DEBUG is true). The cookie consent banner is printed by header.php.
+ * JavaScript files (Bootstrap and the site's own), and the debug panel (for a
+ * signed-in global administrator only). The cookie consent banner is printed by header.php.
  *
  * Dependencies: page_init.php (must be loaded first)
  *
@@ -155,9 +155,9 @@ if (file_exists(G2ML_INCLUDES . DIRECTORY_SEPARATOR . 'translate_widget.php'))
 
 <?php
 // ========================================================================
-// 🐛 Debug Panel (only shown when G2ML_DEBUG is true)
+// 🐛 Debug Panel (signed-in global administrator only, #319)
 // ========================================================================
-if (defined('G2ML_DEBUG') && G2ML_DEBUG === true && function_exists('g2ml_getDebugInfo'))
+if (function_exists('g2ml_debugOutputAllowed') && g2ml_debugOutputAllowed() && function_exists('g2ml_getDebugInfo'))
 {
     $debug = g2ml_getDebugInfo();
     ?>

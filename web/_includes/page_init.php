@@ -19,7 +19,7 @@
  *   1.5. Force the PHP default time zone to UTC (#214)
  *   2. Define path constants
  *   3. Environment detection (alpha/beta/local/production)
- *   4. Debug mode detection
+ *   4. Switch on-screen errors off (debug mode is decided after step 7)
  *   5. Load all _functions/*.php in dependency order
  *   6. Register error/exception/shutdown handlers
  *   7. Start session (secure config)
@@ -247,49 +247,39 @@ function g2ml_getEnvironment(): string
 }
 
 // ============================================================================
-// 🐛 Step 4: Debug Mode Detection
+// 🐛 Step 4: Show No Errors on Screen Until We Know Who Is Asking (#319)
 // ============================================================================
-// Debug mode is enabled if:
-//   - Environment is alpha, beta, or local (always enabled)
-//   - ?debug=true in URL AND environment is production AND user is admin (later)
+// Error details and the debug panel are only for a signed-in global
+// administrator (docs/decisions/D-011-debug-panel-global-admin.md), on every
+// web address. Nobody is known yet, so everything is switched off here.
+// Debug mode is decided in Step 7.5, after the session has been checked. An
+// error before then shows no details to anyone.
 //
-// In production, debug mode requires authentication (Phase 5).
-// For now, only alpha/beta/local get debug mode.
+// The X-Powered-By header, which names the PHP version, is removed too.
+//
+// 📖 Reference: https://www.php.net/manual/en/function.header-remove.php
 // ============================================================================
 
-$isDebugEnvironment = in_array(G2ML_ENVIRONMENT, ['alpha', 'beta', 'local'], true);
-
-// In production, debug mode requires GlobalAdmin authentication.
-// Unauthenticated ?debug=true is ignored to prevent information leakage.
-$isDebugRequested = false;
-if (isset($_GET['debug']) && $_GET['debug'] === 'true')
-{
-    if ($isDebugEnvironment)
-    {
-        $isDebugRequested = true;
-    }
-    elseif (function_exists('isAuthenticated') && isAuthenticated()
-            && function_exists('hasMinimumRole') && hasMinimumRole($_SESSION['user_role'] ?? 'Anonymous', 'GlobalAdmin'))
-    {
-        $isDebugRequested = true;
-    }
-}
-
-define('G2ML_DEBUG', $isDebugEnvironment || $isDebugRequested);
-
-// Configure PHP error display based on environment
-if (G2ML_DEBUG)
-{
-    // 📖 Reference: https://www.php.net/manual/en/function.ini-set.php
-    ini_set('display_errors', '1');
-    ini_set('display_startup_errors', '1');
-    error_reporting(E_ALL);
-}
-else
+if (function_exists('ini_set'))
 {
     ini_set('display_errors', '0');
     ini_set('display_startup_errors', '0');
+}
+
+if (function_exists('header_remove') && !headers_sent())
+{
+    header_remove('X-Powered-By');
+}
+
+// What gets LOGGED (not shown): everything on test and local addresses, and
+// everything except notices and deprecations on the live site.
+if (G2ML_ENVIRONMENT === 'production')
+{
     error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED);
+}
+else
+{
+    error_reporting(E_ALL);
 }
 
 // ============================================================================
@@ -337,6 +327,13 @@ require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'router.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'email.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'session.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'auth.php';
+
+// Who may see debug output (#319). Guarded: on a partly-deployed tree missing
+// this file the page still loads, and debug output stays off for everyone.
+if (file_exists(G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'debug_access.php'))
+{
+    require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'debug_access.php';
+}
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'org.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'account_types.php';
 
@@ -533,6 +530,23 @@ if (isset($_SESSION['user_uid']) && (int) $_SESSION['user_uid'] > 0)
 if (function_exists('cleanExpiredSessions') && mt_rand(1, 100) === 1)
 {
     cleanExpiredSessions();
+}
+
+// ============================================================================
+// 🔏 Step 7.5: Decide Debug Mode (#319)
+// ============================================================================
+// Only now is the session checked, so only now can we tell whether this is a
+// global administrator. Database queries are recorded for the debug panel from
+// this point on, and only for them.
+// ============================================================================
+
+if (function_exists('g2ml_applyDebugMode'))
+{
+    g2ml_applyDebugMode(g2ml_getEnvironment(), $_GET['debug'] ?? null);
+}
+else
+{
+    define('G2ML_DEBUG', false);
 }
 
 // ============================================================================
