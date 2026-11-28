@@ -89,6 +89,31 @@ function g2ml_authregister_test_exec(mysqli $db, string $sql): void
 }
 
 /**
+ * Delete every tblFormAttempts row for one (formKey, ipHash) pair, via a
+ * prepared statement — mirrors g2ml_formratelimit_test_cleanup() in
+ * tests/integration/form_rate_limit_test.php, so the register test's own
+ * rate-limit case cleans up the same way its sibling file does.
+ *
+ * @param  mysqli $db
+ * @param  string $formKey
+ * @param  string $ipHash
+ * @return void
+ */
+function g2ml_authregister_test_cleanupFormAttempts(mysqli $db, string $formKey, string $ipHash): void
+{
+    $statement = mysqli_prepare($db, "DELETE FROM `tblFormAttempts` WHERE `formKey` = ? AND `ipHash` = ?");
+
+    if ($statement === false)
+    {
+        throw new RuntimeException('Prepare (cleanup form attempts) failed: ' . mysqli_error($db));
+    }
+
+    mysqli_stmt_bind_param($statement, 'ss', $formKey, $ipHash);
+    mysqli_stmt_execute($statement);
+    mysqli_stmt_close($statement);
+}
+
+/**
  * Read back the stored username for a userUID via a prepared statement.
  * registerUser() does not return the username in its result array, so tests
  * that need to inspect it must query the authoritative row directly.
@@ -213,6 +238,14 @@ if (!defined('DB_CHARSET'))
     define('DB_CHARSET', 'utf8mb4');
 }
 
+if (!defined('ENCRYPTION_KEY_SECONDARY'))
+{
+    // form_rate_limit.php (loaded below, for the #212 rate-limit case)
+    // needs this as its HMAC key. Same throwaway 64-char hex value
+    // tests/run.php defines for the DB-free unit suite.
+    define('ENCRYPTION_KEY_SECONDARY', str_repeat('9f8e7d6c', 8));
+}
+
 // ----------------------------------------------------------------------------
 // Load the real application code under test and its dependencies.
 // require_once is idempotent, so this is safe even if a sibling test file
@@ -227,6 +260,7 @@ require_once $g2mlAuthRegisterFunctionsDir . '/settings.php';
 require_once $g2mlAuthRegisterFunctionsDir . '/activity_logger.php';
 require_once $g2mlAuthRegisterFunctionsDir . '/session.php';
 require_once $g2mlAuthRegisterFunctionsDir . '/auth.php';
+require_once $g2mlAuthRegisterFunctionsDir . '/form_rate_limit.php';
 
 // ----------------------------------------------------------------------------
 // Register the tests. Seeding happens inside the closures so it only runs
@@ -289,4 +323,44 @@ test('registerUser: succeeds against the real schema and populates a valid, uniq
     // Cleanup so the suite is repeatable.
     g2ml_authregister_test_exec($db, "DELETE FROM `tblUserSessions` WHERE `userUID` IN (" . $firstUserUID . ", " . $secondUserUID . ")");
     g2ml_authregister_test_exec($db, "DELETE FROM `tblUsers` WHERE `userUID` IN (" . $firstUserUID . ", " . $secondUserUID . ")");
+});
+
+// ----------------------------------------------------------------------------
+// #212 — the 11th registration attempt from one IP address within an hour
+// is refused. This drives the SAME helper the real registration page calls
+// (g2ml_formRateLimitTake() from
+// web/_functions/form_rate_limit.php) rather than the page itself — the page
+// is a plain .php template with no function to call directly (it is "not
+// unit-loadable" — it runs its logic at include time against superglobals),
+// so this is the closest real-code exercise of the limit that guards it.
+// registerUser() itself is never called ten times here: the limit sits
+// BEFORE registerUser() on the real page (see register/index.php), so
+// proving the LIMIT refuses correctly does not need ten real accounts
+// created — that would only slow this test down without testing anything
+// this file's other case does not already cover.
+// ----------------------------------------------------------------------------
+test('g2ml_formRateLimitTake(\'register\', …): the 11th attempt within an hour from one IP is refused', function () use ($db): void
+{
+    $_SERVER['REMOTE_ADDR'] = '203.0.113.61';
+    $ipHash                 = g2ml_formRateLimitIpHash();
+
+    // Clean slate for this IP address + form, in case a previous run left
+    // rows behind.
+    g2ml_authregister_test_cleanupFormAttempts($db, 'register', $ipHash);
+
+    // Matches the seeded default for security.register_max_per_ip_per_hour
+    // (web/_sql/seeds/057_form_rate_limit_settings.sql). Written as a plain
+    // literal, not read via getSetting(), so the test does not depend on
+    // whatever the shared settings cache holds when this file runs.
+    $registerMaxPerHour = 10;
+
+    for ($attempt = 1; $attempt <= $registerMaxPerHour; $attempt++)
+    {
+        assert_same('allowed', g2ml_formRateLimitTake('register', $registerMaxPerHour), 'Attempt ' . $attempt . ' of ' . $registerMaxPerHour . ' must be allowed');
+    }
+
+    assert_same('limited', g2ml_formRateLimitTake('register', $registerMaxPerHour), 'The 11th attempt within the hour from the same IP address must be refused');
+
+    // Cleanup so the suite is repeatable.
+    g2ml_authregister_test_cleanupFormAttempts($db, 'register', $ipHash);
 });

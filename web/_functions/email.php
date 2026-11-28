@@ -69,7 +69,11 @@ unset($g2mlGuardScriptPath);
  * @param  string $template     Template name (e.g., 'verify_email' → verify_email.php)
  * @param  array  $data         Data to pass to the template (extracted into scope)
  * @param  string $preheader    Optional preheader text (preview text in email clients)
- * @param  array  $extraHeaders Optional additional headers (key => value pairs)
+ * @param  array  $extraHeaders Optional additional headers (key => value pairs). A
+ *                               'Reply-To' key (case-insensitive) whose value is a
+ *                               valid email address REPLACES the default Reply-To
+ *                               instead of being appended as a second header (#212);
+ *                               an invalid value is dropped and logged.
  * @return bool                 True if mail() accepted the message for delivery
  *
  * 📖 Reference: https://www.php.net/manual/en/function.mail.php
@@ -164,6 +168,44 @@ function g2ml_sendEmail(
     $replyTo        = preg_replace('/[\r\n\0]/', '', $replyTo);
     $unsubscribeURL = preg_replace('/[\r\n\0]/', '', $unsubscribeURL);
 
+    // 🛡️ Reply-To override (#212). A caller may pass its own Reply-To
+    // through $extraHeaders — the contact form does this so a reply goes
+    // straight to the visitor rather than to the site's default support
+    // address. This is handled HERE, before $headers is built below, and
+    // NOT left to the generic $extraHeaders loop further down, for two
+    // reasons: (1) that loop only APPENDS headers, so leaving a Reply-To
+    // there would add a SECOND "Reply-To:" line alongside the default one
+    // built a few lines down — which of two Reply-To headers a mail client
+    // honours is undefined, not a safe fallback; (2) an address this
+    // function will actually USE as a reply address deserves proper
+    // validation, not only the generic CRLF-stripping the loop below gives
+    // every other extra header — so it is stripped of CR/LF here and then
+    // checked with filter_var(FILTER_VALIDATE_EMAIL), and dropped if either
+    // check fails. The key match is case-insensitive because callers may
+    // reasonably write "Reply-To", "reply-to", or "REPLY-TO".
+    foreach (array_keys($extraHeaders) as $extraHeaderName)
+    {
+        if (strtolower((string) $extraHeaderName) !== 'reply-to')
+        {
+            continue;
+        }
+
+        $replyToOverride = preg_replace('/[\r\n\0]/', '', (string) $extraHeaders[$extraHeaderName]);
+
+        if ($replyToOverride !== null && $replyToOverride !== '' && filter_var($replyToOverride, FILTER_VALIDATE_EMAIL) !== false)
+        {
+            $replyTo = $replyToOverride;
+        }
+        else
+        {
+            error_log('[Go2My.Link] WARNING: g2ml_sendEmail rejected an invalid Reply-To override; keeping the default Reply-To.');
+        }
+
+        // Removed whether it was valid or not, so the generic extraHeaders
+        // loop below never appends a second "Reply-To:" line.
+        unset($extraHeaders[$extraHeaderName]);
+    }
+
     // Generate MIME boundary and build multipart body
     $boundary  = g2ml_generateMimeBoundary();
     $emailBody = g2ml_buildMultipartBody($plainText, $htmlBody, $ampBody, $boundary);
@@ -210,7 +252,23 @@ function g2ml_sendEmail(
 
     // Send the email
     // 📖 Reference: https://www.php.net/manual/en/function.mail.php
-    $sent = mail($to, $subject, $emailBody, $headers);
+    //
+    // TEST SEAM (#212). $GLOBALS['g2ml_email_send_override'], when set to a
+    // callable, is called with ($to, $subject, $emailBody, $headers)
+    // instead of the real mail() — used by tests/unit/email_reply_to_test.
+    // php to capture the built headers without needing a working mail
+    // transport in the CLI test runner (and without sending real email on
+    // every test run). This is a TEST SEAM ONLY: application code must
+    // never set this global. isset() + is_callable() means a request that
+    // never sets it behaves exactly as it always has.
+    if (isset($GLOBALS['g2ml_email_send_override']) && is_callable($GLOBALS['g2ml_email_send_override']))
+    {
+        $sent = (bool) call_user_func($GLOBALS['g2ml_email_send_override'], $to, $subject, $emailBody, $headers);
+    }
+    else
+    {
+        $sent = mail($to, $subject, $emailBody, $headers);
+    }
 
     // Log the activity
     if (function_exists('logActivity'))
@@ -222,13 +280,26 @@ function g2ml_sendEmail(
             $logStatus = 'mail_failed';
             $logCode   = 500;
         }
+
+        // The contact form's subject is the visitor's own free text
+        // (see contact_message's caller,
+        // web/Go2My.Link/public_html/pages/contact/index.php), so it is
+        // left out of this log entry rather than recorded as a boolean —
+        // the contact page's own 'contact_form' log entry already records
+        // whether a subject was given, via 'hasSubject'.
+        $logData = [
+            'recipient' => $to,
+            'template'  => $template,
+            'amp'       => ($ampBody !== null),
+        ];
+
+        if ($template !== 'contact_message')
+        {
+            $logData['subject'] = $subject;
+        }
+
         logActivity('send_email', $logStatus, $logCode, [
-            'logData' => [
-                'recipient' => $to,
-                'template'  => $template,
-                'subject'   => $subject,
-                'amp'       => ($ampBody !== null),
-            ],
+            'logData' => $logData,
         ]);
     }
 

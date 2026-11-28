@@ -67,6 +67,7 @@ Schema files are located in `web/_sql/schema/`.
 | `tblOrgShortDomains` | 🔗 Organisation custom short domains — the ONLY table the redirect resolver and LinksPage custom-domain fallback (#46) read (`isActive` + `verificationStatus='verified'`, #91) |
 | `tblAccountTypes` | 🏷️ Reference table of available account types (system + custom) |
 | `tblUserAccountTypes` | 🔀 Junction table linking users to account types (org-scoped, multi-type) |
+| `tblFormAttempts` | 🚦 Per-IP attempt counts for the rate-limited registration, contact and password-reset forms (#212). Holds only a keyed hash of the IP address (`ipHash`), never the address itself; rows older than a day are deleted when one of these forms is next used. See `web/_sql/schema/044_form_attempts.sql` and `web/_functions/form_rate_limit.php`. |
 
 #### 🔗 Short URLs
 
@@ -215,6 +216,8 @@ Resolution order: User > Organisation > System > Default
 - **👤 User:** Per-user override
 
 🔒 Sensitive settings (where `isSensitive = 1`) are encrypted with AES-256-GCM using the `ENCRYPTION_SALT` from `auth_creds.php`.
+
+🚦 Three System settings added by #212 hold the per-IP-per-hour ceiling for each rate-limited public form: `security.register_max_per_ip_per_hour` (seeded `10` — offices and schools share one address), `security.contact_max_per_ip_per_hour` and `security.password_reset_max_per_ip_per_hour` (both seeded `5`). Setting any of them to `0` switches that form's limit off. See `web/_sql/seeds/057_form_rate_limit_settings.sql`.
 
 ## 🧩 Feature Registry for LinksPage (LP-01, #216)
 

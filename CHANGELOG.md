@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### 🚦 Limits on the public forms (2026-11-27)
+
+- 🔒 Sign-up, the contact form and forgot-password now limit how often one connection can use them
+  each hour (10, 5 and 5; each is a setting, and 0 switches it off). Visitors who send "Do Not
+  Track" were never limited before, because the old count used the activity log, which skips them
+  (#212).
+- ✉️ The contact form now sends through the shared email function, with the visitor as the reply
+  address. It no longer puts the visitor's IP address in the email or their email address in the
+  activity log (#212).
+- 🗄️ **On deploy to an existing database:** apply migration `043_form_attempts.sql` first (without it
+  all three forms refuse every attempt), then seed `057_form_rate_limit_settings.sql`
+  (`PRE_LAUNCH_CHECKLIST.md`, row A30). The new Privacy Policy wording needs legal review.
+
 ### 🐘 PHP 8.6 readiness and link safety (2026-11-18 → 2026-11-23)
 
 Get the code ready for PHP 8.6 (released on 2026-11-19) while keeping PHP 8.4 as the minimum and

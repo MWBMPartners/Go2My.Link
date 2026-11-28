@@ -91,25 +91,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         }
         else
         {
-            // Rate limit check (max 5 per IP per hour)
-            $clientIP  = g2ml_getClientIP();
-            $rateCheck = dbSelectOne(
-                "SELECT COUNT(*) AS cnt
-                 FROM tblActivityLog
-                 WHERE logAction = 'password_reset_request'
-                   AND ipAddress = ?
-                   AND createdAt >= DATE_SUB(NOW(), INTERVAL 1 HOUR)",
-                's',
-                [$clientIP]
-            );
+            // Rate limit check (#212). This USED TO count rows in
+            // tblActivityLog for logAction = 'password_reset_request'. That
+            // table is written by logActivity(), which SKIPS most actions
+            // for a visitor who has sent Do Not Track — and
+            // 'password_reset_request' was never on activity_logger.php's
+            // short "always log" list — so a visitor with Do Not Track on
+            // could request unlimited resets no matter how the limit was
+            // set. tblFormAttempts (web/_functions/form_rate_limit.php)
+            // records every attempt with no DNT check at all, which closes
+            // that gap. The message shown on refusal is unchanged.
+            // 'unavailable' (also used if the limiter is not loaded) refuses.
+            $resetAttempt = 'unavailable';
 
-            if (($rateCheck !== null && $rateCheck !== false)) {
-                $resetCount = (int) $rateCheck['cnt'];
-            } else {
-                $resetCount = 0;
+            if (function_exists('g2ml_formRateLimitTake'))
+            {
+                $resetAttempt = g2ml_formRateLimitTake(
+                    'password_reset',
+                    (int) getSetting('security.password_reset_max_per_ip_per_hour', 5)
+                );
             }
 
-            if ($resetCount >= 5)
+            if ($resetAttempt === 'unavailable')
+            {
+                if (function_exists('__')) {
+                    $formError = __('form.error_unavailable');
+                } else {
+                    $formError = 'We cannot process this form just now. Please try again later.';
+                }
+            }
+            elseif ($resetAttempt === 'limited')
             {
                 if (function_exists('__')) {
                     $formError = __('forgot_password.error_rate_limit');

@@ -285,6 +285,17 @@ require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'db_connect.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'db_query.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'main_site_url.php';
 
+// Public form rate limiting (#212). Only needs g2ml_getClientIP() (just
+// loaded above, from security.php) and the db_query.php wrappers, so it
+// sits here rather than in Layer 2. Guarded the same way as the pricing.php
+// block further down: on a partly-deployed tree missing this file the page
+// still loads, and register/index.php, forgot-password/index.php and
+// contact/index.php refuse the submission.
+if (file_exists(G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'form_rate_limit.php'))
+{
+    require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'form_rate_limit.php';
+}
+
 // Layer 2 — Core services (depend on Layer 1)
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'error_handler.php';
 require_once G2ML_FUNCTIONS . DIRECTORY_SEPARATOR . 'settings.php';
@@ -515,9 +526,10 @@ loadSettingsCache();
 // ============================================================================
 // Mirrors the existing 1% session-cleanup idiom above, but MUST run AFTER
 // loadSettingsCache() (unlike that hook, which needs no settings at all) —
-// this hook's very first checks read retention.* settings. Inert unless
-// retention.enforcement_enabled is explicitly on; see cron.php for the full
-// gate chain. NEVER runs the #163 deletion job — that executor is
+// this hook's very first checks read retention.* settings. Unless
+// retention.enforcement_enabled is explicitly on, it only clears old form
+// attempt records (#212), on 1 request in 500 by default; see cron.php for
+// the full gate chain. NEVER runs the #163 deletion job — that executor is
 // endpoint-only by design (web/Go2My.Link/_admin/public_html/cron.php).
 // ============================================================================
 

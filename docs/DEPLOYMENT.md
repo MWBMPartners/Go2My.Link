@@ -264,12 +264,13 @@ The application detects its environment from the hostname:
 
 1. 🗄️ Create the MySQL database: `mwtools_Go2MyLink`
 2. 🚨 **Check its collation before importing anything** — see below
-3. 📋 Import all **16** schema files from `web/_sql/schema/`, in filename order
+3. 📋 Import all **17** schema files from `web/_sql/schema/`, in filename order
 4. 🔧 Import both stored procedures from `web/_sql/procedures/`
    (`sp_generateShortCode.sql`, `sp_lookupShortURL.sql`)
-5. 🌱 Import all **37** seed files from `web/_sql/seeds/`, in order — the
+5. 🌱 Import all **38** seed files from `web/_sql/seeds/`, in order — the
    numbering is not continuous: `001` through `023` run in sequence, then
-   fourteen later additions sit outside that run, `029_linkspage_privacy_translations.sql`,
+   fifteen later additions sit outside that run, `029_linkspage_privacy_translations.sql`,
+   `057_form_rate_limit_settings.sql`,
    `058_truthful_marketing_translations.sql`,
    `059_link_destination_translations.sql`,
    `064_linkspage_avatar_icon_translations.sql`,
@@ -284,15 +285,16 @@ The application detects its environment from the hostname:
    `073_linkspage_layout_translations.sql` and
    `074_destination_check.sql` (see the table below for
    what each one adds). Importing "in order" means by filename, so a plain
-   `for f in web/_sql/seeds/*.sql` loop picks up all 37 without needing to
+   `for f in web/_sql/seeds/*.sql` loop picks up all 38 without needing to
    know about the gap in the numbers.
 
-> 📝 Counts as at 2026-11-23: 16 schema files, 2 stored procedures, 37 seeds,
-> 21 migrations. Import order is schema → procedures → seeds, which is the
+> 📝 Counts as at 2026-11-26: 17 schema files, 2 stored procedures, 38 seeds,
+> 22 migrations. Import order is schema → procedures → seeds, which is the
 > order `.github/workflows/ci.yml` uses. (Seed `023` and migration `021`, the
 > LinksPage feature registry, were added on 2026-09-21; seeds `029`, `058`,
 > `059`, `064`, `065`, `066`, `067`, `068`, `069`, `070`, `071`, `072`, `073` and `074` were added later still, outside the 001-023 run —
-> see below.)
+> see below. Seed `057`, schema `044` and migration `043`, the form
+> rate-limit table, were added for #212 — see below.)
 
 #### 🚨 The collation check — do this first, every time
 
@@ -367,6 +369,7 @@ key names instead of words:
 | `021_missing_ui_translations.sql` | 5 strings that were used but never translated | The homepage browser tab reads `home.title`; four screen-reader labels read out their key names |
 | `022_help_translations.sql` | Every word of the in-app Help section (367 rows) | All five `/help` pages display key names instead of text |
 | `029_linkspage_privacy_translations.sql` | 8 strings: the Privacy Policy's new "LinksPage Data" subsection, plus one warning line on the Delete Account page and one list item on the Export page (#219) | The Privacy Policy page shows raw key names (e.g. `legal.privacy_s2_linkspage_title`) instead of English in that subsection; the Delete/Export pages show `delete.warning_linkspages`/`export.includes_linkspages` instead of English |
+| `057_form_rate_limit_settings.sql` | The three `security.*_max_per_ip_per_hour` settings that cap registration, contact-form and password-reset attempts (10/5/5 — owner decision 43, #243), plus six texts: the sign-up limit message, the "cannot process this form" message and four lines of the Privacy Policy (#212) | The settings row and its admin-screen description are missing, but `getSetting()` still falls back to each call site's own hard-coded default, so the limits still apply; the refusal messages and the new Privacy Policy lines show key names (for example `register.error_rate_limit` and `legal.privacy_s7_forms`) instead of English |
 | `058_truthful_marketing_translations.sql` | 6 strings: corrected wording for the homepage, features and about pages' security and analytics descriptions, so they no longer promise two-factor authentication or SSO and describe geographic data as available "where enabled" rather than for every visitor (#210) | The homepage, features page and about page show `home.feature_secure_desc_v2` and the other five new key names instead of English |
 | `059_link_destination_translations.sql` | 3 strings: the dashboard edit-link destination-check error messages (invalid URL, our own short domain, blocked/internal host), now shared with create and the API through one function (#205) | The dashboard edit-link page shows the raw key names `links.error_destination_invalid_url`/`links.error_destination_own_domain`/`links.error_destination_blocked_destination` instead of English |
 | `064_linkspage_avatar_icon_translations.sql` | 4 strings: the avatar and per-link icon fields' help text on the LinksPage create/edit pages, plus the two save-time error messages shown when one of those addresses is not https:// (#221, #273) | The two help texts show `linkspage.avatar_url_help`/`linkspage.item_icon_help` instead of English, and a refused save shows `linkspage.avatar_url_https_error`/`linkspage.item_icon_https_error` instead of a readable error |
@@ -381,9 +384,9 @@ key names instead of words:
 | `073_linkspage_layout_translations.sql` | 1 string: "Profile picture", the alt text of an uploaded LinksPage avatar (#287) | Nothing a visitor sees breaks: the renderer falls back to the English words when the translation is missing |
 | `074_destination_check.sql` | The setting `redirect.enforce_destination_check` (off) and 3 strings for #308: the refusal page's title and message, and the info page's "destination is not valid" line. The setting decides whether a short link that fails the stricter link check is refused when followed | Nothing a visitor sees breaks: until it is applied the setting counts as off, and the code's own English is used. Apply it before you switch the setting on |
 
-All sixteen are safe to run more than once and safe on a database that already has them.
-Fifteen are plain `INSERT IGNORE`; `074` writes its one setting with
-`ON DUPLICATE KEY UPDATE` so that a value you chose is kept (its texts are `INSERT IGNORE`).
+All seventeen are safe to run more than once and safe on a database that already has them.
+Fifteen are plain `INSERT IGNORE`. `057` and `074` write their settings with
+`ON DUPLICATE KEY UPDATE`, so a value you chose is kept (their texts are `INSERT IGNORE`).
 
 **Also re-import `004_linkspage_templates.sql` on an existing database (#287), after the new code is
 uploaded.** Unlike the files above, it is not INSERT IGNORE: it refreshes the five system LinksPage
@@ -496,6 +499,24 @@ Do these three steps, in this order:
    feature's description and never overwrites a plan value someone has
    changed since.
 
+#### 🧩 Migration `043` — the form rate-limit table (needed on an EXISTING database)
+
+`web/_sql/migrations/043_form_attempts.sql` creates `tblFormAttempts`, the
+table registration, the contact form and forgot-password now use to count
+attempts per IP address per hour (#212). A fresh install gets the same table
+from schema `044_form_attempts.sql`, so it does not need this file. A
+database installed before this change (#212) landed does, together with seed
+`057_form_rate_limit_settings.sql` above.
+
+**Why it matters.** Without the table, `g2ml_formRateLimitTake()`
+(`web/_functions/form_rate_limit.php`) cannot count attempts and refuses every
+one ("We cannot process this form just now") — registration, the contact form
+and forgot-password all stop working — until this migration has run. See owner action **A30** in
+[PRE_LAUNCH_CHECKLIST.md](../PRE_LAUNCH_CHECKLIST.md).
+
+`CREATE TABLE IF NOT EXISTS` makes this migration safe to run more than
+once, including on a database that already has the table.
+
 ### 🔄 Migration (from MWlink)
 
 > 📋 **See [MIGRATION_PLAN.md](MIGRATION_PLAN.md) for the comprehensive step-by-step migration execution plan**, including pre-migration checklist, DNS cutover, rollback procedures, and post-launch monitoring.
@@ -503,15 +524,15 @@ Do these three steps, in this order:
 **Summary of migration steps:**
 
 1. 🗄️ Create new database alongside existing `mwtools_mwlink`
-2. 📋 Import all 16 schema files in filename order (`000`, `010`–`015`,
-   `020`–`021`, `030`–`036` — numbering is deliberately gapped; there is no
+2. 📋 Import all 17 schema files in filename order (`000`, `010`–`015`,
+   `020`–`021`, `030`–`036`, `044` — numbering is deliberately gapped; there is no
    `001`–`009`)
 3. 🔧 Import both stored procedures (`sp_generateShortCode.sql`,
    `sp_lookupShortURL.sql`). ⚠️ **Historical:** `sp_logActivity.sql` was
    **DELETED** — the app now performs a direct `INSERT` into `tblActivityLog`
    instead (`web/_functions/activity_logger.php`); do not look for or try to
    import this file
-4. 🌱 Import all 37 seed files in filename order (the list is in step 5 of
+4. 🌱 Import all 38 seed files in filename order (the list is in step 5 of
    **New Installation** above)
 5. 🧪 Run dry-run verification: `web/_sql/dry_run.sql`
 6. ▶️ Run migration scripts from `web/_sql/migrations/` in order — `001`–`004`,

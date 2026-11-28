@@ -27,7 +27,8 @@
  * The #163 deletion executor is deliberately endpoint-only — irreversible
  * work must never ride an anonymous visitor's request. Every entry function
  * re-checks its own gate setting and returns a no-op report when its feature
- * is off, so requiring this file has ZERO effect until an operator explicitly
+ * is off (the one exception: the retention job always clears form attempt
+ * records, #212). Requiring this file has ZERO effect until an operator
  * flips the relevant settings (see web/_sql/seeds/020_cron_gdpr_settings.sql
  * — every one of them seeds OFF/safe).
  *
@@ -666,7 +667,8 @@ function g2ml_cronFindDueDeletionRequests(int $graceDays, int $batchLimit): arra
 // ============================================================================
 
 /**
- * Run every retention sweep, gated behind the single master switch
+ * Run every retention sweep. Form attempt records are always cleared; the
+ * other sweeps are gated behind the single master switch
  * retention.enforcement_enabled. All sweeps are idempotent — re-running
  * converges (their WHERE clauses exclude already-treated rows) — so there is
  * no harm in this being called from BOTH the endpoint and the probabilistic
@@ -675,18 +677,22 @@ function g2ml_cronFindDueDeletionRequests(int $graceDays, int $batchLimit): arra
  * @param  int $timeBudgetSeconds  Overall soft time budget for this call.
  * @param  int $batchSize          LIMIT per UPDATE/DELETE chunk (already
  *                                 clamped by the caller).
- * @return array                   {enabled, partial, anonymise, purge, exports, sessions}
+ * @return array                   {enabled, partial, anonymise, purge, exports, sessions, forms}
  */
 function g2ml_cronRunRetentionJob(int $timeBudgetSeconds, int $batchSize): array
 {
+    $deadline = microtime(true) + $timeBudgetSeconds;
+
+    // Form attempt records (#212) are cleared whatever the switch says: the
+    // Privacy Policy promises they last about a day.
+    $formsReport = g2ml_retentionPurgeFormAttempts($batchSize, $deadline);
+
     $enforcementEnabled = getSetting('retention.enforcement_enabled', false);
 
     if ($enforcementEnabled !== true)
     {
-        return ['enabled' => false];
+        return ['enabled' => false, 'partial' => $formsReport['partial'], 'forms' => $formsReport];
     }
-
-    $deadline = microtime(true) + $timeBudgetSeconds;
 
     $anonymiseDays = g2ml_cronClampInt(getSetting('retention.activity_log_anonymise_days', 90), 0, 3650, 90);
     $purgeDays     = g2ml_cronClampInt(getSetting('retention.activity_log_purge_days', 0), 0, 3650, 0);
@@ -722,7 +728,7 @@ function g2ml_cronRunRetentionJob(int $timeBudgetSeconds, int $batchSize): array
 
     $partial = false;
 
-    $partialCandidates = [$anonymiseReport, $purgeReport, $exportReport];
+    $partialCandidates = [$anonymiseReport, $purgeReport, $exportReport, $formsReport];
 
     foreach ($partialCandidates as $subReport)
     {
@@ -739,7 +745,57 @@ function g2ml_cronRunRetentionJob(int $timeBudgetSeconds, int $batchSize): array
         'purge'     => $purgeReport,
         'exports'   => $exportReport,
         'sessions'  => $sessionsReport,
+        'forms'     => $formsReport,
     ];
+}
+
+/**
+ * Delete form attempt records (#212) older than one day. The period is fixed:
+ * no form limit looks back further than an hour, and the Privacy Policy says
+ * about one day.
+ *
+ * @param  int   $batchSize  LIMIT per DELETE chunk.
+ * @param  float $deadline   microtime(true) value to stop looping by.
+ * @return array             {swept, batches, partial}
+ */
+function g2ml_retentionPurgeFormAttempts(int $batchSize, float $deadline): array
+{
+    $totalSwept = 0;
+    $batches    = 0;
+    $partial    = false;
+
+    while (true)
+    {
+        if (microtime(true) >= $deadline)
+        {
+            $partial = true;
+            break;
+        }
+
+        $affected = dbDelete(
+            "DELETE FROM `tblFormAttempts`
+              WHERE `createdAt` < DATE_SUB(UTC_TIMESTAMP(), INTERVAL 1 DAY)
+              LIMIT ?",
+            'i',
+            [$batchSize]
+        );
+
+        if ($affected === false)
+        {
+            error_log('[Go2My.Link] ERROR: g2ml_retentionPurgeFormAttempts — DELETE failed.');
+            break;
+        }
+
+        $totalSwept = $totalSwept + $affected;
+        $batches    = $batches + 1;
+
+        if ($affected < $batchSize)
+        {
+            break;
+        }
+    }
+
+    return ['swept' => $totalSwept, 'batches' => $batches, 'partial' => $partial];
 }
 
 /**
@@ -1076,7 +1132,8 @@ function g2ml_retentionPathIsConfined(string $realBaseDir, string $realFilePath)
  *   2. Clamp retention.probabilistic_divisor; <= 0 means the fallback path is
  *      disabled entirely.
  *   3. Roll mt_rand(1, divisor) — only a 1-in-divisor chance continues.
- *   4. Check retention.enforcement_enabled — the master gate.
+ *   4. Check retention.enforcement_enabled — the master gate. When off,
+ *      clear only old form attempt records (#212) and return.
  *   5. Try to acquire the advisory lock — if another run already holds it,
  *      skip quietly rather than compete or queue.
  *   6. Run the retention job with the fallback time budget, then release the
@@ -1107,6 +1164,13 @@ function g2ml_cronMaybeRunProbabilisticRetention(): void
 
     if ($enforcementEnabled !== true)
     {
+        // Only the form attempt records (#212), which are cleared whatever
+        // the switch says. Deleting old rows twice is harmless, so no lock.
+        $offTimeBudget = g2ml_cronClampInt(getSetting('retention.fallback_time_budget_seconds', 2), 1, 30, 2);
+        $offBatchSize  = g2ml_cronClampInt(getSetting('retention.batch_size', 500), 50, 2000, 500);
+
+        g2ml_retentionPurgeFormAttempts($offBatchSize, microtime(true) + $offTimeBudget);
+
         return;
     }
 

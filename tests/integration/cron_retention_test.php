@@ -15,7 +15,8 @@
  * Drives the REAL g2ml_cronRunRetentionJob() and its sub-sweeps against a
  * freshly imported test database:
  *
- *   - the master gate (retention.enforcement_enabled) is a true no-op when off;
+ *   - the master gate (retention.enforcement_enabled), when off, leaves the
+ *     activity log untouched (form attempt records are still cleared, #212);
  *   - the activity-log ANONYMISE sweep sets ipAddress/requestUserAgent on rows
  *     past the age threshold, leaves recent rows untouched, and converges to
  *     zero on a re-run (idempotent);
@@ -454,7 +455,7 @@ if ($g2mlCronRetSetupResult === false)
 }
 
 // ============================================================================
-// (1) Master gate — a total no-op when off.
+// (1) Master gate — when off, the activity log is left alone.
 // ============================================================================
 test('cron retention (#167): master gate off — report {enabled:false}, rows untouched', function () use ($db): void
 {
