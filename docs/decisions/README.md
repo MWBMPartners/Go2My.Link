@@ -43,3 +43,7 @@ tracked on its own issue.
 | [D-025](D-025-free-no-api-30-day-statistics.md) | 2026-11-28 | Free has no API access and shows 30 days of statistics at launch | In force |
 | [D-026](D-026-unblocking-restores-state.md) | 2026-11-28 | Removing a staff block restores the link as it was | In force |
 | [D-027](D-027-blocked-link-hides-destination.md) | 2026-11-28 | The information page hides a blocked link's destination | In force |
+| [D-028](D-028-old-links-without-organisation.md) | 2026-11-28 | Old links with no organisation belong to the owner's account | In force |
+| [D-029](D-029-test-sites-shared-database.md) | 2026-11-28 | Test sites share the live database, with separate fields or tables where behaviour differs | In force |
+| [D-030](D-030-erased-link-addresses-kept.md) | 2026-11-28 | Erasure keeps the address a switched-off link pointed to | In force |
+| [D-031](D-031-sole-member-organisation-choice.md) | 2026-11-28 | The sole member of an organisation chooses what happens to its details | In force |
